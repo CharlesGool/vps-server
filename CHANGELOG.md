@@ -6,6 +6,23 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.0.3 — 2026-09-12
+
+### Fixed
+
+- `install_iperf3()` could still fail even after v1.0.2's fix. `apt-get update`
+  can report success while `security.debian.org`'s CDN hands back a stale
+  package index, so the very next `apt-get install` 404s trying to fetch a
+  `.deb` the index just claimed exists — seen live on a real host upgrading
+  from v1.0.1 to v1.0.2. A single retry of `update` alone did not reliably
+  fix this, since the retry could hit the same stale edge. The installer now
+  retries the whole update-then-install pair together, up to 3 times, which
+  recovers once a later attempt lands on a synced mirror.
+- The README's `## Install` section still had unfilled template
+  placeholders — a literal `<repo-url>` and a `v0.1.0` example tag that this
+  project has never actually had a release named. Both now read the real
+  values: the project's actual GitHub URL and its current release tag.
+
 ## v1.0.2 — 2026-09-12
 
 ### Fixed

@@ -2,7 +2,7 @@
 
 [English](../README.md) | **简体中文**
 
-> 译自 `README.md`（v1.0.2）。如有冲突，以英文版为准。
+> 译自 `README.md`（v1.0.3）。如有冲突，以英文版为准。
 
 一套一条命令搞定的 Debian/Ubuntu VPS 组合包：一个任何人都能访问、用来证明你的 IP 网页端口可达的公开页面，一个带密码保护、用于测速和连接记录的控制台，一个按需开启的 iperf3 窗口，以及一个 anytls 代理。
 
@@ -29,11 +29,11 @@ web、iperf3、anytls 这三个模块中的每一个，都可以在安装时选�
 ## 安装
 
 ```bash
-# 务必克隆某个 tag，而不是默认分支——分支最新提交可能处于开发中间状态。
-# 最新发布 tag：`git ls-remote --tags <repo-url>`
-git clone --branch v0.1.0 --depth 1 <repo-url> vps-server
+# Always clone a tag, not the default branch — the branch tip may be mid-work.
+# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+git clone --branch v1.0.3 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # 可选——每个变量都有可用的默认值
+cp .env.example .env   # optional — every variable has a working default
 bash install.sh
 ```
 
@@ -44,18 +44,18 @@ bash install.sh
 ## 快速开始
 
 ```bash
-bash install.sh                              # 交互式：模块、语言、密码、端口
-sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # 无人值守，不提示
-systemctl status vps-server-web              # 查看是否已启动
-bash anytls/setup-anytls.sh status           # 若安装了该模块，查看 anytls 节点详情
+bash install.sh                              # interactive: modules, language, password, port
+sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # unattended, no prompts
+systemctl status vps-server-web              # is it up
+bash anytls/setup-anytls.sh status           # anytls node details, if that module is installed
 ```
 
 然后，从另一台机器上：
 
 ```bash
-curl -sS  http://<ip>/                     # 通过明文 HTTP 测试可达性
-curl -sSk https://<ip>/                    # ……以及通过 TLS（自签名）测试
-iperf3 -c <ip> -p 5201 --json              # 仅在窗口开启期间可用
+curl -sS  http://<ip>/                     # reachability over plain HTTP
+curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
+iperf3 -c <ip> -p 5201 --json              # only while a window is open
 ```
 
 ## 验证是否生效
@@ -88,8 +88,8 @@ iperf3 -c <ip> -p 5201 --json              # 仅在窗口开启期间可用
 ## 卸载
 
 ```bash
-bash uninstall.sh              # 移除已安装的所有模块及其数据
-KEEP_DATA=1 bash uninstall.sh  # 保留访客数据库和控制台密码
+bash uninstall.sh              # removes whichever modules are installed, and the data
+KEEP_DATA=1 bash uninstall.sh  # keeps the visitor database and the console password
 ```
 
 ## 许可证

@@ -1,6 +1,6 @@
 ---
 project: vps-server
-version: v1.0.2
+version: v1.0.3
 status: active
 branch: main
 updated: 2026-09-12
@@ -13,17 +13,21 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.0.2 released; the repository is public. `install.sh`'s
-`install_iperf3()` chained `apt-get update && apt-get install iperf3` with all
-output discarded, so one unrelated broken apt repo (seen on a real VPS) made
-the whole install step skip silently. Fixed to retry the update, attempt the
-install regardless of the update's own outcome, and stop hiding apt's error
-output. Verified with a full end-to-end `install.sh` run in a disposable,
-systemd-enabled Debian 12 container (not this live host) with the exact
-broken-repo scenario seeded: iperf3 installed, `vps-server-web.service` came
-up active, and both the console and the public listener answered HTTP 200.
-v1.0.1 fixed the CHANGELOG's maintainer comment rendering on the changelog
-page — display only, nothing else was affected.
+**In progress:** v1.0.3 released; the repository is public. v1.0.2's iperf3
+install fix was incomplete: `apt-get update` can report success while
+`security.debian.org`'s CDN hands back a stale index that 404s on the next
+`apt-get install` — hit live on a real host upgrading v1.0.1 to v1.0.2.
+`install_iperf3()` now retries the whole update-then-install pair, not just
+update alone. Also fixed the README's `## Install` section, which still had
+unfilled template placeholders (`<repo-url>`, an example `v0.1.0` tag this
+project has never had) since v1.0.0. Verified with a full end-to-end
+`install.sh` run in a disposable, systemd-enabled Debian 12 container (not
+this live host) with the same broken-repo scenario seeded: iperf3 installed,
+`vps-server-web.service` came up active, and both the console and the public
+listener answered HTTP 200. v1.0.2 fixed `install_iperf3()` skipping the
+install entirely when an unrelated apt repo broke `apt-get update`; v1.0.1
+fixed the CHANGELOG's maintainer comment rendering on the changelog page —
+display only, nothing else was affected.
 
 Every feature was verified on a real host by the operator before v1.0.0: the
 public page

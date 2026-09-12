@@ -592,21 +592,24 @@ install_iperf3() {
   msg iperf_installing
   export DEBIAN_FRONTEND=noninteractive
 
-  # apt-get update fails outright if any one repo is unreachable (a stale
-  # third-party .list is enough), even though the archive iperf3 actually
-  # lives in updates fine. Retry it a few times for transient lock/network
-  # failures, but don't let it block the install attempt below — a failed
-  # update does not mean the cached package lists can't resolve iperf3.
+  # Two distinct apt failure modes land here, both transient: apt-get update
+  # itself can fail outright (one unreachable repo is enough, even a stale
+  # third-party .list unrelated to iperf3), or it can report success while
+  # security.debian.org's CDN hands back a stale index whose .deb URLs 404 on
+  # install (apt's own "maybe run apt-get update" hints at exactly this). A
+  # single retry of update alone fixes neither case reliably; retrying the
+  # whole update-then-install pair does, since a later attempt both tolerates
+  # an update failure (`|| true` keeps set -e from killing the installer) and
+  # has a decent chance of landing on a synced mirror.
   local attempt
   for attempt in 1 2 3; do
-    apt-get update -qq && break
+    apt-get update -qq || true
+    apt-get install -y -qq iperf3 && return 0
     [ "$attempt" -eq 3 ] || sleep 2
   done
 
-  if ! apt-get install -y -qq iperf3; then
-    msg iperf_failed
-    return 0   # a missing iperf3 disables one console button, not the install
-  fi
+  msg iperf_failed
+  return 0   # a missing iperf3 disables one console button, not the install
 }
 
 install_anytls() {

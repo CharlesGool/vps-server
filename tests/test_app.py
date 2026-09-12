@@ -412,12 +412,18 @@ class ChangelogAndVersionTest(unittest.TestCase):
         # Skip headings: the category names (### Fixed, ### Added) are copied
         # verbatim into every language, so the first line under a version
         # whose only content is a category would be identical in all three and
-        # discriminate nothing.
+        # discriminate nothing. Also skip any line containing a backtick: a
+        # wrapped inline-code span can open or close mid-line, and a raw "`"
+        # never survives rendering (it becomes <code>), so slicing across one
+        # produces a sentinel that can never match the rendered HTML — hit
+        # twice for real, once in English wrapping and once in a zh_tw
+        # translation, each time on an 18-character CJK window that's easy to
+        # land inside since so few characters fit in it.
         body = re.split(r"^## v", text, flags=re.M)
         self.assertGreater(len(body), 1, f"no version section in {path}")
         for line in body[1].splitlines()[1:]:
             s = line.strip()
-            if s and not s.startswith(("#", "-", ">", "<", "|")):
+            if s and not s.startswith(("#", "-", ">", "<", "|")) and "`" not in s:
                 return s[:18]
         self.fail(f"no prose under the first version heading in {path}")
 

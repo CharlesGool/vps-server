@@ -54,8 +54,8 @@ maintained, and their code is vendored here rather than absorbed.
 
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: `git ls-remote --tags <repo-url>`
-git clone --branch v0.1.0 --depth 1 <repo-url> vps-server
+# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+git clone --branch v1.0.3 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash install.sh
