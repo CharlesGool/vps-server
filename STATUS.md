@@ -13,19 +13,20 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** private, pushed
 **Snapshots:** maintained privately (not published)
-**In progress:** All three modules install, run and uninstall cleanly on a
-real host, verified by the operator: the public page answers on 80 and 443,
-the console works, the browser speed test works, the iperf3 window measures
-2.8 Gbit/s over LAN and refuses connections once it closes itself, the anytls
-node comes up and its teardown removes the unit, binary, config directory and
-firewall rule, and all three UI languages render. 78 tests pass. The console
-now also has an anytls page that shows the node's status and offers a
-copyable Clash entry and share link.
-**Next:** Reinstall and press the anytls reset button once. It failed on its
-first real attempt because the web service runs with `ProtectSystem=strict`
-and `/etc` is read-only to it; the reset now runs in a transient unit via
-`systemd-run`, which is verified to work on a real host, but the reset itself
-has never completed end to end.
+**In progress:** Everything is verified on a real host by the operator: the
+public page answers on both public ports, the console and browser speed test
+work, the iperf3 window measures 2.8 Gbit/s over LAN and refuses connections
+once it closes itself, the anytls node installs and tears down cleanly, the
+console's anytls page shows the node and copies its client configuration, the
+reset button rotates the port and password without leaking the old port's
+firewall rule, an upgrade replays recorded settings and keeps the node's
+credentials, and all three UI languages render. 98 tests pass. Nothing known
+is broken; what is left before a tag is the release checklist.
+**Next:** Decide whether to cut `v0.1.0`. Every feature is now verified on a
+real host and the tree has no known defects, so the remaining work before a
+tag is the release checklist rather than the code: translate the six
+governance documents, run `release-preflight.sh`, and decide the repository's
+public/private status given it redistributes a GPL-3.0 binary.
 **Known issues:** The copy buttons on `/anytls` have not been clicked in a
 browser. `navigator.clipboard` does not exist outside a secure context and
 the console is plain HTTP by default, so the `document.execCommand` fallback

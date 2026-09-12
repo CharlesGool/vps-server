@@ -177,7 +177,11 @@ open_firewall(){
     firewall-cmd --permanent --add-port="${ANYTLS_PORT}/tcp" >/dev/null 2>&1 || true
     firewall-cmd --reload >/dev/null 2>&1 || true
   elif command -v iptables >/dev/null 2>&1; then
-    iptables -C INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT 2>/dev/null \
+    # stdout 也要丢掉，不只是 stderr：iptables-nft（Ubuntu 22.04 起的默认）
+    # 在 -C 命中时会把匹配到的规则原样打出来，于是一行原始 iptables 输出
+    # 混进操作者要读的安装摘要里。上游只挡了 stderr，因为规则第一次总是
+    # 不存在、-C 总是失败——重复安装才看得见。
+    iptables -C INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT >/dev/null 2>&1 \
       || iptables -I INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT
     command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
   else

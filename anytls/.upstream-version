@@ -29,6 +29,11 @@
 #     never needed because upstream only ever opened a port or uninstalled
 #     entirely. The console's reset button calls this rather than
 #     reimplementing it.
+#   * open_firewall() discards `iptables -C` stdout as well as stderr.
+#     iptables-nft prints the matching rule when the check succeeds, so a raw
+#     iptables line appeared in the operator-facing summary on every repeat
+#     install. Upstream only redirected stderr, because on a first install the
+#     rule never exists and -C always fails.
 #   * print_result() writes the detected public address to
 #     $INSTALL_DIR/public-ip.txt. The console shows the node's client
 #     configuration for that address, and app.py makes no outbound request at
