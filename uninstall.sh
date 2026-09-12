@@ -2,8 +2,8 @@
 #
 # Remove the vps-server systemd service and everything it installed.
 #
-#   sudo ./uninstall.sh                # stop + disable the service, delete $PREFIX
-#   sudo KEEP_DATA=1 ./uninstall.sh    # keep $PREFIX (password, certs, visitor log)
+#   sudo bash uninstall.sh                # stop + disable the service, delete $PREFIX
+#   sudo KEEP_DATA=1 bash uninstall.sh    # keep $PREFIX (password, certs, visitor log)
 #
 # Uninstalling means uninstalling: $PREFIX — including the admin password,
 # the generated port, certificates and the visitor log — is deleted by
@@ -29,9 +29,9 @@ msg() {
   local key="$1"; shift
   local fmt
   case "$INSTALL_LANG:$key" in
-    en:need_root)      fmt='must run as root (try: sudo ./uninstall.sh)\n' ;;
-    zh_cn:need_root)   fmt='必须以 root 运行（试试：sudo ./uninstall.sh）\n' ;;
-    zh_tw:need_root)   fmt='必須以 root 執行（試試：sudo ./uninstall.sh）\n' ;;
+    en:need_root)      fmt='must run as root (try: sudo bash uninstall.sh)\n' ;;
+    zh_cn:need_root)   fmt='必须以 root 运行（试试：sudo bash uninstall.sh）\n' ;;
+    zh_tw:need_root)   fmt='必須以 root 執行（試試：sudo bash uninstall.sh）\n' ;;
 
     en:removed_unit)   fmt='Removed %s\n' ;;
     zh_cn:removed_unit) fmt='已删除 %s\n' ;;

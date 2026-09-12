@@ -6,10 +6,10 @@
 #   iperf3   the distro iperf3 package, so the console can open a test window
 #   anytls   the sing-box anytls proxy (amd64 only)
 #
-#   sudo ./install.sh                             # interactive
-#   sudo VPSSRV_MODULES=web,iperf3 ./install.sh   # unattended, no prompts
-#   sudo VPSSRV_MODULES=web VPSSRV_PUBLIC_ENABLE=0 ./install.sh   # console only
-#   sudo PREFIX=/srv/vpssrv ./install.sh
+#   sudo bash install.sh                             # interactive
+#   sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # unattended, no prompts
+#   sudo VPSSRV_MODULES=web VPSSRV_PUBLIC_ENABLE=0 bash install.sh   # console only
+#   sudo PREFIX=/srv/vpssrv bash install.sh
 #
 # Asks, in this order: the UI language (which this installer's own output then
 # switches to), which modules to install, whether to password-protect the
@@ -60,9 +60,9 @@ msg() {
   local key="$1"; shift
   local fmt
   case "$INSTALL_LANG:$key" in
-    en:need_root)        fmt='must run as root (try: sudo ./install.sh)\n' ;;
-    zh_cn:need_root)     fmt='必须以 root 运行（试试：sudo ./install.sh）\n' ;;
-    zh_tw:need_root)     fmt='必須以 root 執行（試試：sudo ./install.sh）\n' ;;
+    en:need_root)        fmt='must run as root (try: sudo bash install.sh)\n' ;;
+    zh_cn:need_root)     fmt='必须以 root 运行（试试：sudo bash install.sh）\n' ;;
+    zh_tw:need_root)     fmt='必須以 root 執行（試試：sudo bash install.sh）\n' ;;
 
     en:no_systemd)       fmt='systemd not found; this installer targets systemd hosts\n' ;;
     zh_cn:no_systemd)    fmt='找不到 systemd；本安装脚本只支持使用 systemd 的主机\n' ;;
@@ -172,9 +172,9 @@ msg() {
     zh_cn:cert_note)     fmt='\n注意：使用的是自签证书，浏览器会弹出警告，需要手动点继续。\n想用真实证书的话，设置 VPSSRV_TLS_CERT 和 VPSSRV_TLS_KEY 后\n重新运行本安装脚本。\n' ;;
     zh_tw:cert_note)     fmt='\n注意：使用的是自簽憑證，瀏覽器會跳出警告，需要手動點繼續。\n想使用真實憑證的話，設定 VPSSRV_TLS_CERT 與 VPSSRV_TLS_KEY 後\n重新執行本安裝腳本。\n' ;;
 
-    en:to_remove)        fmt='\nTo remove: sudo ./uninstall.sh\n' ;;
-    zh_cn:to_remove)     fmt='\n卸载方法：sudo ./uninstall.sh\n' ;;
-    zh_tw:to_remove)     fmt='\n解除安裝方法：sudo ./uninstall.sh\n' ;;
+    en:to_remove)        fmt='\nTo remove:\n  sudo PREFIX=%s SERVICE_NAME=%s bash uninstall.sh\n' ;;
+    zh_cn:to_remove)     fmt='\n卸载方法：\n  sudo PREFIX=%s SERVICE_NAME=%s bash uninstall.sh\n' ;;
+    zh_tw:to_remove)     fmt='\n解除安裝方法：\n  sudo PREFIX=%s SERVICE_NAME=%s bash uninstall.sh\n' ;;
 
     en:ask_modules)      fmt='Choice [1]: ' ;;
     zh_cn:ask_modules)   fmt='选择 [1]： ' ;;
@@ -352,7 +352,7 @@ if ! has_module web; then
     done
   fi
   has_module anytls && install_anytls
-  msg to_remove
+  msg to_remove "$PREFIX" "$SERVICE_NAME"
   exit 0
 fi
 
@@ -571,4 +571,4 @@ fi
 # web summary would make it easy to miss.
 has_module anytls && install_anytls
 
-msg to_remove
+msg to_remove "$PREFIX" "$SERVICE_NAME"

@@ -282,6 +282,21 @@ trimmed to the most recent 1000 rows.
   expected and is not worth "fixing" with an exception or an HSTS header.
 - **A restart closes any open iperf3 window.** Intentional; see the lifecycle
   section.
+- **The sing-box binary is past GitHub's recommended file size.** At ~55 MB it
+  is over the 50 MB soft limit, so every push prints a "Large files detected"
+  warning suggesting Git LFS. Pushes still succeed; the hard limit is 100 MB.
+  A future sing-box bump could eventually cross that, and the answer then is a
+  decision to make deliberately (LFS, or stop shipping the binary), not a
+  surprise on release day.
+- **Run the scripts with `bash <script>`, not `./<script>`.** The executable
+  bit is recorded in the git index, so a fresh clone has it — but a working
+  copy on a CIFS/SMB mount does not, and `./install.sh` there fails with
+  "Permission denied".
+- **Teardown needs the same `PREFIX` and `SERVICE_NAME` the install used.**
+  `uninstall.sh` with no environment reads the defaults, finds nothing at
+  those paths, and reports success having removed nothing. The installer's
+  closing line prints the exact command with the values filled in; use that
+  rather than typing it from memory.
 
 ## How to extend
 
