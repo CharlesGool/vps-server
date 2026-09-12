@@ -22,16 +22,17 @@ reset button rotates the port and password without leaking the old port's
 firewall rule, an upgrade replays recorded settings and keeps the node's
 credentials, and all three UI languages render. 98 tests pass. Nothing known
 is broken; what is left before a tag is the release checklist.
-**Next:** Decide whether to cut `v0.1.0`. Every feature is now verified on a
-real host and the tree has no known defects, so the remaining work before a
-tag is the release checklist rather than the code: translate the six
-governance documents, run `release-preflight.sh`, and decide the repository's
-public/private status given it redistributes a GPL-3.0 binary.
-**Known issues:** The copy buttons on `/anytls` have not been clicked in a
-browser. `navigator.clipboard` does not exist outside a secure context and
-the console is plain HTTP by default, so the `document.execCommand` fallback
-is the path that really runs; the tests cover the markup, not the browser.
-The six governance documents are still untranslated template placeholders in
-`translated_zh_cn/` and `translated_zh_tw/`; they get translated as part of
-the v0.1.0 release checklist.
+**Next:** Inject `VERSION` from the real tag rather than the literal in
+`app.py`. It is the one open item that would contaminate the first tag:
+`references/webui.md` §1 forbids the hard-coded constant precisely because
+forgetting it at release time leaves the UI claiming the previous version with
+nothing to report it. After that, the rest of the release checklist —
+translate the six governance documents, run `release-preflight.sh`, cut
+`v0.1.0`, export the snapshot.
+**Known issues:** None that break anything. Five items in `BACKLOG.md` are
+open by choice rather than by fault: the `VERSION` literal, a shared SQLite
+lock whose reported impact could not be reproduced under load, two startup and
+shutdown signal edges, `VPSSRV_MODULES=iperf3` on its own installing nothing,
+and the absence of login rate limiting. The six governance documents are still
+untranslated template placeholders; they are translated at tag time.
 **Blocked on:** nothing.
