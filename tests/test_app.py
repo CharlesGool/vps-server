@@ -832,7 +832,8 @@ class ProbePageTest(unittest.TestCase):
         for path in ("/login", "/logout", "/visitors", "/speedtest",
                      "/speedtest/garbage", "/speedtest/empty", "/speedtest/getip",
                      "/changelog", "/iperf", "/iperf/open", "/iperf/close",
-                     "/static/style.css", "/speedtest_worker.js"):
+                     "/anytls", "/static/style.css", "/static/copy.js",
+                     "/speedtest_worker.js"):
             with self.subTest(path=path):
                 resp, _ = self.get(path)
                 self.assertEqual(resp.status, 404, f"{path} answered on the public port")
@@ -930,6 +931,209 @@ class IperfWindowTest(unittest.TestCase):
             self.window._expire()
         self.assertFalse(self.window.state()[0])
         self.assertIn((15299, False), self.calls)
+
+
+class AnytlsPageTest(unittest.TestCase):
+    """The console's anytls node page: what it reads, and what it must not leak."""
+
+    FAKE_PASSWORD = "TEST-PASSWORD-NOT-REAL"
+    FAKE_SNI = "www.example.invalid"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = Path(TEST_DATA_DIR) / "anytls"
+        (cls.dir / "cert").mkdir(parents=True, exist_ok=True)
+        cls.cert = cls.dir / "cert" / "fullchain.pem"
+        key = cls.dir / "cert" / "key.pem"
+        # The SNI is only recoverable from the certificate's CN, so the
+        # fixture has to be a real certificate rather than a stub file.
+        subprocess.run(
+            ["openssl", "req", "-x509", "-nodes", "-newkey", "ec",
+             "-pkeyopt", "ec_paramgen_curve:prime256v1",
+             "-keyout", str(key), "-out", str(cls.cert), "-days", "1",
+             "-subj", f"/CN={cls.FAKE_SNI}"],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        cls.config = cls.dir / "config.json"
+        cls.config.write_text(json.dumps({
+            "inbounds": [{
+                "type": "anytls",
+                "listen_port": 27999,
+                "users": [{"name": "anytls", "password": cls.FAKE_PASSWORD}],
+                "tls": {"enabled": True, "certificate_path": str(cls.cert)},
+            }],
+        }))
+
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+        cls.server.daemon_threads = True
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.password = app.ADMIN_PASSWORD
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.original_config = app.ANYTLS_CONFIG
+        app.ANYTLS_CONFIG = self.config
+
+    def tearDown(self):
+        app.ANYTLS_CONFIG = self.original_config
+
+    def login(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", "/login", body=f"password={self.password}",
+                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        resp = conn.getresponse()
+        cookie_header = resp.getheader("Set-Cookie")
+        resp.read()
+        conn.close()
+        jar = SimpleCookie()
+        jar.load(cookie_header)
+        return jar["session"].value
+
+    def get(self, path):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", path, headers={"Cookie": f"session={session}"})
+        resp = conn.getresponse()
+        body = resp.read().decode()
+        conn.close()
+        return resp, body
+
+    # -- reading the installed node ---------------------------------------
+
+    def test_reads_port_password_and_sni(self):
+        node = app.anytls_node()
+        self.assertEqual(node["port"], 27999)
+        self.assertEqual(node["password"], self.FAKE_PASSWORD)
+        self.assertEqual(node["sni"], self.FAKE_SNI,
+                         "SNI must come back from the certificate CN")
+
+    def test_absent_config_is_not_an_error(self):
+        app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
+        self.assertIsNone(app.anytls_node())
+        self.assertFalse(app.anytls_installed())
+
+    def test_malformed_config_is_not_an_error(self):
+        broken = self.dir / "broken.json"
+        broken.write_text("{ this is not json")
+        app.ANYTLS_CONFIG = broken
+        self.assertIsNone(app.anytls_node(), "a bad config must not 500 the console")
+
+    def test_clash_line_and_share_link_shapes(self):
+        node = app.anytls_node()
+        clash = app.anytls_clash_line(node, "198.51.100.7", "n")
+        self.assertIn("type: anytls", clash)
+        self.assertIn("server: 198.51.100.7", clash)
+        self.assertIn("port: 27999", clash)
+        self.assertIn(f'password: "{self.FAKE_PASSWORD}"', clash)
+        self.assertIn("skip-cert-verify: true", clash)
+
+        link = app.anytls_share_link(node, "198.51.100.7", "n")
+        self.assertTrue(link.startswith("anytls://"))
+        self.assertIn("@198.51.100.7:27999", link)
+        self.assertIn("insecure=1", link)
+        self.assertIn(f"sni={self.FAKE_SNI}", link)
+
+    def test_share_link_percent_encodes_the_password(self):
+        # Real generated passwords are base64 and routinely contain / and +,
+        # which would otherwise break the URL.
+        node = dict(app.anytls_node(), password="a/b+c=")
+        link = app.anytls_share_link(node, "198.51.100.7", "n")
+        self.assertIn("a%2Fb%2Bc%3D@", link)
+        self.assertNotIn("a/b+c=@", link)
+
+    # -- the page ---------------------------------------------------------
+
+    def test_page_shows_both_copyable_forms(self):
+        resp, body = self.get("/anytls")
+        self.assertEqual(resp.status, 200)
+        self.assertIn('id="anytls-clash"', body)
+        self.assertIn('id="anytls-link"', body)
+        self.assertIn("/static/copy.js", body)
+
+    def test_page_reports_the_service_is_not_running(self):
+        # Nothing named vps-server-anytls.service is running in the test
+        # environment, so the page must say so rather than implying it is up.
+        _, body = self.get("/anytls")
+        self.assertIn("is-closed", body)
+
+    def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
+        _, body = self.get("/")
+        self.assertIn('href="/anytls"', body)
+
+        app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
+        _, body = self.get("/")
+        self.assertNotIn('href="/anytls"', body,
+                         "a link that can only say 'not installed' is worse than none")
+
+    def test_page_is_graceful_when_not_installed(self):
+        app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
+        resp, body = self.get("/anytls")
+        self.assertEqual(resp.status, 200)
+        self.assertNotIn(self.FAKE_PASSWORD, body)
+
+
+class IperfLabelTest(unittest.TestCase):
+    """An open window turns the submit button into "extend", not a second "open"."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+        cls.server.daemon_threads = True
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.password = app.ADMIN_PASSWORD
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def _page(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", "/login", body=f"password={self.password}",
+                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        resp = conn.getresponse()
+        jar = SimpleCookie()
+        jar.load(resp.getheader("Set-Cookie"))
+        resp.read()
+        conn.request("GET", "/iperf",
+                     headers={"Cookie": f"session={jar['session'].value}"})
+        resp = conn.getresponse()
+        body = resp.read().decode()
+        conn.close()
+        return body
+
+    def test_closed_window_offers_open_only(self):
+        body = self._page()
+        self.assertIn(app.STRINGS["en"]["iperf_open"], body)
+        self.assertNotIn(app.STRINGS["en"]["iperf_extend"], body)
+        self.assertNotIn(app.STRINGS["en"]["iperf_close"], body)
+
+    @unittest.skipUnless(shutil.which("iperf3"), "iperf3 is not installed")
+    def test_open_window_offers_extend_and_close(self):
+        original = app.IPERF_WINDOW
+        app.IPERF_WINDOW = app.IperfWindow(port=15298, max_minutes=5)
+        original_firewall = app.firewall_port
+        app.firewall_port = lambda port, opening: True
+        try:
+            ok, key = app.IPERF_WINDOW.open(1)
+            self.assertTrue(ok, key)
+            body = self._page()
+            self.assertIn(app.STRINGS["en"]["iperf_extend"], body)
+            self.assertIn(app.STRINGS["en"]["iperf_close"], body)
+            self.assertNotIn(
+                f'>{app.STRINGS["en"]["iperf_open"]}</button>', body,
+                "two buttons both reading 'open' is what this test exists to prevent",
+            )
+        finally:
+            app.IPERF_WINDOW.close()
+            app.IPERF_WINDOW = original
+            app.firewall_port = original_firewall
 
 
 if __name__ == "__main__":

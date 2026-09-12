@@ -37,7 +37,7 @@ import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -428,6 +428,77 @@ class IperfWindow:
 
 IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES)
 
+# ---------------------------------------------------------------------------
+# anytls node, read-only
+#
+# The console can show the installed anytls node so its client configuration
+# can be copied without going back to the terminal. Everything below returns
+# the node PASSWORD, so it must only ever reach ConsoleHandler — which is
+# behind the login — and never ProbeHandler, which has no route to it.
+#
+# Nothing here writes: to change the node, re-run anytls/setup-anytls.sh.
+# ---------------------------------------------------------------------------
+
+ANYTLS_CONFIG = Path(
+    os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
+)
+ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
+
+
+def _cert_common_name(path):
+    """The SNI is not stored in the sing-box config — only as the self-signed
+    certificate's CN, which setup-anytls.sh sets from $SNI. Read it back from
+    there rather than duplicating the value somewhere it could drift.
+    """
+    if not path or not shutil.which("openssl"):
+        return ""
+    out = _cmd_output(["openssl", "x509", "-in", path, "-noout", "-subject"])
+    match = re.search(r"CN\s*=\s*([^,/\n]+)", out)
+    return match.group(1).strip() if match else ""
+
+
+def anytls_installed():
+    """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
+    return ANYTLS_CONFIG.is_file()
+
+
+def anytls_node():
+    """The installed node's parameters, or None if the module is not installed."""
+    try:
+        config = json.loads(ANYTLS_CONFIG.read_text())
+    except (OSError, ValueError):
+        return None
+    for inbound in config.get("inbounds", []):
+        if inbound.get("type") != "anytls":
+            continue
+        users = inbound.get("users") or [{}]
+        tls = inbound.get("tls") or {}
+        return {
+            "port": inbound.get("listen_port", ""),
+            "password": users[0].get("password", ""),
+            "sni": _cert_common_name(tls.get("certificate_path", "")),
+            "running": _run_quiet(["systemctl", "is-active", "--quiet", ANYTLS_SERVICE]),
+        }
+    return None
+
+
+def anytls_clash_line(node, host, name):
+    """One Clash proxy entry. Same shape setup-anytls.sh prints, so a config
+    assembled from either source looks the same.
+    """
+    return (
+        f'- {{ name: {name}, type: anytls, server: {host}, port: {node["port"]}, '
+        f'password: "{node["password"]}", sni: {node["sni"]}, '
+        f'skip-cert-verify: true, udp: true }}'
+    )
+
+
+def anytls_share_link(node, host, name):
+    return (
+        f'anytls://{quote(node["password"], safe="")}@{host}:{node["port"]}'
+        f'?insecure=1&sni={node["sni"]}#{quote(name, safe="")}'
+    )
+
 # Result keys the console may echo back after a redirect. Whitelisted because
 # the key indexes STRINGS: without this, a crafted ?msg= would be a way to
 # render any string from the table on an authenticated page.
@@ -500,6 +571,20 @@ STRINGS = {
         "iperf_port_busy": "Port {port} is already in use, so iperf3 could not start.",
         "iperf_howto": "While the window is open, run this on the machine you want to test from:",
         "iperf_info": "The window always closes itself — there is no \"leave it running\" option, because an open iperf3 server lets anyone saturate this host's uplink. Latency is the mean_rtt field of the JSON output; add -u for jitter and packet loss, or -R to measure the other direction.",
+        "iperf_extend": "Extend window",
+        "anytls": "anytls",
+        "anytls_heading": "anytls node",
+        "anytls_not_installed": "The anytls module is not installed on this host. To add it: sudo VPSSRV_MODULES=anytls bash install.sh",
+        "anytls_state_running": "Running on port {port}.",
+        "anytls_state_stopped": "Installed on port {port}, but the service is not running. Check: systemctl status {service}",
+        "anytls_sni": "SNI (read back from the certificate CN)",
+        "anytls_server": "Server address",
+        "anytls_clash": "Clash proxy entry",
+        "anytls_link": "Share link",
+        "anytls_host_note": "The address below is the one you used to reach this console. To hand out a different one — a public IP, a domain — edit it after copying.",
+        "anytls_warning": "This page shows the node password in clear. It is behind the console login and never appears on the public page, but do not paste a screenshot of it anywhere.",
+        "copy": "Copy",
+        "copied": "Copied",
         "probe_title": "Reachable",
         "probe_ok": "You reached this host.",
         "probe_your_ip": "Your address, as this server sees it",
@@ -568,6 +653,20 @@ STRINGS = {
         "iperf_port_busy": "端口 {port} 已被占用，iperf3 无法启动。",
         "iperf_howto": "窗口开启期间，在你想测试的那台机器上运行：",
         "iperf_info": "窗口一定会自己关闭，没有「一直开着」这个选项——开着的 iperf3 服务端意味着任何人都能跑满这台主机的上行带宽。延迟取 JSON 输出里的 mean_rtt 字段；加 -u 得到抖动和丢包，加 -R 测反方向。",
+        "iperf_extend": "延长窗口",
+        "anytls": "anytls",
+        "anytls_heading": "anytls 节点",
+        "anytls_not_installed": "本机没有安装 anytls 模块。要加装：sudo VPSSRV_MODULES=anytls bash install.sh",
+        "anytls_state_running": "运行中，端口 {port}。",
+        "anytls_state_stopped": "已安装，端口 {port}，但服务没在运行。查看：systemctl status {service}",
+        "anytls_sni": "SNI（从证书 CN 读回）",
+        "anytls_server": "服务器地址",
+        "anytls_clash": "Clash 节点配置",
+        "anytls_link": "分享链接",
+        "anytls_host_note": "下面用的是你访问本控制台时用的地址。要给出别的地址（公网 IP、域名），复制之后自行替换。",
+        "anytls_warning": "本页明文显示节点密码。它在控制台登录之后，也绝不会出现在公开页上，但不要把截图贴到任何地方。",
+        "copy": "复制",
+        "copied": "已复制",
         "probe_title": "可以访问",
         "probe_ok": "你已经连到这台主机。",
         "probe_your_ip": "服务器看到的你的地址",
@@ -636,6 +735,20 @@ STRINGS = {
         "iperf_port_busy": "連接埠 {port} 已被占用，iperf3 無法啟動。",
         "iperf_howto": "視窗開啟期間，在你想測試的那台機器上執行：",
         "iperf_info": "視窗一定會自己關閉，沒有「一直開著」這個選項——開著的 iperf3 伺服端意味著任何人都能跑滿這台主機的上行頻寬。延遲取 JSON 輸出裡的 mean_rtt 欄位；加 -u 得到抖動和封包遺失，加 -R 測反方向。",
+        "iperf_extend": "延長視窗",
+        "anytls": "anytls",
+        "anytls_heading": "anytls 節點",
+        "anytls_not_installed": "本機沒有安裝 anytls 模組。要加裝：sudo VPSSRV_MODULES=anytls bash install.sh",
+        "anytls_state_running": "執行中，連接埠 {port}。",
+        "anytls_state_stopped": "已安裝，連接埠 {port}，但服務沒在執行。查看：systemctl status {service}",
+        "anytls_sni": "SNI（從憑證 CN 讀回）",
+        "anytls_server": "伺服器位址",
+        "anytls_clash": "Clash 節點設定",
+        "anytls_link": "分享連結",
+        "anytls_host_note": "下面用的是你存取本主控台時用的位址。要給出別的位址（公網 IP、網域），複製之後自行替換。",
+        "anytls_warning": "本頁明文顯示節點密碼。它在主控台登入之後，也絕不會出現在公開頁上，但不要把截圖貼到任何地方。",
+        "copy": "複製",
+        "copied": "已複製",
         "probe_title": "可以存取",
         "probe_ok": "你已經連到這台主機。",
         "probe_your_ip": "伺服器看到的你的位址",
@@ -1025,6 +1138,9 @@ def render_page(title, body, lang, active=None, show_nav=True):
             f'<a href="/logout">{html.escape(t["logout"])}</a>' if AUTH_ENABLED else ""
         )
         iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
+        # Only when the module is actually installed — a link to a page that
+        # can only say "not installed" is worse than no link.
+        anytls_link = link('/anytls', 'anytls') if anytls_installed() else ""
         nav = f"""
         <nav class="topnav">
           <div class="brandwrap">
@@ -1034,6 +1150,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
           <div class="navlinks">
             {link('/speedtest', 'speedtest')}
             {iperf_link}
+            {anytls_link}
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
             {logout_link}
@@ -1079,6 +1196,7 @@ STATIC_FILES = {
     "/static/speedtest.js": ("application/javascript", BASE_DIR / "static" / "speedtest.js"),
     "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
     "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
+    "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
     # speedtest.js spawns `new Worker("speedtest_worker.js?r=...")`. That call
     # runs in the *page's* context, so the browser resolves it relative to the
     # page URL (/speedtest), not relative to /static/speedtest.js — it lands
@@ -1245,6 +1363,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_speedtest_upload()
         if method == "GET" and path == "/speedtest/getip":
             return self.handle_speedtest_getip()
+        if method == "GET" and path == "/anytls":
+            return self.page_anytls(lang, query_lang)
         if method == "GET" and path == "/iperf":
             return self.page_iperf(lang, query_lang)
         if method == "POST" and path == "/iperf/open":
@@ -1328,6 +1448,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="tile-label">{html.escape(t['iperf'])}</span>
             </a>
             """
+        anytls_tile = ""
+        if anytls_installed():
+            anytls_tile = f"""
+            <a class="tile" href="/anytls">
+              <span class="tile-icon">🔐</span>
+              <span class="tile-label">{html.escape(t['anytls'])}</span>
+            </a>
+            """
         body = f"""
         <div class="card">
           <h1>{html.escape(t['dashboard'])}</h1>
@@ -1337,6 +1465,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="tile-label">{html.escape(t['speedtest'])}</span>
             </a>
             {iperf_tile}
+            {anytls_tile}
             <a class="tile" href="/visitors">
               <span class="tile-icon">📋</span>
               <span class="tile-label">{html.escape(t['visitors'])}</span>
@@ -1511,6 +1640,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             state = t["iperf_state_open"].format(
                 port=port, mins=remaining // 60, secs=remaining % 60
             )
+            # While a window is open, submitting the same form pushes the
+            # deadline out rather than starting a second server. Labelling it
+            # "open" then leaves two buttons that look like they compete; the
+            # pair only reads correctly as extend / close.
+            open_label = t["iperf_extend"]
             close_form = f"""
             <form method="post" action="/iperf/close">
               <button type="submit" class="danger">{html.escape(t['iperf_close'])}</button>
@@ -1518,6 +1652,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             """
         else:
             state = t["iperf_state_closed"].format(port=port)
+            open_label = t["iperf_open"]
             close_form = ""
 
         # The Host header is what the operator actually typed to get here, so
@@ -1531,14 +1666,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <h1>{html.escape(t['iperf_heading'])}</h1>
           {notice}
           <p class="iperf-state {'is-open' if is_open else 'is-closed'}">{html.escape(state)}</p>
-          <form method="post" action="/iperf/open" class="inline-form">
-            <label>{html.escape(t['iperf_minutes'])}
-              <input type="number" name="minutes" min="1" max="{IPERF_MAX_MINUTES}"
-                     value="{IPERF_DEFAULT_MINUTES}" required>
-            </label>
-            <button type="submit">{html.escape(t['iperf_open'])}</button>
-          </form>
-          {close_form}
+          <div class="iperf-actions">
+            <form method="post" action="/iperf/open" class="inline-form">
+              <label>{html.escape(t['iperf_minutes'])}
+                <input type="number" name="minutes" min="1" max="{IPERF_MAX_MINUTES}"
+                       value="{IPERF_DEFAULT_MINUTES}" required>
+              </label>
+              <button type="submit">{html.escape(open_label)}</button>
+            </form>
+            {close_form}
+          </div>
           <p class="muted">{html.escape(t['iperf_howto'])}</p>
           <pre class="cmd">{html.escape(command)}</pre>
           <p class="muted small">{html.escape(t['iperf_info'])}</p>
@@ -1558,6 +1695,70 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.read_body(LOGIN_BODY_LIMIT)  # drain: keep-alive needs the body gone
         IPERF_WINDOW.close()
         self.redirect("/iperf?msg=iperf_shut")
+
+    # -- anytls node ----------------------------------------------------
+
+    def page_anytls(self, lang, query_lang):
+        t = STRINGS[lang]
+        node = anytls_node()
+        if node is None:
+            body = f"""
+            <div class="card">
+              <h1>{html.escape(t['anytls_heading'])}</h1>
+              <p class="muted">{html.escape(t['anytls_not_installed'])}</p>
+            </div>
+            """
+            return self.send_html(
+                200, render_page(t['anytls_heading'], body, lang, active="anytls"),
+                self.maybe_lang_cookie(query_lang),
+            )
+
+        # Whatever address reached this console reaches the node too, so it is
+        # the one worth pre-filling. Anyone needing a different one (a public
+        # IP, a domain) edits the line after copying — which beats making the
+        # server guess, and beats an outbound IP-lookup call at render time.
+        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
+        name = f"anytls-{host}"
+
+        if node["running"]:
+            state = t["anytls_state_running"].format(port=node["port"])
+            state_class = "is-open"
+        else:
+            state = t["anytls_state_stopped"].format(
+                port=node["port"], service=ANYTLS_SERVICE
+            )
+            state_class = "is-closed"
+
+        def copyable(label, value, ident):
+            return f"""
+            <div class="copyrow">
+              <div class="copyhead">
+                <span>{html.escape(label)}</span>
+                <button type="button" class="copybtn" data-copy="{ident}"
+                        data-copied="{html.escape(t['copied'])}"
+                        >{html.escape(t['copy'])}</button>
+              </div>
+              <pre class="cmd" id="{ident}">{html.escape(value)}</pre>
+            </div>
+            """
+
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(t['anytls_heading'])}</h1>
+          <p class="iperf-state {state_class}">{html.escape(state)}</p>
+          <dl class="kv">
+            <dt>{html.escape(t['anytls_server'])}</dt><dd>{html.escape(host)}</dd>
+            <dt>{html.escape(t['anytls_sni'])}</dt><dd>{html.escape(node['sni'] or '—')}</dd>
+          </dl>
+          <p class="muted small">{html.escape(t['anytls_host_note'])}</p>
+          {copyable(t['anytls_clash'], anytls_clash_line(node, host, name), 'anytls-clash')}
+          {copyable(t['anytls_link'], anytls_share_link(node, host, name), 'anytls-link')}
+          <p class="muted small warn">{html.escape(t['anytls_warning'])}</p>
+        </div>
+        <script src="/static/copy.js"></script>
+        """
+        self.send_html(200, render_page(t['anytls_heading'], body, lang, active="anytls"),
+                       self.maybe_lang_cookie(query_lang))
 
     # -- visitor log ---------------------------------------------------
 

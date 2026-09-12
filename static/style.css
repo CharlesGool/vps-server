@@ -305,3 +305,68 @@ th { color: var(--muted); font-weight: 600; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.lastreq { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }
 tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+/* --- iperf3 window and anytls node ------------------------------------ */
+/* These classes were referenced by the pages before they had any rules at
+   all, so both pages rendered unstyled. */
+
+.iperf-state {
+  margin: 0 0 1.25rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+}
+.iperf-state.is-open {
+  color: #34d399;
+  border-color: color-mix(in srgb, #34d399 35%, transparent);
+  background: color-mix(in srgb, #34d399 12%, transparent);
+}
+.iperf-state.is-closed { color: var(--muted); }
+
+.notice {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.iperf-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.inline-form { display: flex; gap: 0.75rem; align-items: flex-end; margin: 0; }
+.inline-form label {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  color: var(--muted); font-size: 0.85rem;
+}
+.inline-form input[type="number"] { width: 7rem; }
+
+button.danger { background: var(--error); color: #fff; }
+
+pre.cmd {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0 0 1rem; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-all; }
+
+.copyrow { margin: 0 0 1rem; }
+.copyhead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem; margin-bottom: 0.35rem;
+  color: var(--muted); font-size: 0.85rem;
+}
+button.copybtn { padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: 8px; }
+button.copybtn.copied { background: #34d399; color: #06281c; }
+
+.warn { color: var(--error); }

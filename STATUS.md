@@ -13,22 +13,22 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** private, pushed
 **Snapshots:** maintained privately (not published)
-**In progress:** All three modules are in the tree, the remote exists and is
-pushed, and `install.sh` has now been run end to end on a real systemd host:
-the service came up and the deployed instance served the public page on both
-its ports, 404'd console routes on the public port, and answered on the
-console port. Two installer bugs surfaced in that run and are fixed — the
-teardown hint dropped `PREFIX`/`SERVICE_NAME`, and the usage examples used
-`./script.sh`, which cannot work from a CIFS working copy. 67 tests pass.
-**Next:** Re-run the anytls module install. The first attempt died before
-sing-box was installed — the binary had lost its executable bit during
-vendoring and `install_singbox` tested `-x`; both sides are fixed. Still to
-check past that point: `systemctl status vps-server-anytls`,
-`/etc/vps-server-anytls/config.json`, `/usr/local/bin/sing-box-vps-server`,
-that `refuse_if_upstream_running` really refuses while
-`sing-box-anytls.service` is up, and that `uninstall.sh` removes all of it.
-**Known issues:** The anytls module has never been installed, so its three
-renamed constants and the `refuse_if_upstream_running` guard are unexercised.
+**In progress:** All three modules install, run and uninstall cleanly on a
+real host, verified by the operator: the public page answers on 80 and 443,
+the console works, the browser speed test works, the iperf3 window measures
+2.8 Gbit/s over LAN and refuses connections once it closes itself, the anytls
+node comes up and its teardown removes the unit, binary, config directory and
+firewall rule, and all three UI languages render. 78 tests pass. The console
+now also has an anytls page that shows the node's status and offers a
+copyable Clash entry and share link.
+**Next:** Verify `refuse_if_upstream_running`, the last unexercised anytls
+path — start `Anytsl-Serve`'s own `sing-box-anytls.service`, then run this
+project's anytls install and confirm it refuses rather than quietly adding a
+second inbound.
+**Known issues:** The copy buttons on `/anytls` have not been clicked in a
+browser. `navigator.clipboard` does not exist outside a secure context and
+the console is plain HTTP by default, so the `document.execCommand` fallback
+is the path that really runs; the tests cover the markup, not the browser.
 The six governance documents are still untranslated template placeholders in
 `translated_zh_cn/` and `translated_zh_tw/`; they get translated as part of
 the v0.1.0 release checklist.

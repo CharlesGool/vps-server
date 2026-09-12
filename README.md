@@ -23,6 +23,10 @@ anytls proxy.
 - **Logs who connected.** Every inbound TCP connection, on any port, not just
   HTTP — read from `/proc/net/tcp[6]`, stored in SQLite, most recent 1000 kept.
 - **Serves an anytls proxy.** sing-box with a self-signed certificate, plus BBR.
+  When that module is installed, the console gains a page showing whether the
+  node is up and offering its Clash entry and `anytls://` link with a copy
+  button, so handing the node to a client does not mean going back to the
+  terminal.
 
 Each of the three modules — web, iperf3, anytls — is selectable at install time.
 

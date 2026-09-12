@@ -100,6 +100,26 @@ The public page accepts `GET` and `HEAD` on exactly two paths (`/` and
 `/favicon.ico`) and answers everything else with 404. It reads no query string,
 parses no request body, and sets no cookie.
 
+### The console's anytls page
+
+The console reads the installed node out of `VPSSRV_ANYTLS_CONFIG` and renders
+its status plus a ready-to-paste Clash entry and `anytls://` link. It is
+strictly read-only — changing the node means re-running
+`anytls/setup-anytls.sh`, which owns that state.
+
+Two details are load-bearing. The **node password is on that page in clear**,
+which is acceptable only because the page lives on `ConsoleHandler`, behind
+the login; `ProbeHandler` has no route to it, and a test asserts the public
+listener 404s `/anytls` and never contains the password. And the **server
+address is taken from the request's `Host` header** rather than looked up:
+whatever address reached the console reaches the node, an outbound IP-lookup
+at render time would contradict the no-outbound-requests rule, and anyone who
+needs a different address edits the line after copying.
+
+The SNI is not stored in sing-box's config at all — `setup-anytls.sh` only
+bakes it into the self-signed certificate's CN — so the console reads it back
+from the certificate rather than keeping a second copy that could drift.
+
 ### iperf3 window lifecycle
 
 1. Operator authenticates to the console, picks a duration (default 10 min,
@@ -205,6 +225,8 @@ reconfigure another.
 | `VPSSRV_MAX_TEST_MB` | Cap on a single speedtest transfer, in MB | `200` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
+| `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
+| `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
 
 The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
 renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and
