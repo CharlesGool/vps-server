@@ -292,6 +292,13 @@ trimmed to the most recent 1000 rows.
   bit is recorded in the git index, so a fresh clone has it — but a working
   copy on a CIFS/SMB mount does not, and `./install.sh` there fails with
   "Permission denied".
+- **Re-vendoring anything executable loses its mode bit.** The maintainer's
+  working copy is on CIFS, so a file extracted there and then `git add`ed is
+  recorded as `100644` even when upstream had `100755`. This already happened
+  once to the `sing-box` binary and broke the whole anytls module. After
+  re-vendoring, check with `git ls-files -s` and restore the bit with
+  `git update-index --chmod=+x <path>` — `chmod +x` alone is a no-op on that
+  mount.
 - **Teardown needs the same `PREFIX` and `SERVICE_NAME` the install used.**
   `uninstall.sh` with no environment reads the defaults, finds nothing at
   those paths, and reports success having removed nothing. The installer's

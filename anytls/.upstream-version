@@ -9,9 +9,19 @@
 #   BIN_PATH      /usr/local/bin/sing-box       -> /usr/local/bin/sing-box-vps-server
 #   SERVICE_NAME  sing-box-anytls.service       -> vps-server-anytls.service
 #
-# plus LOCAL_BIN, because the binary sits in the repository root while the
-# script sits in anytls/, and a guard that refuses to install a second anytls
-# inbound while Anytsl-Serve's own service is running.
+# plus three more changes:
+#
+#   * LOCAL_BIN, because the binary sits in the repository root while the
+#     script sits in anytls/.
+#   * a guard that refuses to install a second anytls inbound while
+#     Anytsl-Serve's own service is running.
+#   * install_singbox() tests `-f "$LOCAL_BIN"` where upstream tested `-x`.
+#     `install -m 0755` sets the destination mode regardless, so requiring the
+#     source to be executable buys nothing — and the executable bit does not
+#     survive a CIFS/SMB working copy, which is where this repository is
+#     maintained. With `-x` the script reported "binary not found" for a file
+#     that was sitting right there, which is how the first anytls install
+#     failed. The error message now also distinguishes absent from unusable.
 #
 # The environment variable names (ANYTLS_PORT, ANYTLS_PASSWORD, SNI, SERVER_IP)
 # are deliberately NOT renamed to a VPSSRV_ prefix: renaming them would mean

@@ -112,6 +112,14 @@ msg() {
     zh_cn:pw_mismatch)   fmt='密码为空或两次输入不一致 —— 请重试。\n' ;;
     zh_tw:pw_mismatch)   fmt='密碼為空或兩次輸入不一致 —— 請重試。\n' ;;
 
+    en:pwmode_invalid)   fmt='Answer R (random) or m (set it yourself) — try again.\n' ;;
+    zh_cn:pwmode_invalid) fmt='请回答 R（随机）或 m（自己设置）—— 请重试。\n' ;;
+    zh_tw:pwmode_invalid) fmt='請回答 R（隨機）或 m（自己設定）—— 請重試。\n' ;;
+
+    en:anytls_failed)    fmt='\nThe anytls module failed to install. The web module above is installed and running; only anytls is missing. Re-run with VPSSRV_MODULES=anytls once the cause is fixed.\n' ;;
+    zh_cn:anytls_failed) fmt='\nanytls 模块安装失败。上面的 web 模块已经装好并在运行，缺的只有 anytls。排掉原因后用 VPSSRV_MODULES=anytls 单独重跑即可。\n' ;;
+    zh_tw:anytls_failed) fmt='\nanytls 模組安裝失敗。上面的 web 模組已經裝好並在執行，缺的只有 anytls。排除原因後用 VPSSRV_MODULES=anytls 單獨重跑即可。\n' ;;
+
     en:ask_port)         fmt='Port to listen on — 1-65535, or press Enter for a random one: ' ;;
     zh_cn:ask_port)      fmt='监听端口 —— 填 1-65535，或直接回车随机生成： ' ;;
     zh_tw:ask_port)      fmt='監聽連接埠 —— 填 1-65535，或直接按 Enter 隨機產生： ' ;;
@@ -351,8 +359,12 @@ if ! has_module web; then
       cp -r "$SRC_DIR/$item" "$PREFIX/"
     done
   fi
-  has_module anytls && install_anytls
+  ANYTLS_FAILED=0
+  if has_module anytls; then
+    install_anytls || ANYTLS_FAILED=1
+  fi
   msg to_remove "$PREFIX" "$SERVICE_NAME"
+  [ "$ANYTLS_FAILED" = "0" ] || { msg anytls_failed >&2; exit 1; }
   exit 0
 fi
 
@@ -376,22 +388,33 @@ if [ "$VPSSRV_AUTH" = "0" ]; then
   msg auth_disabled
 elif [ "$INTERACTIVE" = "1" ] && [ -z "${VPSSRV_PASSWORD_FILE:-}" ] \
      && [ ! -f "$PREFIX/admin_password.txt" ]; then
-  msg ask_pwmode
-  read -r pwmode </dev/tty || pwmode="r"
-  case "$pwmode" in
-    [mM]*)
-      while :; do
-        msg pw_enter
-        read -rs MANUAL_PASSWORD </dev/tty; echo
-        msg pw_confirm
-        read -rs pw_confirm </dev/tty; echo
-        if [ -n "$MANUAL_PASSWORD" ] && [ "$MANUAL_PASSWORD" = "$pw_confirm" ]; then
-          break
-        fi
-        msg pw_mismatch
-      done
-      ;;
-  esac
+  # Anything that is not R or M is re-asked rather than quietly treated as
+  # "random". An operator who types something else has not chosen random —
+  # they have misread the question, and silently handing them a generated
+  # password looks identical to having honoured an answer. This is the same
+  # mistake the port prompt made (vps-webserver DECISIONS.md, 2026-08-25:
+  # the operator answered "50" and got a random port).
+  while :; do
+    msg ask_pwmode
+    read -r pwmode </dev/tty || pwmode="r"
+    case "$pwmode" in
+      ""|[rR]*) break ;;
+      [mM]*)
+        while :; do
+          msg pw_enter
+          read -rs MANUAL_PASSWORD </dev/tty; echo
+          msg pw_confirm
+          read -rs pw_confirm </dev/tty; echo
+          if [ -n "$MANUAL_PASSWORD" ] && [ "$MANUAL_PASSWORD" = "$pw_confirm" ]; then
+            break
+          fi
+          msg pw_mismatch
+        done
+        break
+        ;;
+      *) msg pwmode_invalid ;;
+    esac
+  done
 fi
 
 # ---------------------------------------------------------------------------
@@ -569,6 +592,19 @@ fi
 # Last, and after the web service is confirmed healthy: the anytls script
 # prints a client-configuration block of its own, and burying that above the
 # web summary would make it easy to miss.
-has_module anytls && install_anytls
+# `has_module anytls && install_anytls` looks equivalent, but under `set -e` a
+# failing install_anytls kills the script right here — before the teardown hint
+# is printed, and with a non-zero exit that makes the already-installed and
+# already-running web module look like it failed too. That is exactly what
+# happened on the first anytls install attempt.
+ANYTLS_FAILED=0
+if has_module anytls; then
+  install_anytls || ANYTLS_FAILED=1
+fi
 
 msg to_remove "$PREFIX" "$SERVICE_NAME"
+
+if [ "$ANYTLS_FAILED" = "1" ]; then
+  msg anytls_failed >&2
+  exit 1
+fi

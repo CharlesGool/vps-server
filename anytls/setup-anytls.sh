@@ -87,14 +87,22 @@ install_singbox(){
     return 0
   fi
 
-  if [[ -x "$LOCAL_BIN" ]]; then
+  # 用 -f 判断，不是上游的 -x。`install -m 0755` 会给目标设好可执行位，源文件
+  # 自己可不可执行根本无所谓；而可执行位在 CIFS/SMB 工作副本上存不住，也可能
+  # 在打包、解压、传输途中丢掉。用 -x 判断的后果是：文件明明就在那儿，却报
+  # 「未找到」——排查的人会去找一个根本没丢的文件。
+  if [[ -f "$LOCAL_BIN" ]]; then
     log "发现本地二进制 ${LOCAL_BIN}，安装中 ..."
     install -m 0755 "$LOCAL_BIN" "$BIN_PATH"
     ok "安装完成: $("$BIN_PATH" version | head -n1)"
     return 0
   fi
 
-  err "未找到本地二进制 ${LOCAL_BIN}，且 ${BIN_PATH} 也不存在，无法安装"
+  if [[ -e "$LOCAL_BIN" ]]; then
+    err "${LOCAL_BIN} 存在但不是普通文件，无法安装"
+  else
+    err "未找到本地二进制 ${LOCAL_BIN}，且 ${BIN_PATH} 也不存在，无法安装"
+  fi
   exit 1
 }
 
