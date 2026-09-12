@@ -6,6 +6,19 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.0.2 — 2026-09-12
+
+### Fixed
+
+- `install.sh` could silently fail to install iperf3: it chained the apt
+  update and install steps together with all output discarded, so one
+  unrelated broken repository — a stale third-party `.list` file, which is
+  what happened on a real VPS — made the update step fail and skipped
+  installing iperf3 entirely, with no way to see why. It now retries the
+  update, attempts the install regardless of whether the update succeeded,
+  and no longer hides apt's own error output when the install genuinely
+  fails.
+
 ## v1.0.1 — 2026-09-12
 
 ### Fixed

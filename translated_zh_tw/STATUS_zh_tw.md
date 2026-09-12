@@ -2,14 +2,21 @@
 
 [English](../STATUS.md) | **繁體中文**
 
-> 譯自 `STATUS.md`（v1.0.1）。如有衝突，以英文版為準。
+> 譯自 `STATUS.md`（v1.0.2）。如有衝突，以英文版為準。
 
 **Notion:** private mirror（未公開）
 **Repo:** public
 **Snapshots:** 私下維護（未公開）
-**In progress:** v1.0.1 已發布；此儲存庫為 public。v1.0.0 上線時，CHANGELOG
-的維護者註解在 changelog 頁面上是可見的，這個 patch 修的就是這個問題——只影響顯示，
-其餘一律未受影響。
+**In progress:** v1.0.2 已發布；此儲存庫為 public。`install.sh` 的
+`install_iperf3()` 原本把 `apt-get update && apt-get install iperf3` 串在一起，
+並將所有輸出丟棄，因此只要有一個與此無關、已損壞的 apt repository（在真實 VPS
+上曾出現過），就會讓整個安裝步驟悄悄被跳過。現已修正為：重試 update、
+不論 update 本身的結果如何都嘗試安裝，並且不再隱藏 apt 的錯誤輸出。已在一個
+可拋棄、啟用 systemd 的 Debian 12 容器中（並非此正式主機）以完整的
+`install.sh` 端對端執行做過驗證，並刻意重現了那個已損壞 repository 的情境：
+iperf3 成功安裝、`vps-server-web.service` 進入 active 狀態，主控台與對外的
+public listener 也都回應 HTTP 200。v1.0.1 修的是 changelog 頁面上 CHANGELOG
+維護者註解的顯示問題——只影響顯示，其餘一律未受影響。
 
 v1.0.0 之前，操作者已在真實主機上驗證過每一項功能：public page
 在兩個 public port 上都能回應，主控台與瀏覽器測速都正常運作，

@@ -1,6 +1,6 @@
 ---
 project: vps-server
-version: v1.0.1
+version: v1.0.2
 status: active
 branch: main
 updated: 2026-09-12
@@ -13,9 +13,17 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.0.1 released; the repository is public. v1.0.0 shipped
-with the CHANGELOG's maintainer comment visible on the changelog page, which
-is what this patch fixes — display only, nothing else was affected.
+**In progress:** v1.0.2 released; the repository is public. `install.sh`'s
+`install_iperf3()` chained `apt-get update && apt-get install iperf3` with all
+output discarded, so one unrelated broken apt repo (seen on a real VPS) made
+the whole install step skip silently. Fixed to retry the update, attempt the
+install regardless of the update's own outcome, and stop hiding apt's error
+output. Verified with a full end-to-end `install.sh` run in a disposable,
+systemd-enabled Debian 12 container (not this live host) with the exact
+broken-repo scenario seeded: iperf3 installed, `vps-server-web.service` came
+up active, and both the console and the public listener answered HTTP 200.
+v1.0.1 fixed the CHANGELOG's maintainer comment rendering on the changelog
+page — display only, nothing else was affected.
 
 Every feature was verified on a real host by the operator before v1.0.0: the
 public page

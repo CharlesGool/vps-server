@@ -2,10 +2,21 @@
 
 [English](../CHANGELOG.md) | **简体中文**
 
-> 译自 `CHANGELOG.md`（v1.0.1）。如有冲突，以英文版为准。
+> 译自 `CHANGELOG.md`（v1.0.2）。如有冲突，以英文版为准。
 
 最新版本排在最前。只记录用户能感知到的变化——内部重构不需要条目。先用
 `git log <previous-tag>..HEAD --oneline` 起草，再改写成面向用户的说法。
+
+## v1.0.2 — 2026-09-12
+
+### Fixed
+
+- `install.sh` 可能会悄悄安装 iperf3 失败:它把 apt 的 update 和 install 两个步骤
+  串联在一起，并把所有输出都丢弃了，因此只要有一个无关的仓库出问题——例如某个
+  过期的第三方 `.list` 文件，这正是在一台真实 VPS 上实际发生的情况——就会导致
+  update 步骤失败，进而整个跳过安装 iperf3，且完全看不出原因。现在会重试 update，
+  无论 update 是否成功都会尝试执行 install，并且当 install 确实失败时不再隐藏
+  apt 自身的错误输出。
 
 ## v1.0.1 — 2026-09-12
 

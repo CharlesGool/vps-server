@@ -388,9 +388,9 @@ msg() {
     zh_cn:iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
     zh_tw:iperf_installing) fmt='正在從發行版套件庫安裝 iperf3 ...\n' ;;
 
-    en:iperf_failed)     fmt='Could not install iperf3. The console will say so when a window is requested; install it by hand with: apt install iperf3\n' ;;
-    zh_cn:iperf_failed)  fmt='iperf3 安装失败。请求开窗口时控制台会提示；可手动安装：apt install iperf3\n' ;;
-    zh_tw:iperf_failed)  fmt='iperf3 安裝失敗。請求開視窗時主控台會提示；可手動安裝：apt install iperf3\n' ;;
+    en:iperf_failed)     fmt='Could not install iperf3 (apt output above). The console will say so when a window is requested; install it by hand with: apt install iperf3\n' ;;
+    zh_cn:iperf_failed)  fmt='iperf3 安装失败（apt 输出见上）。请求开窗口时控制台会提示；可手动安装：apt install iperf3\n' ;;
+    zh_tw:iperf_failed)  fmt='iperf3 安裝失敗（apt 輸出見上）。請求開視窗時主控台會提示；可手動安裝：apt install iperf3\n' ;;
 
     en:anytls_arch)      fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
     zh_cn:anytls_arch)   fmt='anytls 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
@@ -590,7 +590,20 @@ fi
 install_iperf3() {
   command -v iperf3 >/dev/null 2>&1 && return 0
   msg iperf_installing
-  if ! { apt-get update -qq && apt-get install -y -qq iperf3; } >/dev/null 2>&1; then
+  export DEBIAN_FRONTEND=noninteractive
+
+  # apt-get update fails outright if any one repo is unreachable (a stale
+  # third-party .list is enough), even though the archive iperf3 actually
+  # lives in updates fine. Retry it a few times for transient lock/network
+  # failures, but don't let it block the install attempt below — a failed
+  # update does not mean the cached package lists can't resolve iperf3.
+  local attempt
+  for attempt in 1 2 3; do
+    apt-get update -qq && break
+    [ "$attempt" -eq 3 ] || sleep 2
+  done
+
+  if ! apt-get install -y -qq iperf3; then
     msg iperf_failed
     return 0   # a missing iperf3 disables one console button, not the install
   fi

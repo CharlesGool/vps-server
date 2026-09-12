@@ -63,6 +63,8 @@ except at the bottom" is one.
 - [x] 2026-09-12 Translate the six governance docs into `translated_zh_cn/` and `translated_zh_tw/` — currently untranslated template placeholders; dispatch `doc-translator`, one instance per document per language
 - [x] 2026-09-12 End-to-end verification on a real second machine — reach the public page over both 80 and 443 from off-host, open a window and run `iperf3 -c <ip> --json`, confirm `mean_rtt` is present
 
+- [x] 2026-09-12 Fix `install_iperf3()` silently failing to install iperf3 — it ran `apt-get update -qq && apt-get install -y -qq iperf3` as one `&&` chain with all output discarded, so a single unrelated repo failing `apt-get update` (a stale third-party `.list`, seen on a real VPS) skipped the install attempt entirely and gave no diagnostic. Fixed to retry `apt-get update` up to 3 times, attempt the install regardless of whether update fully succeeded, set `DEBIAN_FRONTEND=noninteractive`, and stop swallowing apt's output. Verified with a full end-to-end `install.sh` run in a disposable, systemd-enabled Debian 12 container (not this live host, to avoid binding 80/443 and starting real services here) with the exact broken-repo scenario seeded: iperf3 installed, `vps-server-web.service` came up active, and both the console and the public listener answered HTTP 200. Shipped as v1.0.2
+
 <!--
 Tick, do not delete. A ticked item is the evidence that the requirement was
 heard and handled -- deleting it makes the list look like it was always short,

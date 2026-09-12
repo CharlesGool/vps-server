@@ -2,7 +2,7 @@
 
 [English](../BACKLOG.md) | **简体中文**
 
-> 译自 `BACKLOG.md`（v1.0.1）。如有冲突，以英文版为准。
+> 译自 `BACKLOG.md`（v1.0.2）。如有冲突，以英文版为准。
 
 需求清单。所有被提出过的要求，按重要性从高到低排列，做完就打勾。这是那份在隔了两周之后回答"接下来该做什么"的文件，也是一个会话在还有工作没做完时结束后，需求该去的地方。
 
@@ -55,6 +55,8 @@
 - [x] 2026-09-12 撰写 `LICENSE`（GPL-3.0）、`LICENSES/` 以及 `THIRD_PARTY_NOTICES.md` —— sing-box（GPL-3.0，附 SHA-256 和对应源码链接）、LibreSpeed（LGPL-3.0）、iperf3（BSD-3-Clause，通过发行版安装，因此未随本项目重新分发）
 - [x] 2026-09-12 把六份治理文档翻译进 `translated_zh_cn/` 和 `translated_zh_tw/` —— 目前是未翻译的模板占位符；派发 `doc-translator`，每份文档、每种语言各一个实例
 - [x] 2026-09-12 在真实的第二台机器上做端到端验证 —— 从主机之外分别通过 80 和 443 端口访问公网页面，开启一个时间窗并运行 `iperf3 -c <ip> --json`，确认 `mean_rtt` 存在
+
+- [x] 2026-09-12 修复 `install_iperf3()` 在安装 iperf3 失败时悄无声息不报错的问题 —— 它把 `apt-get update -qq && apt-get install -y -qq iperf3` 作为一整条 `&&` 链执行，并丢弃了全部输出，因此只要有一个不相关的软件源导致 `apt-get update` 失败（一个过期的第三方 `.list` 文件，曾在真实 VPS 上出现过），就会让整个安装尝试被完全跳过，且不给出任何诊断信息。已修复为：`apt-get update` 最多重试 3 次，无论 update 是否完全成功都会尝试安装，设置 `DEBIAN_FRONTEND=noninteractive`，并且不再吞掉 apt 的输出。已通过在一个一次性的、启用了 systemd 的 Debian 12 容器（而非本机，以避免在本机绑定 80/443 端口并启动真实服务）中完整跑一遍端到端的 `install.sh`、并植入完全相同的软件源损坏场景来验证：iperf3 成功安装，`vps-server-web.service` 起来并处于 active 状态，控制台和公网监听器都以 HTTP 200 应答。已在 v1.0.2 中发布
 
 <!--
 打勾，不要删除。打了勾的条目是"这个需求被听到并处理过"的证据 —— 删掉它会让这份清单看起来一直很短，
