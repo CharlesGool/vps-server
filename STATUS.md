@@ -1,6 +1,6 @@
 ---
 project: vps-server
-version: v1.0.3
+version: v1.0.4
 status: active
 branch: main
 updated: 2026-09-12
@@ -13,19 +13,22 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.0.3 released; the repository is public. v1.0.2's iperf3
-install fix was incomplete: `apt-get update` can report success while
-`security.debian.org`'s CDN hands back a stale index that 404s on the next
-`apt-get install` — hit live on a real host upgrading v1.0.1 to v1.0.2.
-`install_iperf3()` now retries the whole update-then-install pair, not just
-update alone. Also fixed the README's `## Install` section, which still had
-unfilled template placeholders (`<repo-url>`, an example `v0.1.0` tag this
-project has never had) since v1.0.0. Verified with a full end-to-end
-`install.sh` run in a disposable, systemd-enabled Debian 12 container (not
-this live host) with the same broken-repo scenario seeded: iperf3 installed,
-`vps-server-web.service` came up active, and both the console and the public
-listener answered HTTP 200. v1.0.2 fixed `install_iperf3()` skipping the
-install entirely when an unrelated apt repo broke `apt-get update`; v1.0.1
+**In progress:** v1.0.4 released; the repository is public. The installer's
+closing summary printed a literal `<this-server>` placeholder in place of an
+address, so every URL in it had to be hand-edited before it could be used. It
+now reads the real addresses: the source address the kernel would use to leave
+the box goes on the public-page and console lines, and on a multi-homed
+machine the remaining addresses are listed below, each labelled with its
+interface. Detection failure falls back to the old placeholder rather than
+failing the install. Verified end-to-end in a disposable systemd container
+with a second interface attached: all three languages aligned, every printed
+address answered HTTP 200, and a stubbed-out `ip` command still exited 0.
+Earlier patches, newest first: v1.0.3 made `install_iperf3()` retry the whole
+update-then-install pair (a stale `security.debian.org` index can 404 the
+install even when `apt-get update` reports success) and filled in the README's
+unfilled `<repo-url>`/`v0.1.0` install placeholders; v1.0.2 fixed
+`install_iperf3()` skipping the install entirely when an unrelated apt repo
+broke `apt-get update`; v1.0.1
 fixed the CHANGELOG's maintainer comment rendering on the changelog page —
 display only, nothing else was affected.
 

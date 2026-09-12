@@ -6,6 +6,20 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.0.4 — 2026-09-12
+
+### Changed
+
+- The installer's closing summary now prints the machine's real IP addresses
+  instead of a literal `<this-server>` placeholder that had to be substituted
+  by hand before the URLs were usable. The address the kernel would actually
+  use to leave the box goes on the public-page and console lines; on a
+  multi-homed machine every other address is listed below them, each labelled
+  with its interface, so a node reachable only over ZeroTier or Tailscale is
+  visible rather than guessed at. If no address can be read the old
+  placeholder is printed as before, which keeps an otherwise-good install
+  from failing over cosmetics.
+
 ## v1.0.3 — 2026-09-12
 
 ### Fixed

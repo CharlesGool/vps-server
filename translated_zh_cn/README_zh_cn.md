@@ -2,7 +2,7 @@
 
 [English](../README.md) | **简体中文**
 
-> 译自 `README.md`（v1.0.3）。如有冲突，以英文版为准。
+> 译自 `README.md`（v1.0.4）。如有冲突，以英文版为准。
 
 一套一条命令搞定的 Debian/Ubuntu VPS 组合包：一个任何人都能访问、用来证明你的 IP 网页端口可达的公开页面，一个带密码保护、用于测速和连接记录的控制台，一个按需开启的 iperf3 窗口，以及一个 anytls 代理。
 
@@ -31,7 +31,7 @@ web、iperf3、anytls 这三个模块中的每一个，都可以在安装时选�
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.0.3 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash install.sh

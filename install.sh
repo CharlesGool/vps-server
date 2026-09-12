@@ -336,13 +336,13 @@ msg() {
     zh_cn:line_service)  fmt='  服务：    systemctl status %s\n' ;;
     zh_tw:line_service)  fmt='  服務：    systemctl status %s\n' ;;
 
-    en:line_url)         fmt='  url:      %s://<this-server>:%s/\n' ;;
-    zh_cn:line_url)      fmt='  地址：    %s://<本机地址>:%s/\n' ;;
-    zh_tw:line_url)      fmt='  網址：    %s://<本機位址>:%s/\n' ;;
+    en:line_url)         fmt='  url:      %s://%s:%s/\n' ;;
+    zh_cn:line_url)      fmt='  地址：    %s://%s:%s/\n' ;;
+    zh_tw:line_url)      fmt='  網址：    %s://%s:%s/\n' ;;
 
-    en:line_url_unknown) fmt='  url:      %s://<this-server>:<port>/   (could not read %s — check journalctl -u %s)\n' ;;
-    zh_cn:line_url_unknown) fmt='  地址：    %s://<本机地址>:<端口>/   （读不到 %s —— 请查看 journalctl -u %s）\n' ;;
-    zh_tw:line_url_unknown) fmt='  網址：    %s://<本機位址>:<連接埠>/   （讀不到 %s —— 請查看 journalctl -u %s）\n' ;;
+    en:line_url_unknown) fmt='  url:      %s://%s:<port>/   (could not read %s — check journalctl -u %s)\n' ;;
+    zh_cn:line_url_unknown) fmt='  地址：    %s://%s:<端口>/   （读不到 %s —— 请查看 journalctl -u %s）\n' ;;
+    zh_tw:line_url_unknown) fmt='  網址：    %s://%s:<連接埠>/   （讀不到 %s —— 請查看 journalctl -u %s）\n' ;;
 
     en:line_pw_none)     fmt='  password: none — password protection is disabled (VPSSRV_AUTH=0)\n' ;;
     zh_cn:line_pw_none)  fmt='  密码：    无 —— 密码保护已关闭（VPSSRV_AUTH=0）\n' ;;
@@ -404,9 +404,13 @@ msg() {
     zh_cn:line_modules)  fmt='  模块：    %s\n' ;;
     zh_tw:line_modules)  fmt='  模組：    %s\n' ;;
 
-    en:line_public)      fmt='  public:   http://<this-server>:%s/ and https://<this-server>:%s/ (no login)\n' ;;
-    zh_cn:line_public)   fmt='  公开页：  http://<本机地址>:%s/ 和 https://<本机地址>:%s/ （无需登录）\n' ;;
-    zh_tw:line_public)   fmt='  公開頁：  http://<本機位址>:%s/ 和 https://<本機位址>:%s/ （無需登入）\n' ;;
+    en:line_public)      fmt='  public:   http://%s:%s/ and https://%s:%s/ (no login)\n' ;;
+    zh_cn:line_public)   fmt='  公开页：  http://%s:%s/ 和 https://%s:%s/ （无需登录）\n' ;;
+    zh_tw:line_public)   fmt='  公開頁：  http://%s:%s/ 和 https://%s:%s/ （無需登入）\n' ;;
+
+    en:line_also)        fmt='  also at:  %s\n' ;;
+    zh_cn:line_also)     fmt='  其他地址：%s\n' ;;
+    zh_tw:line_also)     fmt='  其他位址：%s\n' ;;
 
     en:line_public_off)  fmt='  public:   disabled (VPSSRV_PUBLIC_ENABLE=0)\n' ;;
     zh_cn:line_public_off) fmt='  公开页：  已关闭（VPSSRV_PUBLIC_ENABLE=0）\n' ;;
@@ -881,19 +885,62 @@ fi
 # not leave behind a record claiming it succeeded.
 write_state
 
+# The summary used to print a literal "<this-server>" and leave the operator to
+# substitute it by hand. Read the real addresses instead. `ip route get` reports
+# the source address the kernel would actually use to leave the box, which is
+# the one worth putting first when several are present. Everything below is
+# best-effort: no `ip`, no route, no addresses — any of those just restores the
+# old placeholder rather than failing an install that otherwise succeeded.
+primary_ip() {
+  ip -4 route get 1.1.1.1 2>/dev/null |
+    awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit }}'
+}
+
+# Same interface filter as anytls/setup-anytls.sh: container and bridge
+# interfaces are not addresses anyone wants pasted into a browser. Unlike that
+# script, VPN interfaces are kept — a Tailscale or ZeroTier address is often
+# exactly how the console gets reached, and each line is labelled with its
+# interface so it is clear which network it belongs to.
+other_ips() {
+  local primary="$1" iface addr
+  while read -r iface addr; do
+    case "$iface" in
+      lo|docker*|br-*|veth*|virbr*|cni*|flannel*|kube*) continue ;;
+    esac
+    [ "$addr" = "$primary" ] && continue
+    printf '%s (%s)\n' "$addr" "$iface"
+  done < <(ip -o -4 addr show scope global 2>/dev/null |
+    awk '{split($4, a, "/"); print $2, a[1]}')
+}
+
+HOST="$(primary_ip || true)"
+if [ -z "$HOST" ]; then
+  case "$INSTALL_LANG" in
+    zh_cn) HOST='<本机地址>' ;;
+    zh_tw) HOST='<本機位址>' ;;
+    *)     HOST='<this-server>' ;;
+  esac
+  OTHER_IPS=""
+else
+  # Comma-joined, because each entry already contains a space before its
+  # "(iface)" label — space-separating them would read as one long run.
+  OTHER_IPS="$(other_ips "$HOST" | paste -sd ',' - | sed 's/,/, /g' || true)"
+fi
+
 msg running
 msg line_modules "$MODULES"
 msg line_service "$SERVICE_NAME"
 if [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; then
-  msg line_public "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"
+  msg line_public "$HOST" "$PUBLIC_HTTP_PORT" "$HOST" "$PUBLIC_HTTPS_PORT"
 else
   msg line_public_off
 fi
 if [ -n "$PORT" ]; then
-  msg line_url "$SCHEME" "$PORT"
+  msg line_url "$SCHEME" "$HOST" "$PORT"
 else
-  msg line_url_unknown "$SCHEME" "$PORT_FILE" "$SERVICE_NAME"
+  msg line_url_unknown "$SCHEME" "$HOST" "$PORT_FILE" "$SERVICE_NAME"
 fi
+[ -n "$OTHER_IPS" ] && msg line_also "$OTHER_IPS"
 if command -v iperf3 >/dev/null 2>&1; then
   msg line_iperf "${VPSSRV_IPERF_PORT:-5201}"
 else
