@@ -196,8 +196,11 @@ gone, which is the safe direction to fail. A restart never resurrects an open
 window.
 
 Latency is read from iperf3's own `--json` output (`mean_rtt` in the TCP info
-block) on the tester's side; UDP mode (`-u`) additionally reports jitter and
-loss. The server side needs no extra code for this.
+block) on the tester's side; the server needs no extra code for it. That field
+comes from the kernel's `TCP_INFO`, so it is present on a Linux client and
+absent on one that cannot read it — iperf3 under Cygwin on Windows reports
+throughput but no `mean_rtt`. UDP mode (`-u`) reports jitter and loss
+everywhere, and is the portable answer when the tester is not on Linux.
 
 ## Tech stack
 

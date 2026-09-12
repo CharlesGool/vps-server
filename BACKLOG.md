@@ -57,9 +57,9 @@ except at the bottom" is one.
 - [x] 2026-09-12 Audit the console layout — the iperf form's input sat a rem above its button because `.inline-form label` inherited `margin-bottom: 1rem` and flex `align-items: flex-end` aligns margin boxes; the dashboard grid was pinned to two columns while the tile count grew to four; the key/value grid, the inline forms and the copy rows had no narrow-screen rules at all. No fixed pixel widths anywhere, and every touch target clears the WCAG 2.2 minimum of 24 CSS px
 - [ ] 2026-09-12 Check the copy buttons in a browser over plain HTTP — `navigator.clipboard` is undefined outside a secure context, which is the default setup, so the `document.execCommand` fallback in `static/copy.js` is the path that actually runs. Unit tests cover the page markup, not the browser behaviour
 - [x] 2026-09-12 Tests for the new surface — `ProbeHandler` answers 404 on every console route; the iperf3 window expires and kills its child; the window does not survive a restart. tests cover it; `firewall_port` is stubbed in the window tests so the suite never touches the host firewall
-- [ ] 2026-09-12 Write `LICENSE` (GPL-3.0), `LICENSES/`, and `THIRD_PARTY_NOTICES.md` — sing-box (GPL-3.0, with SHA-256 and corresponding-source links), LibreSpeed (LGPL-3.0), iperf3 (BSD-3-Clause, distro-installed so not redistributed)
+- [x] 2026-09-12 Write `LICENSE` (GPL-3.0), `LICENSES/`, and `THIRD_PARTY_NOTICES.md` — sing-box (GPL-3.0, with SHA-256 and corresponding-source links), LibreSpeed (LGPL-3.0), iperf3 (BSD-3-Clause, distro-installed so not redistributed)
 - [ ] 2026-09-12 Translate the six governance docs into `translated_zh_cn/` and `translated_zh_tw/` — currently untranslated template placeholders; dispatch `doc-translator`, one instance per document per language
-- [ ] 2026-09-12 End-to-end verification on a real second machine — reach the public page over both 80 and 443 from off-host, open a window and run `iperf3 -c <ip> --json`, confirm `mean_rtt` is present
+- [x] 2026-09-12 End-to-end verification on a real second machine — reach the public page over both 80 and 443 from off-host, open a window and run `iperf3 -c <ip> --json`, confirm `mean_rtt` is present
 
 <!--
 Tick, do not delete. A ticked item is the evidence that the requirement was

@@ -18,8 +18,11 @@ anytls proxy.
   persisted random high port runs up/download tests using the LibreSpeed engine.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
-  when the window expires. The tester gets bandwidth from iperf3 and round-trip
-  time from `mean_rtt` in its `--json` output; UDP mode adds jitter and loss.
+  when the window expires. The tester gets bandwidth from iperf3, and on a
+  Linux client also round-trip time from `mean_rtt` in its `--json` output —
+  that field comes from the kernel's `TCP_INFO` and is absent on clients that
+  cannot read it, notably iperf3 under Cygwin on Windows. UDP mode (`-u`) adds
+  jitter and loss on every platform.
 - **Logs who connected.** Every inbound TCP connection, on any port, not just
   HTTP — read from `/proc/net/tcp[6]`, stored in SQLite, most recent 1000 kept.
 - **Serves an anytls proxy.** sing-box with a self-signed certificate, plus BBR.
