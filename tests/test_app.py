@@ -413,6 +413,24 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertIsNotNone(match, f"no version section in {path}")
         return match.group(1).strip()[:18]
 
+    def test_maintainer_comments_are_not_rendered(self):
+        # Every CHANGELOG here ends with an HTML comment telling whoever edits
+        # it which headings must stay in English. It shipped visible in
+        # v1.0.0: the renderer had no comment handling at all, so each line of
+        # it became its own paragraph, escaped `<!--` included.
+        session = self.login()
+        for lang in ("en", "zh_cn", "zh_tw"):
+            with self.subTest(lang=lang):
+                conn = self.connect()
+                conn.request("GET", f"/changelog?lang={lang}",
+                             headers={"Cookie": f"session={session}"})
+                body = conn.getresponse().read().decode()
+                conn.close()
+                self.assertNotIn("&lt;!--", body)
+                self.assertNotIn("--&gt;", body)
+                self.assertNotIn("release-preflight.sh", body,
+                                 "the comment's contents leaked into the page")
+
     def test_changelog_page_renders_current_version_section(self):
         session = self.login()
         conn = self.connect()

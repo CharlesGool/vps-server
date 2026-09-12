@@ -1296,6 +1296,7 @@ def render_changelog(markdown):
     html_parts = []
     in_list = False
     in_item = False
+    in_comment = False
     started = False  # skip the file's maintainer preamble before the first release
 
     def close_list():
@@ -1309,6 +1310,18 @@ def render_changelog(markdown):
 
     for raw in markdown.splitlines():
         stripped = raw.strip()
+        # A comment is, by definition, not for the reader. Without this the
+        # maintainer's note at the foot of the file came out as a run of
+        # paragraphs on the changelog page — escaped `<!--` and all — because
+        # every line it contains falls through to the plain-paragraph branch.
+        if in_comment:
+            if "-->" in stripped:
+                in_comment = False
+            continue
+        if stripped.startswith("<!--"):
+            if "-->" not in stripped:
+                in_comment = True
+            continue
         if stripped.startswith("## "):
             started = True
             close_list()
