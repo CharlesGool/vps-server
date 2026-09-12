@@ -9,6 +9,7 @@ import atexit
 import http.client
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1200,6 +1201,74 @@ class IperfLabelTest(unittest.TestCase):
             app.IPERF_WINDOW.close()
             app.IPERF_WINDOW = original
             app.firewall_port = original_firewall
+
+
+class StylesheetTest(unittest.TestCase):
+    """Colour literals must stay inside the token blocks.
+
+    A hex written straight into a component rule cannot follow the theme, so
+    it is correct in whichever mode it was eyeballed in and wrong in the other.
+    Every light-mode contrast failure found on 2026-09-12 was exactly that,
+    and nothing reports it — the page just renders badly for whoever has the
+    other colour scheme.
+    """
+
+    CSS = Path(__file__).resolve().parent.parent / "static" / "style.css"
+
+    def component_rules(self):
+        """style.css with the :root and light-override blocks removed."""
+        text = self.CSS.read_text()
+        kept, depth, skipping = [], 0, False
+        for line in text.splitlines():
+            if not skipping and (line.startswith(":root {")
+                                 or line.startswith("@media (prefers-color-scheme")):
+                skipping, depth = True, 0
+            if skipping:
+                depth += line.count("{") - line.count("}")
+                if depth <= 0:
+                    skipping = False
+                continue
+            kept.append(line)
+        return "\n".join(kept)
+
+    def test_no_raw_hex_in_component_rules(self):
+        stray = re.findall(r"#[0-9a-fA-F]{3,8}\b", self.component_rules())
+        self.assertEqual(stray, [], f"use a token instead of {stray}")
+
+    def test_every_token_used_is_defined(self):
+        text = self.CSS.read_text()
+        used = set(re.findall(r"var\((--[a-z0-9-]+)\)", text))
+        defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", text, re.M))
+        self.assertEqual(used - defined, set(), "undefined custom properties")
+
+    def _block(self, opener):
+        """The body of the block introduced by `opener`, by brace depth.
+
+        Counting braces rather than pattern-matching the closing lines: the
+        first version of this test used a regex ending in "\\n}\\n}" and broke
+        the moment the nested brace was indented, which says nothing about the
+        stylesheet and everything about the regex.
+        """
+        lines = self.CSS.read_text().splitlines()
+        start = next(i for i, line in enumerate(lines) if line.startswith(opener))
+        depth, body = 0, []
+        for line in lines[start:]:
+            depth += line.count("{") - line.count("}")
+            body.append(line)
+            if depth == 0 and len(body) > 1:
+                break
+        return "\n".join(body)
+
+    def test_light_mode_overrides_every_colour_token(self):
+        # A token defined only in :root silently keeps its dark value on a
+        # light background. Tokens built out of other tokens legitimately
+        # carry over; flat colours must not.
+        root = self._block(":root {")
+        light = self._block("@media (prefers-color-scheme: light)")
+        flat = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:\s*#", root, re.M))
+        overridden = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", light, re.M))
+        self.assertEqual(flat - overridden, set(),
+                         "these flat colours have no light-mode value")
 
 
 if __name__ == "__main__":

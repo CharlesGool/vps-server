@@ -10,6 +10,26 @@
   --accent-2: #818cf8;
   --error: #f87171;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  /* Foreground pairs and solid fills. Components must use these rather than
+     writing a hex inline: a literal cannot follow the theme, so every one of
+     them was a light-mode contrast failure waiting to be found. The ratios
+     noted are measured against the surface each token is actually used on;
+     the floor is WCAG AA, 4.5:1.
+
+     --accent and --error stay tuned for *text and borders on a surface*.
+     Anything used as a filled background gets its own token, because the
+     value that reads well as text is rarely the value that reads well behind
+     white text. */
+  --on-accent: #04121f;        /* on the button gradient: 8.8:1 / 6.3:1 */
+  --on-error: #ffffff;         /* on --error-solid: 6.5:1 */
+  --accent-strong: var(--accent);   /* already legible on a dark surface */
+  --error-strong: var(--error);
+  --error-solid: #b91c1c;      /* fill behind white text, both modes */
+  --success: #34d399;          /* on its own 12% tint: 7.0:1 */
+  --fg-2: #aab6c8;             /* quiet label; on --surface-2: 6.7:1 */
+  --surface-2: color-mix(in srgb, var(--fg) 8%, transparent);
+  --btn-grad: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 @media (prefers-color-scheme: light) {
@@ -24,6 +44,19 @@
     --accent-2: #4f46e5;
     --error: #dc2626;
     --shadow: 0 10px 30px rgba(30, 60, 120, 0.12);
+
+    /* Not the dark values inverted — per the dark-mode rule, each side is
+       tuned against its own surfaces. On white, the same hues have to go
+       darker to clear 4.5:1, and the button label has to flip to white
+       because the light-mode gradient is dark. */
+    --on-accent: #ffffff;      /* on the light gradient: 7.6:1 / 6.3:1 */
+    --on-error: #ffffff;
+    --accent-strong: #075985;  /* #0284c7 as text on its own tint was 3.5:1 */
+    --error-strong: #b91c1c;   /* #dc2626 as text on its own tint was 4.0:1 */
+    --error-solid: #b91c1c;
+    --success: #047857;        /* #34d399 on white was 1.8:1 — barely visible */
+    --fg-2: #475569;           /* on --surface-2: 6.4:1 */
+    --btn-grad: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
   }
 }
 
@@ -131,8 +164,8 @@ button {
   border: none;
   border-radius: 10px;
   padding: 0.7rem 1.4rem;
-  color: #04121f;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--on-accent);
+  background: var(--btn-grad);
   transition: transform 0.06s ease, filter 0.15s ease;
 }
 button:hover { filter: brightness(1.06); }
@@ -140,7 +173,7 @@ button:active { transform: translateY(1px); }
 button:disabled { opacity: 0.65; cursor: default; filter: none; }
 
 .error {
-  color: var(--error);
+  color: var(--error-strong);
   background: color-mix(in srgb, var(--error) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
   padding: 0.5rem 0.75rem;
@@ -319,9 +352,9 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); 
   background: color-mix(in srgb, var(--muted) 10%, transparent);
 }
 .iperf-state.is-open {
-  color: #34d399;
-  border-color: color-mix(in srgb, #34d399 35%, transparent);
-  background: color-mix(in srgb, #34d399 12%, transparent);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 .iperf-state.is-closed { color: var(--muted); }
 
@@ -329,7 +362,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); 
   margin: 0 0 1rem;
   padding: 0.5rem 0.75rem;
   border-radius: 10px;
-  color: var(--accent);
+  color: var(--accent-strong);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -342,7 +375,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); 
 }
 .inline-form input[type="number"] { width: 7rem; }
 
-button.danger { background: var(--error); color: #fff; }
+button.danger { background: var(--error-solid); color: var(--on-error); }
 
 pre.cmd {
   margin: 0;
@@ -366,10 +399,32 @@ dl.kv dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-all;
   gap: 0.75rem; margin-bottom: 0.35rem;
   color: var(--muted); font-size: 0.85rem;
 }
-button.copybtn { padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: 8px; }
-button.copybtn.copied { background: #34d399; color: #06281c; }
+/* Secondary, and deliberately quiet. Copying a line is a convenience next to
+   the value it copies, not the point of the page — the gradient fill the base
+   button rule gives it made it compete with the primary action on every row.
+   Grey, but not grey-on-grey: --fg-2 clears 4.5:1 on --surface-2 in both
+   modes. */
+button.copybtn {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--fg-2);
+  border: 1px solid var(--card-border);
+}
+button.copybtn:hover {
+  background: color-mix(in srgb, var(--fg) 14%, transparent);
+  filter: none;
+}
+/* Confirmation is the changed label first — colour only reinforces it, so the
+   state still reads with colour vision ignored. */
+button.copybtn.copied {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+}
 
-.warn { color: var(--error); }
+.warn { color: var(--error-strong); }
 
 .node-addr {
   margin: 1.25rem 0;

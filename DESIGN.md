@@ -351,6 +351,15 @@ trimmed to the most recent 1000 rows.
   not an oversight.
 - **A new language**: extend the `STRINGS` table in `app.py` and the `msg()`
   table in `install.sh`, then add a `translated_<lang>/` tree.
+- **A new colour**: add a token to `:root` in `static/style.css` *and* a
+  light-mode value in the `prefers-color-scheme: light` block, then use the
+  token. Never write a hex into a component rule — a literal cannot follow the
+  theme, so it is correct in whichever mode it was eyeballed in and wrong in
+  the other, with nothing to report it. Anything used as a filled background
+  needs a paired `--on-*` foreground: the value that reads well as text is
+  rarely the value that reads well behind white text. Check both modes against
+  WCAG AA (4.5:1) before committing; `tests/test_app.py::StylesheetTest`
+  enforces the structural half of this but cannot judge a ratio.
 - **Refreshing a vendored upstream**: re-copy from the upstream tag, update the
   matching `.upstream-version` file in the same commit, and note the bump in
   `CHANGELOG.md`. Never hand-edit vendored code in place — a local edit that is
