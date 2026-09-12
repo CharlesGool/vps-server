@@ -103,9 +103,18 @@ parses no request body, and sets no cookie.
 ### The console's anytls page
 
 The console reads the installed node out of `VPSSRV_ANYTLS_CONFIG` and renders
-its status plus a ready-to-paste Clash entry and `anytls://` link. It is
-strictly read-only — changing the node means re-running
-`anytls/setup-anytls.sh`, which owns that state.
+its status plus a ready-to-paste Clash entry and `anytls://` link.
+
+It writes exactly one thing: the "reset port and password" button, and even
+that delegates. The console does not touch `config.json` itself — it runs
+`setup-anytls.sh reset`, because the ordering that matters there is easy to
+get wrong: the old port's firewall rule has to be withdrawn *before* the new
+port is opened, or every reset leaves an `ACCEPT` behind for a port nobody is
+listening on. That logic lives with the script that owns the node, not in two
+places. The reset requires a confirmation checkbox validated on the server —
+`required` in the markup stops a mis-click, not a client that is not a
+browser — because rotating the credentials breaks every configured client
+until they are given the new ones.
 
 Two details are load-bearing. The **node password is on that page in clear**,
 which is acceptable only because the page lives on `ConsoleHandler`, behind
@@ -227,6 +236,7 @@ reconfigure another.
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
+| `VPSSRV_ANYTLS_SETUP` | Script the console runs to rotate the node's credentials | `$VPSSRV_PREFIX/anytls/setup-anytls.sh` | no |
 
 The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
 renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and

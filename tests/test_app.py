@@ -833,7 +833,7 @@ class ProbePageTest(unittest.TestCase):
         for path in ("/login", "/logout", "/visitors", "/speedtest",
                      "/speedtest/garbage", "/speedtest/empty", "/speedtest/getip",
                      "/changelog", "/iperf", "/iperf/open", "/iperf/close",
-                     "/anytls", "/static/style.css", "/static/copy.js",
+                     "/anytls", "/anytls/reset", "/static/style.css", "/static/copy.js",
                      "/speedtest_worker.js"):
             with self.subTest(path=path):
                 resp, _ = self.get(path)
@@ -1095,6 +1095,84 @@ class AnytlsPageTest(unittest.TestCase):
             self.assertEqual(app.anytls_public_address(), "")
         finally:
             public_file.unlink()
+
+    # -- rotating the credentials -----------------------------------------
+
+    def post(self, path, body):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", path, body=body, headers={
+            "Cookie": f"session={session}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        })
+        resp = conn.getresponse()
+        resp.read()
+        conn.close()
+        return resp
+
+    def test_reset_form_requires_a_confirmation(self):
+        _, body = self.get("/anytls")
+        self.assertIn('action="/anytls/reset"', body)
+        self.assertIn('name="confirm"', body)
+        self.assertIn(app.STRINGS["en"]["anytls_reset_confirm"], body)
+
+    def test_unconfirmed_reset_changes_nothing(self):
+        # The real thing is stubbed throughout this class: letting a test run
+        # setup-anytls.sh would rotate the credentials of whatever node the
+        # machine running the suite happens to have installed.
+        called = []
+        original = app.anytls_reset
+        app.anytls_reset = lambda: called.append(1) or "anytls_reset_done"
+        try:
+            resp = self.post("/anytls/reset", "")
+            self.assertEqual(resp.status, 302)
+            self.assertEqual(resp.getheader("Location"),
+                             "/anytls?msg=anytls_reset_unconfirmed")
+            self.assertEqual(called, [], "the node must not be touched")
+        finally:
+            app.anytls_reset = original
+
+    def test_confirmed_reset_runs_once(self):
+        called = []
+        original = app.anytls_reset
+        app.anytls_reset = lambda: called.append(1) or "anytls_reset_done"
+        try:
+            resp = self.post("/anytls/reset", "confirm=yes")
+            self.assertEqual(resp.getheader("Location"),
+                             "/anytls?msg=anytls_reset_done")
+            self.assertEqual(len(called), 1)
+        finally:
+            app.anytls_reset = original
+
+    def test_a_forged_confirmation_value_is_rejected(self):
+        called = []
+        original = app.anytls_reset
+        app.anytls_reset = lambda: called.append(1) or "anytls_reset_done"
+        try:
+            for body in ("confirm=1", "confirm=true", "confirm=on", "confirm="):
+                with self.subTest(body=body):
+                    resp = self.post("/anytls/reset", body)
+                    self.assertEqual(resp.getheader("Location"),
+                                     "/anytls?msg=anytls_reset_unconfirmed")
+            self.assertEqual(called, [])
+        finally:
+            app.anytls_reset = original
+
+    def test_reset_reports_a_missing_script_rather_than_crashing(self):
+        original = app.ANYTLS_SETUP
+        app.ANYTLS_SETUP = Path("/nonexistent/setup-anytls.sh")
+        try:
+            self.assertEqual(app.anytls_reset(), "anytls_reset_missing")
+        finally:
+            app.ANYTLS_SETUP = original
+
+    def test_reset_result_messages_are_whitelisted(self):
+        # Same guard as the iperf page: the key indexes STRINGS, so an
+        # arbitrary ?msg= would otherwise render chosen text on the page.
+        _, body = self.get("/anytls?msg=anytls_warning")
+        self.assertNotIn('class="notice"', body)
+        _, body = self.get("/anytls?msg=anytls_reset_done")
+        self.assertIn('class="notice"', body)
 
     def test_local_addresses_skip_virtual_interfaces(self):
         for iface, address in app.local_addresses():

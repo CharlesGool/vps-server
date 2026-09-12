@@ -446,3 +446,10 @@ dl.kv dd.secret code {
   border-radius: 6px;
   padding: 0.15rem 0.45rem;
 }
+
+/* A destructive action sitting under read-only information needs to look
+   different from it, or it reads as one more row to click through. */
+.danger-zone { border-top-color: color-mix(in srgb, var(--error) 40%, transparent); }
+.danger-zone h2 { color: var(--error-strong); }
+.checkline { flex-direction: row !important; align-items: center; gap: 0.45rem; }
+.checkline input[type="checkbox"] { width: auto; margin: 0; }

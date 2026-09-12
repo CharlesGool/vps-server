@@ -188,6 +188,33 @@ open_firewall(){
   ok "防火墙规则已处理"
 }
 
+# 撤掉某个端口的放行规则。原本这段代码内联在 uninstall 里，reset 也需要它——
+# 换端口时如果不先撤旧规则，每重置一次就在防火墙里留一条指向没人监听的端口的
+# ACCEPT。抄一份的结果是两份迟早不一致，所以提出来共用。
+close_firewall(){
+  local port="$1"
+  [[ -n "$port" ]] || return 0
+  log "回收端口 ${port}/tcp 的防火墙规则 ..."
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    ufw delete allow "${port}/tcp" >/dev/null 2>&1 || true
+  elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+    firewall-cmd --permanent --remove-port="${port}/tcp" >/dev/null 2>&1 || true
+    firewall-cmd --reload >/dev/null 2>&1 || true
+  elif command -v iptables >/dev/null 2>&1; then
+    iptables -D INPUT -p tcp --dport "${port}" -j ACCEPT 2>/dev/null || true
+    command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
+  else
+    log "未找到 ufw/firewalld/iptables，跳过本机防火墙规则清理"
+  fi
+  ok "防火墙规则已清理"
+}
+
+# 当前已安装节点的端口；没装或读不出来就返回空。
+current_port(){
+  [[ -f "${INSTALL_DIR}/config.json" ]] || return 0
+  jq -r '.inbounds[0].listen_port // empty' "${INSTALL_DIR}/config.json" 2>/dev/null || true
+}
+
 enable_bbr(){
   if sysctl net.ipv4.tcp_congestion_control 2>/dev/null | grep -q bbr; then
     ok "BBR 已启用"
@@ -341,19 +368,7 @@ uninstall(){
   ok "已删除 ${BIN_PATH} 与 ${INSTALL_DIR}"
 
   if [[ -n "$port" ]]; then
-    log "回收端口 ${port}/tcp 的防火墙规则 ..."
-    if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
-      ufw delete allow "${port}/tcp" >/dev/null 2>&1 || true
-    elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
-      firewall-cmd --permanent --remove-port="${port}/tcp" >/dev/null 2>&1 || true
-      firewall-cmd --reload >/dev/null 2>&1 || true
-    elif command -v iptables >/dev/null 2>&1; then
-      iptables -D INPUT -p tcp --dport "${port}" -j ACCEPT 2>/dev/null || true
-      command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
-    else
-      log "未找到 ufw/firewalld/iptables，跳过本机防火墙规则清理"
-    fi
-    ok "防火墙规则已清理"
+    close_firewall "$port"
   else
     log "未找到历史端口信息，跳过防火墙规则清理（如有需要请手动检查 iptables/ufw）"
   fi
@@ -378,10 +393,42 @@ refuse_if_upstream_running(){
   fi
 }
 
+# 换一组端口和密码，别的都不动。ANYTLS_PORT / ANYTLS_PASSWORD 在文件顶部已经
+# 取到新的随机值（除非调用方钉死了它们），所以这里不需要再生成。
+#
+# 证书刻意不重新生成：setup_config 只在证书缺失时才签发，于是 SNI 原样保留。
+# 重置的是凭据，不是伪装身份。
+#
+# 旧端口的放行规则在开新端口之前撤掉，顺序不能反——反了就会有一瞬间两个端口
+# 同时开着，而且失败时留下的是旧端口开着、新端口也开着。
+reset(){
+  local old_port
+  # install_deps 必须排在 current_port 前面：读旧端口要用 jq，jq 不在时
+  # current_port 会返回空，于是旧端口的规则被静静跳过——正好是这个函数
+  # 存在的理由。
+  install_deps
+  old_port="$(current_port)"
+  if [[ -n "$old_port" ]]; then
+    log "重置节点：旧端口 ${old_port} -> 新端口 ${ANYTLS_PORT}"
+    close_firewall "$old_port"
+  else
+    log "未找到已安装的节点，按全新安装处理"
+  fi
+  install_singbox
+  setup_config
+  setup_service
+  open_firewall
+  print_result
+}
+
 main(){
   case "${1:-}" in
     uninstall|--uninstall|-u)
       uninstall
+      exit 0
+      ;;
+    reset|--reset)
+      reset
       exit 0
       ;;
     status|show|info|--status|-s)

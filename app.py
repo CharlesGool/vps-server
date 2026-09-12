@@ -443,6 +443,13 @@ ANYTLS_CONFIG = Path(
     os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
 )
 ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
+ANYTLS_SETUP = Path(
+    os.environ.get("VPSSRV_ANYTLS_SETUP", str(BASE_DIR / "anytls" / "setup-anytls.sh"))
+)
+# Generous: the script may hit apt, openssl and a service restart. A web
+# request blocking for a few seconds is fine for an operator action; blocking
+# forever because systemd is wedged is not.
+ANYTLS_RESET_TIMEOUT = 120
 
 
 def _cert_common_name(path):
@@ -549,6 +556,39 @@ def anytls_public_address():
     return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
 
 
+def anytls_reset():
+    """Rotate the node's port and password. Returns a STRINGS key.
+
+    The console deliberately does not write anytls state itself:
+    setup-anytls.sh owns it, including the part that is easy to get wrong —
+    withdrawing the old port's firewall rule before opening the new one.
+    Duplicating that here would leave two copies to drift apart.
+    """
+    if not ANYTLS_SETUP.is_file():
+        return "anytls_reset_missing"
+    try:
+        result = subprocess.run(
+            ["bash", str(ANYTLS_SETUP), "reset"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=ANYTLS_RESET_TIMEOUT,
+            check=False,
+            text=True,
+        )
+    except subprocess.TimeoutExpired:
+        return "anytls_reset_timeout"
+    except OSError:
+        return "anytls_reset_missing"
+    if result.returncode != 0:
+        # The script's own diagnostics are the useful part and the console
+        # cannot improve on them, so put them where an operator will look
+        # rather than flattening everything into one generic failure.
+        print(f"anytls reset failed (exit {result.returncode}):\n{result.stdout}",
+              file=sys.stderr)
+        return "anytls_reset_failed"
+    return "anytls_reset_done"
+
+
 def render_copyable(t, label, value, ident):
     return f"""
     <div class="copyrow">
@@ -568,6 +608,11 @@ def render_copyable(t, label, value, ident):
 IPERF_MESSAGE_KEYS = frozenset({
     "iperf_opened", "iperf_extended", "iperf_shut",
     "iperf_disabled", "iperf_missing", "iperf_port_busy",
+})
+
+ANYTLS_MESSAGE_KEYS = frozenset({
+    "anytls_reset_done", "anytls_reset_unconfirmed", "anytls_reset_failed",
+    "anytls_reset_timeout", "anytls_reset_missing",
 })
 
 # ---------------------------------------------------------------------------
@@ -650,6 +695,15 @@ STRINGS = {
         "anytls_link": "Share link",
         "anytls_host_note": "The public address is the one detected when the module was installed; the rest come from this host's own interfaces. If the address you need is not listed — a new public IP, a domain — edit the server field after copying, or re-run anytls/setup-anytls.sh.",
         "anytls_warning": "This page shows the node password in clear. It is behind the console login and never appears on the public page, but do not paste a screenshot of it anywhere.",
+        "anytls_reset": "Reset port and password",
+        "anytls_reset_heading": "Rotate credentials",
+        "anytls_reset_note": "Generates a new port and a new password and restarts the node. The certificate is kept, so the SNI does not change. Every client configured against the current values stops working until you give them the new ones from this page.",
+        "anytls_reset_confirm": "I understand that every existing client stops working",
+        "anytls_reset_done": "Port and password rotated. The values above are the new ones.",
+        "anytls_reset_unconfirmed": "Nothing was changed — tick the confirmation first.",
+        "anytls_reset_failed": "The reset failed. The node may be stopped; check: journalctl -u {service} -e",
+        "anytls_reset_timeout": "The reset did not finish in time. Check the node's state before retrying: systemctl status {service}",
+        "anytls_reset_missing": "anytls/setup-anytls.sh was not found next to the app, so the reset could not run.",
         "copy": "Copy",
         "copied": "Copied",
         "probe_title": "Reachable",
@@ -736,6 +790,15 @@ STRINGS = {
         "anytls_link": "分享链接",
         "anytls_host_note": "公网地址是安装该模块时探测到的；其余来自本机网卡。如果这里没有你要的地址（换了公网 IP、要用域名），复制之后自行替换 server 字段，或者重跑 anytls/setup-anytls.sh。",
         "anytls_warning": "本页明文显示节点密码。它在控制台登录之后，也绝不会出现在公开页上，但不要把截图贴到任何地方。",
+        "anytls_reset": "重置端口和密码",
+        "anytls_reset_heading": "更换凭据",
+        "anytls_reset_note": "生成新的端口和新的密码并重启节点。证书保留，所以 SNI 不变。所有按当前值配置好的客户端都会立刻失效，直到你把本页上的新值给它们。",
+        "anytls_reset_confirm": "我知道这会让所有现有客户端立刻失效",
+        "anytls_reset_done": "端口和密码已更换。上面显示的就是新值。",
+        "anytls_reset_unconfirmed": "什么都没改 —— 请先勾选确认。",
+        "anytls_reset_failed": "重置失败。节点可能已停止，查看：journalctl -u {service} -e",
+        "anytls_reset_timeout": "重置没有在限定时间内完成。重试之前先确认节点状态：systemctl status {service}",
+        "anytls_reset_missing": "应用目录下找不到 anytls/setup-anytls.sh，无法执行重置。",
         "copy": "复制",
         "copied": "已复制",
         "probe_title": "可以访问",
@@ -822,6 +885,15 @@ STRINGS = {
         "anytls_link": "分享連結",
         "anytls_host_note": "公網位址是安裝該模組時偵測到的；其餘來自本機網卡。如果這裡沒有你要的位址（換了公網 IP、要用網域），複製之後自行替換 server 欄位，或者重跑 anytls/setup-anytls.sh。",
         "anytls_warning": "本頁明文顯示節點密碼。它在主控台登入之後，也絕不會出現在公開頁上，但不要把截圖貼到任何地方。",
+        "anytls_reset": "重設連接埠和密碼",
+        "anytls_reset_heading": "更換憑據",
+        "anytls_reset_note": "產生新的連接埠和新的密碼並重啟節點。憑證保留，所以 SNI 不變。所有按目前值設定好的客戶端都會立刻失效，直到你把本頁上的新值給它們。",
+        "anytls_reset_confirm": "我知道這會讓所有現有客戶端立刻失效",
+        "anytls_reset_done": "連接埠和密碼已更換。上面顯示的就是新值。",
+        "anytls_reset_unconfirmed": "什麼都沒改 —— 請先勾選確認。",
+        "anytls_reset_failed": "重設失敗。節點可能已停止，查看：journalctl -u {service} -e",
+        "anytls_reset_timeout": "重設沒有在限定時間內完成。重試之前先確認節點狀態：systemctl status {service}",
+        "anytls_reset_missing": "應用程式目錄下找不到 anytls/setup-anytls.sh，無法執行重設。",
         "copy": "複製",
         "copied": "已複製",
         "probe_title": "可以存取",
@@ -1440,6 +1512,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_speedtest_getip()
         if method == "GET" and path == "/anytls":
             return self.page_anytls(lang, query_lang)
+        if method == "POST" and path == "/anytls/reset":
+            return self.handle_anytls_reset()
         if method == "GET" and path == "/iperf":
             return self.page_iperf(lang, query_lang)
         if method == "POST" and path == "/iperf/open":
@@ -1830,9 +1904,31 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </div>
             """)
 
+        notice = ""
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        if key in ANYTLS_MESSAGE_KEYS:
+            cls = "notice" if key == "anytls_reset_done" else "error"
+            notice = (f'<p class="{cls}">'
+                      f'{html.escape(t[key].format(service=ANYTLS_SERVICE))}</p>')
+
+        reset_form = f"""
+        <div class="node-addr danger-zone">
+          <h2>{html.escape(t['anytls_reset_heading'])}</h2>
+          <p class="muted small">{html.escape(t['anytls_reset_note'])}</p>
+          <form method="post" action="/anytls/reset" class="inline-form">
+            <label class="checkline">
+              <input type="checkbox" name="confirm" value="yes" required>
+              <span>{html.escape(t['anytls_reset_confirm'])}</span>
+            </label>
+            <button type="submit" class="danger">{html.escape(t['anytls_reset'])}</button>
+          </form>
+        </div>
+        """
+
         body = f"""
         <div class="card wide">
           <h1>{html.escape(t['anytls_heading'])}</h1>
+          {notice}
           <p class="iperf-state {state_class}">{html.escape(state)}</p>
           <dl class="kv">
             <dt>{html.escape(t['anytls_port'])}</dt>
@@ -1848,11 +1944,24 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {"".join(blocks)}
           <p class="muted small">{html.escape(t['anytls_host_note'])}</p>
           <p class="muted small warn">{html.escape(t['anytls_warning'])}</p>
+          {reset_form}
         </div>
         <script src="/static/copy.js"></script>
         """
         self.send_html(200, render_page(t['anytls_heading'], body, lang, active="anytls"),
                        self.maybe_lang_cookie(query_lang))
+
+    def handle_anytls_reset(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        # Checked on the server, not just by the `required` attribute: this
+        # rotates live credentials and every client configured against the old
+        # ones stops working. A bare button would put that one mis-click away,
+        # and `required` is trivially bypassed by anything that is not a
+        # browser.
+        if form.get("confirm", [""])[0] != "yes":
+            return self.redirect("/anytls?msg=anytls_reset_unconfirmed")
+        self.redirect(f"/anytls?msg={anytls_reset()}")
 
     # -- visitor log ---------------------------------------------------
 
