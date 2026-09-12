@@ -22,6 +22,11 @@
 #     maintained. With `-x` the script reported "binary not found" for a file
 #     that was sitting right there, which is how the first anytls install
 #     failed. The error message now also distinguishes absent from unusable.
+#   * print_result() writes the detected public address to
+#     $INSTALL_DIR/public-ip.txt. The console shows the node's client
+#     configuration for that address, and app.py makes no outbound request at
+#     runtime — so the one moment the address can be learned is install time.
+#     Removed with the config directory on uninstall.
 #
 # The environment variable names (ANYTLS_PORT, ANYTLS_PASSWORD, SNI, SERVER_IP)
 # are deliberately NOT renamed to a VPSSRV_ prefix: renaming them would mean

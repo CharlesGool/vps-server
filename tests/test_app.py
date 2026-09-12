@@ -1051,15 +1051,81 @@ class AnytlsPageTest(unittest.TestCase):
     def test_page_shows_both_copyable_forms(self):
         resp, body = self.get("/anytls")
         self.assertEqual(resp.status, 200)
-        self.assertIn('id="anytls-clash"', body)
-        self.assertIn('id="anytls-link"', body)
+        self.assertIn('id="anytls-clash-0"', body)
+        self.assertIn('id="anytls-link-0"', body)
         self.assertIn("/static/copy.js", body)
 
-    def test_page_reports_the_service_is_not_running(self):
-        # Nothing named vps-server-anytls.service is running in the test
-        # environment, so the page must say so rather than implying it is up.
+    def test_page_shows_port_password_and_sni_as_fields(self):
+        # The operator asked for the same three facts the installer prints,
+        # readable without picking them out of the Clash line.
         _, body = self.get("/anytls")
-        self.assertIn("is-closed", body)
+        for key in ("anytls_port", "anytls_password", "anytls_sni"):
+            self.assertIn(app.STRINGS["en"][key], body)
+        self.assertIn('id="anytls-pw"', body, "the password needs its own copy button")
+        self.assertIn("27999", body)
+        self.assertIn(self.FAKE_PASSWORD, body)
+
+    def test_one_configuration_block_per_address(self):
+        _, body = self.get("/anytls")
+        # Whatever this host's interfaces are, every listed address gets its
+        # own Clash entry and link rather than one block for a single guess.
+        blocks = body.count('class="node-addr"')
+        self.assertGreaterEqual(blocks, 1)
+        self.assertEqual(body.count('id="anytls-clash-'), blocks)
+        self.assertEqual(body.count('id="anytls-link-'), blocks)
+
+    def test_public_address_comes_from_the_file_not_a_lookup(self):
+        public_file = self.config.parent / "public-ip.txt"
+        public_file.write_text("198.51.100.7\n")
+        try:
+            self.assertEqual(app.anytls_public_address(), "198.51.100.7")
+            _, body = self.get("/anytls")
+            self.assertIn("198.51.100.7", body)
+            self.assertIn(app.STRINGS["en"]["anytls_public"], body)
+        finally:
+            public_file.unlink()
+
+    def test_public_address_ignores_the_detection_failure_placeholder(self):
+        # get_ip() falls back to a human-readable sentence when the lookup
+        # fails; rendering that as an address would be worse than omitting it.
+        public_file = self.config.parent / "public-ip.txt"
+        public_file.write_text("<自动获取失败，请手动替换为服务器公网IP>\n")
+        try:
+            self.assertEqual(app.anytls_public_address(), "")
+        finally:
+            public_file.unlink()
+
+    def test_local_addresses_skip_virtual_interfaces(self):
+        for iface, address in app.local_addresses():
+            self.assertFalse(iface.startswith(app.VIRTUAL_IFACE_PREFIXES),
+                             f"{iface} is a virtual interface and should be filtered")
+            self.assertRegex(address, r"^\d+\.\d+\.\d+\.\d+$")
+
+    def test_page_reports_a_stopped_service_as_stopped(self):
+        # Point at a unit that cannot exist rather than trusting the host's
+        # state. The first version of this test assumed nothing named
+        # vps-server-anytls.service was running, which made it pass or fail
+        # depending on what the developer happened to have installed.
+        original = app.ANYTLS_SERVICE
+        app.ANYTLS_SERVICE = "vps-server-anytls-does-not-exist.service"
+        try:
+            self.assertFalse(app.anytls_node()["running"])
+            _, body = self.get("/anytls")
+            self.assertIn("is-closed", body)
+            self.assertIn("vps-server-anytls-does-not-exist.service", body,
+                          "the page should name the unit to check")
+        finally:
+            app.ANYTLS_SERVICE = original
+
+    def test_page_reports_a_running_service_as_running(self):
+        original = app._run_quiet
+        app._run_quiet = lambda cmd: True
+        try:
+            self.assertTrue(app.anytls_node()["running"])
+            _, body = self.get("/anytls")
+            self.assertIn("is-open", body)
+        finally:
+            app._run_quiet = original
 
     def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
         _, body = self.get("/")

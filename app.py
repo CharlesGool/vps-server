@@ -499,6 +499,69 @@ def anytls_share_link(node, host, name):
         f'?insecure=1&sni={node["sni"]}#{quote(name, safe="")}'
     )
 
+
+# Mirrors setup-anytls.sh's get_lan_ips filter. Keeping a second copy of the
+# list is a drift risk; the alternative is the console shelling into the
+# vendored script to ask, which is worse.
+VIRTUAL_IFACE_PREFIXES = ("docker", "br-", "veth", "virbr", "cni", "flannel", "kube")
+
+
+def local_addresses():
+    """[(interface, address)] for real interfaces.
+
+    Read from the kernel's own list, so this costs no outbound request —
+    unlike the public address, which is exactly why that one is a file written
+    at install time rather than a lookup here.
+    """
+    found = []
+    output = _cmd_output(["ip", "-o", "-4", "addr", "show", "scope", "global"])
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        iface, cidr = parts[1], parts[3]
+        if iface.startswith(VIRTUAL_IFACE_PREFIXES) or iface.startswith("tailscale"):
+            continue
+        found.append((iface, cidr.split("/")[0]))
+    return found
+
+
+def tailscale_address():
+    for line in _cmd_output(["ip", "-o", "-4", "addr", "show", "tailscale0"]).splitlines():
+        parts = line.split()
+        if len(parts) >= 4:
+            return parts[3].split("/")[0]
+    return ""
+
+
+def anytls_public_address():
+    """Whatever setup-anytls.sh detected at install time, or "".
+
+    A file rather than a live lookup, deliberately: app.py makes no outbound
+    request at runtime, and a public address does not move often enough to
+    justify breaking that rule for a display field. Re-run setup-anytls.sh if
+    the address changes.
+    """
+    try:
+        value = (ANYTLS_CONFIG.parent / "public-ip.txt").read_text().strip()
+    except OSError:
+        return ""
+    return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
+
+
+def render_copyable(t, label, value, ident):
+    return f"""
+    <div class="copyrow">
+      <div class="copyhead">
+        <span>{html.escape(label)}</span>
+        <button type="button" class="copybtn" data-copy="{ident}"
+                data-copied="{html.escape(t['copied'])}"
+                >{html.escape(t['copy'])}</button>
+      </div>
+      <pre class="cmd" id="{ident}">{html.escape(value)}</pre>
+    </div>
+    """
+
 # Result keys the console may echo back after a redirect. Whitelisted because
 # the key indexes STRINGS: without this, a crafted ?msg= would be a way to
 # render any string from the table on an authenticated page.
@@ -577,11 +640,15 @@ STRINGS = {
         "anytls_not_installed": "The anytls module is not installed on this host. To add it: sudo VPSSRV_MODULES=anytls bash install.sh",
         "anytls_state_running": "Running on port {port}.",
         "anytls_state_stopped": "Installed on port {port}, but the service is not running. Check: systemctl status {service}",
+        "anytls_port": "Port",
+        "anytls_password": "Password",
         "anytls_sni": "SNI (read back from the certificate CN)",
-        "anytls_server": "Server address",
+        "anytls_public": "Public",
+        "anytls_lan": "LAN-{iface}",
+        "anytls_this": "The address you used",
         "anytls_clash": "Clash proxy entry",
         "anytls_link": "Share link",
-        "anytls_host_note": "The address below is the one you used to reach this console. To hand out a different one — a public IP, a domain — edit it after copying.",
+        "anytls_host_note": "The public address is the one detected when the module was installed; the rest come from this host's own interfaces. If the address you need is not listed — a new public IP, a domain — edit the server field after copying, or re-run anytls/setup-anytls.sh.",
         "anytls_warning": "This page shows the node password in clear. It is behind the console login and never appears on the public page, but do not paste a screenshot of it anywhere.",
         "copy": "Copy",
         "copied": "Copied",
@@ -659,11 +726,15 @@ STRINGS = {
         "anytls_not_installed": "本机没有安装 anytls 模块。要加装：sudo VPSSRV_MODULES=anytls bash install.sh",
         "anytls_state_running": "运行中，端口 {port}。",
         "anytls_state_stopped": "已安装，端口 {port}，但服务没在运行。查看：systemctl status {service}",
+        "anytls_port": "端口",
+        "anytls_password": "密码",
         "anytls_sni": "SNI（从证书 CN 读回）",
-        "anytls_server": "服务器地址",
+        "anytls_public": "公网",
+        "anytls_lan": "内网-{iface}",
+        "anytls_this": "你访问用的地址",
         "anytls_clash": "Clash 节点配置",
         "anytls_link": "分享链接",
-        "anytls_host_note": "下面用的是你访问本控制台时用的地址。要给出别的地址（公网 IP、域名），复制之后自行替换。",
+        "anytls_host_note": "公网地址是安装该模块时探测到的；其余来自本机网卡。如果这里没有你要的地址（换了公网 IP、要用域名），复制之后自行替换 server 字段，或者重跑 anytls/setup-anytls.sh。",
         "anytls_warning": "本页明文显示节点密码。它在控制台登录之后，也绝不会出现在公开页上，但不要把截图贴到任何地方。",
         "copy": "复制",
         "copied": "已复制",
@@ -741,11 +812,15 @@ STRINGS = {
         "anytls_not_installed": "本機沒有安裝 anytls 模組。要加裝：sudo VPSSRV_MODULES=anytls bash install.sh",
         "anytls_state_running": "執行中，連接埠 {port}。",
         "anytls_state_stopped": "已安裝，連接埠 {port}，但服務沒在執行。查看：systemctl status {service}",
+        "anytls_port": "連接埠",
+        "anytls_password": "密碼",
         "anytls_sni": "SNI（從憑證 CN 讀回）",
-        "anytls_server": "伺服器位址",
+        "anytls_public": "公網",
+        "anytls_lan": "內網-{iface}",
+        "anytls_this": "你存取用的位址",
         "anytls_clash": "Clash 節點設定",
         "anytls_link": "分享連結",
-        "anytls_host_note": "下面用的是你存取本主控台時用的位址。要給出別的位址（公網 IP、網域），複製之後自行替換。",
+        "anytls_host_note": "公網位址是安裝該模組時偵測到的；其餘來自本機網卡。如果這裡沒有你要的位址（換了公網 IP、要用網域），複製之後自行替換 server 欄位，或者重跑 anytls/setup-anytls.sh。",
         "anytls_warning": "本頁明文顯示節點密碼。它在主控台登入之後，也絕不會出現在公開頁上，但不要把截圖貼到任何地方。",
         "copy": "複製",
         "copied": "已複製",
@@ -1713,13 +1788,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 self.maybe_lang_cookie(query_lang),
             )
 
-        # Whatever address reached this console reaches the node too, so it is
-        # the one worth pre-filling. Anyone needing a different one (a public
-        # IP, a domain) edits the line after copying — which beats making the
-        # server guess, and beats an outbound IP-lookup call at render time.
-        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
-        name = f"anytls-{host}"
-
         if node["running"]:
             state = t["anytls_state_running"].format(port=node["port"])
             state_class = "is-open"
@@ -1729,30 +1797,56 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             )
             state_class = "is-closed"
 
-        def copyable(label, value, ident):
-            return f"""
-            <div class="copyrow">
-              <div class="copyhead">
-                <span>{html.escape(label)}</span>
-                <button type="button" class="copybtn" data-copy="{ident}"
-                        data-copied="{html.escape(t['copied'])}"
-                        >{html.escape(t['copy'])}</button>
-              </div>
-              <pre class="cmd" id="{ident}">{html.escape(value)}</pre>
+        # Same order setup-anytls.sh prints: public first, then each real
+        # interface, then Tailscale. The address that reached this console is
+        # appended only when none of those already covers it — usually it is
+        # one of the interface addresses, and listing it twice would just
+        # invite copying the wrong one of two identical lines.
+        entries = []
+        public = anytls_public_address()
+        if public:
+            entries.append((t["anytls_public"], public))
+        for iface, address in local_addresses():
+            entries.append((t["anytls_lan"].format(iface=iface), address))
+        tailscale = tailscale_address()
+        if tailscale:
+            entries.append(("Tailscale", tailscale))
+        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
+        if host not in [address for _, address in entries]:
+            entries.append((t["anytls_this"], host))
+
+        blocks = []
+        for index, (label, address) in enumerate(entries):
+            name = f"anytls-{label}"
+            blocks.append(f"""
+            <div class="node-addr">
+              <h2>[{html.escape(label)}] {html.escape(address)}</h2>
+              {render_copyable(t, t['anytls_clash'],
+                               anytls_clash_line(node, address, name),
+                               f'anytls-clash-{index}')}
+              {render_copyable(t, t['anytls_link'],
+                               anytls_share_link(node, address, name),
+                               f'anytls-link-{index}')}
             </div>
-            """
+            """)
 
         body = f"""
         <div class="card wide">
           <h1>{html.escape(t['anytls_heading'])}</h1>
           <p class="iperf-state {state_class}">{html.escape(state)}</p>
           <dl class="kv">
-            <dt>{html.escape(t['anytls_server'])}</dt><dd>{html.escape(host)}</dd>
-            <dt>{html.escape(t['anytls_sni'])}</dt><dd>{html.escape(node['sni'] or '—')}</dd>
+            <dt>{html.escape(t['anytls_port'])}</dt>
+            <dd>{html.escape(str(node['port']))}</dd>
+            <dt>{html.escape(t['anytls_password'])}</dt>
+            <dd class="secret"><code id="anytls-pw">{html.escape(node['password'])}</code>
+              <button type="button" class="copybtn" data-copy="anytls-pw"
+                      data-copied="{html.escape(t['copied'])}"
+                      >{html.escape(t['copy'])}</button></dd>
+            <dt>{html.escape(t['anytls_sni'])}</dt>
+            <dd>{html.escape(node['sni'] or '—')}</dd>
           </dl>
+          {"".join(blocks)}
           <p class="muted small">{html.escape(t['anytls_host_note'])}</p>
-          {copyable(t['anytls_clash'], anytls_clash_line(node, host, name), 'anytls-clash')}
-          {copyable(t['anytls_link'], anytls_share_link(node, host, name), 'anytls-link')}
           <p class="muted small warn">{html.escape(t['anytls_warning'])}</p>
         </div>
         <script src="/static/copy.js"></script>

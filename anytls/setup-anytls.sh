@@ -252,6 +252,14 @@ print_result(){
   wan_ip="$(get_ip)"
   entries+=("公网|${wan_ip}")
 
+  # 落盘给控制台读。app.py 运行时不发任何出站请求（见 DESIGN.md），而公网地址
+  # 只能靠出站查询拿到——所以只在安装这一刻取一次、存下来。形如 IP 才写，
+  # 否则会把「自动获取失败，请手动替换…」那句提示当成地址显示出去。
+  if [[ "$wan_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf '%s\n' "$wan_ip" > "${INSTALL_DIR}/public-ip.txt"
+    chmod 0644 "${INSTALL_DIR}/public-ip.txt"
+  fi
+
   while read -r iface ip; do
     entries+=("内网-${iface}|${ip}")
   done < <(get_lan_ips)

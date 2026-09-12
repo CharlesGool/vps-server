@@ -321,6 +321,19 @@ trimmed to the most recent 1000 rows.
   re-vendoring, check with `git ls-files -s` and restore the bit with
   `git update-index --chmod=+x <path>` — `chmod +x` alone is a no-op on that
   mount.
+- **Re-installing the anytls module rotates its port and password.**
+  `setup-anytls.sh` defaults `ANYTLS_PORT` and `ANYTLS_PASSWORD` to fresh
+  random values and rewrites `config.json` every run, so a second
+  `install.sh` with that module invalidates every client that was configured
+  against the first. To keep the existing node, pass the current values:
+  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash install.sh` — both
+  are on the console's anytls page. Upstream behaviour, inherited
+  deliberately; changing it would mean editing vendored logic.
+- **The console's public-address block only appears after an anytls install.**
+  `public-ip.txt` is written by `setup-anytls.sh`, so an install that predates
+  that file simply shows the interface addresses until the module is
+  re-installed. That is the cost of refusing to do an outbound lookup at
+  render time.
 - **Teardown needs the same `PREFIX` and `SERVICE_NAME` the install used.**
   `uninstall.sh` with no environment reads the defaults, finds nothing at
   those paths, and reports success having removed nothing. The installer's

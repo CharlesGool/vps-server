@@ -370,3 +370,24 @@ button.copybtn { padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: 8px; 
 button.copybtn.copied { background: #34d399; color: #06281c; }
 
 .warn { color: var(--error); }
+
+.node-addr {
+  margin: 1.25rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--card-border);
+}
+.node-addr h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--accent);
+}
+
+dl.kv dd.secret { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+dl.kv dd.secret code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+}
