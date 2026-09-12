@@ -590,14 +590,38 @@ port_held() {
   ss -lnt "( sport = :$1 )" 2>/dev/null | tail -n +2 | grep -q .
 }
 
-if has_module web && [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; then
-  systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
-  if command -v ss >/dev/null 2>&1; then
-    for p in "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"; do
-      if port_held "$p"; then
-        die "$(msg port_busy "$p" "$p")"
+first_busy_public_port() {
+  local p
+  for p in "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"; do
+    if port_held "$p"; then printf '%s' "$p"; return 0; fi
+  done
+  return 1
+}
+
+# Check before stopping anything, and put the service back if stopping it did
+# not help. The previous order stopped the service first and then died on a
+# busy port, leaving a service that had been running stopped because of a
+# conflict it had nothing to do with — the same destroy-then-check shape that
+# broke the anytls reset.
+if has_module web && [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ] \
+   && command -v ss >/dev/null 2>&1; then
+  busy_port="$(first_busy_public_port || true)"
+  if [ -n "$busy_port" ]; then
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+      # Most likely we are the holder, from the last install. Stopping is
+      # safe because a successful run restarts it a few lines further down.
+      systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
+      sleep 1
+      busy_port="$(first_busy_public_port || true)"
+      if [ -n "$busy_port" ]; then
+        systemctl start "$SERVICE_NAME" >/dev/null 2>&1 || true
+        die "$(msg port_busy "$busy_port" "$busy_port")"
       fi
-    done
+    else
+      die "$(msg port_busy "$busy_port" "$busy_port")"
+    fi
+  else
+    systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
   fi
 fi
 
@@ -656,10 +680,14 @@ elif [ "$INTERACTIVE" = "1" ] && [ -z "${VPSSRV_PASSWORD_FILE:-}" ] \
       ""|[rR]*) break ;;
       [mM]*)
         while :; do
+          # The || fallbacks are not decoration: under set -e a bare failing
+          # read — Ctrl-D at the prompt, a momentarily unavailable /dev/tty —
+          # kills the whole installer instead of reaching the retry below.
+          # Every other read in this file has one; these two were missed.
           msg pw_enter
-          read -rs MANUAL_PASSWORD </dev/tty; echo
+          read -rs MANUAL_PASSWORD </dev/tty || MANUAL_PASSWORD=""; echo
           msg pw_confirm
-          read -rs pw_confirm </dev/tty; echo
+          read -rs pw_confirm </dev/tty || pw_confirm=""; echo
           if [ -n "$MANUAL_PASSWORD" ] && [ "$MANUAL_PASSWORD" = "$pw_confirm" ]; then
             break
           fi

@@ -152,7 +152,7 @@ until they are given the new ones.
 
 It also runs **outside this service's sandbox**, as a transient unit via
 `systemd-run --pipe --wait --collect`. The web unit has
-`ProtectSystem=strict` with only `ReadWritePaths=$VPSSRV_PREFIX`, so `/etc` is
+`ProtectSystem=strict` with only `ReadWritePaths=$PREFIX`, so `/etc` is
 read-only to it, and a reset has to write `/etc/vps-server-anytls` and a unit
 file. The first real attempt died halfway through for exactly that reason —
 after it had already withdrawn the old port's firewall rule. The alternative,
@@ -236,7 +236,7 @@ Rejected alternatives and the reasoning behind each choice live in
 | `iperf3` | distro package manager (`apt-get install iperf3`) | system path |
 | `openssl`, `curl`, `jq`, `iproute2` | distro package manager | system path |
 | sing-box binary | ships in this repository | `/usr/local/bin/sing-box-vps-server` |
-| LibreSpeed engine | ships in this repository | `$VPSSRV_PREFIX/static/` |
+| LibreSpeed engine | ships in this repository | `$PREFIX/static/` |
 | TLS certificates | generated on first run by the installer | `$VPSSRV_CERT_DIR` |
 
 No API keys. The service makes no outbound request at runtime except the
@@ -247,9 +247,9 @@ fails.
 
 | Path | Provided by | Purpose |
 |---|---|---|
-| `$VPSSRV_PREFIX` | installer, default `/opt/vps-server` | Code, static assets, persisted port files |
-| `$VPSSRV_DATA_DIR` | installer, default `$VPSSRV_PREFIX/data` | `visitors.db`, `session_secret.txt` |
-| `$VPSSRV_CERT_DIR` | installer, default `$VPSSRV_PREFIX/certs` | Self-signed cert and key for 443 |
+| `$PREFIX` | installer, default `/opt/vps-server` | Code, static assets, persisted port files |
+| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt` |
+| `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
 
 ### Configuration reference
@@ -261,18 +261,18 @@ reconfigure another.
 
 | Variable | Meaning | Default | Required |
 |---|---|---|---|
-| `VPSSRV_PREFIX` | Install root | `/opt/vps-server` | no |
-| `VPSSRV_DATA_DIR` | SQLite + session secret | `$VPSSRV_PREFIX/data` | no |
+| `PREFIX` | Install root. Passed to `install.sh`/`uninstall.sh`, **not** read from `.env` — the path is needed before there is an install to read a `.env` from | `/opt/vps-server` | no |
+| `VPSSRV_DATA_DIR` | SQLite + session secret | `$PREFIX/data` | no |
 | `VPSSRV_HOST` | Bind address for all listeners | `0.0.0.0` | no |
 | `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Public reachability page, TLS | `443` | no |
 | `VPSSRV_PUBLIC_ENABLE` | Serve the public page at all | `1` | no |
 | `VPSSRV_CONSOLE_PORT` | Console port; `0` = generate once and persist | `0` | no |
-| `VPSSRV_CONSOLE_PORT_FILE` | Where the generated console port is remembered | `$VPSSRV_PREFIX/console_port.txt` | no |
+| `VPSSRV_CONSOLE_PORT_FILE` | Where the generated console port is remembered | `$PREFIX/console_port.txt` | no |
 | `VPSSRV_CONSOLE_TLS` | Serve the console over HTTPS | `0` | no |
 | `VPSSRV_AUTH` | Require login on the console | `1` | no |
-| `VPSSRV_PASSWORD_FILE` | Plaintext console password, editable by the operator | `$VPSSRV_PREFIX/admin_password.txt` | no |
-| `VPSSRV_CERT_DIR` | Self-signed cert location | `$VPSSRV_PREFIX/certs` | no |
+| `VPSSRV_PASSWORD_FILE` | Plaintext console password, editable by the operator | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_CERT_DIR` | Self-signed cert location | `$PREFIX/certs` | no |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | Use an operator-supplied cert instead | — | no |
 | `VPSSRV_IPERF_PORT` | Port the iperf3 window listens on | `5201` | no |
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | Pre-filled window duration | `10` | no |
@@ -290,7 +290,7 @@ reconfigure another.
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
-| `VPSSRV_ANYTLS_SETUP` | Script the console runs to rotate the node's credentials | `$VPSSRV_PREFIX/anytls/setup-anytls.sh` | no |
+| `VPSSRV_ANYTLS_SETUP` | Script the console runs to rotate the node's credentials | `$PREFIX/anytls/setup-anytls.sh` | no |
 
 The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
 renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and
@@ -326,13 +326,14 @@ repo/
 ├── app.py                     # the web service: console + public listeners
 ├── static/                    # LibreSpeed engine (vendored) + own UI assets
 ├── systemd/
-│   ├── vps-server-web.service
-│   └── vps-server-anytls.service
+│   └── vps-server-web.service # the anytls unit is not here: setup-anytls.sh
+│                              # writes it at install time, so it is never
+│                              # shipped and never stale
 ├── anytls/
 │   ├── setup-anytls.sh        # vendored from Anytsl-Serve, renamed units/paths
+│   ├── sing-box.version       # which sing-box release the binary below is
 │   └── .upstream-version      # records: Anytsl-Serve v1.2.0
 ├── sing-box                   # vendored amd64 binary
-├── sing-box.version
 ├── .upstream-version          # records: vps-webserver v0.4.1
 ├── tests/
 ├── LICENSE                    # GPL-3.0

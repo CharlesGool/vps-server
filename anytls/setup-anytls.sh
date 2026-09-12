@@ -181,8 +181,16 @@ open_firewall(){
     # 在 -C 命中时会把匹配到的规则原样打出来，于是一行原始 iptables 输出
     # 混进操作者要读的安装摘要里。上游只挡了 stderr，因为规则第一次总是
     # 不存在、-C 总是失败——重复安装才看得见。
-    iptables -C INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT >/dev/null 2>&1 \
-      || iptables -I INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT
+    # -I 的失败要接住。ufw / firewalld 两个分支都有 `|| true`，这条没有，而它
+    # 是 || 列表的最后一条命令——在 set -Eeuo pipefail 下失败就整个脚本硬退出，
+    # 一句提示都没有，而此时服务其实已经起来了。装完看到的是一次「像是失败」
+    # 的安装。
+    if ! iptables -C INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT >/dev/null 2>&1; then
+      if ! iptables -I INPUT -p tcp --dport "${ANYTLS_PORT}" -j ACCEPT; then
+        err "iptables 放行 ${ANYTLS_PORT}/tcp 失败；服务已启动，请手动放行该端口。"
+        return 0
+      fi
+    fi
     command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
   else
     err "未找到可用的防火墙管理工具（ufw/firewalld/iptables），已跳过自动放行。"
@@ -211,6 +219,25 @@ close_firewall(){
     log "未找到 ufw/firewalld/iptables，跳过本机防火墙规则清理"
   fi
   ok "防火墙规则已清理"
+}
+
+# 写入新配置、切换服务，然后把防火墙从旧端口挪到新端口。
+#
+# 顺序是刻意的：先把新状态写成功，再动防火墙。反过来（先撤旧规则再写配置）
+# 在写失败时会留下一个跑着但没放行的节点——比没改成更糟。
+#
+# 旧端口必须在 setup_config 覆盖 config.json **之前**读出来；那之后它就没了，
+# 规则会变成指向无人监听端口的孤儿。之前只有 reset 做这件事，于是从安装器的
+# 「重新配置」分支换端口时每次都漏一条。
+apply_node(){
+  local prev_port
+  prev_port="$(current_port)"
+  setup_config
+  setup_service
+  if [[ -n "$prev_port" && "$prev_port" != "$ANYTLS_PORT" ]]; then
+    close_firewall "$prev_port"
+  fi
+  open_firewall
 }
 
 # 当前已安装节点的端口；没装或读不出来就返回空。
@@ -431,14 +458,11 @@ reset(){
   old_port="$(current_port)"
   if [[ -n "$old_port" ]]; then
     log "重置节点：旧端口 ${old_port} -> 新端口 ${ANYTLS_PORT}"
-    close_firewall "$old_port"
   else
     log "未找到已安装的节点，按全新安装处理"
   fi
   install_singbox
-  setup_config
-  setup_service
-  open_firewall
+  apply_node
   print_result
 }
 
@@ -461,9 +485,7 @@ main(){
   refuse_if_upstream_running
   install_deps
   install_singbox
-  setup_config
-  setup_service
-  open_firewall
+  apply_node
   enable_bbr
   print_result
 }

@@ -691,6 +691,22 @@ class PortTest(unittest.TestCase):
         self.assertTrue(20000 <= first <= 59999)
         self.assertEqual(int(self.port_file.read_text().strip()), first)
 
+    def test_literal_zero_means_auto_not_port_zero(self):
+        # .env.example ships VPSSRV_CONSOLE_PORT=0 and three documents call 0
+        # "generate one and remember it". The code used to read "0" as truthy
+        # and bind port 0, which the kernel answers with a different ephemeral
+        # port on every restart, written to no file — a console that moved
+        # each time the service came back, for anyone who copied the example.
+        os.environ["VPSSRV_CONSOLE_PORT"] = "0"
+        try:
+            port = app.ensure_console_port()
+            self.assertNotEqual(port, 0)
+            self.assertGreaterEqual(port, 20000)
+            self.assertTrue(self.port_file.exists(), "the chosen port must be remembered")
+            self.assertEqual(app.ensure_console_port(), port, "and must not move")
+        finally:
+            os.environ.pop("VPSSRV_CONSOLE_PORT", None)
+
     def test_explicit_env_port_wins_and_is_not_persisted(self):
         os.environ["VPSSRV_CONSOLE_PORT"] = "54321"
         self.assertEqual(app.ensure_console_port(), 54321)
@@ -825,6 +841,17 @@ class ProbePageTest(unittest.TestCase):
         self.assertIn("Reachable", body)
         self.assertIn("127.0.0.1", body, "the caller's own address is the point")
         self.assertIn(f":{self.port}", body, "the arrival port must be the real one")
+
+    def test_server_header_names_no_interpreter_version(self):
+        # BaseHTTPRequestHandler appends sys_version to server_version, so
+        # setting server_version alone still answered
+        # "Server: vps-server Python/3.10.12" — a precise interpreter version,
+        # to anyone who runs curl -I against the IP, from the one page that
+        # promises to disclose nothing about the host.
+        resp, _ = self.get("/")
+        server = resp.getheader("Server") or ""
+        self.assertEqual(server, "vps-server")
+        self.assertNotIn("Python", server)
 
     def test_no_console_route_exists_here(self):
         # The security property this whole class exists for. These must 404
@@ -1342,6 +1369,18 @@ class InstallerContractTest(unittest.TestCase):
         for var in sorted(self.known_vars()):
             with self.subTest(var=var):
                 self.assertIn(var, text, f"{var} is not read anywhere in app.py")
+
+    def test_no_documented_variable_is_ignored_by_the_code(self):
+        # The other drift direction: a VPSSRV_ name in .env.example that
+        # nothing reads is worse than an undocumented one, because it reads
+        # like a supported setting. `VPSSRV_PREFIX` sat there for a while;
+        # the installer has always taken a bare `PREFIX`, so setting the
+        # documented name in .env did nothing at all.
+        documented = set(re.findall(r"^(VPSSRV_[A-Z0-9_]+)=",
+                                    (self.ROOT / ".env.example").read_text(), re.M))
+        unused = documented - self.known_vars() - self.app_vars()
+        self.assertEqual(unused, set(),
+                         "documented in .env.example but read by nothing")
 
     def test_every_known_var_has_a_documented_default(self):
         # prompt_new_settings offers the .env.example value as the default for

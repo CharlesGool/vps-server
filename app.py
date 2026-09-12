@@ -162,8 +162,14 @@ def ensure_console_port():
     Otherwise pick a random port once and remember it — regenerating on every
     restart would make the console impossible to find again.
     """
-    env_port = os.environ.get("VPSSRV_CONSOLE_PORT")
-    if env_port:
+    # "0" means auto, the same as unset — which is what .env.example ships and
+    # what the documentation has always said. Treating it as a literal port
+    # number binds port 0, and the kernel then hands out a different ephemeral
+    # port on every restart, none of them written to the port file. Anyone who
+    # copied .env.example to .env got a console that moved every time the
+    # service restarted and a summary that could not name it.
+    env_port = os.environ.get("VPSSRV_CONSOLE_PORT", "").strip()
+    if env_port and env_port != "0":
         return int(env_port)
     if CONSOLE_PORT_FILE.exists():
         return int(CONSOLE_PORT_FILE.read_text().strip())
@@ -417,13 +423,24 @@ class IperfWindow:
         self._deadline = 0.0
         if proc is None:
             return
-        proc.terminate()
+        # Withdraw the rule whatever happens to the process. A child that will
+        # not die within ten seconds is a problem; a firewall left open for a
+        # window this object already reports as closed is a worse one, and
+        # letting TimeoutExpired escape here produced exactly that — the state
+        # said shut, the port stayed open.
         try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
-        firewall_port(self._port, opening=False)
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    print(f"iperf3 (pid {proc.pid}) did not exit after SIGKILL; "
+                          "closing the window anyway", file=sys.stderr)
+        finally:
+            firewall_port(self._port, opening=False)
 
 
 IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES)
@@ -450,6 +467,9 @@ ANYTLS_SETUP = Path(
 # request blocking for a few seconds is fine for an operator action; blocking
 # forever because systemd is wedged is not.
 ANYTLS_RESET_TIMEOUT = 120
+# Fixed, so two resets cannot run at once. It also has to be stoppable by name
+# when the timeout fires; see anytls_reset().
+ANYTLS_RESET_UNIT = "vps-server-anytls-reset.service"
 
 
 def _cert_common_name(path):
@@ -577,7 +597,7 @@ def anytls_reset_command():
     direct = ["bash", str(ANYTLS_SETUP), "reset"]
     if shutil.which("systemd-run"):
         return ["systemd-run", "--pipe", "--wait", "--collect",
-                "--unit=vps-server-anytls-reset", *direct]
+                f"--unit={ANYTLS_RESET_UNIT}", *direct]
     return direct
 
 
@@ -601,6 +621,13 @@ def anytls_reset():
             text=True,
         )
     except subprocess.TimeoutExpired:
+        # The timeout kills the systemd-run client, not the unit it asked
+        # systemd to start — that runs outside this process tree and would
+        # carry on, possibly rotating the credentials minutes after the
+        # console reported a timeout. The fixed unit name would then make the
+        # retry this message suggests fail with "unit already exists", which
+        # says nothing about what actually happened.
+        _run_quiet(["systemctl", "stop", ANYTLS_RESET_UNIT])
         return "anytls_reset_timeout"
     except OSError:
         return "anytls_reset_missing"
@@ -1402,9 +1429,20 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # every request is recorded in the visitor log instead
 
+    def version_string(self):
+        # The base class appends sys_version to server_version, so setting the
+        # latter alone still answers "Server: vps-server Python/3.10.12".
+        return self.server_version
+
     def send_response(self, code, message=None):
         self._last_status = code
         super().send_response(code, message)
+
+    def end_headers(self):
+        # Once the headers are out, the response is committed: anything that
+        # goes wrong afterwards must not try to send a second one.
+        self._body_started = True
+        super().end_headers()
 
     # -- helpers ---------------------------------------------------------
 
@@ -1487,19 +1525,35 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         path = parsed.path
         self._last_status = 200
+        self._body_started = False
         try:
             self._route(method, path, parsed)
         except (BrokenPipeError, ConnectionResetError):
             self._last_status = 0  # client disconnected mid-stream, not a real outcome
         except Exception:
             self._last_status = 500
-            try:
-                self.send_json(500, {"error": "internal server error"})
-            except Exception:
-                pass
+            # Only when nothing has been sent yet. /speedtest/garbage streams
+            # hundreds of megabytes after its headers are out; an SSLError or
+            # timeout partway through used to land here and append a second
+            # status line and a JSON body into the middle of a response whose
+            # Content-Length promised raw bytes — a reply no client can parse.
+            if not self._body_started:
+                try:
+                    self.send_json(500, {"error": "internal server error"})
+                except Exception:
+                    pass
+            else:
+                self.close_connection = True
         finally:
             if self._last_status:
-                log_visit(self.client_ip(), method, path, self._last_status)
+                # A failure to record the visit must not take down a request
+                # that otherwise succeeded. Raising here escapes into
+                # socketserver, which kills the keep-alive connection — and
+                # the speed test depends on that connection staying up.
+                try:
+                    log_visit(self.client_ip(), method, path, self._last_status)
+                except Exception as exc:
+                    print(f"visitor log write failed: {exc}", file=sys.stderr)
 
     def _route(self, method, path, parsed):
         if path.startswith("/static/") or path == "/speedtest_worker.js":
@@ -2145,6 +2199,12 @@ class ProbeHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # requests go to the visitor log instead
 
+    def version_string(self):
+        # Without this the base class appends sys_version and the page that
+        # promises to disclose nothing about the host answers
+        # "Server: vps-server Python/3.10.12" to any anonymous HEAD.
+        return self.server_version
+
     def send_response(self, code, message=None):
         self._last_status = code
         super().send_response(code, message)
@@ -2177,7 +2237,14 @@ class ProbeHandler(BaseHTTPRequestHandler):
             self._last_status = 0  # client hung up; not a real outcome
         finally:
             if self._last_status:
-                log_visit(self.client_ip(), self.command, path, self._last_status)
+                # This listener is the one strangers reach, so it is the one
+                # most likely to be hitting a full disk or a busy database.
+                # Failing to record a visit is not a reason to drop the
+                # connection that was successfully served.
+                try:
+                    log_visit(self.client_ip(), self.command, path, self._last_status)
+                except Exception as exc:
+                    print(f"visitor log write failed: {exc}", file=sys.stderr)
 
     def _send(self, status, body, content_type, send_body):
         self.send_response(status)
