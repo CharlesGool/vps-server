@@ -22,6 +22,13 @@
 #     maintained. With `-x` the script reported "binary not found" for a file
 #     that was sitting right there, which is how the first anytls install
 #     failed. The error message now also distinguishes absent from unusable.
+#   * close_firewall() extracted from uninstall()'s inline block, plus
+#     current_port() and a `reset` subcommand. Reset rotates the port and
+#     password with the certificate left alone, so the SNI survives; it
+#     withdraws the old port's rule before opening the new one, which upstream
+#     never needed because upstream only ever opened a port or uninstalled
+#     entirely. The console's reset button calls this rather than
+#     reimplementing it.
 #   * print_result() writes the detected public address to
 #     $INSTALL_DIR/public-ip.txt. The console shows the node's client
 #     configuration for that address, and app.py makes no outbound request at
@@ -36,9 +43,3 @@
 # reapplying exactly those changes, and updating this file in the SAME commit.
 
 Anytsl-Serve v1.2.0
-#   * close_firewall() extracted from uninstall()'s inline block, plus
-#     current_port() and a `reset` subcommand. Reset rotates the port and
-#     password with the certificate left alone, so the SNI survives; it
-#     withdraws the old port's rule before opening the new one, which
-#     upstream never needed because upstream only ever opened or uninstalled.
-#     The console's reset button calls this rather than reimplementing it.
