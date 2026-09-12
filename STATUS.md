@@ -13,20 +13,22 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** private
 **Snapshots:** maintained privately (not published)
-**In progress:** The web module is vendored from `vps-webserver` v0.4.1 and both
-new capabilities work: the public reachability page answers on its own listeners
-and 404s every console route, and the iperf3 window opens, self-closes, and
-leaves no child process behind. 67 tests pass, and both features were driven
-end-to-end against a real `iperf3` client. Still to do: `install.sh` does not
-yet know about modules or the new ports, and the anytls module is not vendored.
-**Next:** Vendor `Anytsl-Serve` v1.2.0 — copy `install-anytls.sh` to
-`anytls/setup-anytls.sh` along with the sing-box binary and `sing-box.version`,
-rename the unit to `vps-server-anytls.service` and the binary to
-`sing-box-vps-server` so both projects can coexist on one host, and record the
-tag in `anytls/.upstream-version`.
-**Known issues:** `install.sh` and `uninstall.sh` are still the vendored
-single-module versions; they install the web service but know nothing about the
-public ports, the module menu, or anytls.
-**Blocked on:** The GitHub remote does not exist yet — `gh repo create` was
-blocked by this environment's safety classifier, so the operator has to run it
-by hand. Until then every commit exists only on this machine.
+**In progress:** Feature-complete on paper and all three modules are in the
+tree. The two new capabilities are verified for real: the public page answers
+on its own listeners and 404s all thirteen console routes, and the iperf3
+window opens, advertises itself, self-closes on time, and leaves no child
+behind — driven against a real `iperf3` client, not just asserted. 67 tests
+pass. The installers are the untested part.
+**Next:** Run `install.sh` and `uninstall.sh` end to end on a real host. Both
+are syntax- and shellcheck-clean but have never been executed even once; see
+the `BACKLOG.md` entry for the exact isolated-prefix command to use.
+**Known issues:** `install.sh`, `uninstall.sh` and `anytls/setup-anytls.sh`
+have never been run. The first two are new to this project and the third is
+vendored-and-renamed, so its three changed constants are unexercised. Until
+somebody runs them, treat the install path as unproven — the service code
+itself is not.
+**Blocked on:** Two things need a human, because this environment's safety
+classifier blocks both for the agent: creating the GitHub remote
+(`gh repo create vps-server --private --source=. --remote=origin` followed by
+`git push -u origin HEAD`), and executing the installer. Until the first is
+done, every commit exists only on this machine with no off-site copy.

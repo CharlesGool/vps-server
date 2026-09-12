@@ -13,8 +13,9 @@
 set -euo pipefail
 
 PREFIX="${PREFIX:-/opt/vps-server}"
-SERVICE_NAME="${SERVICE_NAME:-vps-server}"
+SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+ANYTLS_SERVICE="vps-server-anytls.service"
 
 # Speak the same language the install was set up with. The installer records
 # it in the unit file; fall back to the environment, then English.
@@ -52,6 +53,14 @@ msg() {
     zh_cn:nothing_left) fmt='%s 不存在 —— 没有需要删除的数据。\n' ;;
     zh_tw:nothing_left) fmt='%s 不存在 —— 沒有需要刪除的資料。\n' ;;
 
+    en:anytls_removing) fmt='Removing the anytls module (%s) ...\n' ;;
+    zh_cn:anytls_removing) fmt='正在卸载 anytls 模块（%s）...\n' ;;
+    zh_tw:anytls_removing) fmt='正在解除安裝 anytls 模組（%s）...\n' ;;
+
+    en:anytls_orphan)  fmt='%s is installed but %s/anytls/setup-anytls.sh is gone, so it cannot be removed automatically.\nRemove it by hand:\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s /usr/local/bin/sing-box-vps-server\n  rm -rf /etc/vps-server-anytls\n' ;;
+    zh_cn:anytls_orphan) fmt='%s 已安装，但 %s/anytls/setup-anytls.sh 已不存在，无法自动卸载。\n请手动清理：\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s /usr/local/bin/sing-box-vps-server\n  rm -rf /etc/vps-server-anytls\n' ;;
+    zh_tw:anytls_orphan) fmt='%s 已安裝，但 %s/anytls/setup-anytls.sh 已不存在，無法自動解除安裝。\n請手動清理：\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s /usr/local/bin/sing-box-vps-server\n  rm -rf /etc/vps-server-anytls\n' ;;
+
     en:done)           fmt='\nvps-server has been uninstalled.\n' ;;
     zh_cn:done)        fmt='\nvps-server 已卸载完成。\n' ;;
     zh_tw:done)        fmt='\nvps-server 已解除安裝完成。\n' ;;
@@ -65,6 +74,18 @@ msg() {
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
+
+# The anytls module goes first, and specifically before $PREFIX is deleted:
+# its own teardown script lives inside $PREFIX, so the other order would take
+# the uninstaller away and leave a running service nobody can remove.
+if [ -f "/etc/systemd/system/${ANYTLS_SERVICE}" ]; then
+  if [ -f "$PREFIX/anytls/setup-anytls.sh" ]; then
+    msg anytls_removing "$ANYTLS_SERVICE"
+    bash "$PREFIX/anytls/setup-anytls.sh" uninstall || true
+  else
+    msg anytls_orphan "$ANYTLS_SERVICE" "$PREFIX" "$ANYTLS_SERVICE" "$ANYTLS_SERVICE"
+  fi
+fi
 
 if systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
   systemctl stop "$SERVICE_NAME" 2>/dev/null || true
@@ -92,4 +113,4 @@ else
   msg nothing_left "$PREFIX"
 fi
 
-msg done
+msg "done"

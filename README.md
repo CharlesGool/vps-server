@@ -61,8 +61,10 @@ already set are kept, so re-running it upgrades in place.
 ## Quick start
 
 ```bash
-bash install.sh          # interactive install
-bash install.sh status   # what is installed, which ports, is a window open
+bash install.sh                              # interactive: modules, language, password, port
+sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # unattended, no prompts
+systemctl status vps-server-web              # is it up
+bash anytls/setup-anytls.sh status           # anytls node details, if that module is installed
 ```
 
 Then, from a different machine:

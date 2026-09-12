@@ -1,31 +1,48 @@
 #!/usr/bin/env bash
 #
-# Install vps-server as a systemd service.
+# Install vps-server. Three modules, each optional:
 #
-#   sudo ./install.sh                 # interactive: language, password, port
-#   sudo PREFIX=/srv/vpsws ./install.sh
-#   sudo VPSSRV_CONSOLE_PORT=8080 ./install.sh              # fixed port, no prompt
-#   sudo VPSSRV_CONSOLE_TLS=1 ./install.sh                  # HTTPS (self-signed unless you supply a cert)
+#   web      the public reachability page on 80/443 plus the private console
+#   iperf3   the distro iperf3 package, so the console can open a test window
+#   anytls   the sing-box anytls proxy (amd64 only)
 #
-# Asks, in this order: the UI language (which this installer's own output
-# then switches to), whether to password-protect the web UI (and if so,
-# random or operator-chosen password), and which port to listen on (random
-# or operator-chosen). Each question is skippable by pre-setting the matching
-# VPSSRV_DEFAULT_LANG / VPSSRV_AUTH / VPSSRV_CONSOLE_PORT — also how unattended installs
-# (`curl | bash`, no TTY) get sane defaults with no prompts at all.
+#   sudo ./install.sh                             # interactive
+#   sudo VPSSRV_MODULES=web,iperf3 ./install.sh   # unattended, no prompts
+#   sudo VPSSRV_MODULES=web VPSSRV_PUBLIC_ENABLE=0 ./install.sh   # console only
+#   sudo PREFIX=/srv/vpssrv ./install.sh
+#
+# Asks, in this order: the UI language (which this installer's own output then
+# switches to), which modules to install, whether to password-protect the
+# console (and if so, random or operator-chosen password), and which console
+# port to use. Every question is skippable by pre-setting the matching
+# VPSSRV_DEFAULT_LANG / VPSSRV_MODULES / VPSSRV_AUTH / VPSSRV_CONSOLE_PORT —
+# which is also how unattended installs (`curl | bash`, no TTY) get sane
+# defaults with no prompts at all.
 #
 # Re-running is safe: it refreshes the program files and restarts the service,
-# leaving admin_password.txt, port.txt, certs/ and data/ alone.
+# leaving admin_password.txt, console_port.txt, certs/ and data/ alone.
 
 set -euo pipefail
 
 PREFIX="${PREFIX:-/opt/vps-server}"
-SERVICE_NAME="${SERVICE_NAME:-vps-server}"
+SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Modules, comma-separated. anytls is not in the default set: it is a proxy,
+# and nobody should end up running one because they held down Enter.
+DEFAULT_MODULES="web,iperf3"
+
+PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
+PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
+
 INTERACTIVE=0
 [ -t 0 ] && INTERACTIVE=1
+
+has_module() {
+  case ",${MODULES}," in *",$1,"*) return 0 ;; esac
+  return 1
+}
 
 # ---------------------------------------------------------------------------
 # Installer output i18n
@@ -159,6 +176,58 @@ msg() {
     zh_cn:to_remove)     fmt='\n卸载方法：sudo ./uninstall.sh\n' ;;
     zh_tw:to_remove)     fmt='\n解除安裝方法：sudo ./uninstall.sh\n' ;;
 
+    en:ask_modules)      fmt='Choice [1]: ' ;;
+    zh_cn:ask_modules)   fmt='选择 [1]： ' ;;
+    zh_tw:ask_modules)   fmt='選擇 [1]： ' ;;
+
+    en:mod_head)         fmt='\nWhich modules?\n  1) web + iperf3   (the reachability page, the console, and bandwidth testing)\n  2) web only       (no iperf3 window)\n  3) web + iperf3 + anytls\n  4) anytls only    (proxy, nothing else)\n' ;;
+    zh_cn:mod_head)      fmt='\n安装哪些模块？\n  1) web + iperf3   （可达性页面、控制台、带宽测试）\n  2) 仅 web         （不带 iperf3 窗口）\n  3) web + iperf3 + anytls\n  4) 仅 anytls      （只装代理，别的都不装）\n' ;;
+    zh_tw:mod_head)      fmt='\n安裝哪些模組？\n  1) web + iperf3   （可達性頁面、主控台、頻寬測試）\n  2) 僅 web         （不帶 iperf3 視窗）\n  3) web + iperf3 + anytls\n  4) 僅 anytls      （只裝代理，其他都不裝）\n' ;;
+
+    en:modules_are)      fmt='Modules: %s\n' ;;
+    zh_cn:modules_are)   fmt='模块：%s\n' ;;
+    zh_tw:modules_are)   fmt='模組：%s\n' ;;
+
+    en:port_busy)        fmt='Port %s is already held by another process.\nFree it, or pick different ports with VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT,\nor set VPSSRV_PUBLIC_ENABLE=0 to skip the public page. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
+    zh_cn:port_busy)     fmt='端口 %s 已被其他进程占用。\n先腾出来，或用 VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT 换端口，\n或设 VPSSRV_PUBLIC_ENABLE=0 跳过公开页。查占用：\n  ss -lntp "( sport = :%s )"\n' ;;
+    zh_tw:port_busy)     fmt='連接埠 %s 已被其他行程占用。\n先騰出來，或用 VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT 換連接埠，\n或設 VPSSRV_PUBLIC_ENABLE=0 略過公開頁。查占用：\n  ss -lntp "( sport = :%s )"\n' ;;
+
+    en:iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
+    zh_cn:iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
+    zh_tw:iperf_installing) fmt='正在從發行版套件庫安裝 iperf3 ...\n' ;;
+
+    en:iperf_failed)     fmt='Could not install iperf3. The console will say so when a window is requested; install it by hand with: apt install iperf3\n' ;;
+    zh_cn:iperf_failed)  fmt='iperf3 安装失败。请求开窗口时控制台会提示；可手动安装：apt install iperf3\n' ;;
+    zh_tw:iperf_failed)  fmt='iperf3 安裝失敗。請求開視窗時主控台會提示；可手動安裝：apt install iperf3\n' ;;
+
+    en:anytls_arch)      fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
+    zh_cn:anytls_arch)   fmt='anytls 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
+    zh_tw:anytls_arch)   fmt='anytls 模組需要 x86-64，本機是 %s，略過 —— 隨儲存庫散布的 sing-box 二進位在這裡無法執行。\n' ;;
+
+    en:anytls_start)     fmt='\nInstalling the anytls module ...\n' ;;
+    zh_cn:anytls_start)  fmt='\n正在安装 anytls 模块 ...\n' ;;
+    zh_tw:anytls_start)  fmt='\n正在安裝 anytls 模組 ...\n' ;;
+
+    en:line_modules)     fmt='  modules:  %s\n' ;;
+    zh_cn:line_modules)  fmt='  模块：    %s\n' ;;
+    zh_tw:line_modules)  fmt='  模組：    %s\n' ;;
+
+    en:line_public)      fmt='  public:   http://<this-server>:%s/ and https://<this-server>:%s/ (no login)\n' ;;
+    zh_cn:line_public)   fmt='  公开页：  http://<本机地址>:%s/ 和 https://<本机地址>:%s/ （无需登录）\n' ;;
+    zh_tw:line_public)   fmt='  公開頁：  http://<本機位址>:%s/ 和 https://<本機位址>:%s/ （無需登入）\n' ;;
+
+    en:line_public_off)  fmt='  public:   disabled (VPSSRV_PUBLIC_ENABLE=0)\n' ;;
+    zh_cn:line_public_off) fmt='  公开页：  已关闭（VPSSRV_PUBLIC_ENABLE=0）\n' ;;
+    zh_tw:line_public_off) fmt='  公開頁：  已關閉（VPSSRV_PUBLIC_ENABLE=0）\n' ;;
+
+    en:line_iperf)       fmt='  iperf3:   ready, window closed — open one from the console (port %s)\n' ;;
+    zh_cn:line_iperf)    fmt='  iperf3：  就绪，窗口关闭中 —— 到控制台开启（端口 %s）\n' ;;
+    zh_tw:line_iperf)    fmt='  iperf3：  就緒，視窗關閉中 —— 到主控台開啟（連接埠 %s）\n' ;;
+
+    en:line_iperf_off)   fmt='  iperf3:   not installed\n' ;;
+    zh_cn:line_iperf_off) fmt='  iperf3：  未安装\n' ;;
+    zh_tw:line_iperf_off) fmt='  iperf3：  未安裝\n' ;;
+
     *) fmt="$key\n" ;;   # unknown key: show it rather than printing nothing
   esac
   # shellcheck disable=SC2059  # fmt is a trusted format string from the table above
@@ -195,9 +264,96 @@ fi
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
 
-# TLS is on by default and needs openssl for first-run certificate generation.
-if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] && ! command -v openssl >/dev/null 2>&1; then
+# openssl generates the first-run self-signed certificate. That is needed
+# whenever anything here terminates TLS: the public page always does (port 443
+# is half the point of it), and the console does when asked to.
+if { [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] || [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; } \
+   && ! command -v openssl >/dev/null 2>&1; then
   die "$(msg no_openssl)"
+fi
+
+# ---------------------------------------------------------------------------
+# 1b. Modules.
+# ---------------------------------------------------------------------------
+MODULES="${VPSSRV_MODULES:-}"
+if [ -z "$MODULES" ]; then
+  if [ "$INTERACTIVE" = "1" ]; then
+    msg mod_head
+    msg ask_modules
+    read -r mod_choice </dev/tty || mod_choice="1"
+    case "$mod_choice" in
+      2) MODULES="web" ;;
+      3) MODULES="web,iperf3,anytls" ;;
+      4) MODULES="anytls" ;;
+      *) MODULES="$DEFAULT_MODULES" ;;
+    esac
+  else
+    MODULES="$DEFAULT_MODULES"
+  fi
+fi
+msg modules_are "$MODULES"
+
+# The vendored sing-box binary is amd64. Skipping the module beats installing
+# a binary that cannot execute and failing later with "Exec format error".
+if has_module anytls; then
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64|amd64) ;;
+    *) msg anytls_arch "$ARCH"; MODULES="${MODULES//anytls/}" ;;
+  esac
+fi
+
+install_iperf3() {
+  command -v iperf3 >/dev/null 2>&1 && return 0
+  msg iperf_installing
+  if ! { apt-get update -qq && apt-get install -y -qq iperf3; } >/dev/null 2>&1; then
+    msg iperf_failed
+    return 0   # a missing iperf3 disables one console button, not the install
+  fi
+}
+
+install_anytls() {
+  msg anytls_start
+  # Its own script owns everything anytls: deps, binary, config, unit,
+  # firewall, BBR, and the client-config summary it prints at the end.
+  ANYTLS_PORT="${ANYTLS_PORT:-}" ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-}" \
+  SNI="${SNI:-www.bing.com}" SERVER_IP="${SERVER_IP:-}" \
+    bash "$PREFIX/anytls/setup-anytls.sh"
+}
+
+# Refuse to fight for 80/443 rather than letting systemd restart-loop on a
+# port that will never be free. Our own listener is excluded by stopping the
+# service first — on a re-run it is the process holding the port.
+port_held() {
+  ss -lnt "( sport = :$1 )" 2>/dev/null | tail -n +2 | grep -q .
+}
+
+if has_module web && [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; then
+  systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
+  if command -v ss >/dev/null 2>&1; then
+    for p in "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"; do
+      if port_held "$p"; then
+        die "$(msg port_busy "$p" "$p")"
+      fi
+    done
+  fi
+fi
+
+# anytls on its own: nothing below this point applies, since all of it exists
+# to install and configure the Python service.
+if ! has_module web; then
+  mkdir -p "$PREFIX"
+  PREFIX_ABS_EARLY="$(cd "$PREFIX" && pwd)"
+  if [ "$SRC_DIR" != "$PREFIX_ABS_EARLY" ]; then
+    for item in anytls sing-box; do
+      [ -e "$SRC_DIR/$item" ] || continue
+      rm -rf "${PREFIX:?}/$item"
+      cp -r "$SRC_DIR/$item" "$PREFIX/"
+    done
+  fi
+  has_module anytls && install_anytls
+  msg to_remove
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -246,7 +402,7 @@ fi
 # typed number fell through to the random branch (reported 2026-08-25: the
 # operator answered "50" and silently got a random port).
 if [ -z "${VPSSRV_CONSOLE_PORT:-}" ] && [ "$INTERACTIVE" = "1" ] \
-   && [ ! -f "${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/port.txt}" ]; then
+   && [ ! -f "${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}" ]; then
   while :; do
     msg ask_port
     read -r custom_port </dev/tty || custom_port=""
@@ -279,8 +435,13 @@ else
   # is deliberately excluded so re-running never clobbers an existing install.
   # CHANGELOG.md (English + translated_*/) is shipped because the app serves
   # it at /changelog, so the person you deployed for can see what changed.
-  for item in app.py static systemd tests README.md LICENSE CHANGELOG.md \
-              translated_zh_cn translated_zh_tw; do
+  COPY_ITEMS="app.py static systemd tests README.md LICENSE LICENSES
+              THIRD_PARTY_NOTICES.md CHANGELOG.md
+              translated_zh_cn translated_zh_tw"
+  # The sing-box binary is ~57 MB. Copying it into an install that will never
+  # run anytls is pure waste, so it travels with its module.
+  has_module anytls && COPY_ITEMS="$COPY_ITEMS anytls sing-box"
+  for item in $COPY_ITEMS; do
     [ -e "$SRC_DIR/$item" ] || continue
     rm -rf "${PREFIX:?}/$item"
     cp -r "$SRC_DIR/$item" "$PREFIX/"
@@ -304,9 +465,13 @@ fi
 
 # Carry over any explicitly provided settings so the unit reproduces them.
 ENV_LINES=""
-for var in VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSSRV_REDIRECT_PORT VPSSRV_HOST \
+for var in VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSSRV_HOST \
+           VPSSRV_PUBLIC_ENABLE VPSSRV_PUBLIC_HTTP_PORT VPSSRV_PUBLIC_HTTPS_PORT \
+           VPSSRV_IPERF_ENABLE VPSSRV_IPERF_PORT VPSSRV_IPERF_DEFAULT_MINUTES \
+           VPSSRV_IPERF_MAX_MINUTES \
            VPSSRV_DATA_DIR VPSSRV_PASSWORD_FILE VPSSRV_AUTH VPSSRV_DEFAULT_LANG \
            VPSSRV_CERT_DIR VPSSRV_TLS_CERT VPSSRV_TLS_KEY VPSSRV_TRUST_PROXY VPSSRV_MAX_TEST_MB \
+           VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS \
            VPSSRV_TEST_SECONDS VPSSRV_WARMUP_SECONDS VPSSRV_DOWNLOAD_STREAMS \
            VPSSRV_UPLOAD_STREAMS VPSSRV_PING_SAMPLES; do
   if [ -n "${!var:-}" ]; then
@@ -327,10 +492,12 @@ ProtectSystem=strict
 ReadWritePaths=$PREFIX"
 fi
 
+has_module iperf3 && install_iperf3
+
 msg writing_unit "$UNIT_PATH"
 cat > "$UNIT_PATH" <<EOF
 [Unit]
-Description=vps-server — VPS speed test + recent visitor IP log
+Description=vps-server — public reachability page, speed-test console, iperf3 window
 After=network.target
 
 [Service]
@@ -358,7 +525,7 @@ if ! systemctl is-active --quiet "$SERVICE_NAME"; then
 fi
 
 PW_FILE="${VPSSRV_PASSWORD_FILE:-$PREFIX/admin_password.txt}"
-PORT_FILE="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/port.txt}"
+PORT_FILE="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
 if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 # VPSSRV_CONSOLE_PORT, if set, was carried into the unit verbatim. Otherwise app.py
 # picked a random port on this first start and persisted it to PORT_FILE.
@@ -368,11 +535,22 @@ if [ -z "$PORT" ] && [ -f "$PORT_FILE" ]; then
 fi
 
 msg running
+msg line_modules "$MODULES"
 msg line_service "$SERVICE_NAME"
+if [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; then
+  msg line_public "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"
+else
+  msg line_public_off
+fi
 if [ -n "$PORT" ]; then
   msg line_url "$SCHEME" "$PORT"
 else
   msg line_url_unknown "$SCHEME" "$PORT_FILE" "$SERVICE_NAME"
+fi
+if command -v iperf3 >/dev/null 2>&1; then
+  msg line_iperf "${VPSSRV_IPERF_PORT:-5201}"
+else
+  msg line_iperf_off
 fi
 if [ "$VPSSRV_AUTH" = "0" ]; then
   msg line_pw_none
@@ -387,4 +565,10 @@ fi
 if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] && [ -z "${VPSSRV_TLS_CERT:-}" ]; then
   msg cert_note
 fi
+
+# Last, and after the web service is confirmed healthy: the anytls script
+# prints a client-configuration block of its own, and burying that above the
+# web summary would make it easy to miss.
+has_module anytls && install_anytls
+
 msg to_remove
