@@ -20,15 +20,14 @@ its ports, 404'd console routes on the public port, and answered on the
 console port. Two installer bugs surfaced in that run and are fixed — the
 teardown hint dropped `PREFIX`/`SERVICE_NAME`, and the usage examples used
 `./script.sh`, which cannot work from a CIFS working copy. 67 tests pass.
-**Next:** Verify the iperf3 window from inside a systemd unit rather than from
-a shell — specifically whether `firewall_port()` can still invoke `iptables`
-under `NoNewPrivileges` and `ProtectSystem=strict`. Open a window from an
-installed instance's console, check `iptables -S INPUT | grep 5201`, close it,
-check the rule is gone.
+**Next:** Install the anytls module on an amd64 host and check its three
+renamed constants land — `systemctl status vps-server-anytls`,
+`/etc/vps-server-anytls/config.json`, `/usr/local/bin/sing-box-vps-server` —
+then confirm `refuse_if_upstream_running` actually refuses while
+`sing-box-anytls.service` is up, and that `uninstall.sh` removes all of it.
 **Known issues:** The anytls module has never been installed, so its three
 renamed constants and the `refuse_if_upstream_running` guard are unexercised.
-The iperf3 window has only been driven from a shell, never from under systemd
-sandboxing. The six governance documents are still untranslated template
-placeholders in `translated_zh_cn/` and `translated_zh_tw/`; they get
-translated as part of the v0.1.0 release checklist.
+The six governance documents are still untranslated template placeholders in
+`translated_zh_cn/` and `translated_zh_tw/`; they get translated as part of
+the v0.1.0 release checklist.
 **Blocked on:** nothing.
