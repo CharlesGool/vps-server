@@ -29,15 +29,15 @@ except at the bottom" is one.
 ## Items
 
 - [x] 2026-09-12 Agree the architecture and write `DESIGN.md` — done before any code
-- [ ] 2026-09-12 Vendor `vps-webserver` v0.4.1 — copy `app.py`, `static/`, `tests/`, `install.sh`, `uninstall.sh`, `systemd/` from the upstream tag; record the tag in `.upstream-version`; rename the `VPSWS_` env prefix to `VPSSRV_` in the same commit
-- [ ] 2026-09-12 Split `app.py` into two handlers — `ConsoleHandler` keeps every existing route; add `ProbeHandler` serving only `/` and `/favicon.ico`; start the public listeners on 80 and 443 alongside the console listener
-- [ ] 2026-09-12 Write the public reachability page — source IP, server clock, arrival protocol/port, and nothing about the host; `static/probe.css`, no JavaScript
-- [ ] 2026-09-12 Implement the iperf3 window — console route to open/close, `subprocess.Popen("iperf3 -s -p …")`, in-memory deadline, expiry thread, firewall open/withdraw, teardown on `SIGTERM`
-- [ ] 2026-09-12 Surface the open window on the public page — port and remaining minutes, so a remote tester knows when to connect
+- [x] 2026-09-12 Vendor `vps-webserver` v0.4.1 — copy `app.py`, `static/`, `tests/`, `install.sh`, `uninstall.sh`, `systemd/` from the upstream tag; record the tag in `.upstream-version`; rename the `VPSWS_` env prefix to `VPSSRV_` in the same commit
+- [x] 2026-09-12 Split `app.py` into two handlers — `ConsoleHandler` keeps every existing route; add `ProbeHandler` serving only `/` and `/favicon.ico`; start the public listeners on 80 and 443 alongside the console listener
+- [x] 2026-09-12 Write the public reachability page — source IP, server clock, arrival protocol/port, and nothing about the host; no JavaScript. The stylesheet ended up inlined as `PROBE_CSS` rather than a `static/probe.css` file, so the public listener has no file-serving route at all
+- [x] 2026-09-12 Implement the iperf3 window — console route to open/close, `subprocess.Popen("iperf3 -s -p …")`, in-memory deadline, expiry thread, firewall open/withdraw, teardown on `SIGTERM`
+- [x] 2026-09-12 Surface the open window on the public page — port and remaining minutes, so a remote tester knows when to connect
 - [ ] 2026-09-12 Vendor `Anytsl-Serve` v1.2.0 — `anytls/setup-anytls.sh` plus the sing-box binary and `sing-box.version`; rename the unit to `vps-server-anytls.service` and the binary to `sing-box-vps-server`; record the tag in `anytls/.upstream-version`
 - [ ] 2026-09-12 Make `install.sh` a module menu — web / anytls / iperf3 independently selectable; refuse when 80 or 443 is already bound; refuse when upstream `sing-box-anytls.service` is running; skip anytls on non-amd64
 - [ ] 2026-09-12 Extend `uninstall.sh` to tear down whichever modules it finds — default full removal, `KEEP_DATA=1` to keep the visitor database
-- [ ] 2026-09-12 Tests for the new surface — `ProbeHandler` answers 404 on every console route; the iperf3 window expires and kills its child; the window does not survive a restart
+- [x] 2026-09-12 Tests for the new surface — `ProbeHandler` answers 404 on every console route; the iperf3 window expires and kills its child; the window does not survive a restart. 67 tests pass; `firewall_port` is stubbed in the window tests so the suite never touches the host firewall
 - [ ] 2026-09-12 Write `LICENSE` (GPL-3.0), `LICENSES/`, and `THIRD_PARTY_NOTICES.md` — sing-box (GPL-3.0, with SHA-256 and corresponding-source links), LibreSpeed (LGPL-3.0), iperf3 (BSD-3-Clause, distro-installed so not redistributed)
 - [ ] 2026-09-12 Translate the six governance docs into `translated_zh_cn/` and `translated_zh_tw/` — currently untranslated template placeholders; dispatch `doc-translator`, one instance per document per language
 - [ ] 2026-09-12 End-to-end verification on a real second machine — reach the public page over both 80 and 443 from off-host, open a window and run `iperf3 -c <ip> --json`, confirm `mean_rtt` is present

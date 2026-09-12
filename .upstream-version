@@ -1,0 +1,15 @@
+# Where the vendored web module came from.
+#
+# app.py, static/, tests/, install.sh, uninstall.sh and systemd/ were copied
+# from the vps-webserver repository at the tag below, then adapted: the
+# environment prefix VPSWS_ became VPSSRV_, VPSWS_PORT split into
+# VPSSRV_CONSOLE_PORT (80/443 now belong to the public page), the HTTP-to-HTTPS
+# redirect listener was removed, Handler became ConsoleHandler, and
+# ProbeHandler plus the iperf3 window were added.
+#
+# Refreshing this vendored tree means re-copying from a newer upstream tag and
+# updating this file in the SAME commit. Never hand-edit vendored code without
+# recording it here — a local change that upstream does not know about turns
+# the next refresh into a silent regression.
+
+vps-webserver v0.4.1

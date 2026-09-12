@@ -1,0 +1,34 @@
+[Unit]
+Description=vps-server — public reachability page, speed-test console, iperf3 window
+After=network.target
+
+[Service]
+Type=simple
+# Adjust to the actual install location, e.g. /opt/vps-server.
+WorkingDirectory=/opt/vps-server
+ExecStart=/usr/bin/env python3 /opt/vps-server/app.py
+Restart=on-failure
+RestartSec=5
+# Root is needed for three things: binding the public page on 80 and 443,
+# reading the kernel TCP table for the visitor log, and adding the transient
+# firewall rule for an open iperf3 window. Dropping to a normal user means
+# giving up all three.
+User=root
+# Config is read from WorkingDirectory/.env, or set it here:
+# Environment=VPSSRV_PUBLIC_ENABLE=0
+# Environment=VPSSRV_CONSOLE_PORT=8080
+
+# KillMode is left at the default (control-group) on purpose: it reaps the
+# iperf3 child along with the service. app.py also closes the window on
+# SIGTERM, so the child is caught either way.
+
+# Sandboxing. These fail with 226/NAMESPACE inside an unprivileged container
+# (it cannot create mount namespaces) — comment them out there. install.sh
+# detects this automatically and omits them.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/vps-server
+
+[Install]
+WantedBy=multi-user.target

@@ -202,7 +202,7 @@ reconfigure another.
 | `VPSSRV_TRUST_PROXY` | Honour `X-Forwarded-For` when recording visitors | `0` | no |
 | `VPSSRV_TRACK_CONNECTIONS` | Poll `/proc/net/tcp[6]` for all-port connection logging | `1` | no |
 | `VPSSRV_CONN_POLL_SECONDS` | Poll interval | `5` | no |
-| `VPSSRV_MAX_TEST_MB` | Cap on a single speedtest transfer | `1024` | no |
+| `VPSSRV_MAX_TEST_MB` | Cap on a single speedtest transfer, in MB | `200` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
 | `ANYTLS_*` | The anytls module keeps the upstream names | see `.env.example` | no |
 
