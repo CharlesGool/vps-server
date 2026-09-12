@@ -150,6 +150,22 @@ places. The reset requires a confirmation checkbox validated on the server —
 browser — because rotating the credentials breaks every configured client
 until they are given the new ones.
 
+It also runs **outside this service's sandbox**, as a transient unit via
+`systemd-run --pipe --wait --collect`. The web unit has
+`ProtectSystem=strict` with only `ReadWritePaths=$VPSSRV_PREFIX`, so `/etc` is
+read-only to it, and a reset has to write `/etc/vps-server-anytls` and a unit
+file. The first real attempt died halfway through for exactly that reason —
+after it had already withdrawn the old port's firewall rule. The alternative,
+adding `/etc/systemd/system` to `ReadWritePaths`, would widen the long-running
+service's write access permanently so that one button works; the sandbox is
+worth more than that. Without `systemd-run` the call is made directly, which
+is correct because the environments that lack it are the same ones where
+`install.sh` omits the hardening.
+
+`setup-anytls.sh reset` also checks that it can write before it touches the
+firewall. A reset that fails after withdrawing the old rule leaves a running
+node with no way in, which is worse than one that never started.
+
 Two details are load-bearing. The **node password is on that page in clear**,
 which is acceptable only because the page lives on `ConsoleHandler`, behind
 the login; `ProbeHandler` has no route to it, and a test asserts the public

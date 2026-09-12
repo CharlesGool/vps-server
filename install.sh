@@ -519,6 +519,14 @@ if existing_install; then
   fi
 fi
 
+# Re-derived here, because apply_previous may have just supplied the values
+# these are computed from. Left at their top-of-script values they keep the
+# defaults, which is how an upgrade printed ":80" for a page that was really
+# listening on 8080 — and, worse, how the port-conflict check below came to
+# test port 80 while the install was about to bind 8080.
+PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
+PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
+
 # ---------------------------------------------------------------------------
 # 1b. Modules.
 # ---------------------------------------------------------------------------

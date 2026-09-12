@@ -556,6 +556,31 @@ def anytls_public_address():
     return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
 
 
+def anytls_reset_command():
+    """argv for a reset, run outside this service's sandbox where possible.
+
+    The unit this process runs under has ProtectSystem=strict with only
+    ReadWritePaths=$PREFIX, so /etc is read-only to it — and a reset has to
+    write /etc/vps-server-anytls and a unit file. Running it inside the
+    sandbox fails partway through, after the old port's firewall rule is
+    already gone.
+
+    The fix is not to widen this service's write access for the lifetime of
+    the install so that one button works. It is to hand the privileged work to
+    a transient unit, which systemd starts outside our sandbox. The fixed unit
+    name also serialises resets; --collect reaps it either way.
+
+    Without systemd-run — a container, a stripped image — run it directly.
+    Hardening is omitted in exactly those environments anyway, so the direct
+    call is the one that works there.
+    """
+    direct = ["bash", str(ANYTLS_SETUP), "reset"]
+    if shutil.which("systemd-run"):
+        return ["systemd-run", "--pipe", "--wait", "--collect",
+                "--unit=vps-server-anytls-reset", *direct]
+    return direct
+
+
 def anytls_reset():
     """Rotate the node's port and password. Returns a STRINGS key.
 
@@ -568,7 +593,7 @@ def anytls_reset():
         return "anytls_reset_missing"
     try:
         result = subprocess.run(
-            ["bash", str(ANYTLS_SETUP), "reset"],
+            anytls_reset_command(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=ANYTLS_RESET_TIMEOUT,

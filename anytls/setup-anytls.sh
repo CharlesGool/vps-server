@@ -407,6 +407,23 @@ reset(){
   # current_port 会返回空，于是旧端口的规则被静静跳过——正好是这个函数
   # 存在的理由。
   install_deps
+
+  # 先确认真的写得下去，再动防火墙。第一版没有这道检查：它先撤掉旧端口的
+  # 放行规则，然后在写 /etc 时失败退出，留下一个跑着但没放行的节点——比
+  # 「没重置成」更糟。写不了就一样东西都别碰。
+  if ! mkdir -p "${INSTALL_DIR}" 2>/dev/null \
+     || ! touch "${INSTALL_DIR}/.writable" 2>/dev/null; then
+    err "${INSTALL_DIR} 不可写，重置中止 —— 没有改动任何东西。"
+    err "常见原因：调用方跑在 systemd 沙箱里（ProtectSystem=strict 会让 /etc 只读）。"
+    exit 1
+  fi
+  rm -f "${INSTALL_DIR}/.writable"
+  if ! touch /etc/systemd/system/.vps-server-writable 2>/dev/null; then
+    err "/etc/systemd/system 不可写，重置中止 —— 没有改动任何东西。"
+    exit 1
+  fi
+  rm -f /etc/systemd/system/.vps-server-writable
+
   old_port="$(current_port)"
   if [[ -n "$old_port" ]]; then
     log "重置节点：旧端口 ${old_port} -> 新端口 ${ANYTLS_PORT}"

@@ -1158,6 +1158,34 @@ class AnytlsPageTest(unittest.TestCase):
         finally:
             app.anytls_reset = original
 
+    def test_reset_runs_outside_this_service_sandbox(self):
+        # The unit has ProtectSystem=strict with ReadWritePaths=$PREFIX only,
+        # so /etc is read-only here — and the reset must write
+        # /etc/vps-server-anytls and a unit file. Running it in-process failed
+        # partway, after the old port's firewall rule had already been pulled.
+        original = app.shutil.which
+        app.shutil.which = lambda name: "/usr/bin/systemd-run" if name == "systemd-run" else None
+        try:
+            cmd = app.anytls_reset_command()
+            self.assertEqual(cmd[0], "systemd-run")
+            self.assertIn("--wait", cmd)
+            self.assertIn("--pipe", cmd)
+            self.assertIn("--collect", cmd)
+            self.assertEqual(cmd[-2:], [str(app.ANYTLS_SETUP), "reset"])
+        finally:
+            app.shutil.which = original
+
+    def test_reset_falls_back_to_a_direct_call_without_systemd_run(self):
+        # Containers and stripped images have no systemd-run — and are also
+        # where the hardening is omitted, so a direct call works there.
+        original = app.shutil.which
+        app.shutil.which = lambda name: None
+        try:
+            self.assertEqual(app.anytls_reset_command(),
+                             ["bash", str(app.ANYTLS_SETUP), "reset"])
+        finally:
+            app.shutil.which = original
+
     def test_reset_reports_a_missing_script_rather_than_crashing(self):
         original = app.ANYTLS_SETUP
         app.ANYTLS_SETUP = Path("/nonexistent/setup-anytls.sh")

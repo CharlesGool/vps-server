@@ -21,11 +21,11 @@ node comes up and its teardown removes the unit, binary, config directory and
 firewall rule, and all three UI languages render. 78 tests pass. The console
 now also has an anytls page that shows the node's status and offers a
 copyable Clash entry and share link.
-**Next:** Run a real upgrade over an older install. `install.sh` is now
-upgrade-aware, and its helpers were each driven against synthetic state, but
-the path has not been executed end to end: install, set something via env
-(`VPSSRV_PUBLIC_HTTP_PORT=8080`), re-run, and confirm the summary still shows
-8080 and the anytls password did not change.
+**Next:** Reinstall and press the anytls reset button once. It failed on its
+first real attempt because the web service runs with `ProtectSystem=strict`
+and `/etc` is read-only to it; the reset now runs in a transient unit via
+`systemd-run`, which is verified to work on a real host, but the reset itself
+has never completed end to end.
 **Known issues:** The copy buttons on `/anytls` have not been clicked in a
 browser. `navigator.clipboard` does not exist outside a secure context and
 the console is plain HTTP by default, so the `document.execCommand` fallback
