@@ -6,6 +6,16 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.0.1 — 2026-09-12
+
+### Fixed
+
+- The changelog page showed the maintainer comment from the bottom of the
+  CHANGELOG file — the one naming which headings stay in English — as ordinary
+  paragraphs, escaped `<!--` and `-->` included, in all three languages. The
+  renderer had no comment handling at all. Display only; nothing else was
+  affected.
+
 ## v1.0.0 — 2026-09-12
 
 First release. It combines two existing projects — a password-protected VPS

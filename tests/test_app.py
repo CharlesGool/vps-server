@@ -409,9 +409,17 @@ class ChangelogAndVersionTest(unittest.TestCase):
         written — which is the one moment they most needed to still work.
         """
         text = Path(path).read_text()
-        match = re.search(r"^## v.*?\n\n(.+)$", text, re.M)
-        self.assertIsNotNone(match, f"no version section in {path}")
-        return match.group(1).strip()[:18]
+        # Skip headings: the category names (### Fixed, ### Added) are copied
+        # verbatim into every language, so the first line under a version
+        # whose only content is a category would be identical in all three and
+        # discriminate nothing.
+        body = re.split(r"^## v", text, flags=re.M)
+        self.assertGreater(len(body), 1, f"no version section in {path}")
+        for line in body[1].splitlines()[1:]:
+            s = line.strip()
+            if s and not s.startswith(("#", "-", ">", "<", "|")):
+                return s[:18]
+        self.fail(f"no prose under the first version heading in {path}")
 
     def test_maintainer_comments_are_not_rendered(self):
         # Every CHANGELOG here ends with an HTML comment telling whoever edits
@@ -426,10 +434,14 @@ class ChangelogAndVersionTest(unittest.TestCase):
                              headers={"Cookie": f"session={session}"})
                 body = conn.getresponse().read().decode()
                 conn.close()
-                self.assertNotIn("&lt;!--", body)
-                self.assertNotIn("--&gt;", body)
+                # Assert on text that only ever appears inside the comment.
+                # Checking for an escaped `<!--` looked stronger and was
+                # wrong: the v1.0.1 release note describes this very bug and
+                # quotes the delimiters, so the page legitimately contains
+                # them and the test flagged its own changelog entry.
                 self.assertNotIn("release-preflight.sh", body,
                                  "the comment's contents leaked into the page")
+                self.assertNotIn("locates the current section", body)
 
     def test_changelog_page_renders_current_version_section(self):
         session = self.login()

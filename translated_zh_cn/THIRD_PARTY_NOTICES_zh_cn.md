@@ -2,7 +2,7 @@
 
 [English](../THIRD_PARTY_NOTICES.md) | **简体中文**
 
-> 译自 `THIRD_PARTY_NOTICES.md`（v1.0.0）。如有冲突，以英文版为准；许可证与 NOTICE 原文以其各自的原始文本为准。
+> 译自 `THIRD_PARTY_NOTICES.md`（v1.0.1）。如有冲突，以英文版为准；许可证与 NOTICE 原文以其各自的原始文本为准。
 
 本项目本身以 GPL-3.0 授权（见 [`LICENSE`](../LICENSE)）。之所以选择 GPL-3.0 而非更宽松的许可证，是因为本项目重新分发了 sing-box 可执行文件，而该文件是 GPL-3.0 授权的；组合作品也必须采用相同许可证。从 `vps-webserver`（上游为 Apache-2.0）搬运来的代码，在本项目中以 GPL-3.0 重新分发——Apache-2.0 允许这样做，反过来则不被允许。
 

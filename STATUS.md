@@ -1,6 +1,6 @@
 ---
 project: vps-server
-version: v1.0.0
+version: v1.0.1
 status: active
 branch: main
 updated: 2026-09-12
@@ -13,8 +13,12 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.0.0 released and the repository is public. Every feature
-was verified on a real host by the operator before the tag: the public page
+**In progress:** v1.0.1 released; the repository is public. v1.0.0 shipped
+with the CHANGELOG's maintainer comment visible on the changelog page, which
+is what this patch fixes — display only, nothing else was affected.
+
+Every feature was verified on a real host by the operator before v1.0.0: the
+public page
 answers on both public ports, the console and browser speed test work, the
 iperf3 window measures 2.8 Gbit/s over LAN and refuses connections once it
 closes itself, the anytls node installs, rotates its credentials and tears

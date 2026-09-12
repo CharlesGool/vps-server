@@ -28,6 +28,8 @@ except at the bottom" is one.
 
 ## Items
 
+- [x] 2026-09-12 Stop the changelog page rendering the maintainer comment — `render_changelog()` had no comment handling, so every line between `<!--` and `-->` became a paragraph on the page in all three languages. Shipped visible in v1.0.0, fixed in v1.0.1
+
 - [x] 2026-09-12 Agree the architecture and write `DESIGN.md` — done before any code
 - [x] 2026-09-12 Vendor `vps-webserver` v0.4.1 — copy `app.py`, `static/`, `tests/`, `install.sh`, `uninstall.sh`, `systemd/` from the upstream tag; record the tag in `.upstream-version`; rename the `VPSWS_` env prefix to `VPSSRV_` in the same commit
 - [x] 2026-09-12 Split `app.py` into two handlers — `ConsoleHandler` keeps every existing route; add `ProbeHandler` serving only `/` and `/favicon.ico`; start the public listeners on 80 and 443 alongside the console listener
