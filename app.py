@@ -55,13 +55,32 @@ def load_dotenv(path):
         os.environ.setdefault(key.strip(), value.strip())
 
 
-# Single source of truth for the version. Shown in the UI next to the brand
-# and used by the release checklist; bump it in the same commit as the tag.
-# This is vps-server's own version, not the vps-webserver release this file was
-# vendored from — that tag is recorded in .upstream-version.
-VERSION = "0.1.0"
-
 BASE_DIR = Path(__file__).resolve().parent
+
+
+def _read_version():
+    """The version this build actually is, from the VERSION file beside us.
+
+    Not a constant in this file, on purpose. A hand-written one is wrong the
+    moment somebody tags a release and forgets to edit it, and nothing
+    reports that — the console just keeps claiming the previous version to
+    whoever is looking at it three deploys later.
+
+    install.sh writes this file: from `git describe --tags --exact-match`
+    when it is installing from a git checkout, from `dev-<short sha>` when
+    that checkout is not sitting on a tag, and from the copy committed at
+    release time when there is no git at all (a tarball). A build that cannot
+    establish what it is says so rather than guessing.
+    """
+    try:
+        value = (BASE_DIR / "VERSION").read_text().strip()
+    except OSError:
+        return "dev-unknown"
+    return value or "dev-unknown"
+
+
+VERSION = _read_version()
+
 load_dotenv(BASE_DIR / ".env")
 
 HOST = os.environ.get("VPSSRV_HOST", "0.0.0.0")

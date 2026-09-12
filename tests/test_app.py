@@ -400,6 +400,19 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertIn(f"v{app.VERSION}", body)
         conn.close()
 
+    def changelog_sentinel(self, path):
+        """A distinctive phrase from the file that should have been rendered.
+
+        Taken from the file at test time rather than hard-coded. The previous
+        version pinned the literal words of the unreleased placeholder, so
+        every one of these tests broke the moment a real CHANGELOG section was
+        written — which is the one moment they most needed to still work.
+        """
+        text = Path(path).read_text()
+        match = re.search(r"^## v.*?\n\n(.+)$", text, re.M)
+        self.assertIsNotNone(match, f"no version section in {path}")
+        return match.group(1).strip()[:18]
+
     def test_changelog_page_renders_current_version_section(self):
         session = self.login()
         conn = self.connect()
@@ -424,8 +437,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
         # English in every language, because release-preflight.sh and the
         # GitHub release notes both key off the English file's structure.
         # An "English headings are absent" check would therefore never pass.
-        self.assertIn("尚未发布", body)
-        self.assertNotIn("Nothing has shipped yet", body)
+        self.assertIn(self.changelog_sentinel("translated_zh_cn/CHANGELOG_zh_cn.md"), body)
+        self.assertNotIn(self.changelog_sentinel("CHANGELOG.md"), body)
 
     def test_changelog_traditional_chinese(self):
         session = self.login()
@@ -436,8 +449,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
         body = resp.read().decode()
         conn.close()
         self.assertIn("<h2>", body, "zh_tw changelog headings were not rendered")
-        self.assertIn("尚未發布", body)
-        self.assertNotIn("Nothing has shipped yet", body)
+        self.assertIn(self.changelog_sentinel("translated_zh_tw/CHANGELOG_zh_tw.md"), body)
+        self.assertNotIn(self.changelog_sentinel("CHANGELOG.md"), body)
 
     def test_changelog_fallback_notice_when_translation_missing(self):
         session = self.login()
@@ -449,7 +462,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
             resp = conn.getresponse()
             body = resp.read().decode()
             conn.close()
-            self.assertIn("Nothing has shipped yet", body)  # fell back to English
+            self.assertIn(self.changelog_sentinel("CHANGELOG.md"), body)  # fell back to English
             self.assertIn(app.STRINGS["zh_cn"]["changelog_fallback"], body)
         finally:
             app.CHANGELOG_PATHS["zh_cn"] = original
@@ -460,7 +473,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.request("GET", "/changelog?lang=en", headers={"Cookie": f"session={session}"})
         body = conn.getresponse().read().decode()
         conn.close()
-        self.assertIn("Nothing has shipped yet", body)
+        self.assertIn(self.changelog_sentinel("CHANGELOG.md"), body)
 
     def test_changelog_requires_login(self):
         conn = self.connect()
@@ -1369,6 +1382,28 @@ class InstallerContractTest(unittest.TestCase):
         for var in sorted(self.known_vars()):
             with self.subTest(var=var):
                 self.assertIn(var, text, f"{var} is not read anywhere in app.py")
+
+    def test_version_file_agrees_with_status(self):
+        # The UI reads VERSION; the release checklist reads STATUS.md's front
+        # matter. Two records of the same fact drift, and the drift is
+        # invisible — the console would keep naming a version nobody tagged.
+        version = (self.ROOT / "VERSION").read_text().strip()
+        status = re.search(r"^version:\s*(\S+)\s*$",
+                           (self.ROOT / "STATUS.md").read_text(), re.M).group(1)
+        if status == "unreleased":
+            self.skipTest("no release cut yet")
+        self.assertEqual(f"v{version}", status,
+                         "VERSION and STATUS.md name different releases")
+
+    def test_version_is_not_a_constant_in_the_source(self):
+        # webui.md §1: the displayed version must come from the real tag, so
+        # that an untagged build says dev-<sha> instead of impersonating the
+        # last release. A literal here is wrong the moment somebody tags and
+        # forgets to edit it, with nothing to report it.
+        source = (self.ROOT / "app.py").read_text()
+        self.assertNotRegex(source, r'^VERSION\s*=\s*["\']',
+                            "VERSION must be derived, not written in app.py")
+        self.assertIn("_read_version()", source)
 
     def test_no_documented_variable_is_ignored_by_the_code(self):
         # The other drift direction: a VPSSRV_ name in .env.example that

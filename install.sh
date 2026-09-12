@@ -71,9 +71,31 @@ PREV_VARS=""
 PREV_STATE_KNOWN=0
 UPGRADE=0
 
-# The version being installed, read from the single source of truth in app.py.
-NEW_VERSION="$(sed -n 's/^VERSION = "\(.*\)"$/\1/p' "$SRC_DIR/app.py" 2>/dev/null | head -n1)"
-NEW_VERSION="${NEW_VERSION:-unknown}"
+# The version being installed. Derived, never hand-written: webui.md §1
+# requires the UI to show the real tag, and an untagged build to say so rather
+# than impersonate the last release. A constant in the source is wrong the
+# moment somebody tags and forgets to edit it, and nothing reports that.
+resolve_version() {
+  local v
+  if git -C "$SRC_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    v="$(git -C "$SRC_DIR" describe --tags --exact-match 2>/dev/null || true)"
+    if [ -n "$v" ]; then
+      printf '%s' "${v#v}"   # tags carry a leading v, the displayed version does not
+    else
+      printf 'dev-%s' "$(git -C "$SRC_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    fi
+    return
+  fi
+  # No git — a tarball, or an export like `git archive`. Fall back to the file
+  # committed at release time, which is exactly what that tag contained.
+  if [ -f "$SRC_DIR/VERSION" ]; then
+    tr -d ' \r\n' < "$SRC_DIR/VERSION"
+    return
+  fi
+  printf 'dev-unknown'
+}
+NEW_VERSION="$(resolve_version)"
+NEW_VERSION="${NEW_VERSION:-dev-unknown}"
 
 unit_env() {
   # One recorded Environment= value from the installed unit, or empty.
@@ -741,7 +763,7 @@ else
   # is deliberately excluded so re-running never clobbers an existing install.
   # CHANGELOG.md (English + translated_*/) is shipped because the app serves
   # it at /changelog, so the person you deployed for can see what changed.
-  COPY_ITEMS="app.py static systemd tests README.md LICENSE LICENSES
+  COPY_ITEMS="app.py VERSION static systemd tests README.md LICENSE LICENSES
               THIRD_PARTY_NOTICES.md CHANGELOG.md
               translated_zh_cn translated_zh_tw"
   # The sing-box binary is ~57 MB. Copying it into an install that will never
@@ -758,6 +780,13 @@ fi
 # Whichever path was taken, the app must actually be there before we go on to
 # write a unit file pointing at it.
 [ -f "$PREFIX/app.py" ] || die "$(msg missing_app "$PREFIX")"
+
+# Stamp the resolved version where app.py reads it. Skipped for an in-place
+# upgrade: there $PREFIX *is* the checkout, and writing a derived value into
+# it would dirty the working tree of whoever is developing there.
+if [ "$SRC_DIR" != "$PREFIX_ABS" ]; then
+  printf '%s\n' "$NEW_VERSION" > "$PREFIX/VERSION"
+fi
 
 # A manually-chosen password must land on disk before the first start, so
 # ensure_admin_password() in app.py finds it already there and never

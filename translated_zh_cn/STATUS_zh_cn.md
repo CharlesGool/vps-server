@@ -2,38 +2,12 @@
 
 [English](../STATUS.md) | **简体中文**
 
-> 译自 `STATUS.md`（v<release-version>）。如有冲突，以英文版为准。
-> 本文件按规则只在打 tag 时重译，因此两次发版之间它滞后于英文版——**续接项目请读
-> `STATUS.md`**，那里的 `In progress` 才是当前状态。
+> 译自 `STATUS.md`（v1.0.0）。如有冲突，以英文版为准。
 
-**Notion:** <项目私有页面 URL。仓库为 PUBLIC 时这里写 "private mirror (not published)"，真实 URL 放 ../.local-notes.md（在 repo/ 外面，不被 git 追踪）>
-**Repo:** <GitHub URL>（private/public）
-**Snapshots:** <私有快照路径；public 仓库写 "maintained privately (not published)">
-**In progress:** <现在正在做的事>
-**Next:** <下一步，具体到可以立刻开始>
-**Known issues:** <已知问题>
-**Blocked on:** <在等用户提供什么，或在等哪个外部条件>
-
-<!--
-这份译版刻意不带 YAML frontmatter。frontmatter 是机器读的那一半，只存在于
-STATUS.md：scripts/pm-index.py 靠它生成跨项目总表，scripts/release-preflight.sh
-拿它的 version 和正在打的 tag 比对。译版再放一份就是第二个版本号来源，两边一旦不
-一致，显示哪个全看谁先被读到。
-
-字段名（Notion / Repo / Snapshots / In progress / Next / Known issues /
-Blocked on）逐字保留英文，只翻译它们后面的内容——这几个名字在 SKILL、preflight
-和跨项目总表里都是按字面找的。
-
-正文保持短：只记当前状态；历史在 CHANGELOG.md 和 git log 里。
-
-public 仓库里绝不写 Notion URL、本地/NAS 绝对路径、内网主机名，以及任何只对维护者
-有意义的标识。那些放在 <项目根>/<项目名>/.local-notes.md —— 在 repo/ 外面，
-因此永远不会被提交，也不会进快照。
-
-更新时机是事件触发，不是"会话结束前"（会话不会通知你它结束了）：
-  - 打完一个 tag
-  - 做了一个会影响后续的决策
-  - 被 blocked
-  - 用户说"先到这""下次再说"或类似收尾表达
-  - 完成了 Next 里写的那一步
--->
+**Notion:** 私有镜像（未公开）
+**Repo:** 公开
+**Snapshots:** 私下维护（未公开）
+**In progress:** v1.0.0 已发布，仓库已公开。打 tag 之前，运维人员在真实主机上逐一验证了每个功能：公共页面在两个公开端口上都能正常响应，控制台和浏览器测速均可用，iperf3 窗口在局域网内测得 2.8 Gbit/s，且窗口自行关闭后会拒绝新连接，anytls 节点能正常安装、轮换凭据并干净地拆除，升级会重放已记录的配置而不影响节点运行，三种界面语言均能正常渲染。目前没有进行中的工作。
+**Next:** 决定是否需要把共享的 `_db_lock` 解耦——每次公共页面的访问都会占用一个进程级的锁并执行一次同步 SQLite 写入，而控制台也共用这把锁，理论上匿名请求的洪流可能拖慢已认证页面的响应。**已实测但未复现**：60 个并发的洪流请求下，控制台延迟维持在 0.4–0.6 ms，与空闲状态一致。之所以记录下来，是为了不让这个机制被当作"新发现"重新折腾一遍；在没有测量数据证明确有危害之前，不要重构。
+**Known issues:** 没有会破坏功能的问题。`BACKLOG.md` 中有四项处于开放状态，是主动选择保留而非缺陷：一个共享的 SQLite 锁，其所报告的影响在负载测试下未能复现；两处启动和关闭时的信号边界问题；`VPSSRV_MODULES=iperf3` 单独设置时不会安装任何东西；以及尚未实现登录限速。
+**Blocked on:** 无。

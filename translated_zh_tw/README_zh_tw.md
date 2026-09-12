@@ -1,53 +1,99 @@
-# <Project Name>
+# vps-server
 
 [English](../README.md) | **繁體中文**
 
-> 譯自 `README.md`（v<release-version>）。如有衝突，以英文版為準。
+> 譯自 `README.md`（v1.0.0）。如有衝突，以英文版為準。
 
-用一句話說明專案是什麼、面向誰。
+在 Debian/Ubuntu VPS 上一鍵部署的整合套件：一個任何人都能連上、用來證明你這台 IP 的 web 埠可連通的公開頁面，一個受密碼保護、可測速並記錄連線的主控台，一個隨開隨用的 iperf3 視窗，以及一個 anytls 代理。
 
-## 功能
+## 這個專案做什麼
 
-- <能力 1>
-- <能力 2>
+- **向任何人證明可連通。** 在 **80** 和 **443** 埠上有一個刻意做得極簡、無需登入的頁面。把 IP 給對方，只要頁面能顯示出來，就代表你的 web 埠從對方那個位置是可連通的。它會回報對方的來源 IP、伺服器時鐘，以及對方是透過哪個埠、哪種協定連進來的——除此之外不透露主機的任何其他資訊。
+- **從瀏覽器量測吞吐量。** 一個受密碼保護、位於固定隨機高位埠的主控台，使用 LibreSpeed 引擎執行上傳／下載測試。
+- **用 iperf3 隨需量測吞吐量與延遲。** 主控台會開啟一個限時視窗；`iperf3 -s` 只在視窗期間內執行，視窗到期就自動關閉。測試者可從 iperf3 取得頻寬數據，若是 Linux 客戶端，還能從其 `--json` 輸出裡的 `mean_rtt` 取得往返時間——這個欄位來自核心的 `TCP_INFO`，在讀不到它的客戶端上會缺失，特別是 Windows 上 Cygwin 版的 iperf3。UDP 模式（`-u`）在任何平台上都會額外提供抖動與丟包數據。
+- **記錄誰連上了。** 任何埠上的每一筆進站 TCP 連線都會被記錄，不只是 HTTP——資料讀自 `/proc/net/tcp[6]`，儲存在 SQLite 裡，只保留最近 1000 筆。
+- **提供 anytls 代理服務。** sing-box 搭配自簽憑證，並啟用 BBR。安裝此模組後，主控台會多出一頁，顯示節點是否在線，並提供其 Clash 設定條目與附一鍵複製按鈕的 `anytls://` 連結，把節點交給客戶端時不必再回到終端機操作。
 
-非目標：<本專案刻意不做什麼>
+web、iperf3、anytls 這三個模組各自可在安裝時選擇是否啟用。
 
-## 要求
+**非目標：** 不提供 ACME 或網域名稱（443 刻意採用自簽憑證）；不提供常駐運作的 iperf3；不提供反向代理或容器化；公開頁面絕不透露主機名稱、核心版本、開機時間、服務清單或代理參數。本專案不會取代 `vps-webserver` 或 `Anytsl-Serve`——這兩者仍各自獨立維護，其程式碼是以引入（vendored）方式收錄於此，而非被整併吸收。
 
-- 作業系統 / 執行環境：<例如 Linux、Python 3.12>
-- 硬體：<僅在有要求時填寫>
-- 外部服務：<需要的 API、帳號>
+## 系統需求
+
+- 作業系統：Debian 11 以上或 Ubuntu 20.04 以上，systemd，以 root 身分執行
+- 執行環境：Python 3.9 以上（發行版內建的 `python3` 即可——不需另外安裝任何 Python 依賴套件）
+- 架構：web 與 iperf3 模組支援任意架構；anytls **僅限 x86-64**，因為收錄的 sing-box 執行檔是 amd64 版本
+- 80 與 443 埠必須是空閒的——安裝程式會拒絕安裝，而不會與既有的 nginx、Apache、Caddy 或 `vps-webserver` 搶埠
+- 外部服務：無。安裝只需要你的發行版套件鏡像來源。
 
 ## 安裝
 
 ```bash
-# 一律 clone tag，不要 clone 可能正在開發中的預設分支。
-git clone --branch v0.1.0 --depth 1 <repo-url> <project>
-cd <project>
-<install command>
-# 僅當專案確實有設定變數時執行：
-cp .env.example .env   # 填入數值，見「設定」
+# 一律 clone 某個 tag，不要 clone 預設分支——分支最新提交可能還在開發中。
+# 最新發布 tag：`git ls-remote --tags <repo-url>`
+git clone --branch v0.1.0 --depth 1 <repo-url> vps-server
+cd vps-server
+cp .env.example .env   # 可選——每個變數都有可直接運作的預設值
+bash install.sh
 ```
+
+`install.sh` 會詢問要安裝哪些模組、介面語言、是否為主控台加上密碼保護，以及要使用哪些埠。
+
+**重新執行會就地升級。** 它會偵測既有的安裝，提議保留現有設定，並只詢問已安裝版本沒有的設定項——每一項都附有預設值，直接按 Enter 也是合法答案。主控台密碼、固定的埠號、憑證、訪客記錄以及 anytls 節點的憑證都會保留下來。若對升級提示回答 `n`，則會改為重新詢問所有設定。
 
 ## 快速開始
 
 ```bash
-<最短的有效指令>
+bash install.sh                              # 互動模式：模組、語言、密碼、埠號
+sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # 無人值守模式，不會有任何提示
+systemctl status vps-server-web              # 查看是否已啟動
+bash anytls/setup-anytls.sh status           # 若已安裝該模組，查看 anytls 節點詳情
 ```
 
-## 驗證是否成功
+接著在另一台機器上執行：
 
-<可觀察、可判斷的成功結果。>
+```bash
+curl -sS  http://<ip>/                     # 透過純 HTTP 測試可連通性
+curl -sSk https://<ip>/                    # ……以及透過 TLS（自簽憑證）
+iperf3 -c <ip> -p 5201 --json              # 僅在視窗開啟期間可用
+```
+
+## 驗證是否正常運作
+
+執行 `bash install.sh` 後，你應該會看到一個摘要區塊，列出每個已安裝的模組及其埠號。接著：
+
+- `systemctl status vps-server-web` 回報 `active (running)`。
+- 從**另一台機器**開啟 `http://<ip>/`，會顯示一個標題為「Reachable」的頁面，並顯示你自己的公開 IP。開啟 `https://<ip>/`，在你接受憑證警告之後，會顯示同樣的頁面，且協定欄位顯示為 HTTPS。
+- 登入 `http://<ip>:<console port>/` 會顯示儀表板，其中 iperf3 控制項可見，且視窗處於關閉狀態。
+- 開啟一個 5 分鐘的視窗之後，從另一台機器執行 `iperf3 -c <ip> -p 5201 --json` 會回報一個吞吐量數值，並包含 `mean_rtt`。五分鐘後，同一條指令會連線失敗——這是視窗自行關閉的結果，不是故障。
+- 若你安裝了 anytls：`systemctl status vps-server-anytls` 會回報 `active (running)`。
 
 ## 設定
 
-| 變數 | 意義 | 預設值 | 必填 |
+每個變數都有可直接運作的預設值；`.env` 是可選的。以下是最關鍵的幾項：
+
+| 變數 | 意義 | 預設值 | 是否必填 |
 |---|---|---|---|
-| `EXAMPLE_KEY` | <用途> | — | 是 |
+| `VPSSRV_PUBLIC_HTTP_PORT` | 公開可連通性頁面，明文 | `80` | 否 |
+| `VPSSRV_PUBLIC_HTTPS_PORT` | 公開可連通性頁面，TLS | `443` | 否 |
+| `VPSSRV_PUBLIC_ENABLE` | 是否提供公開頁面 | `1` | 否 |
+| `VPSSRV_CONSOLE_PORT` | 主控台埠號；`0` 表示自動產生並記住 | `0` | 否 |
+| `VPSSRV_AUTH` | 主控台是否需要密碼 | `1` | 否 |
+| `VPSSRV_IPERF_PORT` | 已開啟的 iperf3 視窗所監聽的埠 | `5201` | 否 |
+| `VPSSRV_IPERF_MAX_MINUTES` | 主控台不可超過的上限 | `60` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | 否 |
 
-完整說明：見 `DESIGN.md` 的 Configuration reference。
+完整參考：見 `DESIGN.md` → Configuration reference。
 
-## 授權條款
+## 解除安裝
 
-<private 儲存庫可省略本節。公開前必須完成授權條款與來源複核；寫明所選開源授權條款，或在未授予開源使用授權時寫「保留所有權利」。如包含第三方素材，連結到 THIRD_PARTY_NOTICES.md。>
+```bash
+bash uninstall.sh              # 移除所有已安裝的模組及其資料
+KEEP_DATA=1 bash uninstall.sh  # 保留訪客資料庫與主控台密碼
+```
+
+## 授權
+
+GPL-3.0。本專案重新散布了 sing-box 執行檔（GPL-3.0 授權），因此整體合併作品也採用 GPL-3.0——詳見 `LICENSE`。收錄的第三方元件、其版本，以及 GPL 要求提供的對應原始碼連結，記錄於 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+本專案與 sing-box/SagerNet 或 LibreSpeed 均無隸屬或背書關係。
