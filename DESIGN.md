@@ -100,6 +100,40 @@ The public page accepts `GET` and `HEAD` on exactly two paths (`/` and
 `/favicon.ico`) and answers everything else with 404. It reads no query string,
 parses no request body, and sets no cookie.
 
+### Upgrading over an existing install
+
+`install.sh` detects an existing install and offers to keep its configuration.
+Saying yes replays what the previous install recorded; saying no re-asks
+everything. Either way the console password, the persisted port, the
+certificates and the visitor log survive — those are files the installer never
+touches.
+
+Two records, because they answer different questions:
+
+- **The systemd unit's `Environment=` lines** say what was *set*. Replaying
+  them is what stops a setting chosen once — a custom public port, TLS on the
+  console — from silently reverting to its default on the next upgrade.
+- **`$PREFIX/.install-state`** says what the installed version *knew about*:
+  its version, its module list, and the names of every setting it understood.
+  The unit cannot answer this, because it only records settings that were
+  given a value, which says nothing about which settings existed.
+
+That second file is how "what is new in this version" is computed: the
+settings this version knows minus the ones the stamp lists. Each one is
+offered with its `.env.example` default, and pressing Enter accepts it.
+
+An install that predates the stamp has no such list. Rather than presenting a
+guess as a diff, the installer says it cannot tell, carries forward everything
+the unit recorded, and points at the re-ask path. Module detection degrades
+the same way: with no stamp it infers the module list from what is on disk —
+the web unit, the anytls unit, whether `iperf3` is installed.
+
+The anytls node is preserved across an upgrade by reading its port and
+password back out of `config.json` and passing them in. Without that step
+`setup-anytls.sh` would default both to fresh randoms and every configured
+client would break on a routine upgrade — see the gotcha below, which still
+applies to a *deliberate* re-install.
+
 ### The console's anytls page
 
 The console reads the installed node out of `VPSSRV_ANYTLS_CONFIG` and renders
@@ -232,6 +266,10 @@ reconfigure another.
 | `VPSSRV_TRACK_CONNECTIONS` | Poll `/proc/net/tcp[6]` for all-port connection logging | `1` | no |
 | `VPSSRV_CONN_POLL_SECONDS` | Poll interval | `5` | no |
 | `VPSSRV_MAX_TEST_MB` | Cap on a single speedtest transfer, in MB | `200` | no |
+| `VPSSRV_TEST_SECONDS` | Measurement window per direction | `10` | no |
+| `VPSSRV_WARMUP_SECONDS` | Discarded warmup at the start of each direction | `2` | no |
+| `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Parallel streams per direction | `6` / `3` | no |
+| `VPSSRV_PING_SAMPLES` | Round trips used for the latency figure | `20` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
@@ -331,14 +369,17 @@ trimmed to the most recent 1000 rows.
   re-vendoring, check with `git ls-files -s` and restore the bit with
   `git update-index --chmod=+x <path>` — `chmod +x` alone is a no-op on that
   mount.
-- **Re-installing the anytls module rotates its port and password.**
-  `setup-anytls.sh` defaults `ANYTLS_PORT` and `ANYTLS_PASSWORD` to fresh
-  random values and rewrites `config.json` every run, so a second
-  `install.sh` with that module invalidates every client that was configured
-  against the first. To keep the existing node, pass the current values:
-  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash install.sh` — both
-  are on the console's anytls page. Upstream behaviour, inherited
-  deliberately; changing it would mean editing vendored logic.
+- **Running `setup-anytls.sh` directly rotates its port and password.**
+  It defaults `ANYTLS_PORT` and `ANYTLS_PASSWORD` to fresh randoms and
+  rewrites `config.json` every run, so invoking it by hand invalidates every
+  client configured against the previous values. `install.sh` no longer does
+  this — the upgrade path reads both back out of `config.json` and passes
+  them in — but a direct call still will. To keep the node, pass the current
+  values, both of which are on the console's anytls page:
+  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash anytls/setup-anytls.sh`.
+  Upstream behaviour, inherited deliberately. `setup-anytls.sh reset` rotates
+  them on purpose, and the console's reset button is the supported way to ask
+  for that.
 - **The console's public-address block only appears after an anytls install.**
   `public-ip.txt` is written by `setup-anytls.sh`, so an install that predates
   that file simply shows the interface addresses until the module is

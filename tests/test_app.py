@@ -1281,6 +1281,52 @@ class IperfLabelTest(unittest.TestCase):
             app.firewall_port = original_firewall
 
 
+class InstallerContractTest(unittest.TestCase):
+    """install.sh and app.py have to agree on the set of settings.
+
+    The installer carries settings across an upgrade by replaying the
+    `Environment=` lines it wrote last time, and the list it writes is
+    KNOWN_VARS. A variable app.py reads but KNOWN_VARS omits is therefore
+    silently dropped on every upgrade: the operator sets it once, it works,
+    and the next `install.sh` quietly reverts it with nothing to report.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+
+    def known_vars(self):
+        text = (self.ROOT / "install.sh").read_text()
+        block = re.search(r'^KNOWN_VARS="(.*?)"$', text, re.S | re.M).group(1)
+        return set(block.split())
+
+    def app_vars(self):
+        text = (self.ROOT / "app.py").read_text()
+        return set(re.findall(r'os\.environ\.get\(\s*"(VPSSRV_[A-Z0-9_]+)"', text))
+
+    def test_installer_knows_every_variable_app_reads(self):
+        missing = self.app_vars() - self.known_vars()
+        self.assertEqual(missing, set(),
+                         "add these to KNOWN_VARS in install.sh or an upgrade drops them")
+
+    def test_known_vars_are_all_real(self):
+        # The other direction: a name left in KNOWN_VARS after the setting it
+        # referred to was removed writes a dead Environment= line forever.
+        text = (self.ROOT / "app.py").read_text()
+        for var in sorted(self.known_vars()):
+            with self.subTest(var=var):
+                self.assertIn(var, text, f"{var} is not read anywhere in app.py")
+
+    def test_every_known_var_has_a_documented_default(self):
+        # prompt_new_settings offers the .env.example value as the default for
+        # a setting the installed version predates. A variable missing from
+        # that file gets offered as "(empty)", which tells the operator
+        # nothing about what they are agreeing to.
+        documented = set(re.findall(r"^([A-Z][A-Z0-9_]*)=",
+                                    (self.ROOT / ".env.example").read_text(), re.M))
+        undocumented = self.known_vars() - documented
+        self.assertEqual(undocumented, set(),
+                         "these have no default in .env.example")
+
+
 class StylesheetTest(unittest.TestCase):
     """Colour literals must stay inside the token blocks.
 

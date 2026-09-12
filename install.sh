@@ -44,6 +44,168 @@ has_module() {
   return 1
 }
 
+# Every VPSSRV_ variable this version carries into the unit file. One list,
+# used both to write the unit and to work out what an older install predates.
+KNOWN_VARS="VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSSRV_HOST
+            VPSSRV_PUBLIC_ENABLE VPSSRV_PUBLIC_HTTP_PORT VPSSRV_PUBLIC_HTTPS_PORT
+            VPSSRV_IPERF_ENABLE VPSSRV_IPERF_PORT VPSSRV_IPERF_DEFAULT_MINUTES
+            VPSSRV_IPERF_MAX_MINUTES
+            VPSSRV_DATA_DIR VPSSRV_PASSWORD_FILE VPSSRV_AUTH VPSSRV_DEFAULT_LANG
+            VPSSRV_CERT_DIR VPSSRV_TLS_CERT VPSSRV_TLS_KEY VPSSRV_TRUST_PROXY
+            VPSSRV_MAX_TEST_MB VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS
+            VPSSRV_TEST_SECONDS VPSSRV_WARMUP_SECONDS VPSSRV_DOWNLOAD_STREAMS
+            VPSSRV_UPLOAD_STREAMS VPSSRV_PING_SAMPLES
+            VPSSRV_ANYTLS_CONFIG VPSSRV_ANYTLS_SERVICE VPSSRV_ANYTLS_SETUP"
+
+# What this install left behind, so the next one can tell what changed.
+# Deliberately not the unit file: the unit records only settings that were
+# given a value, which says nothing about which settings the version knew of.
+STATE_FILE="$PREFIX/.install-state"
+ANYTLS_UNIT="/etc/systemd/system/vps-server-anytls.service"
+ANYTLS_CONFIG_PATH="/etc/vps-server-anytls/config.json"
+
+declare -A PREV=()
+PREV_VERSION=""
+PREV_MODULES=""
+PREV_VARS=""
+PREV_STATE_KNOWN=0
+UPGRADE=0
+
+# The version being installed, read from the single source of truth in app.py.
+NEW_VERSION="$(sed -n 's/^VERSION = "\(.*\)"$/\1/p' "$SRC_DIR/app.py" 2>/dev/null | head -n1)"
+NEW_VERSION="${NEW_VERSION:-unknown}"
+
+unit_env() {
+  # One recorded Environment= value from the installed unit, or empty.
+  [ -f "$UNIT_PATH" ] || return 0
+  sed -n "s/^Environment=$1=//p" "$UNIT_PATH" | tail -n1
+}
+
+existing_install() {
+  [ -f "$UNIT_PATH" ] || [ -f "$ANYTLS_UNIT" ] || [ -f "$PREFIX/app.py" ]
+}
+
+load_previous() {
+  local line kv
+  if [ -f "$UNIT_PATH" ]; then
+    while IFS= read -r line; do
+      case "$line" in
+        Environment=VPSSRV_*)
+          kv="${line#Environment=}"
+          PREV["${kv%%=*}"]="${kv#*=}"
+          ;;
+      esac
+    done < "$UNIT_PATH"
+  fi
+
+  if [ -f "$STATE_FILE" ]; then
+    PREV_STATE_KNOWN=1
+    PREV_VERSION="$(sed -n 's/^version=//p' "$STATE_FILE" | tail -n1)"
+    PREV_MODULES="$(sed -n 's/^modules=//p' "$STATE_FILE" | tail -n1)"
+    PREV_VARS="$(sed -n 's/^vars=//p' "$STATE_FILE" | tail -n1)"
+  fi
+
+  # No state file means an install that predates it. That is the case this
+  # whole path exists to survive, so work the modules out from what is on
+  # disk rather than giving up.
+  if [ -z "$PREV_MODULES" ]; then
+    [ -f "$UNIT_PATH" ] && PREV_MODULES="web"
+    command -v iperf3 >/dev/null 2>&1 && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}iperf3"
+    [ -f "$ANYTLS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}anytls"
+  fi
+  [ -n "$PREV_MODULES" ] || PREV_MODULES="$DEFAULT_MODULES"
+}
+
+# Carry recorded settings forward. Without this, anything chosen at the first
+# install and stored only in the unit — a custom public port, TLS on the
+# console — silently reverts to its default on the next run, and nothing says
+# so. An explicit environment variable on *this* run still wins.
+apply_previous() {
+  local var kept=0
+  for var in $KNOWN_VARS; do
+    [ -n "${PREV[$var]:-}" ] || continue
+    [ -n "${!var:-}" ] && continue
+    export "$var=${PREV[$var]}"
+    kept=$((kept + 1))
+  done
+  msg upgrade_keeping "$kept"
+}
+
+# Keep the anytls node as it is. setup-anytls.sh defaults both values to fresh
+# randoms, so an upgrade that did not do this would rotate the credentials and
+# break every configured client — for no reason anyone asked for.
+preserve_anytls() {
+  local port password
+  [ -f "$ANYTLS_CONFIG_PATH" ] || return 0
+  [ -z "${ANYTLS_PORT:-}" ] || return 0
+  port="$(python3 -c 'import json,sys
+try:
+    c = json.load(open(sys.argv[1]))
+except Exception:
+    raise SystemExit
+for i in c.get("inbounds", []):
+    if i.get("type") == "anytls":
+        print(i.get("listen_port", ""))
+        break' "$ANYTLS_CONFIG_PATH" 2>/dev/null || true)"
+  password="$(python3 -c 'import json,sys
+try:
+    c = json.load(open(sys.argv[1]))
+except Exception:
+    raise SystemExit
+for i in c.get("inbounds", []):
+    if i.get("type") == "anytls":
+        u = (i.get("users") or [{}])[0]
+        print(u.get("password", ""))
+        break' "$ANYTLS_CONFIG_PATH" 2>/dev/null || true)"
+  if [ -n "$port" ] && [ -n "$password" ]; then
+    export ANYTLS_PORT="$port" ANYTLS_PASSWORD="$password"
+    msg upgrade_anytls_kept "$port"
+  fi
+}
+
+default_for() {
+  sed -n "s/^$1=//p" "$SRC_DIR/.env.example" | tail -n1
+}
+
+# Settings this version understands that the installed one did not. Only
+# answerable when the old install recorded its own list; otherwise say so
+# rather than presenting a guess as a diff.
+prompt_new_settings() {
+  local var new="" default value
+  if [ "$PREV_STATE_KNOWN" = "0" ]; then
+    msg upgrade_vars_unknown
+    return 0
+  fi
+  for var in $KNOWN_VARS; do
+    case " $PREV_VARS " in *" $var "*) continue ;; esac
+    new="${new:+$new }$var"
+  done
+  if [ -z "$new" ]; then
+    msg upgrade_no_new
+    return 0
+  fi
+  msg upgrade_new_head
+  for var in $new; do
+    default="$(default_for "$var")"
+    if [ "$INTERACTIVE" != "1" ]; then
+      msg upgrade_new_item "$var" "${default:-(empty)}"
+      continue
+    fi
+    msg ask_new_var "$var" "${default:-(empty)}"
+    read -r value </dev/tty || value=""
+    [ -n "$value" ] && export "$var=$value"
+  done
+}
+
+write_state() {
+  {
+    printf 'version=%s\n' "$NEW_VERSION"
+    printf 'modules=%s\n' "$MODULES"
+    printf 'vars=%s\n' "$(echo $KNOWN_VARS)"
+  } > "$STATE_FILE"
+  chmod 0644 "$STATE_FILE"
+}
+
 # ---------------------------------------------------------------------------
 # Installer output i18n
 #
@@ -236,6 +398,46 @@ msg() {
     zh_cn:line_iperf_off) fmt='  iperf3：  未安装\n' ;;
     zh_tw:line_iperf_off) fmt='  iperf3：  未安裝\n' ;;
 
+    en:found_install)    fmt='\nFound an existing install: vps-server %s, modules %s.\n' ;;
+    zh_cn:found_install) fmt='\n检测到已安装：vps-server %s，模块 %s。\n' ;;
+    zh_tw:found_install) fmt='\n偵測到已安裝：vps-server %s，模組 %s。\n' ;;
+
+    en:ask_upgrade)      fmt='Keep its configuration and upgrade to %s? [Y/n] ' ;;
+    zh_cn:ask_upgrade)   fmt='沿用它的配置并升级到 %s？[Y/n] ' ;;
+    zh_tw:ask_upgrade)   fmt='沿用它的設定並升級到 %s？[Y/n] ' ;;
+
+    en:reconfigure)      fmt='Reconfiguring from scratch. The console password, port, certificates and visitor log are kept either way.\n' ;;
+    zh_cn:reconfigure)   fmt='重新配置。无论哪种方式，控制台密码、端口、证书和访客记录都会保留。\n' ;;
+    zh_tw:reconfigure)   fmt='重新設定。無論哪種方式，主控台密碼、連接埠、憑證與訪客記錄都會保留。\n' ;;
+
+    en:upgrade_keeping)  fmt='Carrying %s recorded setting(s) forward.\n' ;;
+    zh_cn:upgrade_keeping) fmt='沿用已记录的 %s 项设置。\n' ;;
+    zh_tw:upgrade_keeping) fmt='沿用已記錄的 %s 項設定。\n' ;;
+
+    en:upgrade_anytls_kept) fmt='Keeping the existing anytls node on port %s — its password is unchanged, so configured clients keep working.\n' ;;
+    zh_cn:upgrade_anytls_kept) fmt='保留现有 anytls 节点，端口 %s —— 密码不变，已配置的客户端继续可用。\n' ;;
+    zh_tw:upgrade_anytls_kept) fmt='保留現有 anytls 節點，連接埠 %s —— 密碼不變，已設定的客戶端繼續可用。\n' ;;
+
+    en:upgrade_no_new)   fmt='This version adds no new settings.\n' ;;
+    zh_cn:upgrade_no_new) fmt='本版本没有新增配置项。\n' ;;
+    zh_tw:upgrade_no_new) fmt='本版本沒有新增設定項。\n' ;;
+
+    en:upgrade_new_head) fmt='\nThis version adds settings the installed one did not have. Press Enter to accept a default:\n' ;;
+    zh_cn:upgrade_new_head) fmt='\n本版本新增了旧安装没有的配置项。直接回车即采用默认值：\n' ;;
+    zh_tw:upgrade_new_head) fmt='\n本版本新增了舊安裝沒有的設定項。直接按 Enter 即採用預設值：\n' ;;
+
+    en:upgrade_new_item) fmt='  %s = %s (default applied)\n' ;;
+    zh_cn:upgrade_new_item) fmt='  %s = %s （已采用默认值）\n' ;;
+    zh_tw:upgrade_new_item) fmt='  %s = %s （已採用預設值）\n' ;;
+
+    en:ask_new_var)      fmt='  %s [%s]: ' ;;
+    zh_cn:ask_new_var)   fmt='  %s [%s]： ' ;;
+    zh_tw:ask_new_var)   fmt='  %s [%s]： ' ;;
+
+    en:upgrade_vars_unknown) fmt='The installed version did not record which settings it supported, so this cannot tell which are new. Everything it did record is carried forward; anything else takes the default documented in .env.example. Re-run and answer "n" above to review every setting.\n' ;;
+    zh_cn:upgrade_vars_unknown) fmt='旧安装没有记录它支持哪些配置项，因此无法判断哪些是新增的。它记录过的都会沿用，其余按 .env.example 里的默认值。想逐项复核就重跑一次、在上面回答 n。\n' ;;
+    zh_tw:upgrade_vars_unknown) fmt='舊安裝沒有記錄它支援哪些設定項，因此無法判斷哪些是新增的。它記錄過的都會沿用，其餘按 .env.example 裡的預設值。想逐項複核就重跑一次、在上面回答 n。\n' ;;
+
     *) fmt="$key\n" ;;   # unknown key: show it rather than printing nothing
   esac
   # shellcheck disable=SC2059  # fmt is a trusted format string from the table above
@@ -250,6 +452,16 @@ die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 # 1. Language — asked first, because everything below is printed in it.
 #    The question itself is trilingual for obvious reasons.
 # ---------------------------------------------------------------------------
+# An existing install already answered this. Adopt its answer before anything
+# prints, so the upgrade question below comes out in the language the operator
+# chose last time instead of reverting to English on every upgrade.
+if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
+  PREV_LANG="$(unit_env VPSSRV_DEFAULT_LANG)"
+  case "$PREV_LANG" in
+    en|zh_cn|zh_tw) VPSSRV_DEFAULT_LANG="$PREV_LANG"; INSTALL_LANG="$PREV_LANG" ;;
+  esac
+fi
+
 if [ -z "${VPSSRV_DEFAULT_LANG:-}" ] && [ "$INTERACTIVE" = "1" ]; then
   echo "Language / 语言 / 語言:"
   echo "  1) English"
@@ -281,9 +493,39 @@ if { [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] || [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1
 fi
 
 # ---------------------------------------------------------------------------
+# 1a. An existing install, if there is one.
+# ---------------------------------------------------------------------------
+if existing_install; then
+  load_previous
+  msg found_install "${PREV_VERSION:-?}" "$PREV_MODULES"
+  if [ "$INTERACTIVE" = "1" ]; then
+    msg ask_upgrade "$NEW_VERSION"
+    read -r upgrade_answer </dev/tty || upgrade_answer="y"
+    case "$upgrade_answer" in
+      [nN]*) UPGRADE=0 ;;
+      *) UPGRADE=1 ;;
+    esac
+  else
+    # Unattended runs upgrade. Silently reconfiguring a host that is already
+    # set up is the more destructive of the two defaults, and `curl | bash`
+    # cannot be asked.
+    UPGRADE=1
+  fi
+  if [ "$UPGRADE" = "1" ]; then
+    apply_previous
+    preserve_anytls
+  else
+    msg reconfigure
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 1b. Modules.
 # ---------------------------------------------------------------------------
 MODULES="${VPSSRV_MODULES:-}"
+if [ -z "$MODULES" ] && [ "$UPGRADE" = "1" ]; then
+  MODULES="$PREV_MODULES"   # upgrading means the same modules, not a re-pick
+fi
 if [ -z "$MODULES" ]; then
   if [ "$INTERACTIVE" = "1" ]; then
     msg mod_head
@@ -300,6 +542,10 @@ if [ -z "$MODULES" ]; then
   fi
 fi
 msg modules_are "$MODULES"
+
+if [ "$UPGRADE" = "1" ]; then
+  prompt_new_settings
+fi
 
 # The vendored sing-box binary is amd64. Skipping the module beats installing
 # a binary that cannot execute and failing later with "Exec format error".
@@ -363,6 +609,7 @@ if ! has_module web; then
   if has_module anytls; then
     install_anytls || ANYTLS_FAILED=1
   fi
+  [ "$ANYTLS_FAILED" = "0" ] && write_state
   msg to_remove "$PREFIX" "$SERVICE_NAME"
   [ "$ANYTLS_FAILED" = "0" ] || { msg anytls_failed >&2; exit 1; }
   exit 0
@@ -488,15 +735,7 @@ fi
 
 # Carry over any explicitly provided settings so the unit reproduces them.
 ENV_LINES=""
-for var in VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSSRV_HOST \
-           VPSSRV_PUBLIC_ENABLE VPSSRV_PUBLIC_HTTP_PORT VPSSRV_PUBLIC_HTTPS_PORT \
-           VPSSRV_IPERF_ENABLE VPSSRV_IPERF_PORT VPSSRV_IPERF_DEFAULT_MINUTES \
-           VPSSRV_IPERF_MAX_MINUTES \
-           VPSSRV_DATA_DIR VPSSRV_PASSWORD_FILE VPSSRV_AUTH VPSSRV_DEFAULT_LANG \
-           VPSSRV_CERT_DIR VPSSRV_TLS_CERT VPSSRV_TLS_KEY VPSSRV_TRUST_PROXY VPSSRV_MAX_TEST_MB \
-           VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS \
-           VPSSRV_TEST_SECONDS VPSSRV_WARMUP_SECONDS VPSSRV_DOWNLOAD_STREAMS \
-           VPSSRV_UPLOAD_STREAMS VPSSRV_PING_SAMPLES; do
+for var in $KNOWN_VARS; do
   if [ -n "${!var:-}" ]; then
     ENV_LINES="${ENV_LINES}Environment=${var}=${!var}"$'\n'
   fi
@@ -556,6 +795,10 @@ PORT="${VPSSRV_CONSOLE_PORT:-}"
 if [ -z "$PORT" ] && [ -f "$PORT_FILE" ]; then
   PORT="$(cat "$PORT_FILE")"
 fi
+
+# Written only once the service is confirmed healthy, so a failed install does
+# not leave behind a record claiming it succeeded.
+write_state
 
 msg running
 msg line_modules "$MODULES"

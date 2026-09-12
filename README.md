@@ -59,8 +59,14 @@ bash install.sh
 ```
 
 `install.sh` asks which modules to install, the interface language, whether to
-password-protect the console, and which ports to use. It is idempotent: values
-already set are kept, so re-running it upgrades in place.
+password-protect the console, and which ports to use.
+
+**Re-running it upgrades in place.** It detects an existing install, offers to
+keep its configuration, and only asks about settings the installed version did
+not have — each with its default, so pressing Enter is a valid answer. The
+console password, the persisted port, the certificates, the visitor log and
+the anytls node's credentials all survive. Answer `n` to the upgrade question
+to re-ask everything instead.
 
 ## Quick start
 

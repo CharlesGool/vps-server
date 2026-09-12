@@ -4,6 +4,7 @@
 !.env.example
 admin_password.txt
 console_port.txt
+.install-state
 session_secret.txt
 certs/
 *.key
