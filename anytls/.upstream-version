@@ -1,0 +1,23 @@
+# Where the vendored anytls module came from.
+#
+# setup-anytls.sh (upstream name: install-anytls.sh), the sing-box binary in
+# the repository root, and sing-box.version were copied from the Anytsl-Serve
+# repository at the tag below. The only changes are three constants, so that
+# both projects can be installed on one host without overwriting each other:
+#
+#   INSTALL_DIR   /etc/sing-box-anytls          -> /etc/vps-server-anytls
+#   BIN_PATH      /usr/local/bin/sing-box       -> /usr/local/bin/sing-box-vps-server
+#   SERVICE_NAME  sing-box-anytls.service       -> vps-server-anytls.service
+#
+# plus LOCAL_BIN, because the binary sits in the repository root while the
+# script sits in anytls/, and a guard that refuses to install a second anytls
+# inbound while Anytsl-Serve's own service is running.
+#
+# The environment variable names (ANYTLS_PORT, ANYTLS_PASSWORD, SNI, SERVER_IP)
+# are deliberately NOT renamed to a VPSSRV_ prefix: renaming them would mean
+# editing vendored logic, which is what this file exists to keep honest.
+#
+# Refreshing this vendored tree means re-copying from a newer upstream tag,
+# reapplying exactly those changes, and updating this file in the SAME commit.
+
+Anytsl-Serve v1.2.0

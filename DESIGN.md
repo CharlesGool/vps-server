@@ -204,7 +204,7 @@ reconfigure another.
 | `VPSSRV_CONN_POLL_SECONDS` | Poll interval | `5` | no |
 | `VPSSRV_MAX_TEST_MB` | Cap on a single speedtest transfer, in MB | `200` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
-| `ANYTLS_*` | The anytls module keeps the upstream names | see `.env.example` | no |
+| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
 
 The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
 renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and
