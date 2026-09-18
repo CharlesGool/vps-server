@@ -1,6 +1,6 @@
 # Decisions
 
-**English** | [简体中文](zh_cn/DECISIONS.md) | [繁體中文](zh_tw/DECISIONS.md)
+**English** | [简体中文](zh_cn/DECISIONS.md) | [繁體中文](zh_tw/DECISIONS.md) | [繁體中文（香港）](zh_hk/DECISIONS.md) | [हिन्दी](hi/DECISIONS.md) | [Español](es/DECISIONS.md) | [العربية](ar/DECISIONS.md) | [Français](fr/DECISIONS.md)
 
 ## Documentation
 

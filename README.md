@@ -1,6 +1,6 @@
 # vps-server
 
-**English** | [简体中文](doc/zh_cn/README.md) | [繁體中文](doc/zh_tw/README.md)
+**English** | [简体中文](doc/zh_cn/README.md) | [繁體中文](doc/zh_tw/README.md) | [繁體中文（香港）](doc/zh_hk/README.md) | [हिन्दी](doc/hi/README.md) | [Español](doc/es/README.md) | [العربية](doc/ar/README.md) | [Français](doc/fr/README.md)
 
 ## Documentation
 
@@ -60,6 +60,14 @@ maintained, and their code is vendored here rather than absorbed.
 - External services: none. Installation needs only your distro's package mirror.
 
 ## Install
+
+One-line quick install (latest release tag, no configuration variables):
+
+```bash
+git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+```
+
+Step by step, with configuration:
 
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.

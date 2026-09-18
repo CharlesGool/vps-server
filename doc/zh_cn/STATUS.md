@@ -1,6 +1,6 @@
 # 状态
 
-[English](../STATUS.md) | **简体中文** | [繁體中文](../zh_tw/STATUS.md)
+[English](../STATUS.md) | **简体中文** | [繁體中文](../zh_tw/STATUS.md) | [繁體中文（香港）](../zh_hk/STATUS.md) | [हिन्दी](../hi/STATUS.md) | [Español](../es/STATUS.md) | [العربية](../ar/STATUS.md) | [Français](../fr/STATUS.md)
 
 ## 文档说明
 

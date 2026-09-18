@@ -1,6 +1,6 @@
 # 待辦清單
 
-[English](../BACKLOG.md) | [简体中文](../zh_cn/BACKLOG.md) | **繁體中文**
+[English](../BACKLOG.md) | [简体中文](../zh_cn/BACKLOG.md) | **繁體中文** | [繁體中文（香港）](../zh_hk/BACKLOG.md) | [हिन्दी](../hi/BACKLOG.md) | [Español](../es/BACKLOG.md) | [العربية](../ar/BACKLOG.md) | [Français](../fr/BACKLOG.md)
 
 ## 文件說明
 

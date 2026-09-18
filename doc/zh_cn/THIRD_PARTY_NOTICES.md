@@ -1,6 +1,6 @@
 # 第三方声明
 
-[English](../THIRD_PARTY_NOTICES.md) | **简体中文** | [繁體中文](../zh_tw/THIRD_PARTY_NOTICES.md)
+[English](../THIRD_PARTY_NOTICES.md) | **简体中文** | [繁體中文](../zh_tw/THIRD_PARTY_NOTICES.md) | [繁體中文（香港）](../zh_hk/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
 
 ## 文档说明
 

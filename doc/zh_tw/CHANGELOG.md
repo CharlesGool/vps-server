@@ -1,6 +1,6 @@
 # Changelog
 
-[English](../CHANGELOG.md) | [简体中文](../zh_cn/CHANGELOG.md) | **繁體中文**
+[English](../CHANGELOG.md) | [简体中文](../zh_cn/CHANGELOG.md) | **繁體中文** | [繁體中文（香港）](../zh_hk/CHANGELOG.md) | [हिन्दी](../hi/CHANGELOG.md) | [Español](../es/CHANGELOG.md) | [العربية](../ar/CHANGELOG.md) | [Français](../fr/CHANGELOG.md)
 
 ## 文件說明
 

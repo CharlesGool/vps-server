@@ -1,6 +1,6 @@
 # 決策記錄
 
-[English](../DECISIONS.md) | [简体中文](../zh_cn/DECISIONS.md) | **繁體中文**
+[English](../DECISIONS.md) | [简体中文](../zh_cn/DECISIONS.md) | **繁體中文** | [繁體中文（香港）](../zh_hk/DECISIONS.md) | [हिन्दी](../hi/DECISIONS.md) | [Español](../es/DECISIONS.md) | [العربية](../ar/DECISIONS.md) | [Français](../fr/DECISIONS.md)
 
 ## 文件說明
 

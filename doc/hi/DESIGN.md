@@ -1,0 +1,16 @@
+# vps-server — Design
+
+[English](../DESIGN.md) | [简体中文](../zh_cn/DESIGN.md) | [繁體中文](../zh_tw/DESIGN.md) | [繁體中文（香港）](../zh_hk/DESIGN.md) | **हिन्दी** | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
+
+## दस्तावेज़ीकरण
+
+- परियोजना अवलोकन: [README](README.md)
+- रिलीज़ इतिहास: [CHANGELOG](CHANGELOG.md)
+- वर्तमान स्थिति: [STATUS](STATUS.md)
+- आवश्यकता सूची: [BACKLOG](BACKLOG.md)
+- अस्वीकृत विचार: [DECISIONS](DECISIONS.md)
+- तृतीय-पक्ष सूचनाएं: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+
+यह दस्तावेज़ अभी हिन्दी में पूरी तरह अनुवादित नहीं है — यह केवल एक प्लेसहोल्डर पेज है। कृपया [अंग्रेज़ी संस्करण](../DESIGN.md) देखें।
+
+If you're reading this, the full Hindi translation has not been written yet — this is a placeholder only. See the [English version](../DESIGN.md).

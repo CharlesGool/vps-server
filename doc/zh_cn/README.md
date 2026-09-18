@@ -1,6 +1,6 @@
 # vps-server
 
-[English](../../README.md) | **简体中文** | [繁體中文](../zh_tw/README.md)
+[English](../../README.md) | **简体中文** | [繁體中文](../zh_tw/README.md) | [繁體中文（香港）](../zh_hk/README.md) | [हिन्दी](../hi/README.md) | [Español](../es/README.md) | [العربية](../ar/README.md) | [Français](../fr/README.md)
 
 ## 文档说明
 

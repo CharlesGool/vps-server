@@ -1,6 +1,6 @@
 # Backlog
 
-[English](../BACKLOG.md) | **简体中文** | [繁體中文](../zh_tw/BACKLOG.md)
+[English](../BACKLOG.md) | **简体中文** | [繁體中文](../zh_tw/BACKLOG.md) | [繁體中文（香港）](../zh_hk/BACKLOG.md) | [हिन्दी](../hi/BACKLOG.md) | [Español](../es/BACKLOG.md) | [العربية](../ar/BACKLOG.md) | [Français](../fr/BACKLOG.md)
 
 ## 文档说明
 

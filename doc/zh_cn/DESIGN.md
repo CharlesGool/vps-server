@@ -1,6 +1,6 @@
 # vps-server — Design
 
-[English](../DESIGN.md) | **简体中文** | [繁體中文](../zh_tw/DESIGN.md)
+[English](../DESIGN.md) | **简体中文** | [繁體中文](../zh_tw/DESIGN.md) | [繁體中文（香港）](../zh_hk/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
 
 ## 文档说明
 
