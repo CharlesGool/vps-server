@@ -37,6 +37,14 @@ web、iperf3、anytls 这三个模块中的每一个，都可以在安装时选�
 
 ## 安装
 
+一键快速安装（最新发布标签，无需配置变量）：
+
+```bash
+git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+```
+
+分步安装，含配置：
+
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
