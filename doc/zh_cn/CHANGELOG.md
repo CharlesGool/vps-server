@@ -1,6 +1,15 @@
 # Changelog
 
-[English](../CHANGELOG.md) | **简体中文**
+[English](../CHANGELOG.md) | **简体中文** | [繁體中文](../zh_tw/CHANGELOG.md)
+
+## 文档说明
+
+- 项目概览：[README](README.md)
+- 设计理念：[DESIGN](DESIGN.md)
+- 当前状态：[STATUS](STATUS.md)
+- 需求列表：[BACKLOG](BACKLOG.md)
+- 被否决的方案：[DECISIONS](DECISIONS.md)
+- 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > 译自 `CHANGELOG.md`（v1.0.4）。如有冲突，以英文版为准。
 

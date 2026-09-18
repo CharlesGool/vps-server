@@ -1,6 +1,15 @@
 # Status
 
-[English](../STATUS.md) | [简体中文](../translated_zh_cn/STATUS_zh_cn.md) | **繁體中文**
+[English](../STATUS.md) | [简体中文](../zh_cn/STATUS.md) | **繁體中文**
+
+## 文件說明
+
+- 專案概覽：[README](README.md)
+- 設計理念：[DESIGN](DESIGN.md)
+- 版本歷史：[CHANGELOG](CHANGELOG.md)
+- 需求清單：[BACKLOG](BACKLOG.md)
+- 被否決的方案：[DECISIONS](DECISIONS.md)
+- 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > 譯自 `STATUS.md`（v1.0.4）。如有衝突，以英文版為準。
 

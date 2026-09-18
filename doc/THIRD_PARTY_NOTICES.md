@@ -1,8 +1,17 @@
 # Third-party notices
 
-**English** | [简体中文](translated_zh_cn/THIRD_PARTY_NOTICES_zh_cn.md) | [繁體中文](translated_zh_tw/THIRD_PARTY_NOTICES_zh_tw.md)
+**English** | [简体中文](zh_cn/THIRD_PARTY_NOTICES.md) | [繁體中文](zh_tw/THIRD_PARTY_NOTICES.md)
 
-This project itself is licensed under GPL-3.0 (see [`LICENSE`](LICENSE)). It is
+## Documentation
+
+- Project overview: [README](../README.md)
+- Design rationale: [DESIGN](DESIGN.md)
+- Release history: [CHANGELOG](CHANGELOG.md)
+- Current state: [STATUS](STATUS.md)
+- Requirement list: [BACKLOG](BACKLOG.md)
+- Rejected ideas: [DECISIONS](DECISIONS.md)
+
+This project itself is licensed under GPL-3.0 (see [`LICENSE`](../LICENSE)). It is
 GPL-3.0 rather than something more permissive because it redistributes the
 sing-box executable, which is GPL-3.0; the combined work must be too. Code
 vendored from `vps-webserver`, which is Apache-2.0 upstream, is redistributed
@@ -28,7 +37,7 @@ This repository redistributes an unmodified official sing-box executable as
 - Distributed artifact: `sing-box-1.13.14-linux-amd64.tar.gz`
 - Repository binary SHA-256: `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
 - License: GNU GPL version 3 or any later version, plus the upstream
-  name/association condition; see [`LICENSES/sing-box-LICENSE`](LICENSES/sing-box-LICENSE)
+  name/association condition; see [`LICENSES/sing-box-LICENSE`](../LICENSES/sing-box-LICENSE)
 
 The executable in this repository was compared byte-for-byte with the
 executable in the official upstream Release archive and is unmodified.

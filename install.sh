@@ -781,11 +781,7 @@ if [ "$SRC_DIR" = "$PREFIX_ABS" ]; then
 else
   # Program files only. Anything stateful (admin_password.txt, certs/, data/)
   # is deliberately excluded so re-running never clobbers an existing install.
-  # CHANGELOG.md (English + translated_*/) is shipped because the app serves
-  # it at /changelog, so the person you deployed for can see what changed.
-  COPY_ITEMS="app.py VERSION static systemd tests README.md LICENSE LICENSES
-              THIRD_PARTY_NOTICES.md CHANGELOG.md
-              translated_zh_cn translated_zh_tw"
+  COPY_ITEMS="app.py VERSION static systemd tests README.md LICENSE LICENSES"
   # The sing-box binary is ~57 MB. Copying it into an install that will never
   # run anytls is pure waste, so it travels with its module.
   has_module anytls && COPY_ITEMS="$COPY_ITEMS anytls sing-box"
@@ -793,6 +789,22 @@ else
     [ -e "$SRC_DIR/$item" ] || continue
     rm -rf "${PREFIX:?}/$item"
     cp -r "$SRC_DIR/$item" "$PREFIX/"
+  done
+  # doc/CHANGELOG.md (English + doc/zh_cn/, doc/zh_tw/) is shipped because the
+  # app serves it at /changelog, so the person you deployed for can see what
+  # changed. doc/THIRD_PARTY_NOTICES.md ships so the deployed copy carries the
+  # same third-party notices as the source tree. The rest of doc/ (DESIGN,
+  # STATUS, BACKLOG, DECISIONS, and their translated versions) is
+  # maintainer-only and deliberately not shipped. cp -r's item-at-a-time loop
+  # above can't preserve this subdirectory nesting, so it is copied here with
+  # its own loop instead of being folded into COPY_ITEMS.
+  DOC_ITEMS="doc/CHANGELOG.md doc/THIRD_PARTY_NOTICES.md
+             doc/zh_cn/CHANGELOG.md doc/zh_tw/CHANGELOG.md"
+  for item in $DOC_ITEMS; do
+    [ -e "$SRC_DIR/$item" ] || continue
+    mkdir -p "$PREFIX/$(dirname "$item")"
+    rm -f "${PREFIX:?}/$item"
+    cp "$SRC_DIR/$item" "$PREFIX/$item"
   done
   [ -f "$SRC_DIR/.env.example" ] && cp "$SRC_DIR/.env.example" "$PREFIX/"
 fi

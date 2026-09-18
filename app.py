@@ -983,8 +983,8 @@ STRINGS = {
 LANG_NAMES = {"en": "English", "zh_cn": "简体中文", "zh_tw": "繁體中文"}
 
 # Our internal codes (zh_cn/zh_tw, underscore, matching the project's own
-# translated_<lang>/ doc convention) aren't valid BCP-47 <html lang> values —
-# that needs a hyphen. Only used for the <html lang="..."> attribute.
+# doc/<lang>/ doc convention) aren't valid BCP-47 <html lang> values — that
+# needs a hyphen. Only used for the <html lang="..."> attribute.
 HTML_LANG_TAGS = {"zh_cn": "zh-CN", "zh_tw": "zh-TW"}
 
 # With no cookie/query/matching Accept-Language, fall back to this. Validated
@@ -1418,8 +1418,8 @@ def render_page(title, body, lang, active=None, show_nav=True):
 
 
 CHANGELOG_PATHS = {
-    "zh_cn": BASE_DIR / "translated_zh_cn" / "CHANGELOG_zh_cn.md",
-    "zh_tw": BASE_DIR / "translated_zh_tw" / "CHANGELOG_zh_tw.md",
+    "zh_cn": BASE_DIR / "doc" / "zh_cn" / "CHANGELOG.md",
+    "zh_tw": BASE_DIR / "doc" / "zh_tw" / "CHANGELOG.md",
 }
 
 STATIC_FILES = {
@@ -2082,7 +2082,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         # English file between releases), fall back rather than show nothing —
         # but say which file is actually on screen.
         localized = CHANGELOG_PATHS.get(lang)
-        path = localized if localized and localized.exists() else BASE_DIR / "CHANGELOG.md"
+        path = localized if localized and localized.exists() else BASE_DIR / "doc" / "CHANGELOG.md"
         notice = ""
         if localized and path != localized:
             notice = f'<p class="muted small">{html.escape(t["changelog_fallback"])}</p>'

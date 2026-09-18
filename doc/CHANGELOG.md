@@ -1,6 +1,15 @@
 # Changelog
 
-**English** | [简体中文](translated_zh_cn/CHANGELOG_zh_cn.md) | [繁體中文](translated_zh_tw/CHANGELOG_zh_tw.md)
+**English** | [简体中文](zh_cn/CHANGELOG.md) | [繁體中文](zh_tw/CHANGELOG.md)
+
+## Documentation
+
+- Project overview: [README](../README.md)
+- Design rationale: [DESIGN](DESIGN.md)
+- Current state: [STATUS](STATUS.md)
+- Requirement list: [BACKLOG](BACKLOG.md)
+- Rejected ideas: [DECISIONS](DECISIONS.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then

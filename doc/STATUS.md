@@ -8,7 +8,16 @@ updated: 2026-09-12
 
 # Status
 
-**English** | [简体中文](translated_zh_cn/STATUS_zh_cn.md) | [繁體中文](translated_zh_tw/STATUS_zh_tw.md)
+**English** | [简体中文](zh_cn/STATUS.md) | [繁體中文](zh_tw/STATUS.md)
+
+## Documentation
+
+- Project overview: [README](../README.md)
+- Design rationale: [DESIGN](DESIGN.md)
+- Release history: [CHANGELOG](CHANGELOG.md)
+- Requirement list: [BACKLOG](BACKLOG.md)
+- Rejected ideas: [DECISIONS](DECISIONS.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 **Notion:** private mirror (not published)
 **Repo:** public

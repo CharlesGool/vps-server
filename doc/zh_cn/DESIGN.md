@@ -1,6 +1,15 @@
 # vps-server — Design
 
-[English](../DESIGN.md) | **简体中文** | [繁體中文](../translated_zh_tw/DESIGN_zh_tw.md)
+[English](../DESIGN.md) | **简体中文** | [繁體中文](../zh_tw/DESIGN.md)
+
+## 文档说明
+
+- 项目概览：[README](README.md)
+- 发布历史：[CHANGELOG](CHANGELOG.md)
+- 当前状态：[STATUS](STATUS.md)
+- 需求列表：[BACKLOG](BACKLOG.md)
+- 被否决的方案：[DECISIONS](DECISIONS.md)
+- 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > 译自 `DESIGN.md`（v1.0.4）。如有冲突，以英文版为准。
 

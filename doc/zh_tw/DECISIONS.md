@@ -1,6 +1,15 @@
 # 決策記錄
 
-[English](../DECISIONS.md) | **繁體中文**
+[English](../DECISIONS.md) | [简体中文](../zh_cn/DECISIONS.md) | **繁體中文**
+
+## 文件說明
+
+- 專案概覽：[README](README.md)
+- 設計理念：[DESIGN](DESIGN.md)
+- 版本歷史：[CHANGELOG](CHANGELOG.md)
+- 目前狀態：[STATUS](STATUS.md)
+- 需求清單：[BACKLOG](BACKLOG.md)
+- 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > 譯自 `DECISIONS.md`（v1.0.4）。如有衝突，以英文版為準。
 

@@ -1,6 +1,15 @@
 # Backlog
 
-**English** | [简体中文](translated_zh_cn/BACKLOG_zh_cn.md) | [繁體中文](translated_zh_tw/BACKLOG_zh_tw.md)
+**English** | [简体中文](zh_cn/BACKLOG.md) | [繁體中文](zh_tw/BACKLOG.md)
+
+## Documentation
+
+- Project overview: [README](../README.md)
+- Design rationale: [DESIGN](DESIGN.md)
+- Release history: [CHANGELOG](CHANGELOG.md)
+- Current state: [STATUS](STATUS.md)
+- Rejected ideas: [DECISIONS](DECISIONS.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 The requirement list. Everything that was asked for, most important first,
 ticked off as it gets done. This is the file that answers "what was I going to

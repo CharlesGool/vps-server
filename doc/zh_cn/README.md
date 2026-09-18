@@ -1,6 +1,15 @@
 # vps-server
 
-[English](../README.md) | **简体中文**
+[English](../../README.md) | **简体中文** | [繁體中文](../zh_tw/README.md)
+
+## 文档说明
+
+- 设计理念：[DESIGN](DESIGN.md)
+- 发布历史：[CHANGELOG](CHANGELOG.md)
+- 当前状态：[STATUS](STATUS.md)
+- 需求列表：[BACKLOG](BACKLOG.md)
+- 被否决的方案：[DECISIONS](DECISIONS.md)
+- 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > 译自 `README.md`（v1.0.4）。如有冲突，以英文版为准。
 

@@ -1,6 +1,15 @@
 # 第三方聲明
 
-[English](../THIRD_PARTY_NOTICES.md) | **繁體中文**
+[English](../THIRD_PARTY_NOTICES.md) | [简体中文](../zh_cn/THIRD_PARTY_NOTICES.md) | **繁體中文**
+
+## 文件說明
+
+- 專案概覽：[README](README.md)
+- 設計理念：[DESIGN](DESIGN.md)
+- 版本歷史：[CHANGELOG](CHANGELOG.md)
+- 目前狀態：[STATUS](STATUS.md)
+- 需求清單：[BACKLOG](BACKLOG.md)
+- 被否決的方案：[DECISIONS](DECISIONS.md)
 
 > 譯自 `THIRD_PARTY_NOTICES.md`（v1.0.4）。如有衝突，以英文版為準；以英文版和各授權條款原始文本為準。
 

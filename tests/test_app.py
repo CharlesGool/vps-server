@@ -473,8 +473,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
         # English in every language, because release-preflight.sh and the
         # GitHub release notes both key off the English file's structure.
         # An "English headings are absent" check would therefore never pass.
-        self.assertIn(self.changelog_sentinel("translated_zh_cn/CHANGELOG_zh_cn.md"), body)
-        self.assertNotIn(self.changelog_sentinel("CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/zh_cn/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
 
     def test_changelog_traditional_chinese(self):
         session = self.login()
@@ -485,8 +485,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
         body = resp.read().decode()
         conn.close()
         self.assertIn("<h2>", body, "zh_tw changelog headings were not rendered")
-        self.assertIn(self.changelog_sentinel("translated_zh_tw/CHANGELOG_zh_tw.md"), body)
-        self.assertNotIn(self.changelog_sentinel("CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/zh_tw/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
 
     def test_changelog_fallback_notice_when_translation_missing(self):
         session = self.login()
@@ -498,7 +498,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
             resp = conn.getresponse()
             body = resp.read().decode()
             conn.close()
-            self.assertIn(self.changelog_sentinel("CHANGELOG.md"), body)  # fell back to English
+            self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)  # fell back to English
             self.assertIn(app.STRINGS["zh_cn"]["changelog_fallback"], body)
         finally:
             app.CHANGELOG_PATHS["zh_cn"] = original
@@ -509,7 +509,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.request("GET", "/changelog?lang=en", headers={"Cookie": f"session={session}"})
         body = conn.getresponse().read().decode()
         conn.close()
-        self.assertIn(self.changelog_sentinel("CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
 
     def test_changelog_requires_login(self):
         conn = self.connect()
@@ -1425,11 +1425,11 @@ class InstallerContractTest(unittest.TestCase):
         # invisible — the console would keep naming a version nobody tagged.
         version = (self.ROOT / "VERSION").read_text().strip()
         status = re.search(r"^version:\s*(\S+)\s*$",
-                           (self.ROOT / "STATUS.md").read_text(), re.M).group(1)
+                           (self.ROOT / "doc" / "STATUS.md").read_text(), re.M).group(1)
         if status == "unreleased":
             self.skipTest("no release cut yet")
         self.assertEqual(f"v{version}", status,
-                         "VERSION and STATUS.md name different releases")
+                         "VERSION and doc/STATUS.md name different releases")
 
     def test_version_is_not_a_constant_in_the_source(self):
         # webui.md §1: the displayed version must come from the real tag, so

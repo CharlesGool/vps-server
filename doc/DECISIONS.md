@@ -1,6 +1,15 @@
 # Decisions
 
-**English** | [简体中文](translated_zh_cn/DECISIONS_zh_cn.md) | [繁體中文](translated_zh_tw/DECISIONS_zh_tw.md)
+**English** | [简体中文](zh_cn/DECISIONS.md) | [繁體中文](zh_tw/DECISIONS.md)
+
+## Documentation
+
+- Project overview: [README](../README.md)
+- Design rationale: [DESIGN](DESIGN.md)
+- Release history: [CHANGELOG](CHANGELOG.md)
+- Current state: [STATUS](STATUS.md)
+- Requirement list: [BACKLOG](BACKLOG.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 Not a decision log — a guard against re-proposing. One question decides whether
 something belongs here:

@@ -1,6 +1,15 @@
 # vps-server
 
-**English** | [简体中文](translated_zh_cn/README_zh_cn.md) | [繁體中文](translated_zh_tw/README_zh_tw.md)
+**English** | [简体中文](doc/zh_cn/README.md) | [繁體中文](doc/zh_tw/README.md)
+
+## Documentation
+
+- Design rationale: [DESIGN](doc/DESIGN.md)
+- Release history: [CHANGELOG](doc/CHANGELOG.md)
+- Current state: [STATUS](doc/STATUS.md)
+- Requirement list: [BACKLOG](doc/BACKLOG.md)
+- Rejected ideas: [DECISIONS](doc/DECISIONS.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](doc/THIRD_PARTY_NOTICES.md)
 
 A one-command bundle for a Debian/Ubuntu VPS: a public page anyone can hit to
 prove your IP's web ports are reachable, a password-protected console for
@@ -123,7 +132,7 @@ ones:
 | `VPSSRV_IPERF_MAX_MINUTES` | Cap the console cannot exceed | `60` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
 
-Full reference: see `DESIGN.md` → Configuration reference.
+Full reference: see `doc/DESIGN.md` → Configuration reference.
 
 ## Uninstall
 
@@ -137,7 +146,7 @@ KEEP_DATA=1 bash uninstall.sh  # keeps the visitor database and the console pass
 GPL-3.0. This project redistributes the sing-box binary, which is GPL-3.0, so
 the combined work is GPL-3.0 — see `LICENSE`. Vendored third-party components,
 their versions, and the corresponding-source links the GPL requires are recorded
-in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+in [THIRD_PARTY_NOTICES.md](doc/THIRD_PARTY_NOTICES.md).
 
 This project is not affiliated with or endorsed by sing-box/SagerNet or
 LibreSpeed.

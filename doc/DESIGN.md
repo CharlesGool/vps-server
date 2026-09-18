@@ -1,6 +1,15 @@
 # vps-server — Design
 
-**English** | [简体中文](translated_zh_cn/DESIGN_zh_cn.md) | [繁體中文](translated_zh_tw/DESIGN_zh_tw.md)
+**English** | [简体中文](zh_cn/DESIGN.md) | [繁體中文](zh_tw/DESIGN.md)
+
+## Documentation
+
+- Project overview: [README](../README.md)
+- Release history: [CHANGELOG](CHANGELOG.md)
+- Current state: [STATUS](STATUS.md)
+- Requirement list: [BACKLOG](BACKLOG.md)
+- Rejected ideas: [DECISIONS](DECISIONS.md)
+- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 > Success criterion for this document: someone else, on a different machine,
 > can rebuild this project from it. Assume the reader cannot see your machine.
@@ -341,7 +350,7 @@ repo/
 ├── tests/
 ├── LICENSE                    # GPL-3.0
 ├── LICENSES/                  # upstream licence texts
-└── <the six governance docs + two translated_* trees>
+└── doc/                       # the six governance docs + doc/zh_cn/, doc/zh_tw/
 ```
 
 SQLite schema is inherited unchanged from `vps-webserver`: one `visits` table,
@@ -421,7 +430,7 @@ trimmed to the most recent 1000 rows.
   `ProbeHandler` — its route table being nearly empty is a security property,
   not an oversight.
 - **A new language**: extend the `STRINGS` table in `app.py` and the `msg()`
-  table in `install.sh`, then add a `translated_<lang>/` tree.
+  table in `install.sh`, then add a `doc/<lang>/` tree.
 - **A new colour**: add a token to `:root` in `static/style.css` *and* a
   light-mode value in the `prefers-color-scheme: light` block, then use the
   token. Never write a hex into a component rule — a literal cannot follow the
