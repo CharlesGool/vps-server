@@ -11,10 +11,24 @@
 - 被否决的方案：[DECISIONS](DECISIONS.md)
 - 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 译自 `CHANGELOG.md`（v1.0.4）。如有冲突，以英文版为准。
+> 译自 `CHANGELOG.md`（v1.1.0）。如有冲突，以英文版为准。
 
 最新版本排在最前。只记录用户能感知到的变化——内部重构不需要条目。先用
 `git log <previous-tag>..HEAD --oneline` 起草，再改写成面向用户的说法。
+
+## v1.1.0 — 2026-09-19
+
+### Added
+
+- **由控制台管理的端口转发。** 新增的"Port forward"页面可以把本机上的一个公网
+  TCP/UDP 端口，转发到通过 Tailscale 或局域网可以访问到的另一台设备——适用于
+  这台主机有公网 IP、而目标设备没有的场景。可以在控制台中添加、启用、禁用和
+  删除转发规则；每条规则在生效前都会与这套安装已经占用的所有端口（控制台、
+  公开页面、iperf3、anytls）逐一核对，避免冲突。规则底层依靠 `iptables` 的
+  DNAT 加 MASQUERADE 实现，并且每次服务启动时都会自动重新应用，因此重启服务
+  或重启主机后，所有已启用的转发都会原样恢复，而不会丢失。首次需要用到时，
+  `net.ipv4.ip_forward` 会被自动开启。将 `VPSSRV_PORTFWD_ENABLE=0` 可以把这项
+  功能从某次安装中彻底移除。
 
 ## v1.0.4 — 2026-09-12
 

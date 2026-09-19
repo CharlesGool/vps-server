@@ -32,26 +32,22 @@ never edit or delete the old one.
 
 ---
 
-## 2026-09-19 — Port forwards are iptables DNAT, reapplied from JSON at every start; nothing is written outside the process
+## 2026-09-19 — Port forwards are iptables DNAT, reapplied from JSON at every start; nothing written outside the process
 
-- **Rejected:** a per-rule `socat` userspace relay — no NAT table or
-  `ip_forward` changes at all, which is safer on a shared host, but the user
-  explicitly chose kernel-level DNAT+MASQUERADE for this project instead.
-- **Rejected:** `iptables-persistent`/`netfilter-persistent` to survive a
-  reboot at the kernel level — that would make the console and a system
-  package two separate sources of truth for the same rules, which drift.
-  `app.py` reapplies from its own JSON on every start instead (see DESIGN.md,
-  "Port forwarding lifecycle"), so there is exactly one.
-- **Rejected:** turning `net.ipv4.ip_forward` back to `0` automatically once
-  the last forward is disabled or removed — it is a single host-wide toggle,
-  and other software already on the box (this project's own test host runs
-  Docker, which sets it independently) may depend on it staying on. Turning
-  it off is left to the operator.
-- **Cost:** stopping `vps-server-web` (not just restarting it) withdraws
-  every forward's kernel state, even the enabled ones — the same fail-safe
-  direction already chosen for the iperf3 window. Do not "fix" this by moving
-  the rules into a separate always-on unit; that was considered and rejected
-  above.
+- **Rejected:** a per-rule `socat` userspace relay — safer (no NAT table or
+  `ip_forward` changes), but the user explicitly chose kernel-level
+  DNAT+MASQUERADE for this project instead.
+- **Rejected:** `iptables-persistent` to survive a reboot at the kernel level
+  — that makes the console and a system package two sources of truth for the
+  same rules. `app.py` reapplies from its own JSON on every start instead
+  (DESIGN.md, "Port forwarding lifecycle"), so there is exactly one.
+- **Rejected:** auto-reverting `net.ipv4.ip_forward` to `0` once the last
+  forward is removed — it is host-wide, and other software (this project's
+  own test host runs Docker) may depend on it staying on.
+- **Cost:** stopping `vps-server-web` (not restarting it) withdraws every
+  forward's kernel state, even enabled ones — same fail-safe direction as the
+  iperf3 window. Do not move the rules into a separate always-on unit to
+  "fix" this; that was considered and rejected above.
 
 ---
 

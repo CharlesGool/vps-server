@@ -11,7 +11,7 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `DESIGN.md`（v1.0.4）。如有衝突，以英文版為準。
+> 譯自 `DESIGN.md`（v1.1.0）。如有衝突，以英文版為準。
 
 > 這份文件的成功標準：另一個人，在另一台機器上，能照著它把這個專案重建出來。
 > 假設讀者看不到你的機器。
@@ -191,6 +191,50 @@ Windows 上 Cygwin 版本的 iperf3 會回報輸送量，但沒有 `mean_rtt`。
 UDP 模式（`-u`）在任何地方都會回報 jitter 和封包遺失，
 是測試者不在 Linux 上時比較通用的答案。
 
+### 連接埠轉發的生命週期
+
+一個轉發（forward）會把這台主機上的一個公開 TCP/UDP 連接埠，轉送到透過
+Tailscale 或區域網路才能連到的裝置——這是一台有公開 IP 的主機，
+能替一台沒有公開 IP 的裝置頂替上場的方式。跟 iperf3 視窗不同，
+這是一份設定，不是一次限時借出的上行頻寬：它應該在重啟或重開機之後
+依然存在，所以建置方式也不一樣。
+
+1. 操作者從主控台新增一條規則：協定（tcp/udp/both）、一個公開連接埠，
+   以及目標 `host:port`。`PortForwardManager.add()` 會在動 iptables 之前，
+   先拒絕一個這次安裝已經在用的公開連接埠（主控台、公開頁面、iperf3、
+   anytls 節點，或另一條轉發規則）。
+2. 規則裡的每個協定都會變成四條 `iptables` 規則，全部標記
+   `-m comment --comment vps-server-portfwd-<id>`，這樣才能跟表格裡
+   原本就有的其他規則區分開來：
+   - `nat`/`PREROUTING`：把公開連接埠 DNAT 到 `target_host:target_port`。
+   - `nat`/`POSTROUTING`：對送往目標的流量做 MASQUERADE，讓回應
+     經由這台主機路由回去，而不是走目標自己的預設閘道——目標看到的
+     用戶端就是這台主機。
+   - `filter`/`FORWARD`：兩個方向各一條 ACCEPT 規則，因為那條鏈上
+     的預設 `DROP` policy（例如在 Docker 主機上很常見）否則會悄悄
+     吃掉轉發的流量。
+3. `net.ipv4.ip_forward` 會在第一條規則需要它的時候被開啟
+   （`_ensure_ip_forward()`），而且再也不會被關掉——原因見
+   DECISIONS.md（2026-09-19）。
+4. 規則集存在 `PORTFWD_STATE_FILE`（JSON）裡，不只是記在記憶體中。
+   每次行程啟動都會呼叫 `PortForwardManager.load()`，它會無條件地
+   先撤銷、再重新加入每一條已啟用規則的 iptables 狀態——核心的表格
+   在重開機之後什麼都不會記得，但如果這只是服務重啟，可能還留著
+   上一次執行的規則，所以不管是哪一種情況，這都是唯一一條必須做對
+   的路徑。
+5. 乾淨的停止（`SIGTERM`，跟 iperf3 視窗用的是同一個訊號處理器）
+   會呼叫 `PortForwardManager.shutdown()`，它會撤銷每一條已啟用
+   規則的 iptables 狀態，但不會動 JSON 裡的 `enabled` 旗標——
+   重啟服務或重開機時，必須靠 `load()` 把它們全部直接帶回來。
+   這跟 iperf3 視窗是同一個容錯方向：如果管理這個狀態的行程沒有在跑，
+   這個狀態就不該悄悄活得比它久。
+
+`target_host` 必須是一個字面上的 IPv4 位址，不能是主機名稱：
+`iptables --to-destination` 接受的是位址，而且這個專案在請求當下
+不會對外做 DNS 查詢（見「零第三方執行期依賴」的決策）。Tailscale
+裝置的 IP 是穩定的，可以在該裝置上用 `tailscale status` 或
+`tailscale ip` 查到。
+
 ## 技術選型
 
 | 層 | 選擇 | 版本 | 理由 |
@@ -238,7 +282,7 @@ UDP 模式（`-u`）在任何地方都會回報 jitter 和封包遺失，
 | 路徑 | 由誰提供 | 用途 |
 |---|---|---|
 | `$PREFIX` | 安裝程式，預設 `/opt/vps-server` | 程式碼、靜態資源、持久化連接埠檔案 |
-| `$VPSSRV_DATA_DIR` | 安裝程式，預設 `$PREFIX/data` | `visitors.db`、`session_secret.txt` |
+| `$VPSSRV_DATA_DIR` | 安裝程式，預設 `$PREFIX/data` | `visitors.db`、`session_secret.txt`、`portfwd.json` |
 | `$VPSSRV_CERT_DIR` | 安裝程式，預設 `$PREFIX/certs` | 443 用的自簽憑證與金鑰 |
 | `/etc/vps-server-anytls/` | 安裝程式 | sing-box 的 `config.json` 以及它自己的自簽憑證 |
 
@@ -269,6 +313,8 @@ UDP 模式（`-u`）在任何地方都會回報 jitter 和封包遺失，
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | 預先填入的視窗時長 | `10` | 否 |
 | `VPSSRV_IPERF_MAX_MINUTES` | 主控台不得超過的硬上限 | `60` | 否 |
 | `VPSSRV_IPERF_ENABLE` | 是否允許開啟視窗 | `1` | 否 |
+| `VPSSRV_PORTFWD_ENABLE` | 是否顯示連接埠轉發頁面並允許新增轉發 | `1` | 否 |
+| `VPSSRV_PORTFWD_MAX_RULES` | 已設定轉發規則數量上限 | `20` | 否 |
 | `VPSSRV_TRUST_PROXY` | 記錄訪客時是否採信 `X-Forwarded-For` | `0` | 否 |
 | `VPSSRV_TRACK_CONNECTIONS` | 輪詢 `/proc/net/tcp[6]` 以記錄所有連接埠的連線 | `1` | 否 |
 | `VPSSRV_CONN_POLL_SECONDS` | 輪詢間隔 | `5` | 否 |
@@ -327,11 +373,13 @@ repo/
 ├── tests/
 ├── LICENSE                    # GPL-3.0
 ├── LICENSES/                  # upstream licence texts
-└── <the six governance docs + two translated_* trees>
+└── doc/                       # the six governance docs + doc/zh_cn/, doc/zh_tw/
 ```
 
 SQLite 的 schema 原封不動繼承自 `vps-webserver`：一張 `visits` 資料表，
-只保留最近 1000 筆紀錄。
+只保留最近 1000 筆紀錄。`portfwd.json` 是一份扁平的 JSON 規則物件清單
+（`id`、`label`、`protocol`、`public_port`、`target_host`、`target_port`、
+`enabled`、`created`）——見 `app.py` 裡的 `PortForwardManager`。
 
 ## 已知限制與陷阱
 
@@ -355,6 +403,18 @@ SQLite 的 schema 原封不動繼承自 `vps-webserver`：一張 `visits` 資料
 - **自簽 TLS 意味著 443 每次都會跳出瀏覽器警告。** 這是預期行為，
   不值得用例外規則或 HSTS 標頭去「修掉」它。
 - **重啟會關閉任何開著的 iperf3 視窗。** 這是刻意設計；見生命週期那一節。
+- **停止服務會撤銷每一條連接埠轉發，即使是已啟用的那些也一樣。**
+  這是刻意設計，跟 iperf3 視窗對稱；見連接埠轉發生命週期那一節。
+  `systemctl restart` 或重開機會把它們直接帶回來——但停在
+  `systemctl stop` 狀態不會。
+- **`net.ipv4.ip_forward` 會被自動開啟，而且再也不會被關掉。**
+  這是一個整台主機共用的單一開關；主機上的其他軟體（例如 Docker）
+  可能已經依賴它了，所以移除最後一條轉發不會去動它。如果主機上
+  沒有其他東西需要它，就自己手動關掉。
+- **一條轉發只涵蓋原生 `iptables` 看得到的範圍。** 如果 `ufw` 或
+  `firewalld` 正在運作，且自己也有一個預設拒絕的 `FORWARD` policy，
+  它們的鏈會比這個功能附加的規則更早被評估，可能還需要為同一個
+  連接埠額外加一條自己的放行規則，流量才過得去。
 - **sing-box 二進位檔已經超過 GitHub 建議的檔案大小。** 約 55 MB，
   超過了 50 MB 的軟性限制，所以每次 push 都會印出一則建議使用
   Git LFS 的「Large files detected」警告。push 仍然會成功；
@@ -402,7 +462,7 @@ SQLite 的 schema 原封不動繼承自 `vps-webserver`：一張 `visits` 資料
   不要在 `ProbeHandler` 裡加路由——它的路由表幾乎是空的，
   這是一項安全特性，不是疏漏。
 - **新增一種語言**：擴充 `app.py` 裡的 `STRINGS` 表和 `install.sh` 裡的
-  `msg()` 表，再新增一個 `translated_<lang>/` 目錄樹。
+  `msg()` 表，再新增一個 `doc/<lang>/` 目錄樹。
 - **新增一種顏色**：在 `static/style.css` 的 `:root` 裡加一個 token，
   *並且*在 `prefers-color-scheme: light` 區塊裡加對應的淺色模式值，
   然後使用這個 token。絕不要在元件規則裡直接寫死十六進位色碼——

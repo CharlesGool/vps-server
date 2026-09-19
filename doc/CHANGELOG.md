@@ -15,6 +15,22 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.1.0 — 2026-09-19
+
+### Added
+
+- **Console-managed port forwarding.** A new "Port forward" page lets you
+  forward a public TCP/UDP port on this host to a device reached over
+  Tailscale or the LAN — useful when this box has a public IP and the target
+  device does not. Add, enable, disable and delete rules from the console;
+  each one is checked against every port this install already uses (console,
+  public page, iperf3, anytls) before it is applied. Rules are backed by
+  `iptables` DNAT + MASQUERADE and are reapplied automatically every time the
+  service starts, so a restart or a reboot brings every enabled forward
+  straight back rather than losing it. `net.ipv4.ip_forward` is turned on
+  automatically the first time it is needed. Set `VPSSRV_PORTFWD_ENABLE=0` to
+  remove the feature from an install entirely.
+
 ## v1.0.4 — 2026-09-12
 
 ### Changed

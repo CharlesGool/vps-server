@@ -1,8 +1,8 @@
 ---
 project: vps-server
-version: v1.0.4
+version: v1.1.0
 status: active
-branch: feat/portfwd
+branch: main
 updated: 2026-09-19
 ---
 
@@ -22,20 +22,20 @@ updated: 2026-09-19
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** Console-managed port forwarding, on `feat/portfwd`, not yet
-merged, released, or tagged. Lets the console forward a public TCP/UDP port on
-this host to a device reached over Tailscale or the LAN — the "this box has a
-public IP, that device does not" case — via iptables DNAT + MASQUERADE, with
-rules persisted as JSON and reapplied idempotently on every service start.
-Fully implemented and self-verified: 119/119 unit tests pass (including new
+**In progress:** v1.1.0 released. Console-managed port forwarding: lets the
+console forward a public TCP/UDP port on this host to a device reached over
+Tailscale or the LAN — the "this box has a public IP, that device does not"
+case — via iptables DNAT + MASQUERADE, with rules persisted as JSON and
+reapplied idempotently on every service start. Self-verified before the
+operator's own test: 119/119 unit tests pass (including new
 `PortForwardManagerTest` and `PortForwardConsoleTest`), and a live disposable
 three-container Docker harness confirmed real TCP and UDP traffic forwarding
 end to end, `net.ipv4.ip_forward` turning on automatically, disable/enable
 toggling reachability immediately, two process restarts in a row applying no
 duplicate iptables rules, and a clean stop withdrawing every rule's kernel
 state while `portfwd.json` still says `enabled: true` so the next start brings
-it straight back. Waiting on the operator's own manual test before this
-becomes v1.1.0 — see `BACKLOG.md` for the full verification list.
+it straight back. The operator then verified it manually on a real host.
+Nothing is in flight.
 
 Released history, newest first: v1.0.4 printed the machine's real addresses in
 the installer's closing summary — it used to emit a literal `<this-server>`

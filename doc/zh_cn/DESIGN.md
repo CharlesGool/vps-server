@@ -11,7 +11,7 @@
 - 被否决的方案：[DECISIONS](DECISIONS.md)
 - 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 译自 `DESIGN.md`（v1.0.4）。如有冲突，以英文版为准。
+> 译自 `DESIGN.md`（v1.1.0）。如有冲突，以英文版为准。
 
 > 本文档的成功标准：另一个人，在另一台机器上，能凭这份文档重建出这个项目。假设读者看不到你的机器。
 
@@ -188,6 +188,45 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`。UDP �
 在任何环境下都会报告抖动和丢包，当测试者不在 Linux 上时，这是更具可移植性的
 方案。
 
+### 端口转发的生命周期
+
+一个转发规则会把这台主机上的一个公网 TCP/UDP 端口，转发到一台通过 Tailscale 或
+局域网可达的设备上——这样一台拥有公网 IP 的主机就能替一台没有公网 IP 的设备
+出面。和 iperf3 窗口不同，这属于配置，而不是对上行带宽的限时租借：它本应在
+重启或重新引导之后依然存在，所以实现方式也不一样。
+
+1. 操作员从控制台添加一条规则：协议（tcp/udp/both）、一个公网端口，以及一个
+   目标 `host:port`。在任何东西触碰 iptables 之前，`PortForwardManager.add()`
+   会先拒绝一个已经被本次安装占用的公网端口（控制台、公开页面、iperf3、
+   anytls 节点，或另一条转发规则）。
+2. 规则中的每一个协议都会变成四条 `iptables` 规则，全部打上
+   `-m comment --comment vps-server-portfwd-<id>` 标记，以便和表里已有的其他
+   规则区分开来：
+   - `nat`/`PREROUTING`：把公网端口 DNAT 到 `target_host:target_port`。
+   - `nat`/`POSTROUTING`：对发往目标的流量做 MASQUERADE，让回复流量经由这台
+     主机路由回来，而不是从目标自己的默认网关出去——这样目标看到的客户端
+     就是这台主机。
+   - `filter`/`FORWARD`：每个方向各一条 ACCEPT 规则，因为该链上的默认 `DROP`
+     策略（例如在 Docker 主机上很常见）否则会悄悄吞掉被转发的流量。
+3. `net.ipv4.ip_forward` 会在第一条规则需要它时被打开
+   （`_ensure_ip_forward()`），并且永远不会再关闭——原因见 DECISIONS.md
+   （2026-09-19）。
+4. 规则集保存在 `PORTFWD_STATE_FILE`（JSON）里，而不只是留在内存中。每次
+   进程启动都会调用 `PortForwardManager.load()`，它会无条件地先撤销、再重新
+   加上每一条已启用规则的 iptables 状态——内核的表在重启之后什么都不会记得，
+   而如果这只是一次服务重启，表里可能还留着上一次运行的规则，所以不论是哪种
+   情况，这都是唯一必须处理正确的路径。
+5. 一次干净的停止（`SIGTERM`，和 iperf3 窗口用的是同一个信号处理器）会调用
+   `PortForwardManager.shutdown()`，它会撤销每一条已启用规则的 iptables 状态，
+   但不会去动 JSON 里的 `enabled` 标记——重启这个服务，或者重启主机，都必须
+   通过 `load()` 把它们全部直接带回来。这和 iperf3 窗口是同一个失败安全方向：
+   如果管理这份状态的进程没有在运行，这份状态就不应该悄悄地比它活得更久。
+
+`target_host` 必须是一个字面的 IPv4 地址，不能是主机名：`iptables
+--to-destination` 只接受地址，而且本项目在请求时不做任何出站 DNS 查询
+（见"零第三方运行时依赖"那条决策）。一台 Tailscale 设备的 IP 是稳定的，可以在
+该设备上用 `tailscale status` 或 `tailscale ip` 查到。
+
 ## 技术栈
 
 | 层 | 选择 | 版本 | 原因 |
@@ -235,7 +274,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`。UDP �
 | 路径 | 由谁提供 | 用途 |
 |---|---|---|
 | `$PREFIX` | 安装程序，默认 `/opt/vps-server` | 代码、静态资源、持久化端口文件 |
-| `$VPSSRV_DATA_DIR` | 安装程序，默认 `$PREFIX/data` | `visitors.db`、`session_secret.txt` |
+| `$VPSSRV_DATA_DIR` | 安装程序，默认 `$PREFIX/data` | `visitors.db`、`session_secret.txt`、`portfwd.json` |
 | `$VPSSRV_CERT_DIR` | 安装程序，默认 `$PREFIX/certs` | 443 用的自签名证书和密钥 |
 | `/etc/vps-server-anytls/` | 安装程序 | sing-box 的 `config.json` 及其自身的自签名证书 |
 
@@ -264,6 +303,8 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`。UDP �
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | 预填的窗口时长 | `10` | 否 |
 | `VPSSRV_IPERF_MAX_MINUTES` | 控制台不可超过的硬上限 | `60` | 否 |
 | `VPSSRV_IPERF_ENABLE` | 是否允许开启窗口 | `1` | 否 |
+| `VPSSRV_PORTFWD_ENABLE` | 是否显示端口转发页面并允许新增转发 | `1` | 否 |
+| `VPSSRV_PORTFWD_MAX_RULES` | 已配置转发规则数量的上限 | `20` | 否 |
 | `VPSSRV_TRUST_PROXY` | 记录访客时是否信任 `X-Forwarded-For` | `0` | 否 |
 | `VPSSRV_TRACK_CONNECTIONS` | 是否轮询 `/proc/net/tcp[6]` 以记录所有端口的连接 | `1` | 否 |
 | `VPSSRV_CONN_POLL_SECONDS` | 轮询间隔 | `5` | 否 |
@@ -322,11 +363,13 @@ repo/
 ├── tests/
 ├── LICENSE                    # GPL-3.0
 ├── LICENSES/                  # upstream licence texts
-└── <the six governance docs + two translated_* trees>
+└── doc/                       # the six governance docs + doc/zh_cn/, doc/zh_tw/
 ```
 
 SQLite 的表结构原样继承自 `vps-webserver`：只有一张 `visits` 表，会裁剪到只保留
-最近的 1000 行。
+最近的 1000 行。`portfwd.json` 是一份扁平的 JSON 规则对象列表（`id`、`label`、
+`protocol`、`public_port`、`target_host`、`target_port`、`enabled`、`created`）
+——见 `app.py` 里的 `PortForwardManager`。
 
 ## 已知限制与坑
 
@@ -351,6 +394,17 @@ SQLite 的表结构原样继承自 `vps-webserver`：只有一张 `visits` 表�
   "修掉"它而加例外或 HSTS 头。
 - **重启会关闭任何已开启的 iperf3 窗口。** 这是有意为之的；见前面的生命周期
   一节。
+- **停止服务会撤销每一条端口转发，哪怕它是已启用的。** 这是有意为之的，
+  和 iperf3 窗口对称；见前面端口转发生命周期一节。`systemctl restart` 或者
+  重启主机会把它们直接全部带回来——`systemctl stop` 之后停在那里则不会。
+- **`net.ipv4.ip_forward` 会被自动打开，且永远不会再关闭。** 这是一个
+  全主机范围的单一开关；主机上的其他软件（比如 Docker）可能已经依赖它，
+  所以删掉最后一条转发规则不会去动它。如果主机上没有别的东西需要它，
+  就手动关掉它。
+- **一条转发规则只覆盖原始 `iptables` 能看到的范围。** 如果 `ufw` 或
+  `firewalld` 正在运行，并且自己也有一条默认拒绝的 `FORWARD` 策略，它们的链
+  会先于这个功能追加的规则被求值，可能仍然需要为同一个端口单独加一条放行
+  规则，流量才能通过。
 - **sing-box 二进制超过了 GitHub 建议的文件大小。** 大约 55 MB，超过了
   50 MB 的软限制，因此每次 push 都会打印一条建议使用 Git LFS 的
   "Large files detected" 警告。Push 依然能成功；硬限制是 100 MB。未来
@@ -393,7 +447,7 @@ SQLite 的表结构原样继承自 `vps-webserver`：只有一张 `visits` 表�
 - **新增一个控制台页面**：给 `ConsoleHandler` 加一个路由。不要给
   `ProbeHandler` 加路由——它的路由表几乎为空是一个安全属性，不是疏漏。
 - **新增一种语言**：扩展 `app.py` 里的 `STRINGS` 表和 `install.sh` 里的
-  `msg()` 表，然后新增一个 `translated_<lang>/` 目录树。
+  `msg()` 表，然后新增一个 `doc/<lang>/` 目录树。
 - **新增一种颜色**：在 `static/style.css` 的 `:root` 里加一个 token，*并且*
   在 `prefers-color-scheme: light` 区块里补上对应的浅色模式的值，然后使用
   这个 token。不要在组件规则里直接写十六进制颜色值——字面量没法跟着主题走，
@@ -407,5 +461,3 @@ SQLite 的表结构原样继承自 `vps-webserver`：只有一张 `visits` 表�
   对应的 `.upstream-version` 文件，并在 `CHANGELOG.md` 里记一笔这次升级。
   绝不要就地手改内嵌代码——一个没有反映回上游的本地改动，会让下一次刷新
   变成一次悄无声息的回退。
-</content>
-</invoke>
