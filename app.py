@@ -150,11 +150,19 @@ IPERF_PORT = int(os.environ.get("VPSSRV_IPERF_PORT", "5201"))
 IPERF_DEFAULT_MINUTES = int(os.environ.get("VPSSRV_IPERF_DEFAULT_MINUTES", "10"))
 IPERF_MAX_MINUTES = int(os.environ.get("VPSSRV_IPERF_MAX_MINUTES", "60"))
 
+# Port forwarding. Unlike the iperf3 window, a forward is configuration, not a
+# timed loan of the uplink — it is meant to still be there after a restart or
+# a reboot. See PortForwardManager for how that is reconciled with rules
+# living in the kernel, which remembers nothing on its own.
+PORTFWD_ENABLED = os.environ.get("VPSSRV_PORTFWD_ENABLE", "1") == "1"
+PORTFWD_MAX_RULES = int(os.environ.get("VPSSRV_PORTFWD_MAX_RULES", "20"))
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 os.chmod(DATA_DIR, 0o700)
 
 SECRET_FILE = DATA_DIR / "session_secret.txt"
 DB_FILE = DATA_DIR / "visitors.db"
+PORTFWD_STATE_FILE = DATA_DIR / "portfwd.json"
 
 SESSION_TTL_SECONDS = 12 * 3600
 MAX_VISITOR_ROWS = 1000
@@ -465,6 +473,250 @@ class IperfWindow:
 IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES)
 
 # ---------------------------------------------------------------------------
+# Port forwarding — persistent iptables DNAT rules, console-managed
+#
+# A forward relays a public TCP/UDP port on this host to a device reachable
+# over Tailscale or the LAN — the way a box with a public IP can stand in for
+# one that has none. Unlike the iperf3 window this is meant to survive a
+# restart, so the rule set lives in PORTFWD_STATE_FILE and is (re-)applied to
+# iptables every time this process starts, never trusted to still be sitting
+# in the kernel's tables from before. See DESIGN.md and DECISIONS.md
+# (2026-09-19).
+# ---------------------------------------------------------------------------
+
+PORTFWD_TAG_PREFIX = "vps-server-portfwd-"
+
+
+def _valid_port(value):
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    return port if 1 <= port <= 65535 else None
+
+
+def _valid_target_host(value):
+    # IPv4 only, matching every other address-handling function in this file
+    # (local_addresses(), tailscale_address()) — and a literal address is
+    # required anyway, since iptables --to-destination cannot take a hostname.
+    try:
+        ipaddress.IPv4Address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _portfwd_comment(rule_id):
+    return f"{PORTFWD_TAG_PREFIX}{rule_id}"
+
+
+def _portfwd_specs(rule):
+    """[(table, chain, match-args, action-args)] for one rule.
+
+    The same list builds both the -A and the -D command for a rule — only the
+    verb differs — so closing a rule can never drift from opening it by one
+    flag the way two hand-written copies eventually would.
+    """
+    comment = _portfwd_comment(rule["id"])
+    protocols = ["tcp", "udp"] if rule["protocol"] == "both" else [rule["protocol"]]
+    specs = []
+    for proto in protocols:
+        specs.append(("nat", "PREROUTING",
+            ["-p", proto, "--dport", str(rule["public_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "DNAT",
+             "--to-destination", f'{rule["target_host"]}:{rule["target_port"]}']))
+        specs.append(("nat", "POSTROUTING",
+            ["-p", proto, "-d", rule["target_host"], "--dport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "MASQUERADE"]))
+        specs.append(("filter", "FORWARD",
+            ["-p", proto, "-d", rule["target_host"], "--dport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "ACCEPT"]))
+        specs.append(("filter", "FORWARD",
+            ["-p", proto, "-s", rule["target_host"], "--sport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "ACCEPT"]))
+    return specs
+
+
+def _ensure_ip_forward():
+    """Turn on net.ipv4.ip_forward if it is not already on.
+
+    Never turned back off: it is a single host-wide toggle, and other
+    software already running here (Docker, for one) may depend on it too.
+    Symmetrically closing it when the last forward is removed would risk
+    breaking whatever else asked for it first — see DECISIONS.md.
+    """
+    try:
+        current = Path("/proc/sys/net/ipv4/ip_forward").read_text().strip()
+    except OSError:
+        return
+    if current != "1":
+        _run_quiet(["sysctl", "-w", "net.ipv4.ip_forward=1"])
+
+
+def portfwd_rule_apply(rule, opening):
+    """Add (opening=True) or withdraw (opening=False) one rule's iptables state.
+
+    Best effort, like firewall_port(): a host with no iptables must not block
+    the console, so failure is reported to stderr and otherwise swallowed.
+    Withdrawal ignores failure outright — the rule may simply not be present,
+    which is the normal case the first time a rule is ever applied.
+    """
+    if not shutil.which("iptables"):
+        print("iptables not found; the port-forward rule was not applied.",
+              file=sys.stderr)
+        return False
+    ok = True
+    for table, chain, match, action in _portfwd_specs(rule):
+        verb = "-A" if opening else "-D"
+        cmd = ["iptables", "-t", table, verb, chain, *match, *action]
+        if not _run_quiet(cmd) and opening:
+            ok = False
+    if not ok:
+        print(f"Could not fully apply port forward {rule['id']}; "
+              "check iptables by hand.", file=sys.stderr)
+    return ok
+
+
+class PortForwardManager:
+    """Console-configured DNAT rules, one process-wide instance (PORTFWD).
+
+    State is plain JSON, read into memory once and rewritten on every change.
+    A rule's `enabled` flag is the source of truth for whether it should be
+    live; whether it actually IS live in the kernel right now is never read
+    back from iptables, only driven forward from here — see load().
+    """
+
+    def __init__(self, state_file, max_rules):
+        self._state_file = state_file
+        self._max_rules = max_rules
+        self._lock = threading.RLock()
+        self._rules = self._read()
+
+    def _read(self):
+        try:
+            data = json.loads(self._state_file.read_text())
+        except (OSError, ValueError):
+            return []
+        return data if isinstance(data, list) else []
+
+    def _write(self):
+        tmp = self._state_file.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(self._rules, indent=2))
+        tmp.replace(self._state_file)
+
+    def list_rules(self):
+        with self._lock:
+            return list(self._rules)
+
+    def reserved_ports(self, exclude_id=None):
+        """Every public port this install already answers on.
+
+        Checked before a forward is added or re-enabled — DNAT would
+        otherwise silently steal traffic meant for the console, the public
+        page, the iperf3 window or the anytls node.
+        """
+        reserved = {PUBLIC_HTTP_PORT, PUBLIC_HTTPS_PORT, CONSOLE_PORT}
+        if IPERF_ENABLED:
+            reserved.add(IPERF_PORT)
+        node = anytls_node()
+        if node and node.get("port"):
+            try:
+                reserved.add(int(node["port"]))
+            except (TypeError, ValueError):
+                pass
+        with self._lock:
+            for r in self._rules:
+                if r["id"] != exclude_id:
+                    reserved.add(r["public_port"])
+        return reserved
+
+    def add(self, protocol, public_port, target_host, target_port, label):
+        if not PORTFWD_ENABLED:
+            return None, "portfwd_module_disabled"
+        with self._lock:
+            if len(self._rules) >= self._max_rules:
+                return None, "portfwd_limit"
+            if public_port in self.reserved_ports():
+                return None, "portfwd_port_taken"
+            rule = {
+                "id": secrets.token_hex(4),
+                "label": label[:80],
+                "protocol": protocol,
+                "public_port": public_port,
+                "target_host": target_host,
+                "target_port": target_port,
+                "enabled": True,
+                "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            }
+            self._rules.append(rule)
+            self._write()
+            _ensure_ip_forward()
+            portfwd_rule_apply(rule, opening=True)
+            return rule, "portfwd_added"
+
+    def remove(self, rule_id):
+        with self._lock:
+            rule = next((r for r in self._rules if r["id"] == rule_id), None)
+            if rule is None:
+                return "portfwd_not_found"
+            if rule["enabled"]:
+                portfwd_rule_apply(rule, opening=False)
+            self._rules = [r for r in self._rules if r["id"] != rule_id]
+            self._write()
+            return "portfwd_removed"
+
+    def set_enabled(self, rule_id, enabled):
+        with self._lock:
+            rule = next((r for r in self._rules if r["id"] == rule_id), None)
+            if rule is None:
+                return "portfwd_not_found"
+            if rule["enabled"] == enabled:
+                return "portfwd_enabled" if enabled else "portfwd_disabled"
+            if enabled and rule["public_port"] in self.reserved_ports(exclude_id=rule_id):
+                return "portfwd_port_taken"
+            rule["enabled"] = enabled
+            self._write()
+            if enabled:
+                _ensure_ip_forward()
+                portfwd_rule_apply(rule, opening=True)
+            else:
+                portfwd_rule_apply(rule, opening=False)
+            return "portfwd_enabled" if enabled else "portfwd_disabled"
+
+    def load(self):
+        """Reapply every enabled rule at process startup.
+
+        The kernel remembers nothing across a reboot, and may still hold last
+        run's rules if this is only a service restart — so each enabled rule
+        is withdrawn before it is (re-)added, which is safe to do unconditio-
+        nally whether the rule was already present or not.
+        """
+        with self._lock:
+            if any(r["enabled"] for r in self._rules):
+                _ensure_ip_forward()
+            for rule in self._rules:
+                if rule["enabled"]:
+                    portfwd_rule_apply(rule, opening=False)
+                    portfwd_rule_apply(rule, opening=True)
+
+    def shutdown(self):
+        """Withdraw every enabled rule's kernel state on a clean stop.
+
+        Deliberately not marked disabled in PORTFWD_STATE_FILE: restarting
+        the service, or the host, must bring every one of these straight back
+        via load(), the same fail-safe direction the iperf3 window already
+        takes — if the thing managing the state is not running, the state
+        must not silently outlive it.
+        """
+        with self._lock:
+            for rule in self._rules:
+                if rule["enabled"]:
+                    portfwd_rule_apply(rule, opening=False)
+
+
+PORTFWD = PortForwardManager(PORTFWD_STATE_FILE, PORTFWD_MAX_RULES)
+
+# ---------------------------------------------------------------------------
 # anytls node, read-only
 #
 # The console can show the installed anytls node so its client configuration
@@ -686,6 +938,12 @@ ANYTLS_MESSAGE_KEYS = frozenset({
     "anytls_reset_timeout", "anytls_reset_missing",
 })
 
+PORTFWD_MESSAGE_KEYS = frozenset({
+    "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
+    "portfwd_invalid", "portfwd_port_taken", "portfwd_limit", "portfwd_not_found",
+    "portfwd_module_disabled",
+})
+
 # ---------------------------------------------------------------------------
 # Internationalization (English / Simplified Chinese)
 # ---------------------------------------------------------------------------
@@ -775,6 +1033,32 @@ STRINGS = {
         "anytls_reset_failed": "The reset failed. The node may be stopped; check: journalctl -u {service} -e",
         "anytls_reset_timeout": "The reset did not finish in time. Check the node's state before retrying: systemctl status {service}",
         "anytls_reset_missing": "anytls/setup-anytls.sh was not found next to the app, so the reset could not run.",
+        "portfwd": "Port forward",
+        "portfwd_heading": "Port forwarding",
+        "portfwd_intro": "Forward a public port on this host to a device reached over Tailscale or the LAN — the way a box with a public IP can stand in for one that has none.",
+        "portfwd_module_disabled": "Port forwarding is switched off in this install (VPSSRV_PORTFWD_ENABLE=0).",
+        "portfwd_label": "Label",
+        "portfwd_protocol": "Protocol",
+        "portfwd_public_port": "Public port",
+        "portfwd_target_host": "Target IP",
+        "portfwd_target_port": "Target port",
+        "portfwd_add": "Add forward",
+        "portfwd_enable": "Enable",
+        "portfwd_disable": "Disable",
+        "portfwd_delete": "Delete",
+        "portfwd_state_on": "Active",
+        "portfwd_state_off": "Disabled",
+        "portfwd_none": "No forwards configured yet.",
+        "portfwd_via": "→",
+        "portfwd_added": "Forward added.",
+        "portfwd_removed": "Forward deleted.",
+        "portfwd_enabled": "Forward enabled.",
+        "portfwd_disabled": "Forward disabled.",
+        "portfwd_invalid": "Check the port numbers (1–65535) and the target IP — one of them was not valid.",
+        "portfwd_port_taken": "That public port is already used by this host or by another forward.",
+        "portfwd_limit": "Reached the maximum of {max} forwards.",
+        "portfwd_not_found": "That forward no longer exists.",
+        "portfwd_howto": "Uses this host's own iptables (DNAT + MASQUERADE); traffic passes through here on the way to the target, so the target sees this host as the client, not the original visitor. net.ipv4.ip_forward is turned on automatically the first time a forward is enabled, and is left on afterwards even if every forward is later removed — turning it back off is not automatic, since other software on this host may depend on it too.",
         "copy": "Copy",
         "copied": "Copied",
         "probe_title": "Reachable",
@@ -870,6 +1154,32 @@ STRINGS = {
         "anytls_reset_failed": "重置失败。节点可能已停止，查看：journalctl -u {service} -e",
         "anytls_reset_timeout": "重置没有在限定时间内完成。重试之前先确认节点状态：systemctl status {service}",
         "anytls_reset_missing": "应用目录下找不到 anytls/setup-anytls.sh，无法执行重置。",
+        "portfwd": "端口转发",
+        "portfwd_heading": "端口转发",
+        "portfwd_intro": "把本机的一个公网端口转发到通过 Tailscale 或局域网可达的设备——让拥有公网 IP 的这台机器替没有公网 IP 的设备承担这个角色。",
+        "portfwd_module_disabled": "本次安装已关闭端口转发功能（VPSSRV_PORTFWD_ENABLE=0）。",
+        "portfwd_label": "备注",
+        "portfwd_protocol": "协议",
+        "portfwd_public_port": "公网端口",
+        "portfwd_target_host": "目标 IP",
+        "portfwd_target_port": "目标端口",
+        "portfwd_add": "添加转发",
+        "portfwd_enable": "启用",
+        "portfwd_disable": "禁用",
+        "portfwd_delete": "删除",
+        "portfwd_state_on": "生效中",
+        "portfwd_state_off": "已禁用",
+        "portfwd_none": "还没有配置任何转发规则。",
+        "portfwd_via": "→",
+        "portfwd_added": "转发规则已添加。",
+        "portfwd_removed": "转发规则已删除。",
+        "portfwd_enabled": "转发规则已启用。",
+        "portfwd_disabled": "转发规则已禁用。",
+        "portfwd_invalid": "请检查端口号（1–65535）和目标 IP——其中有一项不合法。",
+        "portfwd_port_taken": "这个公网端口已经被本机或另一条转发规则占用。",
+        "portfwd_limit": "已达到 {max} 条转发规则的上限。",
+        "portfwd_not_found": "这条转发规则已不存在。",
+        "portfwd_howto": "基于本机自身的 iptables 实现（DNAT + MASQUERADE）：流量会经过本机再转发给目标，所以目标看到的客户端地址是本机，而不是原始访问者。首次启用转发规则时会自动开启 net.ipv4.ip_forward，之后即使删光所有转发规则也不会自动关闭——因为本机上可能还有别的东西也依赖这个开关。",
         "copy": "复制",
         "copied": "已复制",
         "probe_title": "可以访问",
@@ -965,6 +1275,32 @@ STRINGS = {
         "anytls_reset_failed": "重設失敗。節點可能已停止，查看：journalctl -u {service} -e",
         "anytls_reset_timeout": "重設沒有在限定時間內完成。重試之前先確認節點狀態：systemctl status {service}",
         "anytls_reset_missing": "應用程式目錄下找不到 anytls/setup-anytls.sh，無法執行重設。",
+        "portfwd": "連接埠轉發",
+        "portfwd_heading": "連接埠轉發",
+        "portfwd_intro": "把本機的一個公網連接埠轉發到透過 Tailscale 或區域網路可達的裝置——讓擁有公網 IP 的這台機器替沒有公網 IP 的裝置承擔這個角色。",
+        "portfwd_module_disabled": "本次安裝已關閉連接埠轉發功能（VPSSRV_PORTFWD_ENABLE=0）。",
+        "portfwd_label": "備註",
+        "portfwd_protocol": "協定",
+        "portfwd_public_port": "公網連接埠",
+        "portfwd_target_host": "目標 IP",
+        "portfwd_target_port": "目標連接埠",
+        "portfwd_add": "新增轉發",
+        "portfwd_enable": "啟用",
+        "portfwd_disable": "停用",
+        "portfwd_delete": "刪除",
+        "portfwd_state_on": "生效中",
+        "portfwd_state_off": "已停用",
+        "portfwd_none": "尚未設定任何轉發規則。",
+        "portfwd_via": "→",
+        "portfwd_added": "轉發規則已新增。",
+        "portfwd_removed": "轉發規則已刪除。",
+        "portfwd_enabled": "轉發規則已啟用。",
+        "portfwd_disabled": "轉發規則已停用。",
+        "portfwd_invalid": "請檢查連接埠號碼（1–65535）與目標 IP——其中有一項不合法。",
+        "portfwd_port_taken": "這個公網連接埠已被本機或另一條轉發規則佔用。",
+        "portfwd_limit": "已達到 {max} 條轉發規則的上限。",
+        "portfwd_not_found": "這條轉發規則已不存在。",
+        "portfwd_howto": "基於本機自身的 iptables 實作（DNAT + MASQUERADE）：流量會經過本機再轉發給目標，所以目標看到的用戶端位址是本機，而不是原始訪問者。首次啟用轉發規則時會自動開啟 net.ipv4.ip_forward，之後即使刪光所有轉發規則也不會自動關閉——因為本機上可能還有其他東西也依賴這個開關。",
         "copy": "複製",
         "copied": "已複製",
         "probe_title": "可以存取",
@@ -1372,6 +1708,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
         # Only when the module is actually installed — a link to a page that
         # can only say "not installed" is worse than no link.
         anytls_link = link('/anytls', 'anytls') if anytls_installed() else ""
+        portfwd_link = link('/portfwd', 'portfwd') if PORTFWD_ENABLED else ""
         nav = f"""
         <nav class="topnav">
           <div class="brandwrap">
@@ -1382,6 +1719,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
             {link('/speedtest', 'speedtest')}
             {iperf_link}
             {anytls_link}
+            {portfwd_link}
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
             {logout_link}
@@ -1631,6 +1969,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_iperf_open()
         if method == "POST" and path == "/iperf/close":
             return self.handle_iperf_close()
+        if method == "GET" and path == "/portfwd":
+            return self.page_portfwd(lang, query_lang)
+        if method == "POST" and path == "/portfwd/add":
+            return self.handle_portfwd_add()
+        if method == "POST" and path == "/portfwd/enable":
+            return self.handle_portfwd_enable()
+        if method == "POST" and path == "/portfwd/disable":
+            return self.handle_portfwd_disable()
+        if method == "POST" and path == "/portfwd/delete":
+            return self.handle_portfwd_delete()
         if method == "GET" and path == "/visitors":
             return self.page_visitors(lang, query_lang)
         if method == "GET" and path == "/changelog":
@@ -1716,6 +2064,15 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="tile-label">{html.escape(t['anytls'])}</span>
             </a>
             """
+        portfwd_tile = ""
+        if PORTFWD_ENABLED:
+            active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
+            portfwd_tile = f"""
+            <a class="tile" href="/portfwd">
+              <span class="tile-icon">{'🔀' if active else '🔌'}</span>
+              <span class="tile-label">{html.escape(t['portfwd'])}</span>
+            </a>
+            """
         body = f"""
         <div class="card">
           <h1>{html.escape(t['dashboard'])}</h1>
@@ -1726,6 +2083,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </a>
             {iperf_tile}
             {anytls_tile}
+            {portfwd_tile}
             <a class="tile" href="/visitors">
               <span class="tile-icon">📋</span>
               <span class="tile-label">{html.escape(t['visitors'])}</span>
@@ -1955,6 +2313,122 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.read_body(LOGIN_BODY_LIMIT)  # drain: keep-alive needs the body gone
         IPERF_WINDOW.close()
         self.redirect("/iperf?msg=iperf_shut")
+
+    # -- port forwarding -------------------------------------------------
+
+    def page_portfwd(self, lang, query_lang):
+        t = STRINGS[lang]
+        notice = ""
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        if key in PORTFWD_MESSAGE_KEYS:
+            cls = "notice" if key in (
+                "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
+            ) else "error"
+            notice = f'<p class="{cls}">{html.escape(t[key].format(max=PORTFWD_MAX_RULES))}</p>'
+
+        rows = []
+        for rule in PORTFWD.list_rules():
+            label = html.escape(rule["label"] or rule["id"])
+            proto = html.escape(rule["protocol"].upper())
+            state_cls = "is-open" if rule["enabled"] else "is-closed"
+            state_label = t["portfwd_state_on"] if rule["enabled"] else t["portfwd_state_off"]
+            toggle_action = "/portfwd/disable" if rule["enabled"] else "/portfwd/enable"
+            toggle_label = t["portfwd_disable"] if rule["enabled"] else t["portfwd_enable"]
+            rows.append(f"""
+            <div class="node-addr">
+              <h2>{label}</h2>
+              <p class="iperf-state {state_cls}">{html.escape(state_label)}
+                &mdash; {proto} :{rule['public_port']} {html.escape(t['portfwd_via'])}
+                {html.escape(rule['target_host'])}:{rule['target_port']}</p>
+              <div class="iperf-actions">
+                <form method="post" action="{toggle_action}" class="inline-form">
+                  <input type="hidden" name="id" value="{html.escape(rule['id'])}">
+                  <button type="submit">{html.escape(toggle_label)}</button>
+                </form>
+                <form method="post" action="/portfwd/delete" class="inline-form">
+                  <input type="hidden" name="id" value="{html.escape(rule['id'])}">
+                  <button type="submit" class="danger">{html.escape(t['portfwd_delete'])}</button>
+                </form>
+              </div>
+            </div>
+            """)
+        rules_html = "".join(rows) if rows else f'<p class="muted">{html.escape(t["portfwd_none"])}</p>'
+
+        add_form = ""
+        if PORTFWD_ENABLED:
+            add_form = f"""
+            <div class="node-addr">
+              <h2>{html.escape(t['portfwd_add'])}</h2>
+              <form method="post" action="/portfwd/add" class="inline-form">
+                <label>{html.escape(t['portfwd_label'])}
+                  <input type="text" name="label" maxlength="80">
+                </label>
+                <label>{html.escape(t['portfwd_protocol'])}
+                  <select name="protocol">
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="both">TCP+UDP</option>
+                  </select>
+                </label>
+                <label>{html.escape(t['portfwd_public_port'])}
+                  <input type="number" name="public_port" min="1" max="65535" required>
+                </label>
+                <label>{html.escape(t['portfwd_target_host'])}
+                  <input type="text" name="target_host" placeholder="100.x.x.x" required>
+                </label>
+                <label>{html.escape(t['portfwd_target_port'])}
+                  <input type="number" name="target_port" min="1" max="65535" required>
+                </label>
+                <button type="submit">{html.escape(t['portfwd_add'])}</button>
+              </form>
+            </div>
+            """
+
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(t['portfwd_heading'])}</h1>
+          {notice}
+          <p class="muted">{html.escape(t['portfwd_intro'])}</p>
+          {rules_html}
+          {add_form}
+          <p class="muted small">{html.escape(t['portfwd_howto'])}</p>
+        </div>
+        """
+        self.send_html(200, render_page(t['portfwd_heading'], body, lang, active="portfwd"),
+                       self.maybe_lang_cookie(query_lang))
+
+    def handle_portfwd_add(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        protocol = form.get("protocol", ["tcp"])[0]
+        if protocol not in ("tcp", "udp", "both"):
+            protocol = "tcp"
+        label = form.get("label", [""])[0].strip()
+        public_port = _valid_port(form.get("public_port", [""])[0])
+        target_port = _valid_port(form.get("target_port", [""])[0])
+        target_host = form.get("target_host", [""])[0].strip()
+        if public_port is None or target_port is None or not _valid_target_host(target_host):
+            return self.redirect("/portfwd?msg=portfwd_invalid")
+        _, key = PORTFWD.add(protocol, public_port, target_host, target_port, label)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_enable(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.set_enabled(form.get("id", [""])[0], True)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_disable(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.set_enabled(form.get("id", [""])[0], False)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_delete(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.remove(form.get("id", [""])[0])
+        self.redirect(f"/portfwd?msg={key}")
 
     # -- anytls node ----------------------------------------------------
 
@@ -2425,6 +2899,13 @@ def main():
             file=sys.stderr,
         )
 
+    if PORTFWD_ENABLED:
+        PORTFWD.load()
+        active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
+        if active:
+            print(f"Reapplied {active} port forward(s) from {PORTFWD_STATE_FILE}",
+                  file=sys.stderr)
+
     # An open window is a live child process plus a firewall rule. systemd
     # sends SIGTERM on stop and restart; without this the iperf3 child would
     # outlive the service and the rule would be left behind.
@@ -2444,6 +2925,8 @@ def main():
     finally:
         stop_event.set()
         IPERF_WINDOW.close()
+        if PORTFWD_ENABLED:
+            PORTFWD.shutdown()
         for s in servers:
             s.server_close()
 

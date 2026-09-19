@@ -211,6 +211,51 @@ absent on one that cannot read it — iperf3 under Cygwin on Windows reports
 throughput but no `mean_rtt`. UDP mode (`-u`) reports jitter and loss
 everywhere, and is the portable answer when the tester is not on Linux.
 
+### Port forwarding lifecycle
+
+A forward relays a public TCP/UDP port on this host to a device reached over
+Tailscale or the LAN — the way a box with a public IP can stand in for one
+that has none. Unlike the iperf3 window this is configuration, not a timed
+loan of the uplink: it is meant to still be there after a restart or a
+reboot, so it is built differently.
+
+1. Operator adds a rule from the console: protocol (tcp/udp/both), a public
+   port, and a target `host:port`. `PortForwardManager.add()` rejects a
+   public port already used by this install (console, public page, iperf3,
+   the anytls node, or another forward) before anything touches iptables.
+2. Each protocol in the rule becomes four `iptables` rules, all tagged with
+   `-m comment --comment vps-server-portfwd-<id>` so they can be told apart
+   from anything else already in the tables:
+   - `nat`/`PREROUTING`: DNAT the public port to `target_host:target_port`.
+   - `nat`/`POSTROUTING`: MASQUERADE traffic bound for the target, so replies
+     route back through this host rather than out the target's own default
+     gateway — the target sees this host as the client.
+   - `filter`/`FORWARD`: one ACCEPT rule in each direction, since a default
+     `DROP` policy on that chain (common on a Docker host, for instance)
+     would otherwise silently eat the forwarded traffic.
+3. `net.ipv4.ip_forward` is turned on the first time any rule needs it
+   (`_ensure_ip_forward()`), and never turned back off — see DECISIONS.md
+   (2026-09-19) for why.
+4. The rule set lives in `PORTFWD_STATE_FILE` (JSON), not just in memory.
+   Every process start calls `PortForwardManager.load()`, which withdraws
+   then re-adds every enabled rule's iptables state unconditionally — the
+   kernel's tables remember nothing across a reboot, and may still hold last
+   run's rules if this is only a service restart, so this is the one path
+   that has to be correct whichever case it is.
+5. A clean stop (`SIGTERM`, same signal handler the iperf3 window uses) calls
+   `PortForwardManager.shutdown()`, which withdraws every enabled rule's
+   iptables state but leaves the JSON `enabled` flag untouched — restarting
+   the service, or the host, must bring every one of them straight back via
+   `load()`. This is the same fail-safe direction as the iperf3 window: if
+   the process managing the state is not running, the state must not
+   silently outlive it.
+
+`target_host` must be a literal IPv4 address, not a hostname: `iptables
+--to-destination` takes an address, and this project makes no outbound DNS
+lookup at request time (see the "Zero third-party runtime dependencies"
+decision). A Tailscale device's IP is stable and shown in `tailscale status`
+or `tailscale ip` on that device.
+
 ## Tech stack
 
 | Layer | Choice | Version | Why |
@@ -260,7 +305,7 @@ fails.
 | Path | Provided by | Purpose |
 |---|---|---|
 | `$PREFIX` | installer, default `/opt/vps-server` | Code, static assets, persisted port files |
-| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt` |
+| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
 
@@ -290,6 +335,8 @@ reconfigure another.
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | Pre-filled window duration | `10` | no |
 | `VPSSRV_IPERF_MAX_MINUTES` | Hard cap the console cannot exceed | `60` | no |
 | `VPSSRV_IPERF_ENABLE` | Allow opening windows at all | `1` | no |
+| `VPSSRV_PORTFWD_ENABLE` | Show the port-forwarding page and allow new forwards | `1` | no |
+| `VPSSRV_PORTFWD_MAX_RULES` | Ceiling on configured forwards | `20` | no |
 | `VPSSRV_TRUST_PROXY` | Honour `X-Forwarded-For` when recording visitors | `0` | no |
 | `VPSSRV_TRACK_CONNECTIONS` | Poll `/proc/net/tcp[6]` for all-port connection logging | `1` | no |
 | `VPSSRV_CONN_POLL_SECONDS` | Poll interval | `5` | no |
@@ -354,7 +401,9 @@ repo/
 ```
 
 SQLite schema is inherited unchanged from `vps-webserver`: one `visits` table,
-trimmed to the most recent 1000 rows.
+trimmed to the most recent 1000 rows. `portfwd.json` is a flat JSON list of
+rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
+`target_port`, `enabled`, `created`) — see `PortForwardManager` in `app.py`.
 
 ## Known limitations & gotchas
 
@@ -381,6 +430,18 @@ trimmed to the most recent 1000 rows.
   expected and is not worth "fixing" with an exception or an HSTS header.
 - **A restart closes any open iperf3 window.** Intentional; see the lifecycle
   section.
+- **Stopping the service withdraws every port forward, even the enabled
+  ones.** Intentional and symmetric with the iperf3 window; see the port
+  forwarding lifecycle section. `systemctl restart` or a reboot brings them
+  straight back — `systemctl stop` left stopped does not.
+- **`net.ipv4.ip_forward` is turned on automatically and never back off.**
+  It is a single host-wide toggle; other software on the box (Docker, for
+  one) may already depend on it, so removing the last forward does not touch
+  it. Turn it off by hand if nothing else on the host needs it.
+- **A forward only covers what raw `iptables` can see.** If `ufw` or
+  `firewalld` is active with a default-deny `FORWARD` policy of its own, its
+  chains are evaluated ahead of the rule this feature appends, and may still
+  need their own allow rule for the same port before traffic gets through.
 - **The sing-box binary is past GitHub's recommended file size.** At ~55 MB it
   is over the 50 MB soft limit, so every push prints a "Large files detected"
   warning suggesting Git LFS. Pushes still succeed; the hard limit is 100 MB.

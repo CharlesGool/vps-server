@@ -2,8 +2,8 @@
 project: vps-server
 version: v1.0.4
 status: active
-branch: main
-updated: 2026-09-12
+branch: feat/portfwd
+updated: 2026-09-19
 ---
 
 # Status
@@ -22,17 +22,25 @@ updated: 2026-09-12
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.0.4 released; the repository is public. The installer's
-closing summary printed a literal `<this-server>` placeholder in place of an
-address, so every URL in it had to be hand-edited before it could be used. It
-now reads the real addresses: the source address the kernel would use to leave
-the box goes on the public-page and console lines, and on a multi-homed
-machine the remaining addresses are listed below, each labelled with its
-interface. Detection failure falls back to the old placeholder rather than
-failing the install. Verified end-to-end in a disposable systemd container
-with a second interface attached: all three languages aligned, every printed
-address answered HTTP 200, and a stubbed-out `ip` command still exited 0.
-Earlier patches, newest first: v1.0.3 made `install_iperf3()` retry the whole
+**In progress:** Console-managed port forwarding, on `feat/portfwd`, not yet
+merged, released, or tagged. Lets the console forward a public TCP/UDP port on
+this host to a device reached over Tailscale or the LAN — the "this box has a
+public IP, that device does not" case — via iptables DNAT + MASQUERADE, with
+rules persisted as JSON and reapplied idempotently on every service start.
+Fully implemented and self-verified: 119/119 unit tests pass (including new
+`PortForwardManagerTest` and `PortForwardConsoleTest`), and a live disposable
+three-container Docker harness confirmed real TCP and UDP traffic forwarding
+end to end, `net.ipv4.ip_forward` turning on automatically, disable/enable
+toggling reachability immediately, two process restarts in a row applying no
+duplicate iptables rules, and a clean stop withdrawing every rule's kernel
+state while `portfwd.json` still says `enabled: true` so the next start brings
+it straight back. Waiting on the operator's own manual test before this
+becomes v1.1.0 — see `BACKLOG.md` for the full verification list.
+
+Released history, newest first: v1.0.4 printed the machine's real addresses in
+the installer's closing summary — it used to emit a literal `<this-server>`
+placeholder in place of an address, so every URL had to be hand-edited before
+it could be used. v1.0.3 made `install_iperf3()` retry the whole
 update-then-install pair (a stale `security.debian.org` index can 404 the
 install even when `apt-get update` reports success) and filled in the README's
 unfilled `<repo-url>`/`v0.1.0` install placeholders; v1.0.2 fixed

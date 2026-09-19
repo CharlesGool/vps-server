@@ -1326,6 +1326,248 @@ class AnytlsPageTest(unittest.TestCase):
         self.assertNotIn(self.FAKE_PASSWORD, body)
 
 
+class PortForwardManagerTest(unittest.TestCase):
+    """add/remove/enable never touch a real iptables — every case here mocks
+    portfwd_rule_apply and _ensure_ip_forward, the same way IperfWindowTest
+    stubs firewall_port. Persistence and the reserved-port math are what this
+    actually exercises.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="vpssrv-portfwd-test-")
+        self.original_apply = app.portfwd_rule_apply
+        self.original_ensure = app._ensure_ip_forward
+        self.calls = []
+        app.portfwd_rule_apply = (
+            lambda rule, opening: self.calls.append((rule["id"], opening)) or True
+        )
+        app._ensure_ip_forward = lambda: None
+        self.manager = app.PortForwardManager(Path(self.tmp) / "portfwd.json", max_rules=3)
+
+    def tearDown(self):
+        app.portfwd_rule_apply = self.original_apply
+        app._ensure_ip_forward = self.original_ensure
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_add_persists_and_applies(self):
+        rule, key = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "game")
+        self.assertEqual(key, "portfwd_added")
+        self.assertIsNotNone(rule)
+        self.assertEqual(self.calls, [(rule["id"], True)])
+        self.assertEqual(len(self.manager.list_rules()), 1)
+
+    def test_add_rejects_a_reserved_public_port(self):
+        rule, key = self.manager.add("tcp", app.CONSOLE_PORT, "100.64.1.2", 80, "")
+        self.assertIsNone(rule)
+        self.assertEqual(key, "portfwd_port_taken")
+        self.assertEqual(self.calls, [])
+
+    def test_add_rejects_a_public_port_already_used_by_another_rule(self):
+        self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        rule, key = self.manager.add("udp", 25565, "100.64.1.3", 999, "")
+        self.assertIsNone(rule)
+        self.assertEqual(key, "portfwd_port_taken")
+
+    def test_add_enforces_the_rule_limit(self):
+        for i in range(3):
+            self.manager.add("tcp", 20000 + i, "100.64.1.2", 1000 + i, "")
+        rule, key = self.manager.add("tcp", 20099, "100.64.1.2", 1099, "")
+        self.assertIsNone(rule)
+        self.assertEqual(key, "portfwd_limit")
+
+    def test_remove_withdraws_and_deletes(self):
+        rule, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        key = self.manager.remove(rule["id"])
+        self.assertEqual(key, "portfwd_removed")
+        self.assertEqual(self.manager.list_rules(), [])
+        self.assertEqual(self.calls, [(rule["id"], True), (rule["id"], False)])
+
+    def test_disable_then_enable_round_trips(self):
+        rule, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        self.assertEqual(self.manager.set_enabled(rule["id"], False), "portfwd_disabled")
+        self.assertFalse(self.manager.list_rules()[0]["enabled"])
+        self.assertEqual(self.manager.set_enabled(rule["id"], True), "portfwd_enabled")
+        self.assertTrue(self.manager.list_rules()[0]["enabled"])
+        self.assertEqual(
+            self.calls,
+            [(rule["id"], True), (rule["id"], False), (rule["id"], True)],
+        )
+
+    def test_a_disabled_rule_still_reserves_its_own_port(self):
+        # One public port maps to at most one configured rule, disabled or
+        # not — otherwise re-enabling either one later would be a race.
+        rule, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        self.manager.set_enabled(rule["id"], False)
+        other, key = self.manager.add("udp", 25565, "100.64.1.3", 1, "")
+        self.assertIsNone(other)
+        self.assertEqual(key, "portfwd_port_taken")
+
+    def test_enabling_is_refused_if_the_port_became_reserved_meanwhile(self):
+        rule, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        self.manager.set_enabled(rule["id"], False)
+        original_anytls_node = app.anytls_node
+        app.anytls_node = lambda: {"port": 25565}
+        try:
+            key = self.manager.set_enabled(rule["id"], True)
+        finally:
+            app.anytls_node = original_anytls_node
+        self.assertEqual(key, "portfwd_port_taken")
+
+    def test_state_survives_a_fresh_instance(self):
+        self.manager.add("tcp", 25565, "100.64.1.2", 25565, "relayed game")
+        reloaded = app.PortForwardManager(Path(self.tmp) / "portfwd.json", max_rules=3)
+        self.assertEqual(reloaded.list_rules(), self.manager.list_rules())
+
+    def test_load_reapplies_only_enabled_rules_withdraw_then_add(self):
+        r1, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        r2, _ = self.manager.add("tcp", 25566, "100.64.1.3", 25566, "")
+        self.manager.set_enabled(r2["id"], False)
+        self.calls.clear()
+        self.manager.load()
+        self.assertEqual(self.calls, [(r1["id"], False), (r1["id"], True)])
+
+    def test_shutdown_withdraws_only_enabled_rules_without_flipping_state(self):
+        r1, _ = self.manager.add("tcp", 25565, "100.64.1.2", 25565, "")
+        r2, _ = self.manager.add("tcp", 25566, "100.64.1.3", 25566, "")
+        self.manager.set_enabled(r2["id"], False)
+        self.calls.clear()
+        self.manager.shutdown()
+        self.assertEqual(self.calls, [(r1["id"], False)])
+        # A restart must bring r1 straight back, so shutdown must not have
+        # rewritten its enabled flag to False.
+        reloaded = [r for r in self.manager.list_rules() if r["id"] == r1["id"]][0]
+        self.assertTrue(reloaded["enabled"])
+
+
+class PortForwardConsoleTest(unittest.TestCase):
+    """The /portfwd routes, driven over real HTTP against a live handler."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+        cls.server.daemon_threads = True
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.password = app.ADMIN_PASSWORD
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.original_apply = app.portfwd_rule_apply
+        self.original_ensure = app._ensure_ip_forward
+        self.calls = []
+        app.portfwd_rule_apply = (
+            lambda rule, opening: self.calls.append((rule["id"], opening)) or True
+        )
+        app._ensure_ip_forward = lambda: None
+        self.tmp = tempfile.mkdtemp(prefix="vpssrv-portfwd-http-test-")
+        app.PORTFWD = app.PortForwardManager(Path(self.tmp) / "portfwd.json", max_rules=3)
+
+    def tearDown(self):
+        app.portfwd_rule_apply = self.original_apply
+        app._ensure_ip_forward = self.original_ensure
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def connect(self):
+        return http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+
+    def session_cookie(self):
+        conn = self.connect()
+        conn.request(
+            "POST", "/login", body=f"password={self.password}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        resp = conn.getresponse()
+        cookie_header = resp.getheader("Set-Cookie")
+        resp.read()
+        conn.close()
+        jar = SimpleCookie()
+        jar.load(cookie_header)
+        return jar["session"].value
+
+    def post(self, path, body, cookie):
+        conn = self.connect()
+        conn.request(
+            "POST", path, body=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded",
+                     "Cookie": f"session={cookie}"},
+        )
+        resp = conn.getresponse()
+        location = resp.getheader("Location")
+        resp.read()
+        conn.close()
+        return resp.status, location
+
+    def get(self, path, cookie):
+        conn = self.connect()
+        conn.request("GET", path, headers={"Cookie": f"session={cookie}"})
+        resp = conn.getresponse()
+        body = resp.read().decode()
+        conn.close()
+        return resp, body
+
+    def test_add_then_list_then_delete(self):
+        cookie = self.session_cookie()
+        status, location = self.post(
+            "/portfwd/add",
+            "protocol=tcp&public_port=25565&target_host=100.64.1.2&target_port=25565&label=game",
+            cookie,
+        )
+        self.assertEqual(status, 302)
+        self.assertEqual(location, "/portfwd?msg=portfwd_added")
+        self.assertEqual(self.calls, [(app.PORTFWD.list_rules()[0]["id"], True)])
+
+        resp, body = self.get("/portfwd", cookie)
+        self.assertEqual(resp.status, 200)
+        self.assertIn("game", body)
+        self.assertIn("25565", body)
+
+        rule_id = app.PORTFWD.list_rules()[0]["id"]
+        status, location = self.post("/portfwd/delete", f"id={rule_id}", cookie)
+        self.assertEqual(status, 302)
+        self.assertEqual(location, "/portfwd?msg=portfwd_removed")
+        self.assertEqual(app.PORTFWD.list_rules(), [])
+
+    def test_add_rejects_an_invalid_target_host(self):
+        cookie = self.session_cookie()
+        status, location = self.post(
+            "/portfwd/add",
+            "protocol=tcp&public_port=25565&target_host=not-an-ip&target_port=25565",
+            cookie,
+        )
+        self.assertEqual(status, 302)
+        self.assertEqual(location, "/portfwd?msg=portfwd_invalid")
+        self.assertEqual(app.PORTFWD.list_rules(), [])
+
+    def test_disable_then_enable_over_http(self):
+        cookie = self.session_cookie()
+        self.post(
+            "/portfwd/add",
+            "protocol=udp&public_port=30000&target_host=100.64.1.9&target_port=30000",
+            cookie,
+        )
+        rule_id = app.PORTFWD.list_rules()[0]["id"]
+        status, location = self.post("/portfwd/disable", f"id={rule_id}", cookie)
+        self.assertEqual((status, location), (302, "/portfwd?msg=portfwd_disabled"))
+        self.assertFalse(app.PORTFWD.list_rules()[0]["enabled"])
+        status, location = self.post("/portfwd/enable", f"id={rule_id}", cookie)
+        self.assertEqual((status, location), (302, "/portfwd?msg=portfwd_enabled"))
+        self.assertTrue(app.PORTFWD.list_rules()[0]["enabled"])
+
+    def test_unauthenticated_request_is_redirected_to_login(self):
+        conn = self.connect()
+        conn.request("GET", "/portfwd")
+        resp = conn.getresponse()
+        self.assertEqual(resp.status, 302)
+        self.assertEqual(resp.getheader("Location"), "/login")
+        resp.read()
+        conn.close()
+
+
 class IperfLabelTest(unittest.TestCase):
     """An open window turns the submit button into "extend", not a second "open"."""
 
