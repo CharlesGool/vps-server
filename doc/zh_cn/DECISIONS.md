@@ -11,7 +11,7 @@
 - 需求列表：[BACKLOG](BACKLOG.md)
 - 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 译自 `DECISIONS.md`（v1.1.0）。如有冲突，以英文版为准。
+> 译自 `DECISIONS.md`（v1.1.1）。如有冲突，以英文版为准。
 
 这不是一份决策日志，而是一道防止重新提议的关卡。判断某件事该不该收进这里，只看一个问题：
 

@@ -11,7 +11,7 @@
 - 需求清單：[BACKLOG](BACKLOG.md)
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 
-> 譯自 `THIRD_PARTY_NOTICES.md`（v1.1.0）。如有衝突，以英文版為準；以英文版和各授權條款原始文本為準。
+> 譯自 `THIRD_PARTY_NOTICES.md`（v1.1.1）。如有衝突，以英文版為準；以英文版和各授權條款原始文本為準。
 
 本專案本身採用 GPL-3.0 授權（見 [`LICENSE`](../LICENSE)）。之所以是 GPL-3.0 而不是更寬鬆的授權，是因為本專案重新散布了 sing-box 執行檔，而 sing-box 本身是 GPL-3.0，合併作品也必須跟著採用 GPL-3.0。從 `vps-webserver` 引入的程式碼，其上游是 Apache-2.0，在此以 GPL-3.0 重新散布——Apache-2.0 允許這樣做，反過來則不允許。
 

@@ -11,10 +11,18 @@
 - 被否决的方案：[DECISIONS](DECISIONS.md)
 - 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 译自 `CHANGELOG.md`（v1.1.0）。如有冲突，以英文版为准。
+> 译自 `CHANGELOG.md`（v1.1.1）。如有冲突，以英文版为准。
 
 最新版本排在最前。只记录用户能感知到的变化——内部重构不需要条目。先用
 `git log <previous-tag>..HEAD --oneline` 起草，再改写成面向用户的说法。
+
+## v1.1.1 — 2026-09-20
+
+### Fixed
+
+- README 的 Install 小节里，无论是一行式的快速安装命令还是分步安装命令，克隆时
+  用的仍然是 `--branch v1.0.4`——v1.1.0 发布后如果照着这份说明操作，装到的会是
+  上一个版本，完全遗漏端口转发功能。
 
 ## v1.1.0 — 2026-09-19
 

@@ -11,10 +11,18 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `CHANGELOG.md`（v1.1.0）。如有衝突，以英文版為準。
+> 譯自 `CHANGELOG.md`（v1.1.1）。如有衝突，以英文版為準。
 
 最新版本在前。只記錄使用者能感知到的變更——內部重構不需要條目。草稿取自
 `git log <previous-tag>..HEAD --oneline`，之後改寫成面向使用者的用語。
+
+## v1.1.1 — 2026-09-20
+
+### Fixed
+
+- README 的 Install 章節裡，不論是一行式快速安裝指令，還是逐步操作的指令，
+  仍然都是 clone `--branch v1.0.4`——任何人在 v1.1.0 發布後立刻依照這份說明
+  操作，安裝到的都會是前一個版本，完全缺少連接埠轉發功能。
 
 ## v1.1.0 — 2026-09-19
 

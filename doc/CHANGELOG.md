@@ -15,6 +15,15 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.1.1 — 2026-09-20
+
+### Fixed
+
+- README's Install section still cloned `--branch v1.0.4` in both the
+  one-line quick install and the step-by-step command — anyone following it
+  right after v1.1.0 shipped would have installed the previous release,
+  missing port forwarding entirely.
+
 ## v1.1.0 — 2026-09-19
 
 ### Added

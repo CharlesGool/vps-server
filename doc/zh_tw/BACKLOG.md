@@ -11,7 +11,7 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `BACKLOG.md`（v1.1.0）。如有衝突，以英文版為準。
+> 譯自 `BACKLOG.md`（v1.1.1）。如有衝突，以英文版為準。
 
 需求清單。所有被提出過的要求，依重要程度排序，完成後打勾。這份檔案回答的是「兩週沒動這個專案之後，接下來該做什麼？」，也是一個 session 結束時還沒做完的需求該寫進去的地方。
 

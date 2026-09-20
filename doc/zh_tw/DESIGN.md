@@ -11,7 +11,7 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `DESIGN.md`（v1.1.0）。如有衝突，以英文版為準。
+> 譯自 `DESIGN.md`（v1.1.1）。如有衝突，以英文版為準。
 
 > 這份文件的成功標準：另一個人，在另一台機器上，能照著它把這個專案重建出來。
 > 假設讀者看不到你的機器。

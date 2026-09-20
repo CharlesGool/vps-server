@@ -1,9 +1,9 @@
 ---
 project: vps-server
-version: v1.1.0
+version: v1.1.1
 status: active
 branch: main
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # Status
@@ -22,22 +22,24 @@ updated: 2026-09-19
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.1.0 released. Console-managed port forwarding: lets the
-console forward a public TCP/UDP port on this host to a device reached over
-Tailscale or the LAN — the "this box has a public IP, that device does not"
-case — via iptables DNAT + MASQUERADE, with rules persisted as JSON and
-reapplied idempotently on every service start. Self-verified before the
-operator's own test: 119/119 unit tests pass (including new
-`PortForwardManagerTest` and `PortForwardConsoleTest`), and a live disposable
-three-container Docker harness confirmed real TCP and UDP traffic forwarding
-end to end, `net.ipv4.ip_forward` turning on automatically, disable/enable
-toggling reachability immediately, two process restarts in a row applying no
-duplicate iptables rules, and a clean stop withdrawing every rule's kernel
-state while `portfwd.json` still says `enabled: true` so the next start brings
-it straight back. The operator then verified it manually on a real host.
+**In progress:** v1.1.1 released. Fixed the README Install section, which
+still cloned `--branch v1.0.4` in both the quick-install one-liner and the
+step-by-step command — anyone following it right after v1.1.0 shipped would
+have installed the previous release and missed port forwarding entirely.
 Nothing is in flight.
 
-Released history, newest first: v1.0.4 printed the machine's real addresses in
+Released history, newest first: v1.1.0 added console-managed port forwarding
+— lets the console forward a public TCP/UDP port on this host to a device
+reached over Tailscale or the LAN via iptables DNAT + MASQUERADE, with rules
+persisted as JSON and reapplied idempotently on every service start.
+Self-verified before the operator's own test: 119/119 unit tests pass, and a
+live disposable three-container Docker harness confirmed real TCP and UDP
+forwarding end to end, `net.ipv4.ip_forward` turning on automatically,
+disable/enable toggling reachability immediately, two process restarts in a
+row applying no duplicate iptables rules, and a clean stop withdrawing every
+rule's kernel state while `portfwd.json` still says `enabled: true` so the
+next start brings it straight back. The operator then verified it manually on
+a real host. v1.0.4 printed the machine's real addresses in
 the installer's closing summary — it used to emit a literal `<this-server>`
 placeholder in place of an address, so every URL had to be hand-edited before
 it could be used. v1.0.3 made `install_iperf3()` retry the whole

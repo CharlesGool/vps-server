@@ -11,7 +11,7 @@
 - 需求清單：[BACKLOG](BACKLOG.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `DECISIONS.md`（v1.1.0）。如有衝突，以英文版為準。
+> 譯自 `DECISIONS.md`（v1.1.1）。如有衝突，以英文版為準。
 
 這不是一份決策日誌，而是用來防止重新提案的機制。判斷一件事該不該收進來，只看一個問題：
 

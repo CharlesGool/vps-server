@@ -11,13 +11,13 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `README.md`（v1.1.0）。如有衝突，以英文版為準。
+> 譯自 `README.md`（v1.1.1）。如有衝突，以英文版為準。
 
 在 Debian/Ubuntu VPS 上一鍵部署的整合套件：一個任何人都能連上、用來證明你這台 IP 的 web 埠可連通的公開頁面，一個受密碼保護、可測速並記錄連線的主控台，一個隨開隨用的 iperf3 視窗，以及一個 anytls 代理。
 
 ## 這個專案做什麼
 
-- **向任何人證明可連通。** 在 **80** 和 **443** 埠上有一個刻意做得極簡、無需登入的頁面。把 IP 給對方,只要頁面能顯示出來,就代表你的 web 埠從對方那個位置是可連通的。它會回報對方的來源 IP、伺服器時鐘,以及對方是透過哪個埠、哪種協定連進來的——除此之外不透露主機的任何其他資訊。
+- **向任何人證明可連通。** 在 **80** 和 **443** 埠上有一個刻意做得極簡、無需登入的頁面。把 IP 給對方,只要頁面能顯示出來,就代表你的 web 埠從對方那個位置是可連通的。它會回報對方的來源 IP、伺服器時鐘,以及對方是透過哪個埠、哪種協定進來的——除此之外不透露主機的任何其他資訊。
 - **從瀏覽器量測吞吐量。** 一個受密碼保護、位於固定隨機高位埠的主控台,使用 LibreSpeed 引擎執行上傳／下載測試。
 - **用 iperf3 隨需量測吞吐量與延遲。** 主控台會開啟一個限時視窗；`iperf3 -s` 只在視窗期間內執行,視窗到期就自動關閉。測試者可從 iperf3 取得頻寬數據,若是 Linux 客戶端,還能從其 `--json` 輸出裡的 `mean_rtt` 取得往返時間——這個欄位來自核心的 `TCP_INFO`,在讀不到它的客戶端上會缺失,特別是 Windows 上 Cygwin 版的 iperf3。UDP 模式(`-u`)在任何平台上都會額外提供抖動與丟包數據。
 - **記錄誰連上了。** 任何埠上的每一筆進站 TCP 連線都會被記錄,不只是 HTTP——資料讀自 `/proc/net/tcp[6]`,儲存在 SQLite 裡,只保留最近 1000 筆。
@@ -40,7 +40,7 @@ web、iperf3、anytls 這三個模組各自可在安裝時選擇是否啟用。
 一行指令快速安裝(最新發行版標籤,不使用任何設定變數):
 
 ```bash
-git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
 ```
 
 逐步安裝,並可自訂設定:
@@ -48,7 +48,7 @@ git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.0.4 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash install.sh
