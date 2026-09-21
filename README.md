@@ -64,7 +64,7 @@ maintained, and their code is vendored here rather than absorbed.
 One-line quick install (latest release tag, no configuration variables):
 
 ```bash
-git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
 ```
 
 Step by step, with configuration:
@@ -72,7 +72,7 @@ Step by step, with configuration:
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash install.sh

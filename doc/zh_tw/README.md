@@ -11,7 +11,7 @@
 - 被否決的方案：[DECISIONS](DECISIONS.md)
 - 第三方授權聲明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 譯自 `README.md`（v1.1.1）。如有衝突，以英文版為準。
+> 譯自 `README.md`（v1.1.2）。如有衝突，以英文版為準。
 
 在 Debian/Ubuntu VPS 上一鍵部署的整合套件：一個任何人都能連上、用來證明你這台 IP 的 web 埠可連通的公開頁面，一個受密碼保護、可測速並記錄連線的主控台，一個隨開隨用的 iperf3 視窗，以及一個 anytls 代理。
 
@@ -40,7 +40,7 @@ web、iperf3、anytls 這三個模組各自可在安裝時選擇是否啟用。
 一行指令快速安裝(最新發行版標籤,不使用任何設定變數):
 
 ```bash
-git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
 ```
 
 逐步安裝,並可自訂設定:
@@ -48,7 +48,7 @@ git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash install.sh

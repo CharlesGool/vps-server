@@ -216,8 +216,17 @@ prompt_new_settings() {
     fi
     msg ask_new_var "$var" "${default:-(empty)}"
     read -r value </dev/tty || value=""
-    [ -n "$value" ] && export "$var=$value"
+    if [ -n "$value" ]; then
+      export "$var=$value"
+    fi
   done
+  # A bare `[ -n "$value" ] && export ...` as the loop's last statement would
+  # make THIS FUNCTION's own exit status track that test — false whenever the
+  # last new setting is left at its default. Called bare (`prompt_new_settings`
+  # inside an if-body, not itself exempt from `set -e`), a false there killed
+  # the whole installer right after the last prompt: no error, no copy step,
+  # no VERSION stamp, no service restart. See DECISIONS.md (2026-09-21).
+  return 0
 }
 
 write_state() {

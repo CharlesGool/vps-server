@@ -11,7 +11,7 @@
 - 被否决的方案：[DECISIONS](DECISIONS.md)
 - 第三方声明：[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> 译自 `DESIGN.md`（v1.1.1）。如有冲突，以英文版为准。
+> 译自 `DESIGN.md`（v1.1.2）。如有冲突，以英文版为准。
 
 > 本文档的成功标准：另一个人，在另一台机器上，能凭这份文档重建出这个项目。假设读者看不到你的机器。
 

@@ -1,9 +1,9 @@
 ---
 project: vps-server
-version: v1.1.1
+version: v1.1.2
 status: active
 branch: main
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # Status
@@ -22,24 +22,38 @@ updated: 2026-09-20
 **Notion:** private mirror (not published)
 **Repo:** public
 **Snapshots:** maintained privately (not published)
-**In progress:** v1.1.1 released. Fixed the README Install section, which
+**In progress:** v1.1.2 released. Fixed `install.sh` silently dying on a real
+upgrade — the operator hit this live upgrading a real host from v1.0.4 to
+v1.1.1. `prompt_new_settings()`'s last loop statement was a bare
+`[ -n "$value" ] && export ...`; accepting the *last* prompted setting's
+default made that the function's own exit status, which — called bare under
+`set -e` — killed the installer right after the last prompt with no error:
+no file copy, no `VERSION` stamp, no service restart, host silently stuck on
+the old version. Root-caused with `bash -x` tracing on the operator's box
+plus an isolated reproduction of the exact `set -e` interaction; fixed with
+an `if`/`fi` and an explicit trailing `return 0`. Verified live in a
+disposable systemd container: installed real v1.0.4, then drove an actual
+interactive session over a real pty (`expect`, not piped stdin, which would
+have masked the bug) upgrading to v1.1.1 — unpatched script died at the same
+line as the operator's, patched script completed and restarted the service.
+Nothing is in flight.
+
+Released history, newest first: v1.1.1 fixed README's Install section, which
 still cloned `--branch v1.0.4` in both the quick-install one-liner and the
 step-by-step command — anyone following it right after v1.1.0 shipped would
 have installed the previous release and missed port forwarding entirely.
-Nothing is in flight.
-
-Released history, newest first: v1.1.0 added console-managed port forwarding
-— lets the console forward a public TCP/UDP port on this host to a device
-reached over Tailscale or the LAN via iptables DNAT + MASQUERADE, with rules
-persisted as JSON and reapplied idempotently on every service start.
-Self-verified before the operator's own test: 119/119 unit tests pass, and a
-live disposable three-container Docker harness confirmed real TCP and UDP
-forwarding end to end, `net.ipv4.ip_forward` turning on automatically,
-disable/enable toggling reachability immediately, two process restarts in a
-row applying no duplicate iptables rules, and a clean stop withdrawing every
-rule's kernel state while `portfwd.json` still says `enabled: true` so the
-next start brings it straight back. The operator then verified it manually on
-a real host. v1.0.4 printed the machine's real addresses in
+v1.1.0 added console-managed port forwarding — lets the console forward a
+public TCP/UDP port on this host to a device reached over Tailscale or the
+LAN via iptables DNAT + MASQUERADE, with rules persisted as JSON and
+reapplied idempotently on every service start. Self-verified before the
+operator's own test: 119/119 unit tests pass, and a live disposable
+three-container Docker harness confirmed real TCP and UDP forwarding end to
+end, `net.ipv4.ip_forward` turning on automatically, disable/enable toggling
+reachability immediately, two process restarts in a row applying no duplicate
+iptables rules, and a clean stop withdrawing every rule's kernel state while
+`portfwd.json` still says `enabled: true` so the next start brings it
+straight back. The operator then verified it manually on a real host. v1.0.4
+printed the machine's real addresses in
 the installer's closing summary — it used to emit a literal `<this-server>`
 placeholder in place of an address, so every URL had to be hand-edited before
 it could be used. v1.0.3 made `install_iperf3()` retry the whole

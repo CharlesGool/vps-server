@@ -15,6 +15,17 @@ Newest version first. Only changes a user can perceive — internal refactors do
 not need an entry. Draft from `git log <previous-tag>..HEAD --oneline`, then
 rewrite in user-facing terms.
 
+## v1.1.2 — 2026-09-21
+
+### Fixed
+
+- Upgrading with `install.sh` from a version that predates a newly-added
+  setting (as v1.1.0's port-forwarding settings did to anyone on v1.0.4)
+  could silently abort right after the last new-setting prompt — before
+  copying any files, updating `VERSION`, or restarting the service — with
+  no error message, leaving the host on the old version while the install
+  appeared to finish normally.
+
 ## v1.1.1 — 2026-09-20
 
 ### Fixed

@@ -32,6 +32,24 @@ never edit or delete the old one.
 
 ---
 
+## 2026-09-21 — `prompt_new_settings()` ends with an explicit `return 0`, not just falling off the loop
+
+- **Rejected:** letting the function's exit status fall out of its final `for`
+  loop, as most other functions in `install.sh` do — the loop's last
+  statement used to be a bare `[ -n "$value" ] && export ...`, so leaving the
+  *last* prompted setting at its default made that test false, which became
+  the function's own return status. Called bare (`prompt_new_settings` inside
+  an `if`-body, not itself exempt from `set -e`) that silently killed the
+  whole installer right after the last prompt — no error, no file copy, no
+  `VERSION` stamp, no service restart. Reproduced live on v1.0.4 → v1.1.1 and
+  fixed by wrapping the export in `if`/`fi` and adding an explicit trailing
+  `return 0`, so the function's exit status no longer depends on which
+  setting happened to be prompted last.
+- **Do not remove the trailing `return 0` as apparent dead code.** It is the
+  fix, not boilerplate.
+
+---
+
 ## 2026-09-19 — Port forwards are iptables DNAT, reapplied from JSON at every start; nothing written outside the process
 
 - **Rejected:** a per-rule `socat` userspace relay — safer (no NAT table or
