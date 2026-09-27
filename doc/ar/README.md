@@ -60,11 +60,11 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 خطوة بخطوة، مع الإعداد:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# استنسخ وسم إصدار؛ فقد يحتوي الفرع الافتراضي على تغييرات لم تُنشر بعد.
+# اعرض وسوم الإصدارات: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
+cp .env.example .env   # اختياري — لكل متغير قيمة افتراضية صالحة
 bash deploy/install.sh
 ```
 
@@ -79,19 +79,19 @@ bash deploy/install.sh
 يضع الإصدار 2.0.0 تنفيذ الويب في `src/web/app.py` ويشغّل المثبّتات من `deploy/`. توجد الملفات التنفيذية المضمّنة وإشعارات تراخيصها تحت `third_party/`، وبيانات الإصدار في `config/`. تبقى الملفات المثبّتة في تخطيط مسطح تحت `$PREFIX`؛ ولا ينقل تغيير تخطيط نسخة المستودع بيانات التشغيل. اجتازت المسارات الجديدة الاختبارات المحلية، لكن هذا الإصدار لم يُقبل بعد على مضيف حقيقي.
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
-systemctl status vps-server-web              # is it up
-bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
-bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+bash deploy/install.sh                       # إعداد تفاعلي عبر معالج مؤقت في المتصفح
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # تثبيت آلي دون أسئلة
+systemctl status vps-server-web              # هل الخدمة قيد التشغيل
+bash deploy/anytls/setup-anytls.sh status           # تفاصيل عقدة anytls، إذا كانت هذه الوحدة مثبّتة
+bash deploy/proxy/setup-proxy.sh status             # تفاصيل عقدة proxy، إذا كانت هذه الوحدة مثبّتة
 ```
 
 ثم من جهاز آخر:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # التحقق من الوصول عبر HTTP العادي
+curl -sSk https://<ip>/                    # ... وعبر TLS أيضًا (بشهادة ذاتية التوقيع)
+iperf3 -c <ip> -p 5201 --json              # فقط أثناء فتح نافذة الاختبار
 ```
 
 ### التحقق من عمله

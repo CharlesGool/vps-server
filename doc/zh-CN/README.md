@@ -60,11 +60,11 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 分步安装并配置:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# 克隆发布标签;默认分支可能包含尚未发布的变更.
+# 列出发布标签: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
+cp .env.example .env   # 可选;每个变量都有可用的默认值
 bash deploy/install.sh
 ```
 
@@ -79,19 +79,19 @@ bash deploy/install.sh
 v2.0.0 将 Web 实现放在 `src/web/app.py`,安装程序从 `deploy/` 运行.随附的二进制文件及许可证声明位于 `third_party/`;发布元数据位于 `config/`.已安装文件仍平铺在 `$PREFIX` 下;检出目录的布局变化不会迁移运行数据.新路径通过了本地测试,但本版本尚未在真实主机上完成验收.
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
-systemctl status vps-server-web              # is it up
-bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
-bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+bash deploy/install.sh                       # 交互式设置:在浏览器中使用临时安装向导
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # 无人值守,不显示提示
+systemctl status vps-server-web              # 检查服务是否运行
+bash deploy/anytls/setup-anytls.sh status           # 若已安装该模块,查看 anytls 节点详情
+bash deploy/proxy/setup-proxy.sh status             # 若已安装该模块,查看代理节点详情
 ```
 
 然后在另一台机器上运行:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # 检查明文 HTTP 的可达性
+curl -sSk https://<ip>/                    # 检查 TLS 的可达性(自签名证书)
+iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 ```
 
 ### 验证运行

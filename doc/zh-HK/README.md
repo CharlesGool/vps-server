@@ -60,11 +60,11 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 逐步安裝及設定:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# 複製發佈標籤;預設分支可能包含尚未發佈的變更.
+# 列出發佈標籤: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
+cp .env.example .env   # 可選;每個變數都有可用預設值
 bash deploy/install.sh
 ```
 
@@ -79,19 +79,19 @@ bash deploy/install.sh
 v2.0.0 將 Web 實作放在 `src/web/app.py`,安裝程式從 `deploy/` 執行.隨附的執行檔及授權聲明位於 `third_party/`;發佈中繼資料位於 `config/`.已安裝檔案仍平鋪於 `$PREFIX` 下;檢出目錄的結構調整不會遷移運行資料.新路徑已通過本機測試,但本版本尚未通過真實主機驗收.
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
-systemctl status vps-server-web              # is it up
-bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
-bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+bash deploy/install.sh                       # 互動式設定:使用瀏覽器內的臨時安裝精靈
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # 無人值守,不顯示提示
+systemctl status vps-server-web              # 檢查服務是否運作
+bash deploy/anytls/setup-anytls.sh status           # 如已安裝該模組,查看 anytls 節點詳情
+bash deploy/proxy/setup-proxy.sh status             # 如已安裝該模組,查看代理節點詳情
 ```
 
 然後從另一部機器執行:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # 檢查明文 HTTP 連通性
+curl -sSk https://<ip>/                    # 檢查 TLS 連通性(自簽憑證)
+iperf3 -c <ip> -p 5201 --json              # 只在測試時段開啟時使用
 ```
 
 ### 驗證運作

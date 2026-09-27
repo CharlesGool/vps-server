@@ -92,8 +92,8 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 Step by step, with configuration:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# Clone a release tag; the default branch can contain unpublished changes.
+# List release tags: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
@@ -124,7 +124,7 @@ new paths have passed local tests, but this version has not been accepted on a
 real host.
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
+bash deploy/install.sh                       # interactive setup in a temporary browser wizard
 sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
 systemctl status vps-server-web              # is it up
 bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed

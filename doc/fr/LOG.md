@@ -166,11 +166,11 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 ## Passation
 
 - Branche : v2.0.0 sur `main`. Cette version exclut l’historique de la branche d’essai privée.
-- Terminé : structure normalisée, migration des documents anglais et de sept traductions, catalogues d’interface, vérification de l’origine des fichiers tiers et publication de v2.0.0.
-- Vérifications : 271 tests réussis (8 ignorés) ; empreintes des dépendances et structure d’un export propre conformes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur.
+- Terminé : structure normalisée, migration des documents anglais et de sept traductions, catalogues d’interface, vérification de l’origine des fichiers tiers et publication de v2.0.0, ainsi que la traduction des commentaires explicatifs dans les exemples d’installation.
+- Vérifications : 271 tests réussis (8 ignorés) pour v2.0.0 ; empreintes des dépendances et structure d’un export propre conformes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur après la traduction des commentaires.
 - À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et interprétation juridique indépendante des licences des composants embarqués.
 - Publication : le tag annoté v2.0.0 pointe vers le commit de publication `f9eb612` ; le dépôt officiel `origin/main` contient ce commit et la présente passation. La GitHub Release publique, l’instantané local du tag et la copie de l’historique dans `My Projects` ont été vérifiés.
-- Prochaine action : valider sur un hôte réel avec systemd, puis revoir la formulation native et les obligations des licences embarquées avant de considérer frps et Lucky comme stables.
+- Prochaine action : valider sur un hôte réel avec systemd, puis revoir la formulation native, y compris les commentaires des commandes, et les obligations des licences embarquées avant de considérer frps et Lucky comme stables.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.

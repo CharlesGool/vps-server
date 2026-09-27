@@ -221,11 +221,11 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `main` at v2.0.0. The private test branch history is excluded from this release.
-- Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, third-party artifact verification, and the v2.0.0 release.
-- Checks: 271 unit tests passed (8 skipped); dependency hashes and clean-export structure passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors.
+- Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, third-party artifact verification, the v2.0.0 release, and translation of explanatory comments in installation examples.
+- Checks: 271 unit tests passed (8 skipped) for v2.0.0; dependency hashes and clean-export structure passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors after the comment translation.
 - Remaining: real-host/systemd acceptance, independent native-language review, and independent legal interpretation of bundled licenses.
 - Publication: the annotated v2.0.0 tag points to release commit `f9eb612`; formal `origin/main` contains that commit and this handoff record. The public GitHub Release, local tag snapshot, and `My Projects` Changelog mirror were verified.
-- Next action: run real-host/systemd acceptance, then review native-language wording and bundled-license obligations before considering frps and Lucky stable.
+- Next action: run real-host/systemd acceptance, then review native-language wording, including command comments, and bundled-license obligations before considering frps and Lucky stable.
 
 ## Changelog
 

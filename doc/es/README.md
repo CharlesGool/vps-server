@@ -60,11 +60,11 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 Paso a paso, con configuración:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# Clona una etiqueta de versión; la rama predeterminada puede contener cambios aún no publicados.
+# Lista las etiquetas de versión: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
+cp .env.example .env   # opcional: todas las variables tienen un valor predeterminado funcional
 bash deploy/install.sh
 ```
 
@@ -79,19 +79,19 @@ bash deploy/install.sh
 La versión 2.0.0 sitúa la implementación web en `src/web/app.py` y ejecuta los instaladores desde `deploy/`. Los ejecutables incluidos y sus avisos de licencia están en `third_party/`; los metadatos de versión están en `config/`. Los archivos instalados conservan una estructura plana bajo `$PREFIX`; el cambio de organización del repositorio no migra los datos de ejecución. Las rutas nuevas han superado las pruebas locales, pero esta versión no se ha aceptado en un servidor real.
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
-systemctl status vps-server-web              # is it up
-bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
-bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+bash deploy/install.sh                       # configuración interactiva mediante un asistente temporal en el navegador
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # instalación desatendida, sin preguntas
+systemctl status vps-server-web              # comprueba si está activo
+bash deploy/anytls/setup-anytls.sh status           # detalles del nodo anytls, si está instalado ese módulo
+bash deploy/proxy/setup-proxy.sh status             # detalles del nodo proxy, si está instalado ese módulo
 ```
 
 Después, desde otra máquina:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # comprueba la accesibilidad mediante HTTP sin cifrar
+curl -sSk https://<ip>/                    # ... y mediante TLS (certificado autofirmado)
+iperf3 -c <ip> -p 5201 --json              # solo mientras haya una ventana abierta
 ```
 
 ### Verify it works

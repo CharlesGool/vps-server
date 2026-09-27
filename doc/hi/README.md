@@ -60,11 +60,11 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 कॉन्फ़िगरेशन सहित चरणबद्ध तरीका:
 
 ```bash
-# Always clone a tag, not the default branch — the branch tip may be mid-work.
-# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+# रिलीज़ टैग क्लोन करें; डिफ़ॉल्ट शाखा में अभी प्रकाशित न हुए बदलाव हो सकते हैं।
+# रिलीज़ टैग की सूची: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
 git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
+cp .env.example .env   # वैकल्पिक — हर वेरिएबल का उपयोगी डिफ़ॉल्ट है
 bash deploy/install.sh
 ```
 
@@ -79,19 +79,19 @@ bash deploy/install.sh
 संस्करण 2.0.0 में वेब कार्यान्वयन `src/web/app.py` में है और इंस्टॉलर `deploy/` से चलते हैं। साथ वितरित बाइनरी और लाइसेंस सूचनाएँ `third_party/` में तथा रिलीज़ मेटाडेटा `config/` में है। स्थापित फ़ाइलें `$PREFIX` के अंतर्गत समतल लेआउट में रहती हैं; चेकआउट का लेआउट बदलने से रनटाइम डेटा स्थानांतरित नहीं होता। नए पथों पर स्थानीय परीक्षण सफल हुए हैं, लेकिन इस संस्करण को वास्तविक होस्ट पर अभी स्वीकृति नहीं मिली है।
 
 ```bash
-bash deploy/install.sh                       # interactive: temporary browser setup wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
-systemctl status vps-server-web              # is it up
-bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
-bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+bash deploy/install.sh                       # इंटरैक्टिव सेटअप, ब्राउज़र में अस्थायी विज़ार्ड से
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # बिना निगरानी के, कोई प्रश्न नहीं
+systemctl status vps-server-web              # क्या सेवा चालू है
+bash deploy/anytls/setup-anytls.sh status           # anytls नोड का विवरण, यदि यह मॉड्यूल स्थापित है
+bash deploy/proxy/setup-proxy.sh status             # proxy नोड का विवरण, यदि यह मॉड्यूल स्थापित है
 ```
 
 फिर दूसरी मशीन से:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # सामान्य HTTP पर पहुँच की जाँच
+curl -sSk https://<ip>/                    # ... और TLS पर भी (स्व-हस्ताक्षरित प्रमाणपत्र)
+iperf3 -c <ip> -p 5201 --json              # केवल परीक्षण खिड़की खुली होने पर
 ```
 
 ### काम करने की पुष्टि करें
