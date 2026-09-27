@@ -52,6 +52,31 @@ class OperationsTests(unittest.TestCase):
                                     old["inbound"].get("password", old["inbound"].get("users")))
         self.assertEqual(self.inventory, self.original)
 
+    def test_create_accepts_valid_manual_credentials_and_rejects_duplicates(self):
+        choices = {
+            "anytls": "manual-anytls-secret",
+            "vmess": "f4df74e1-d656-48e6-9777-d74b94235f47",
+            "vless": "a4df74e1-d656-48e6-9777-d74b94235f47",
+            "trojan": "manual-trojan-secret",
+            "shadowsocks": "AQEBAQEBAQEBAQEBAQEBAQ==",
+        }
+        for index, (protocol, secret) in enumerate(choices.items()):
+            with self.subTest(protocol=protocol):
+                result = self.create(protocol, 30000 + index, credential=secret)
+                node = result["nodes"][-1]
+                actual = (node["inbound"]["password"] if protocol == "shadowsocks" else
+                          node["inbound"]["users"][0]["uuid" if protocol in ("vmess", "vless") else "password"])
+                self.assertEqual(actual, secret)
+                validate_inventory(result)
+        with self.assertRaises(InvalidInventory):
+            self.create("anytls", credential="short")
+        with self.assertRaises(InvalidInventory):
+            self.create("vmess", credential="not-a-uuid")
+        with self.assertRaises(InvalidInventory):
+            self.create("shadowsocks", credential="plain-password")
+        with self.assertRaises(InvalidInventory):
+            self.create("anytls", credential=self.inventory["nodes"][0]["inbound"]["users"][0]["password"])
+
     def test_collisions_missing_prototype_and_invalid_template(self):
         for port in (20001, 40000, True, 65536):
             with self.subTest(port=port), self.assertRaises(InvalidInventory):

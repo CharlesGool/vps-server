@@ -302,11 +302,10 @@ split, since both are "proxy nodes" from their point of view regardless of
 which of the two independent backends serves each one. `/anytls` redirects
 here; `POST /anytls/reset` is unchanged, just redirects back to `/proxy`
 afterwards. The two modules keep fully independent state (anytls's own
-`public-ip.txt`/`SERVER_IP` are not the proxy module's — each can be
-configured differently) and independent reset buttons; only the page they
-render onto is shared. This is also why the whole page went through one
-`address_entries()` helper instead of anytls's and page_proxy's own
-near-duplicate copies of the same dedup logic: two call sites, one function.
+  `public-ip.txt`/`SERVER_IP` are not the proxy module's — each can be
+  configured differently) and independent reset buttons; only the page they
+  render onto is shared. The page lists host interface and optional Tailscale
+  addresses. It does not display the install-time public-IP lookup.
 
 ### iperf3 window lifecycle
 
@@ -322,7 +321,10 @@ near-duplicate copies of the same dedup logic: two call sites, one function.
 
 The window is held in memory, not on disk: if the service dies, the window is
 gone, which is the safe direction to fail. A restart never resurrects an open
-window.
+window. The selected port is persisted separately in the app's data directory.
+It can be changed from the console only while the window is closed; the new
+port is checked against installed service and forwarding ports and active
+listeners before it is saved.
 
 Latency is read from iperf3's own `--json` output (`mean_rtt` in the TCP info
 block) on the tester's side; the server needs no extra code for it. That field
@@ -664,18 +666,10 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   Upstream behaviour, inherited deliberately. `setup-anytls.sh reset` rotates
   them on purpose, and the console's reset button is the supported way to ask
   for that.
-- **The console's public-address block only appears when `SERVER_IP` was set
-  explicitly.** `get_ip()` used to fall back to an outbound curl lookup
-  (`api.ip.sb`, then `ifconfig.me`); dropped entirely (2026-09-22) because on
-  the common case — a VPS with no NAT — that returned the exact same address
-  `get_lan_ips()` already reports, showing one IP twice on the node page. On
-  a box genuinely behind NAT with no override, it was worse: an address this
-  node is not reachable at without a port-forward this project cannot
-  confirm exists. `public-ip.txt` (still written by `setup-anytls.sh`/
-  `setup-proxy.sh`, still the only way the console avoids an outbound lookup
-  at render time) now only exists when the operator passed `SERVER_IP`/
-  `PROXY_PROTOCOLS`' sibling `SERVER_IP` — the deliberate, known-correct case
-  (e.g. NAT with port-forwarding actually configured).
+- **The node page lists interface and Tailscale addresses.** The former
+  install-time public-address block was removed because it duplicated a VPS
+  interface address and could be misleading behind NAT. Installation may still
+  record `public-ip.txt` for setup scripts; the console does not read it.
 - **`body` fed into `render_page()`** **MUST** be exactly one top-level element.
   `<main>` is `display: flex` with no `flex-direction` override, so more than
   one top-level sibling (e.g. one `<div class="card wide">` per protocol)

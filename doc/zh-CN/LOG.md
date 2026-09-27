@@ -167,11 +167,11 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 
 ## 交接
 
-- 分支：`feat/node-management`，基于 `feat/ui-redesign`，已推送至正式 GitHub 仓库。未发现临时项目规则。
-- 已完成：代理页面支持同协议多个节点，包括在不同端口运行多个 AnyTLS。每个节点都有卡片内按 ID 定位的编辑功能、独立的流量限制表单、随机重置、新建和删除，以及按 ID 定位的 Clash 订阅。最近访问的入站和出站颜色更易区分，Proxy 已在八种语言中翻译，冗余说明已移除，自带字体改用 `font-display: optional`。
-- 检查：293 项自动化测试通过（8 项跳过）；Python 编译、语言检查及差异检查通过。五种新入站模板及空配置通过随附的 sing-box 检查。Chromium 在桌面和 390 px 宽度下显示 5 个节点、默认信息和原位编辑，没有横向溢出。字体延迟 1.2 秒时，标题尺寸和位置不变。
-- 部署：已在指定测试机的 `~/apps/vps-server` 下更新项目，私人备份保留在仓库外。临时第二个 AnyTLS 节点在独立端口监听，与原节点同时显示，随后通过控制台删除；其端口登记和证书已移除。原五个节点的身份、配置和限制与备份一致。四个服务均运行且已启用；局域网访问公共 HTTP/HTTPS 和需登录的控制台均返回 200。升级前已存在的 AnyTLS 端口登记不一致也已修正。
-- 剩余：真实手机上的 Android Clash 导入及实际重启后的启动仍未验证。下一步：审查 `feat/node-management` 的合并与发布，条件允许时完成手机和重启验证。
+- 分支：`feat/node-management`，基于 `feat/ui-redesign`，准备推送到正式 GitHub 仓库。未发现临时项目规则。
+- 已完成：新建节点可手动填写凭据，留空则随机生成；TLS 节点默认使用 `www.bing.com`。节点页面仅显示网卡和 Tailscale 地址，不再单独显示公网 IP。重置和删除使用确认弹窗，二维码按钮文字已缩短。登录页统一了布局，并提供可访问的密码显示切换和错误提示。iperf3 分别显示状态和端口；测试窗口关闭时可修改端口，保存前检查冲突，并将设置及主机端口登记表同步持久化。
+- 检查：296 项自动化测试通过（8 项跳过）；Python 编译、JavaScript 语法、语言检查和差异检查通过。Chromium 在桌面和 390 px 宽度下验证了登录密码切换、新建表单、按协议变化的字段、确认弹窗和 iperf3 页面，均无横向溢出。
+- 部署：指定测试机的 `~/apps/vps-server` 已更新；旧版本的私人备份保留在仓库外。实测端口修改并恢复后，iperf3 设置与主机登记表均为 5201。通过编辑器将测试节点的 SNI 从 localhost 改为 `www.bing.com`。四个服务均运行且已启用，局域网可访问 HTTP/HTTPS 和需登录的控制台。尚未进行实际重启。
+- 剩余：真实手机上的 Android Clash 导入和实际重启后的启动仍未验证。下一步：审核并合并、发布 `feat/node-management`，然后完成手机与重启检查。
 
 ## 变更日志
 
@@ -319,4 +319,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
-- (this commit) docs(log): record node management delivery
+- `6c1459d` docs(log): record node management delivery
+- (this commit) feat(console): refine nodes, login and iperf3 port

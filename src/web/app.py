@@ -29,6 +29,7 @@ import re
 import secrets
 import shutil
 import signal
+import socket
 import sqlite3
 import ssl
 import subprocess
@@ -211,6 +212,7 @@ LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30")
 # happening. See doc/LOG.md#decisions (2026-09-12).
 IPERF_ENABLED = os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1"
 IPERF_PORT = int(os.environ.get("VPSSRV_IPERF_PORT", "5201"))
+IPERF_PORT_FILE = DATA_DIR / "iperf-port.txt"
 IPERF_DEFAULT_MINUTES = int(os.environ.get("VPSSRV_IPERF_DEFAULT_MINUTES", "10"))
 IPERF_MAX_MINUTES = int(os.environ.get("VPSSRV_IPERF_MAX_MINUTES", "60"))
 
@@ -412,8 +414,16 @@ class IperfWindow:
     resurrects a window somebody opened and forgot about.
     """
 
-    def __init__(self, port, max_minutes):
+    def __init__(self, port, max_minutes, port_file=None):
+        self._port_file = Path(port_file) if port_file else None
         self._port = port
+        if self._port_file and self._port_file.exists():
+            try:
+                saved = int(self._port_file.read_text().strip())
+                if 1 <= saved <= 65535:
+                    self._port = saved
+            except (OSError, ValueError):
+                pass
         self._max_minutes = max_minutes
         self._lock = threading.RLock()
         self._proc = None
@@ -422,7 +432,31 @@ class IperfWindow:
 
     @property
     def port(self):
-        return self._port
+        with self._lock:
+            return self._port
+
+    def set_port(self, port, commit=None):
+        """Change the port while closed; persist it for the next restart."""
+        if type(port) is not int or not 1 <= port <= 65535:
+            return False
+        with self._lock:
+            self._reap()
+            if self._proc is not None:
+                return False
+            if commit is not None:
+                if not commit(self._port):
+                    return False
+            elif self._port_file:
+                stage = self._port_file.with_suffix(".tmp")
+                try:
+                    stage.write_text(str(port) + "\n")
+                    os.chmod(stage, 0o600)
+                    stage.replace(self._port_file)
+                except OSError:
+                    stage.unlink(missing_ok=True)
+                    return False
+            self._port = port
+            return True
 
     def state(self):
         """(is_open, remaining_seconds), reaping an iperf3 that died on its own."""
@@ -528,7 +562,7 @@ class IperfWindow:
             firewall_port(self._port, opening=False)
 
 
-IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES)
+IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES, IPERF_PORT_FILE)
 
 # ---------------------------------------------------------------------------
 # Port forwarding — persistent iptables DNAT rules, console-managed
@@ -674,7 +708,7 @@ class PortForwardManager:
         """
         reserved = {PUBLIC_HTTP_PORT, PUBLIC_HTTPS_PORT, CONSOLE_PORT}
         if IPERF_ENABLED:
-            reserved.add(IPERF_PORT)
+            reserved.add(IPERF_WINDOW.port)
         node = anytls_node()
         if node and node.get("port"):
             try:
@@ -877,9 +911,7 @@ VIRTUAL_IFACE_PREFIXES = ("docker", "br-", "veth", "virbr", "cni", "flannel", "k
 def local_addresses():
     """[(interface, address)] for real interfaces.
 
-    Read from the kernel's own list, so this costs no outbound request —
-    unlike the public address, which is exactly why that one is a file written
-    at install time rather than a lookup here.
+    Read from the kernel's own list without an outbound request.
     """
     found = []
     output = _cmd_output(["ip", "-o", "-4", "addr", "show", "scope", "global"])
@@ -902,26 +934,10 @@ def tailscale_address():
     return ""
 
 
-def address_entries(t, public_address, host):
-    """[(label, address)] shared by both the anytls and proxy console
-    sections: public first (only when a module's own install-time detection
-    left one — see anytls_public_address()/proxy_public_address()), then
-    each real interface, then Tailscale, then the address that reached this
-    console if none of those already covers it.
-
-    Each later source is skipped if it repeats an address an earlier one
-    already contributed — on a typical VPS with no NAT, the public address
-    *is* the address bound to the main interface, so without this a
-    single-NIC box showed the exact same IP twice, once labelled "public"
-    and once "LAN-eth0" (found by an operator testing on a real VPS). A home
-    box behind NAT, where the public and LAN addresses genuinely differ, is
-    unaffected.
-    """
+def address_entries(t):
+    """Show host interface addresses and the optional Tailscale address."""
     entries = []
     seen = set()
-    if public_address:
-        entries.append((t["anytls_public"], public_address))
-        seen.add(public_address)
     for iface, address in local_addresses():
         if address in seen:
             continue
@@ -931,24 +947,7 @@ def address_entries(t, public_address, host):
     if tailscale and tailscale not in seen:
         entries.append(("Tailscale", tailscale))
         seen.add(tailscale)
-    if host not in seen:
-        entries.append((t["anytls_this"], host))
     return entries
-
-
-def anytls_public_address():
-    """Whatever setup-anytls.sh detected at install time, or "".
-
-    A file rather than a live lookup, deliberately: app.py makes no outbound
-    request at runtime, and a public address does not move often enough to
-    justify breaking that rule for a display field. Re-run setup-anytls.sh if
-    the address changes.
-    """
-    try:
-        value = (ANYTLS_CONFIG.parent / "public-ip.txt").read_text().strip()
-    except OSError:
-        return ""
-    return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
 
 
 def anytls_reset_command():
@@ -1085,6 +1084,8 @@ def node_control_apply(request):
     if not systemd_run and Path("/run/systemd/system").exists():
         return False
     command = (["systemd-run", "--pipe", "--wait", "--collect",
+                f"--setenv=VPSSRV_DATA_DIR={DATA_DIR}",
+                f"--setenv=VPSSRV_IPERF_PORT={IPERF_PORT}",
                 f"--unit={NODE_CONTROL_UNIT}", *direct]
                if systemd_run else direct)
     try:
@@ -1274,17 +1275,6 @@ def proxy_share_link(node, sni, host, name):
     return f"ss://{blob}@{host}:{port}#{quote(name, safe='')}"
 
 
-def proxy_public_address():
-    """Same reasoning as anytls_public_address(): a file written at install
-    time, not a live lookup — app.py makes no outbound request at runtime.
-    """
-    try:
-        value = (PROXY_CONFIG.parent / "public-ip.txt").read_text().strip()
-    except OSError:
-        return ""
-    return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
-
-
 def proxy_reset_command(protocol=None):
     """Same sandboxing workaround as anytls_reset_command() — see its
     docstring. ConsoleHandler's unit has ProtectSystem=strict, so a reset has
@@ -1353,6 +1343,7 @@ def render_copyable(t, label, value, ident):
 IPERF_MESSAGE_KEYS = frozenset({
     "iperf_opened", "iperf_extended", "iperf_shut",
     "iperf_disabled", "iperf_missing", "iperf_port_busy",
+    "iperf_port_saved", "iperf_port_invalid",
 })
 
 ANYTLS_MESSAGE_KEYS = frozenset({
@@ -1949,6 +1940,8 @@ STATIC_FILES = {
     "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
     "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
     "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
+    "/static/node-controls.js": ("application/javascript", BASE_DIR / "static" / "node-controls.js"),
+    "/static/login.js": ("application/javascript", BASE_DIR / "static" / "login.js"),
     "/static/qrcode.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode.js"),
     "/static/qrcode-utf8.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode-utf8.js"),
     "/static/qrcode-render.js": ("application/javascript", BASE_DIR / "static" / "qrcode-render.js"),
@@ -2183,6 +2176,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_iperf_open()
         if method == "POST" and path == "/iperf/close":
             return self.handle_iperf_close()
+        if method == "POST" and path == "/iperf/port":
+            return self.handle_iperf_port()
         if method == "GET" and path == "/portfwd":
             return self.page_portfwd(lang, query_lang)
         if method == "POST" and path == "/portfwd/add":
@@ -2221,17 +2216,26 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
     def page_login(self, lang, query_lang, status=200, error=None):
         t = STRINGS[lang]
-        error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
+        error_html = f'<p class="error" id="login-error" role="alert">{html.escape(error)}</p>' if error else ""
+        invalid = ' aria-invalid="true" aria-describedby="login-error"' if error else ""
         body = f"""
-        <div class="card narrow">
-          <h1>{html.escape(t['login'])}</h1>
-          {error_html}
-          <form method="post" action="/login">
-            <label>{html.escape(t['password'])}
-              <input type="password" name="password" autocomplete="current-password" autofocus required>
-            </label>
-            <button type="submit">{html.escape(t['login'])}</button>
-          </form>
+        <div class="login-shell">
+          <div class="login-panel">
+            <div class="login-brand">{ui_icon('server')}<span>vps-server</span></div>
+            <h1>{html.escape(t['login_heading'])}</h1>
+            {error_html}
+            <form method="post" action="/login" class="login-form"
+                  data-show-label="{html.escape(t['login_show_password'], quote=True)}"
+                  data-hide-label="{html.escape(t['login_hide_password'], quote=True)}">
+              <label for="login-password">{html.escape(t['password'])}</label>
+              <div class="login-password-field">
+                <input id="login-password" type="password" name="password" autocomplete="current-password" autofocus required{invalid}>
+                <button type="button" class="login-visibility" aria-controls="login-password" aria-pressed="false">{html.escape(t['login_show_password'])}</button>
+              </div>
+              <button type="submit" class="login-submit">{html.escape(t['login'])}</button>
+            </form>
+          </div>
+          <script src="/static/login.js"></script>
         </div>
         """
         headers = self.maybe_lang_cookie(query_lang)
@@ -2474,7 +2478,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         notice = ""
         key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
         if key in IPERF_MESSAGE_KEYS:
-            notice = f'<p class="notice">{html.escape(t[key].format(port=port))}</p>'
+            cls = "error" if key == "iperf_port_invalid" else "notice"
+            notice = f'<p class="{cls}">{html.escape(t[key].format(port=port))}</p>'
 
         countdown_script = ""
         if is_open:
@@ -2528,7 +2533,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         <div class="card">
           <h1>{html.escape(t['iperf_heading'])}</h1>
           {notice}
-          <p class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</p>
+          <div class="iperf-facts">
+            <div class="iperf-fact"><span>{html.escape(t['iperf_status'])}</span><strong class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</strong></div>
+            <div class="iperf-fact"><span>{html.escape(t['iperf_port'])}</span><strong>{port}</strong></div>
+          </div>
+          <form method="post" action="/iperf/port" class="iperf-port-form">
+            <label>{html.escape(t['iperf_change_port'])}<input type="number" name="port" min="1024" max="65535" value="{port}" required {'disabled' if is_open else ''}></label>
+            <button type="submit" {'disabled' if is_open else ''}>{html.escape(t['iperf_save_port'])}</button>
+          </form>
           <div class="iperf-actions">
             <form method="post" action="/iperf/open" class="inline-form">
               <label>{html.escape(t['iperf_minutes'])}
@@ -2559,6 +2571,34 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.read_body(LOGIN_BODY_LIMIT)  # drain: keep-alive needs the body gone
         IPERF_WINDOW.close()
         self.redirect("/iperf?msg=iperf_shut")
+
+    def handle_iperf_port(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        try:
+            form = parse_qs(raw.decode("utf-8"), strict_parsing=True)
+            if set(form) != {"port"} or len(form["port"]) != 1:
+                raise ValueError("invalid form")
+            port = int(form["port"][0])
+            if not 1024 <= port <= 65535:
+                raise ValueError("invalid port")
+            if port != IPERF_WINDOW.port:
+                if port in PORTFWD.reserved_ports():
+                    raise ValueError("reserved port")
+                for family, address in ((socket.AF_INET, "0.0.0.0"), (socket.AF_INET6, "::")):
+                    try:
+                        with socket.socket(family, socket.SOCK_STREAM) as probe:
+                            probe.bind((address, port))
+                    except OSError as exc:
+                        if family == socket.AF_INET6 and exc.errno in (97, 93):
+                            continue
+                        raise ValueError("busy port") from exc
+            if not IPERF_WINDOW.set_port(
+                    port, commit=lambda old: node_control_apply(
+                        {"action": "iperf-port", "old_port": old, "port": port})):
+                raise ValueError("active window or persistence failure")
+        except (UnicodeError, ValueError):
+            return self.redirect("/iperf?msg=iperf_port_invalid")
+        return self.redirect("/iperf?msg=iperf_port_saved")
 
     # -- port forwarding -------------------------------------------------
 
@@ -2763,10 +2803,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 state_class = "is-closed"
             health = ("" if anytls["running"] else
                       f'<p class="proxy-node-health warn">{html.escape(state)}</p>')
-            # anytls's own public-ip.txt: independent of the proxy module's,
-            # since each is installed (and can have its own SERVER_IP) on its
-            # own — see address_entries()'s docstring for the dedup rule.
-            entries = address_entries(t, anytls_public_address(), host)
+            entries = address_entries(t)
             blocks = []
             for label, address in entries:
                 blocks.append(f"""
@@ -2812,7 +2849,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             """)
 
         if nodes:
-            proxy_entries = address_entries(t, proxy_public_address(), host)
+            proxy_entries = address_entries(t)
             if proxy_running():
                 proxy_state = t["proxy_state_running"]
                 proxy_state_class = "is-open"
@@ -2913,8 +2950,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         cards = []
         running = {"anytls": bool(anytls_node() and anytls_node()["running"]),
                    "proxy": proxy_running()}
-        address_map = {"anytls": address_entries(t, anytls_public_address(), host),
-                       "proxy": address_entries(t, proxy_public_address(), host)}
+        addresses_available = address_entries(t)
         for node in sorted(inventory["nodes"], key=lambda item: item["number"]):
             protocol = node["protocol"]
             module = "anytls" if protocol == "anytls" else "proxy"
@@ -2931,7 +2967,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             sni_input = (f'<label>{esc(t["proxy_sni"])}<input name="sni" value="{esc(sni, quote=True)}" required></label>'
                          if protocol != "shadowsocks" else "")
             addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span><code>{esc(value)}</code></div>'
-                                for label, value in address_map[module])
+                                for label, value in addresses_available)
             cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1073741824)
             expiry = node["expires_at"][:16] if node["expires_at"] else ""
             next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
@@ -2977,21 +3013,25 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <button type="submit">{esc(t['node_save_limits'])}</button>
                   </form>
                 </details>
-                <details><summary>{esc(t['node_random_reset'])}</summary>
-                  <form method="post" action="/proxy/node/reset">
-                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
-                    <label class="checkline"><input type="checkbox" name="confirm" value="yes" required><span>{esc(t['node_random_confirm'])}</span></label>
-                    <button type="submit" class="danger">{esc(t['node_random_reset'])}</button>
-                  </form>
-                </details>
-                <details><summary>{esc(t['node_delete'])}</summary>
-                  <form method="post" action="/proxy/node/delete">
-                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
-                    <label class="checkline"><input type="checkbox" name="confirm" value="yes" required><span>{esc(t['node_delete_confirm'])}</span></label>
-                    <button type="submit" class="danger">{esc(t['node_delete'])}</button>
-                  </form>
-                </details>
+                <button type="button" class="node-action" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
+                <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button>
               </div>
+              <dialog class="node-confirm-dialog" id="node-reset-{identifier}" aria-labelledby="node-reset-title-{identifier}">
+                <form method="post" action="/proxy/node/reset">
+                  <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}"><input type="hidden" name="confirm" value="yes">
+                  <h3 id="node-reset-title-{identifier}">{esc(t['node_random_reset'])}</h3>
+                  <p>{esc(t['node_random_confirm'])}</p>
+                  <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button><button type="submit" class="danger">{esc(t['node_random_reset'])}</button></div>
+                </form>
+              </dialog>
+              <dialog class="node-confirm-dialog" id="node-delete-{identifier}" aria-labelledby="node-delete-title-{identifier}">
+                <form method="post" action="/proxy/node/delete">
+                  <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}"><input type="hidden" name="confirm" value="yes">
+                  <h3 id="node-delete-title-{identifier}">{esc(t['node_delete'])}</h3>
+                  <p>{esc(t['node_delete_confirm'])}</p>
+                  <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button><button type="submit" class="danger">{esc(t['node_delete'])}</button></div>
+                </form>
+              </dialog>
             </article>''')
         protocols = (["anytls"] if ANYTLS_CONFIG.is_file() else []) + \
                     (["vmess", "vless", "trojan", "shadowsocks"] if PROXY_CONFIG.is_file() else [])
@@ -2999,13 +3039,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                                    f'{" checked" if index == 0 else ""}><span>{esc(value)}</span></label>'
                                    for index, value in enumerate(protocols))
         create = (f'''<details class="node-create"><summary>{esc(t['node_create'])}</summary>
-          <form method="post" action="/proxy/node/create">
+          <form method="post" action="/proxy/node/create" data-node-create
+                data-credential-password="{esc(t['node_credential_password_hint'], quote=True)}"
+                data-credential-uuid="{esc(t['node_credential_uuid_hint'], quote=True)}"
+                data-credential-ss="{esc(t['node_credential_ss_hint'], quote=True)}">
             <input type="hidden" name="csrf" value="{node_csrf_token(session, 'create')}">
             <fieldset class="node-reset-cycle"><legend>{esc(t['node_protocol'])}</legend>{protocol_choices}</fieldset>
             <div class="node-form-grid">
               <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
               <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
-              <label>{esc(t['proxy_sni'])}<input name="sni" value="" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
+              <label>{esc(t['node_credential'])}<input name="credential" value="" placeholder="{esc(t['node_credential_random'], quote=True)}" autocomplete="new-password"><small class="node-field-hint" data-credential-hint>{esc(t['node_credential_password_hint'])}</small></label>
+              <label data-sni-field>{esc(t['proxy_sni'])}<input name="sni" value="www.bing.com" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")
         count = len(cards)
@@ -3021,6 +3065,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div></header>
           {notice}{create}<div class="proxy-node-grid">{empty_state}</div></div>
           <script src="/static/copy.js"></script>
+          <script src="/static/node-controls.js"></script>
           {qr_scripts}'''
         return self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -3173,7 +3218,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                                    node_csrf_token(session, csrf_subject)):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         expected = {
-            "create": {"protocol", "csrf", "name", "port", "sni"},
+            "create": {"protocol", "csrf", "name", "port", "sni", "credential"},
             "edit": {"id", "csrf", "name", "port", "credential"},
             "limits": {"id", "csrf", "cap_gib", "expires_at", "reset_mode", "next_reset_at"},
             "reset": {"id", "csrf", "confirm"},
@@ -3199,10 +3244,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 port = int(form["port"][0]) if form["port"][0] else None
                 request = {"action": "create", "protocol": protocol,
                            "name": form["name"][0], "port": port}
+                if form["credential"][0]:
+                    request["credential"] = form["credential"][0]
                 if protocol != "shadowsocks":
-                    request["sni"] = form["sni"][0].strip() or "localhost"
-                elif form["sni"][0].strip():
-                    raise ValueError("SNI not applicable")
+                    request["sni"] = form["sni"][0].strip() or "www.bing.com"
             except ValueError:
                 return self.redirect("/proxy?msg=node_settings_failed")
         else:

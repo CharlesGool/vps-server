@@ -208,7 +208,9 @@ SNI 完全沒有存在 sing-box 的設定裡——`setup-anytls.sh` 只把它烤
 
 `PortForwardManager.reserved_ports()` 將所有已安裝代理協定的連接埠視為保留埠,與既有的 anytls 及主控台連接埠相同,不允許轉發規則占用.
 
-若已安裝 anytls,主控台的 **/proxy 也顯示 anytls 節點**.操作者認為將兩種代理節點分成 /anytls 和 `/proxy` 是人為區隔.`/anytls` 會重新導向至此;`POST /anytls/reset` 不變,只是完成後導回 `/proxy`.兩個模組的狀態(包括 anytls 的 `public-ip.txt`/`SERVER_IP`)仍互相獨立,各自有重設按鈕,僅共用頁面.兩處位址去重邏輯則集中為一個 `address_entries()` 輔助函式.
+若已安裝 anytls,主控台的 **/proxy 也顯示 anytls 節點**.操作者認為將兩種代理節點分成 /anytls 和 `/proxy` 是人為區隔.`/anytls` 會重新導向至此;`POST /anytls/reset` 不變,只是完成後導回 `/proxy`.兩個模組的狀態(包括 anytls 的 `public-ip.txt`/`SERVER_IP`)仍互相獨立,各自有重設按鈕,僅共用頁面.
+
+節點頁面列出主機網卡位址及可選的 Tailscale 位址，不再顯示安裝時記錄的公開 IP。
 
 ### iperf3 視窗生命週期
 
@@ -231,6 +233,8 @@ SNI 完全沒有存在 sing-box 的設定裡——`setup-anytls.sh` 只把它烤
 Windows 上 Cygwin 版本的 iperf3 會回報輸送量,但沒有 `mean_rtt`.
 UDP 模式(`-u`)在任何地方都會回報 jitter 和封包遺失,
 是測試者不在 Linux 上時比較通用的答案.
+
+所選連接埠另外儲存在應用程式資料目錄中。只能在視窗關閉時從主控台修改；儲存前會檢查是否與已安裝服務、連接埠轉發或目前監聽的連接埠衝突。
 
 ### 連接埠轉發生命週期
 
@@ -510,9 +514,7 @@ SQLite 結構原樣繼承自 `vps-webserver`:一張 `visits` 資料表,僅保留
   `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
   這是刻意繼承下來的上游行為.`setup-anytls.sh reset` 就是故意
   要輪替它們,主控台上的重設按鈕就是要求這個效果的官方支援方式.
-- **主控台的公開位址區塊只有明確設定 `SERVER_IP` 時才會
-  出現.**
-  `get_ip()` 過去會退回對外使用 curl 查詢(先 `api.ip.sb`,再 `ifconfig.me`);此行為已在 2026-09-22 完全移除.在沒有 NAT 的常見 VPS 上,查到的位址與 `get_lan_ips()` 已回報的完全相同,節點頁面會重複顯示同一 IP.若主機確實位於 NAT 後方且未覆寫位址,情況更糟:該節點須經本專案無法確認存在的連接埠轉發,才能以該位址連入.`public-ip.txt` 仍由 `setup-anytls.sh`/`setup-proxy.sh` 寫入,也仍是主控台在呈現時避免對外查詢的唯一方式;現在只有操作者明確傳入 `SERVER_IP`(或 `PROXY_PROTOCOLS` 同層的 `SERVER_IP`)時才會存在,亦即確知位址正確的情況,例如已實際設定連接埠轉發的 NAT.
+- **節點頁面列出網卡及 Tailscale 位址。** 舊的安裝時公開位址區塊已移除：它在 VPS 上重複顯示網卡位址，在 NAT 後方也可能誤導使用者。安裝程式仍可為設定腳本記錄 `public-ip.txt`；主控台不再讀取它。
 - **`body` 由 `render_page()` 接收時** **必須**恰好只有一個最上層元素.
   `<main>` 使用 `display: flex`,未覆寫 `flex-direction`;若有多個最上層同級元素(例如每個協定各一個 `<div class="card wide">`),它們會並排而非上下排列.這是先前已發行的 `/proxy` 頁面中真實存在的錯誤,操作者曾回報"版面配置亂掉".每個頁面都以一個外層卡片包住所有內容,再於其中以 `.node-addr` div 放入重複區塊.
 - **移除安裝需要使用與安裝時相同的 `PREFIX` 和 `SERVICE_NAME`.**

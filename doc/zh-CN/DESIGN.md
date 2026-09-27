@@ -209,7 +209,9 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 
 `PortForwardManager.reserved_ports()` 将所有已安装代理协议的端口,与 anytls 节点及控制台的端口一样视为保留端口;端口转发规则不能指向代理协议占用的端口.
 
-**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里;`POST /anytls/reset` 保持原样,但完成后返回 `/proxy`.两个模块的状态仍完全独立(anytls 自己的 `public-ip.txt`/`SERVER_IP` 不等于 proxy 模块的设置;可以分别配置),重置按钮也独立;只是共享展示页面.页面统一使用一个 `address_entries()` 辅助函数,而不再由 anytls 和 page_proxy 各自复制几乎一样的去重逻辑:两个调用点,一个函数.
+**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里;`POST /anytls/reset` 保持原样,但完成后返回 `/proxy`.两个模块的状态仍完全独立(anytls 自己的 `public-ip.txt`/`SERVER_IP` 不等于 proxy 模块的设置;可以分别配置),重置按钮也独立;只是共享展示页面.
+
+节点页面列出主机网卡地址及可选的 Tailscale 地址，不再显示安装时记录的公网 IP。
 
 ### iperf3 窗口生命周期
 
@@ -232,6 +234,8 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模式(`-u`)
 在任何环境下都会报告抖动和丢包,当测试者不在 Linux 上时,这是更具可移植性的
 方案.
+
+选择的端口单独保存在应用数据目录中。只能在窗口关闭时从控制台修改；保存前会检查是否与已安装服务、端口转发或当前监听端口冲突。
 
 ### 端口转发生命周期
 
@@ -518,8 +522,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
   这是刻意继承下来的上游行为.`setup-anytls.sh reset` 才是有意去轮换它们的,
   控制台上的重置按钮是官方支持的,用来达到这个目的的方式.
-- **控制台的公网地址区块仅在明确设置 `SERVER_IP` 后
-  出现.** `get_ip()` 曾退回到出站 curl 查询(先 `api.ip.sb`,再 `ifconfig.me`);2026-09-22 完全移除,因为在常见的无 NAT VPS 上,它会返回 `get_lan_ips()` 已报告的同一个地址,使节点页面重复显示 IP.对于没有覆盖设置且真正位于 NAT 后的主机,情况更糟:展示了一个若无端口转发就无法连接的地址,而本项目不能确认这样的转发是否存在.`public-ip.txt`(仍由 `setup-anytls.sh`/`setup-proxy.sh` 写入,也是控制台渲染时避免出站查询的方式)现在仅在操作员传入 `SERVER_IP`/`PROXY_PROTOCOLS` 的同级变量 `SERVER_IP` 时存在——这是经过明确选择且已知正确的情况,例如确实配置了端口转发的 NAT.
+- **节点页面列出网卡和 Tailscale 地址。** 旧的安装时公网地址区块已移除：它在 VPS 上重复显示网卡地址，在 NAT 后也可能误导用户。安装程序仍可为设置脚本记录 `public-ip.txt`；控制台不再读取它。
 - **`body` 传给 `render_page()` 时** **必须**恰好包含一个顶层元素. `<main>` 使用 `display: flex`,未覆盖 `flex-direction`,因此多个顶层兄弟元素(例如每个协议一个 `<div class="card wide">`)会并排而非上下堆叠.这是 `/proxy` 页面早期版本真实发布过的缺陷,操作员报告为“布局乱了”.每个页面都用一个外层卡片包住全部内容,重复分区则在其内部以 `.node-addr` div 嵌套.
 - **拆卸时需要用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`.** 不带任何环境变量
   运行 `uninstall.sh` 会读取默认值,在那些路径上什么都找不到,并报告"成功",

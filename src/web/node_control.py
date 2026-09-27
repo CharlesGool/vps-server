@@ -8,6 +8,7 @@ certificate material is written to logs or exception messages.
 
 import base64
 import copy
+from datetime import date
 import fcntl
 import ipaddress
 import json
@@ -32,6 +33,7 @@ BINARY = Path("/usr/local/bin/sing-box-vps-server")
 SERVICES = {"anytls": "vps-server-anytls.service", "proxy": "vps-server-proxy.service"}
 PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 APP_DIR = Path(__file__).resolve().parent
+IPERF_PORT_FILE = Path(os.environ.get("VPSSRV_DATA_DIR", str(APP_DIR / "data"))) / "iperf-port.txt"
 EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
                          "expires_at", "reset_mode", "next_reset_at"))
 _HOST_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
@@ -74,7 +76,13 @@ def _free_port(port):
 
 def _reserved_ports():
     """Keep node listeners clear of fixed ports and persisted DNAT ports."""
-    reserved = {80, 443, 5201}
+    reserved = {80, 443}
+    try:
+        reserved.add(int(IPERF_PORT_FILE.read_text().strip()))
+    except FileNotFoundError:
+        reserved.add(int(os.environ.get("VPSSRV_IPERF_PORT", "5201")))
+    except (OSError, ValueError) as exc:
+        raise NodeControlError("cannot read iperf port") from exc
     for path in (APP_DIR / "console_port.txt",):
         try:
             reserved.add(int(path.read_text().strip()))
@@ -285,8 +293,8 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         raise PermissionError("node control requires root")
     action = request.get("action") if isinstance(request, dict) else None
     if action == "create":
-        if set(request) not in ({"action", "protocol", "name", "port"},
-                                {"action", "protocol", "name", "port", "sni"}):
+        keys = set(request)
+        if not {"action", "protocol", "name", "port"} <= keys or not keys <= {"action", "protocol", "name", "port", "sni", "credential"}:
             raise NodeControlError("invalid create request")
         protocol = request["protocol"]
         if protocol not in PROTOCOLS or (protocol == "shadowsocks") == ("sni" in request):
@@ -319,7 +327,8 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                 _free_port(port)
             template = None if any(n["protocol"] == protocol for n in inventory["nodes"]) else _default_inbound(protocol, port)
             candidate = create_node(inventory, protocol, request["name"], port,
-                                    reserved_ports=reserved, prototype_inbound=template)
+                                    reserved_ports=reserved, prototype_inbound=template,
+                                    credential=request.get("credential"))
             new = candidate["nodes"][-1]
             if protocol != "shadowsocks":
                 sni = _sni(request["sni"])
@@ -410,9 +419,97 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                 shutil.rmtree(certificate_dir, ignore_errors=True)
 
 
+def _apply_iperf_port(request, *, require_root):
+    """Update the operator's port registry and persisted iperf3 port together."""
+    if require_root and os.geteuid() != 0:
+        raise PermissionError("port control requires root")
+    if set(request) != {"action", "old_port", "port"}:
+        raise NodeControlError("invalid iperf port request")
+    old_port, port = request["old_port"], request["port"]
+    if type(old_port) is not int or type(port) is not int or not 1024 <= port <= 65535:
+        raise NodeControlError("invalid iperf port")
+    root = APP_DIR.parent
+    registry = root / "PORTS.md"
+    state = IPERF_PORT_FILE
+    service = "vps-server-iperf3-window"
+    header = ("| Host Port | Project / Service | Bind Address | Registration Date |\n"
+              "| --- | --- | --- | --- |\n")
+    with open(root / ".ports.lock", "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        current = (int(state.read_text().strip()) if state.exists() else
+                   int(os.environ.get("VPSSRV_IPERF_PORT", "5201")))
+        if current != old_port or port == old_port:
+            raise NodeControlError("stale iperf port")
+        raw = registry.read_text(encoding="utf-8")
+        if not raw.startswith(header):
+            raise NodeControlError("invalid port registry")
+        rows = []
+        seen_ports = set()
+        for line in raw[len(header):].splitlines():
+            if not line.strip():
+                continue
+            match = re.fullmatch(r"\|\s*(\d{1,5})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|", line)
+            if not match:
+                raise NodeControlError("invalid port registry row")
+            registered_port = int(match[1])
+            if not 1 <= registered_port <= 65535 or registered_port in seen_ports:
+                raise NodeControlError("invalid port registry entry")
+            ipaddress.ip_address(match[3])
+            date.fromisoformat(match[4])
+            seen_ports.add(registered_port)
+            rows.append((registered_port, match[2], match[3], match[4]))
+        if sum(p == old_port and owner == service for p, owner, _, _ in rows) != 1:
+            raise NodeControlError("iperf port is not registered")
+        if any(p == port for p, _, _, _ in rows) or port in _reserved_ports():
+            raise NodeControlError("requested port is reserved")
+        _free_port(port)
+        updated = [(port, service, "0.0.0.0", date.today().isoformat())
+                   if p == old_port and owner == service else (p, owner, bind, registered)
+                   for p, owner, bind, registered in rows]
+        registry_bytes = (header + "".join(
+            f"| {p} | {owner} | {bind} | {registered} |\n"
+            for p, owner, bind, registered in sorted(updated))).encode("utf-8")
+        old_state = state.read_bytes() if state.exists() else None
+        registry_stage = _stage(registry, registry_bytes)
+        try:
+            os.chmod(registry_stage, registry.stat().st_mode & 0o777)
+            state_stage = _stage(state, f"{port}\n".encode("ascii"))
+        except BaseException:
+            registry_stage.unlink(missing_ok=True)
+            raise
+        try:
+            _replace(registry_stage, registry)
+            try:
+                _replace(state_stage, state)
+            except BaseException:
+                rollback = _stage(registry, raw.encode("utf-8"))
+                os.chmod(rollback, registry.stat().st_mode & 0o777)
+                try:
+                    _replace(rollback, registry)
+                except BaseException as exc:
+                    raise DegradedNodeControl("iperf port registry rollback failed") from exc
+                finally:
+                    rollback.unlink(missing_ok=True)
+                if old_state is not None:
+                    state_rollback = _stage(state, old_state)
+                    try:
+                        _replace(state_rollback, state)
+                    finally:
+                        state_rollback.unlink(missing_ok=True)
+                else:
+                    state.unlink(missing_ok=True)
+                raise
+        finally:
+            registry_stage.unlink(missing_ok=True)
+            state_stage.unlink(missing_ok=True)
+    return True
+
+
 def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                   lock_path=LOCK_PATH, backend=None, require_root=True):
     """Apply one ID-based edit or reset with config, service and state rollback."""
+    if isinstance(request, dict) and request.get("action") == "iperf-port":
+        return _apply_iperf_port(request, require_root=require_root)
     if isinstance(request, dict) and request.get("action") in ("create", "delete"):
         return _apply_structure_request(request, state_path=state_path, config_paths=config_paths,
                                         lock_path=lock_path, backend=backend, require_root=require_root)

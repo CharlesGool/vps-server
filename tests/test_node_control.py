@@ -123,8 +123,11 @@ class NodeControlTests(unittest.TestCase):
     def test_create_duplicate_and_delete_last_listener(self):
         with patch("node_control._free_port"):
             created = self.apply({"action": "create", "protocol": "anytls",
-                                  "name": "Second node", "port": 30001, "sni": "example.org"})
+                                  "name": "Second node", "port": 30001, "sni": "example.org",
+                                  "credential": "manual-anytls-secret"})
         self.assertEqual([node["number"] for node in created["nodes"]], [1, 2, 3])
+        self.assertEqual(created["nodes"][-1]["inbound"]["users"][0]["password"],
+                         "manual-anytls-secret")
         self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 2)
         first_removed = self.apply({"action": "delete", "id": self.identifier})
         self.assertEqual([node["number"] for node in first_removed["nodes"]], [2, 3])
@@ -150,6 +153,30 @@ class NodeControlTests(unittest.TestCase):
             created = self.apply({"action": "create", "protocol": "shadowsocks",
                                   "name": "New shadowsocks", "port": 30002})
         self.assertEqual(created["nodes"][-1]["protocol"], "shadowsocks")
+
+
+class IperfPortRegistryTests(unittest.TestCase):
+    def test_runtime_port_change_updates_registry_and_state(self):
+        import node_control
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "vps-server"
+            (app_dir / "data").mkdir(parents=True)
+            registry = root / "PORTS.md"
+            registry.write_text("| Host Port | Project / Service | Bind Address | Registration Date |\n"
+                                "| --- | --- | --- | --- |\n"
+                                "| 5201 | vps-server-iperf3-window | 0.0.0.0 | 2026-09-27 |\n")
+            request = {"action": "iperf-port", "old_port": 5201, "port": 15299}
+            with patch.object(node_control, "APP_DIR", app_dir), \
+                 patch.object(node_control, "IPERF_PORT_FILE", app_dir / "data" / "iperf-port.txt"), \
+                 patch.object(node_control, "_free_port"), \
+                 patch.object(node_control, "_reserved_ports", return_value={80, 443, 5201}):
+                self.assertTrue(apply_request(request, require_root=False))
+                self.assertEqual((app_dir / "data" / "iperf-port.txt").read_text(), "15299\n")
+                self.assertIn("| 15299 | vps-server-iperf3-window |", registry.read_text())
+                self.assertNotIn("| 5201 |", registry.read_text())
+                with self.assertRaises(NodeControlError):
+                    apply_request(request, require_root=False)
 
 
 if __name__ == "__main__":

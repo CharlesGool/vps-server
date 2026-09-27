@@ -116,7 +116,7 @@ def _new_uuid(factory):
 
 
 def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id=None,
-                prototype_inbound=None,
+                prototype_inbound=None, credential=None,
                 cap_bytes=None, expires_at=None, reset_mode="none", next_reset_at=None,
                 uuid_factory=uuid.uuid4):
     """Copy one same-protocol inbound, replacing its identity and secret."""
@@ -169,16 +169,22 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
             "counter_epoch": 0}
     candidate["nodes"].append(node)
     candidate["next_number"] += 1
-    for _ in range(32):
-        secret = (base64.b64encode(secrets.token_bytes(16)).decode("ascii") if protocol == "shadowsocks"
-                  else _new_uuid(uuid_factory) if protocol in _UUID_PROTOCOLS
-                  else secrets.token_urlsafe(32))
-        _set_credential(node, secret)
-        if secret != identifier and all(_credential(other) != secret and other["id"] != secret
-                                        for other in candidate["nodes"][:-1]):
-            break
+    if credential is not None:
+        _set_credential(node, credential)
+        if credential == identifier or any(other["id"] == credential for other in candidate["nodes"][:-1]):
+            raise InvalidInventory("credential conflicts with node ID")
+        _unique_credential(candidate, node)
     else:
-        raise InvalidInventory("cannot generate unique credential")
+        for _ in range(32):
+            secret = (base64.b64encode(secrets.token_bytes(16)).decode("ascii") if protocol == "shadowsocks"
+                      else _new_uuid(uuid_factory) if protocol in _UUID_PROTOCOLS
+                      else secrets.token_urlsafe(32))
+            _set_credential(node, secret)
+            if secret != identifier and all(_credential(other) != secret and other["id"] != secret
+                                            for other in candidate["nodes"][:-1]):
+                break
+        else:
+            raise InvalidInventory("cannot generate unique credential")
     validate_inventory(candidate)
     return candidate
 

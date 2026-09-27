@@ -80,6 +80,17 @@ class ConsoleTest(unittest.TestCase):
         jar.load(cookie_header)
         return jar["session"].value
 
+    def test_login_page_has_accessible_password_control(self):
+        conn = self.connect()
+        conn.request("GET", "/login")
+        response = conn.getresponse()
+        body = response.read().decode()
+        conn.close()
+        self.assertEqual(response.status, 200)
+        self.assertIn('autocomplete="current-password"', body)
+        self.assertIn('class="login-visibility"', body)
+        self.assertIn('/static/login.js', body)
+
     def test_managed_node_page_and_edit_request(self):
         identifier = "12345678-1234-4234-8234-123456789abc"
         node = {"id": identifier, "number": 7, "name": "Tokyo node",
@@ -227,9 +238,16 @@ class ConsoleTest(unittest.TestCase):
             self.assertIn("Second", page)
             self.assertIn('action="/proxy/node/create"', page)
             self.assertEqual(page.count('action="/proxy/node/delete"'), 2)
+            self.assertEqual(page.count('class="node-confirm-dialog"'), 4)
+            self.assertNotIn('type="checkbox" name="confirm"', page)
+            self.assertIn('name="credential" value=""', page)
+            self.assertIn('name="sni" value="www.bing.com"', page)
             for path, form in (
                 ("/proxy/node/create", {"protocol": "shadowsocks", "name": "Third",
-                                         "port": "", "sni": "",
+                                         "port": "", "sni": "", "credential": "",
+                                         "csrf": app.node_csrf_token(session, "create")}),
+                ("/proxy/node/create", {"protocol": "anytls", "name": "Fourth",
+                                         "port": "25003", "sni": "", "credential": "manual-anytls-secret",
                                          "csrf": app.node_csrf_token(session, "create")}),
                 ("/proxy/node/delete", {"id": second["id"], "confirm": "yes",
                                          "csrf": app.node_csrf_token(session, second["id"])}),
@@ -244,7 +262,10 @@ class ConsoleTest(unittest.TestCase):
                 self.assertEqual(response.status, 302)
         self.assertEqual(applied[0], {"action": "create", "protocol": "shadowsocks",
                                       "name": "Third", "port": None})
-        self.assertEqual(applied[1], {"action": "delete", "id": second["id"]})
+        self.assertEqual(applied[1], {"action": "create", "protocol": "anytls", "name": "Fourth",
+                                      "port": 25003, "sni": "www.bing.com",
+                                      "credential": "manual-anytls-secret"})
+        self.assertEqual(applied[2], {"action": "delete", "id": second["id"]})
 
     def test_clash_profile_escapes_custom_password(self):
         password = 'quote" and\nline'
@@ -1696,32 +1717,26 @@ class AnytlsPageTest(unittest.TestCase):
         self.assertIn(self.FAKE_PASSWORD, body)
 
     def test_page_keeps_addresses_without_share_links_or_qr_scripts(self):
-        _, body = self.get("/proxy")
-        self.assertIn("127.0.0.1", body)
+        with patch.object(app, "local_addresses", return_value=[("eth0", "192.168.1.8")]), \
+             patch.object(app, "tailscale_address", return_value="100.64.0.8"):
+            _, body = self.get("/proxy")
+        self.assertIn("192.168.1.8", body)
+        self.assertIn("100.64.0.8", body)
         self.assertNotIn('id="anytls-link-', body)
         self.assertNotIn('data-qr-text=', body)
         for script in ("/static/qrcode.js", "/static/qrcode-utf8.js",
                        "/static/qrcode-render.js"):
             self.assertNotIn(f'<script src="{script}"', body)
 
-    def test_public_address_comes_from_the_file_not_a_lookup(self):
+    def test_public_address_file_is_not_displayed(self):
         public_file = self.config.parent / "public-ip.txt"
         public_file.write_text("198.51.100.7\n")
         try:
-            self.assertEqual(app.anytls_public_address(), "198.51.100.7")
-            _, body = self.get("/proxy")
-            self.assertIn("198.51.100.7", body)
-            self.assertIn(app.STRINGS["en"]["anytls_public"], body)
-        finally:
-            public_file.unlink()
-
-    def test_public_address_ignores_the_detection_failure_placeholder(self):
-        # get_ip() falls back to a human-readable sentence when the lookup
-        # fails; rendering that as an address would be worse than omitting it.
-        public_file = self.config.parent / "public-ip.txt"
-        public_file.write_text("<自动获取失败，请手动替换为服务器公网IP>\n")
-        try:
-            self.assertEqual(app.anytls_public_address(), "")
+            with patch.object(app, "local_addresses", return_value=[("eth0", "192.168.1.8")]), \
+                 patch.object(app, "tailscale_address", return_value=""):
+                _, body = self.get("/proxy")
+            self.assertNotIn("198.51.100.7", body)
+            self.assertIn("192.168.1.8", body)
         finally:
             public_file.unlink()
 
@@ -2173,7 +2188,7 @@ class ProxyPageTest(unittest.TestCase):
         for proto in ("vmess", "vless", "trojan", "shadowsocks"):
             self.assertNotIn(f'id="proxy-{proto}-link-', body)
             self.assertIn(f'id="proxy-{proto}-secret"', body)
-        self.assertIn("127.0.0.1", body)
+        self.assertIn(app.STRINGS["en"]["anytls_lan"].format(iface="eth0"), body)
 
     def test_page_hides_proxy_share_links_and_qr(self):
         resp, body = self.get("/proxy")
@@ -2634,6 +2649,44 @@ class IperfLabelTest(unittest.TestCase):
         self.assertIn(app.STRINGS["en"]["iperf_open"], body)
         self.assertNotIn(app.STRINGS["en"]["iperf_extend"], body)
         self.assertNotIn(app.STRINGS["en"]["iperf_close"], body)
+        self.assertIn('class="iperf-facts"', body)
+        self.assertIn('action="/iperf/port"', body)
+
+    def test_port_can_be_changed_and_persists(self):
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            new_port = probe.getsockname()[1]
+        state_file = Path(TEST_DATA_DIR) / "iperf-port-test.txt"
+        state_file.unlink(missing_ok=True)
+        original = app.IPERF_WINDOW
+        app.IPERF_WINDOW = app.IperfWindow(5201, 5, state_file)
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+            conn.request("POST", "/login", body=f"password={self.password}",
+                         headers={"Content-Type": "application/x-www-form-urlencoded"})
+            response = conn.getresponse()
+            jar = SimpleCookie()
+            jar.load(response.getheader("Set-Cookie"))
+            response.read()
+            def save_port(request):
+                self.assertEqual(request, {"action": "iperf-port", "old_port": 5201,
+                                           "port": new_port})
+                state_file.write_text(str(new_port) + "\n")
+                return True
+            with patch.object(app.PORTFWD, "reserved_ports", return_value={5201}), \
+                 patch.object(app, "node_control_apply", side_effect=save_port):
+                conn.request("POST", "/iperf/port", body=f"port={new_port}",
+                             headers={"Cookie": f"session={jar['session'].value}",
+                                      "Content-Type": "application/x-www-form-urlencoded"})
+                response = conn.getresponse()
+                self.assertEqual(response.getheader("Location"), "/iperf?msg=iperf_port_saved")
+                response.read()
+            conn.close()
+            self.assertEqual(app.IPERF_WINDOW.port, new_port)
+            self.assertEqual(app.IperfWindow(5201, 5, state_file).port, new_port)
+        finally:
+            app.IPERF_WINDOW = original
+            state_file.unlink(missing_ok=True)
 
     @unittest.skipUnless(shutil.which("iperf3"), "iperf3 is not installed")
     def test_open_window_offers_extend_and_close(self):

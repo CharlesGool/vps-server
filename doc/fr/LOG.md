@@ -165,11 +165,11 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `feat/node-management`, basée sur `feat/ui-redesign`, poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
-- Terminé : la page des proxies accepte plusieurs nœuds d’un même protocole, dont plusieurs AnyTLS sur des ports distincts. Chaque nœud dispose d’une modification dans sa carte ciblée par ID, d’un formulaire séparé pour les limites de trafic, d’une réinitialisation aléatoire, de la création et de la suppression, ainsi que d’un abonnement Clash ciblé par ID. Les couleurs des visites entrantes et sortantes se distinguent mieux, Proxy est traduit dans les huit catalogues, les notes redondantes ont été retirées et les polices intégrées utilisent `font-display: optional`.
-- Contrôles : 293 tests automatisés ont réussi (8 ignorés), ainsi que la compilation Python, le vérificateur de langues et la vérification du diff. Les cinq nouveaux modèles d’entrée et une configuration vide ont passé le vérificateur sing-box inclus. Chromium a affiché 5 nœuds avec leurs données visibles et la modification au même emplacement, sans débordement horizontal sur ordinateur ni à 390 px. Avec les polices retardées de 1.2 seconde, les dimensions et la position du titre sont restées stables.
-- Déploiement : `~/apps/vps-server` a été mis à jour sur l’hôte de test désigné et une sauvegarde privée a été conservée hors du dépôt. Un second nœud AnyTLS temporaire a écouté sur un port distinct, figuré à côté du premier, puis a été supprimé depuis la console. Son inscription de port et son certificat ont été retirés. L’identité, la configuration et les limites des cinq nœuds initiaux correspondent à la sauvegarde. Les quatre services sont actifs et activés au démarrage ; HTTP/HTTPS publics et la console authentifiée ont répondu 200 sur le LAN. Une ancienne incohérence du registre de port AnyTLS a aussi été corrigée.
-- Reste à faire : l’importation Android Clash sur un vrai téléphone et le démarrage après un véritable redémarrage restent non vérifiés. Action suivante : examiner `feat/node-management` pour sa fusion et sa publication, puis effectuer ces deux vérifications lorsque cela sera possible.
+- Branche : `feat/node-management`, issue de `feat/ui-redesign`, prête pour le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
+- Terminé : la création d’un nœud accepte un identifiant de connexion saisi ou en génère un si le champ est vide ; le SNI TLS par défaut est `www.bing.com`. La page affiche les adresses des interfaces et de Tailscale sans bloc distinct d’IP publique. La réinitialisation et la suppression passent par des confirmations, et le libellé QR est plus court. La connexion adopte une présentation uniforme avec contrôle accessible de visibilité du mot de passe et retours d’erreur. iperf3 affiche séparément l’état et le port ; celui-ci peut être changé lorsque la fenêtre est fermée, après vérification des conflits, et le réglage comme le registre des ports de l’hôte sont enregistrés durablement.
+- Vérifications : 296 tests automatisés ont réussi (8 ignorés), ainsi que la compilation Python, la syntaxe JavaScript et les contrôles linguistiques et de différences. Chromium a vérifié la visibilité du mot de passe, le formulaire de création, les champs selon le protocole, la confirmation et la page iperf3 sur ordinateur et à 390 px, sans débordement horizontal.
+- Déploiement : `~/apps/vps-server` a été mis à jour sur l’hôte de test désigné ; une sauvegarde privée de la version précédente reste hors du dépôt. Après modification puis restauration du port, le réglage iperf3 et le registre de l’hôte indiquent tous deux 5201. Le SNI du nœud de test est passé de localhost à `www.bing.com` via son éditeur. Les quatre services sont actifs et activés ; HTTP/HTTPS et la console authentifiée répondent depuis le réseau local. Aucun redémarrage réel n’a été effectué.
+- Reste à faire : l’import Android Clash sur un vrai téléphone et le démarrage après un vrai redémarrage ne sont pas encore vérifiés. Prochaine étape : revoir, fusionner et publier `feat/node-management`, puis effectuer les vérifications sur téléphone et après redémarrage.
 
 ## Historique des modifications
 
@@ -317,4 +317,5 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
-- (this commit) docs(log): record node management delivery
+- `6c1459d` docs(log): record node management delivery
+- (this commit) feat(console): refine nodes, login and iperf3 port

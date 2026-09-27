@@ -149,7 +149,9 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 
 `PortForwardManager.reserved_ports()` 把所有已安裝代理協定的連接埠列為保留,與既有 anytls 節點及控制台連接埠相同;轉發規則不能指向已由代理協定佔用的連接埠.
 
-**控制台的 `/proxy` 頁面亦顯示 anytls 節點**(如有安裝).操作員認為,從其角度兩者都是"代理節點",即使分屬不同獨立後端,分拆頁面也不合理.`/anytls` 會轉到這裏;`POST /anytls/reset` 不變,完成後只改為返回 `/proxy`.兩模組仍保持獨立狀態(anytls 自己的 `public-ip.txt`/`SERVER_IP` 並非代理模組的設定,兩者可不同),重設按鈕亦各自獨立;只共用顯示頁面.因此整頁採用單一 `address_entries()` 輔助函式,代替 anytls 和 page_proxy 近乎重複的地址去重邏輯:兩個呼叫位置,一個函式.
+**控制台的 `/proxy` 頁面亦顯示 anytls 節點**(如有安裝).操作員認為,從其角度兩者都是"代理節點",即使分屬不同獨立後端,分拆頁面也不合理.`/anytls` 會轉到這裏;`POST /anytls/reset` 不變,完成後只改為返回 `/proxy`.兩模組仍保持獨立狀態(anytls 自己的 `public-ip.txt`/`SERVER_IP` 並非代理模組的設定,兩者可不同),重設按鈕亦各自獨立;只共用顯示頁面.
+
+節點頁面列出主機網卡位址及可選的 Tailscale 位址，不再顯示安裝時記錄的公開 IP。
 
 ### iperf3 時段生命週期
 
@@ -161,6 +163,8 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 時段儲於記憶體而非磁碟;服務故障時即失效,屬安全的故障方向.重新啟動絕不恢復開啟的時段.
 
 延遲從測試者一方 iperf3 的 `--json` 輸出 TCP 資訊區塊 `mean_rtt` 讀取,伺服器無須加程式碼.欄位來自核心 `TCP_INFO`,Linux 用戶端可提供;不能讀取的用戶端則沒有,例如 Windows 上 Cygwin 的 iperf3 只報吞吐量,不報 `mean_rtt`.UDP 模式(`-u`)在各平台均報抖動及遺失率,適合非 Linux 測試者.
+
+所選連接埠另外儲存在應用程式資料目錄。只可在時段關閉時從控制台修改；儲存前會檢查有否與已安裝服務、連接埠轉發或現有監聽連接埠衝突。
 
 ### 連接埠轉發生命週期
 
@@ -367,8 +371,7 @@ SQLite 綱要原封不動繼承自 `vps-webserver`:一個 `visits` 表,僅保留
 - **以 `bash <script>` 而非 `./<script>` 執行腳本.** Git 索引記錄了可執行位元,新 clone 可用;但 CIFS/SMB 掛載的工作副本不會保留,當中的 `./install.sh` 會因"Permission denied"失敗.
 - **重新隨附任何可執行檔會遺失其模式位元.** 維護者的工作副本位於 CIFS,解壓後以 `git add` 加入的檔案會記為 `100644`,即使上游為 `100755`.`sing-box` 執行檔曾因此令整個 anytls 模組故障.重新隨附後用 `git ls-files -s` 檢查,以 `git update-index --chmod=+x <path>` 恢復;該掛載上的 `chmod +x` 並無效用.
 - **直接執行 `setup-anytls.sh` 會更換連接埠和密碼.** 它每次都為 `ANYTLS_PORT` 和 `ANYTLS_PASSWORD` 預設新的隨機值並重寫 `config.json`,令先前設定的所有用戶端失效.`install.sh` 升級時會從 `config.json` 讀回並傳入兩者,因此不再如此;直接呼叫仍然會.如要保留節點,傳入 `/proxy` 頁面的 anytls 區塊所列現值:`ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.此為刻意繼承的上游行為.`setup-anytls.sh reset` 是刻意更換,控制台重設按鈕是受支援的操作方式.
-- **只有明確設定 `SERVER_IP` 時,控制台才顯示公開位址
-  區塊.** `get_ip()` 過去預設以 curl 對外查詢(先 `api.ip.sb`,後 `ifconfig.me`);2026-09-22 已完全移除.一般沒有 NAT 的 VPS 會取得與 `get_lan_ips()` 已列出者相同的位址,導致節點頁面重複;真正位於 NAT 後但未明確覆寫時更糟,顯示本項目無法確認已設定連接埠轉發,因此未必能連通的位址.`public-ip.txt`(仍由 `setup-anytls.sh`/`setup-proxy.sh` 寫入,亦仍是避免控制台繪製時對外查詢的唯一方式)現在只有操作員傳入 `SERVER_IP`/`PROXY_PROTOCOLS` 同級的 `SERVER_IP` 時才存在;此屬刻意設定且已確認正確的情況,例如確已設定連接埠轉發的 NAT.
+- **節點頁面列出網卡及 Tailscale 位址。** 舊的安裝時公開位址區塊已移除：它在 VPS 上重複顯示網卡位址，在 NAT 後亦可能誤導使用者。安裝程式仍可為設定腳本記錄 `public-ip.txt`；控制台不再讀取它。
 - **`body` 傳給 `render_page()` 時** **必須**剛好只有一個頂層元素. `<main>` 是 `display: flex` 且沒有覆寫 `flex-direction`,多個頂層同層元素(例如每協定一個 `<div class="card wide">`)會並排而非垂直堆疊;早期 `/proxy` 頁面確曾發佈此錯誤,操作員報告"layout is messed up".各頁以單一外層卡片包裹所有內容,重複區塊放於其中的 `.node-addr` div.
 - **移除時須使用安裝時相同的 `PREFIX` 和 `SERVICE_NAME`.** `uninstall.sh` 未設環境變數時使用預設值,如該等路徑無檔案,會報告成功但實際甚麼都沒移除.安裝摘要末行印出填好數值的準確指令,應使用該指令而非憑記憶輸入.
 

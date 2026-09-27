@@ -41,7 +41,9 @@ See [current state and acceptance limits][local-link-001].
   persisted random high port runs up/download tests using the LibreSpeed engine.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
-  when the window expires. The tester gets bandwidth from iperf3, and on a
+  when the window expires. Its status and port are shown separately; the port
+  can be changed while the window is closed and survives a service restart.
+  The tester gets bandwidth from iperf3, and on a
   Linux client also round-trip time from `mean_rtt` in its `--json` output —
   that field comes from the kernel's `TCP_INFO` and is absent on clients that
   cannot read it, notably iperf3 under Cygwin on Windows. UDP mode (`-u`) adds
@@ -55,7 +57,10 @@ See [current state and acceptance limits][local-link-001].
 - **Serves vmess/vless/trojan/shadowsocks proxies, any subset.** One more
   sing-box process shares the vendored binary with anytls. Each installed
   protocol starts with a numbered node. The console can create more nodes of
-  any installed protocol and delete individual nodes. Each node has a traffic
+  any installed protocol and delete individual nodes. New nodes accept a manual
+  credential or generate one when that field is blank; TLS nodes default to
+  `www.bing.com` for SNI. The node page lists interface and Tailscale addresses.
+  Each node has a traffic
   cap in GiB, separate connection and limit editors, and random-reset controls,
   plus the same LAN-only Clash Meta import option. The import URL
   contains an opaque token and changes after the node's connection settings

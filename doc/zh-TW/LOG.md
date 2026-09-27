@@ -167,11 +167,11 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 
 ## 交接
 
-- 分支：`feat/node-management`，基於 `feat/ui-redesign`，已推送至正式 GitHub 儲存庫。未發現暫時性專案規則。
-- 已完成：代理頁面支援相同協定的多個節點，包括在不同連接埠運作的多個 AnyTLS。每個節點都有卡片內依 ID 定位的編輯功能、獨立的流量限制表單、隨機重設、新增與刪除，以及依 ID 定位的 Clash 訂閱。最近訪問的入站與出站顏色更易區分，Proxy 已翻譯成八種語言，冗餘說明已移除，內建字型改用 `font-display: optional`。
-- 檢查：293 項自動化測試通過（8 項跳過）；Python 編譯、語言檢查及差異檢查通過。五種新入站範本與空設定通過隨附的 sing-box 檢查。Chromium 在桌面及 390 px 寬度下顯示 5 個節點、預設資訊及原位編輯，沒有橫向溢出。字型延遲 1.2 秒時，標題大小和位置不變。
-- 部署：已在指定測試機的 `~/apps/vps-server` 更新專案，私人備份保留在儲存庫外。臨時第二個 AnyTLS 節點在獨立連接埠監聽，與原節點同時顯示，之後透過主控台刪除；其連接埠登記與憑證已移除。原五個節點的身分、設定和限制與備份一致。四個服務均運作且已啟用；從區域網路存取公開 HTTP/HTTPS 和需登入的主控台均回傳 200。升級前已存在的 AnyTLS 連接埠登記不一致亦已修正。
-- 待辦：真實手機上的 Android Clash 匯入及實際重新開機後的啟動仍未驗證。下一步：審查 `feat/node-management` 的合併與發行，條件允許時完成手機與重新開機驗證。
+- 分支：`feat/node-management`，基於 `feat/ui-redesign`，準備推送到正式 GitHub 儲存庫。未發現臨時專案規則。
+- 已完成：新增節點可手動填寫憑據，留空則隨機產生；TLS 節點預設使用 `www.bing.com`。節點頁面只顯示網卡與 Tailscale 位址，不再另列公開 IP。重設與刪除使用確認對話框，QR 碼按鈕文字已縮短。登入頁面統一版面，提供可存取的密碼顯示切換與錯誤提示。iperf3 分別顯示狀態及連接埠；測試視窗關閉時可修改連接埠，儲存前檢查衝突，並同步持久保存設定及主機連接埠登記表。
+- 檢查：296 項自動化測試通過（8 項略過）；Python 編譯、JavaScript 語法、語言檢查及差異檢查通過。Chromium 在桌面及 390 px 寬度驗證了登入密碼切換、新增表單、依協定切換的欄位、確認對話框和 iperf3 頁面，皆無橫向溢出。
+- 部署：指定測試主機上的 `~/apps/vps-server` 已更新；舊版的私人備份保留於儲存庫外。實測變更並還原連接埠後，iperf3 設定與主機登記表均為 5201。透過編輯器將測試節點的 SNI 從 localhost 改為 `www.bing.com`。四項服務均在運行且已啟用，區域網路可存取 HTTP/HTTPS 與需登入的主控台。尚未實際重新啟動主機。
+- 剩餘：真實手機上的 Android Clash 匯入及實際重啟後的啟動仍未驗證。下一步：審查、合併及發佈 `feat/node-management`，然後完成手機與重啟檢查。
 
 ## 變更紀錄
 
@@ -319,4 +319,5 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
-- (this commit) docs(log): record node management delivery
+- `6c1459d` docs(log): record node management delivery
+- (this commit) feat(console): refine nodes, login and iperf3 port
