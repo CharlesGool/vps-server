@@ -167,10 +167,10 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 - Branche : `feat/node-controls`, basée sur v2.0.0 `main` ; la fonction n’est pas encore publiée.
 - Réalisé : cinq nœuds proxy avec numéros et ID stables, noms/ports/identifiants/TLS SNI modifiables, réinitialisation aléatoire, compteurs, quotas, cycles programmés et limites indépendantes de 1 Mbps en émission et en réception. La console remaniée et huit langues d’interface affichent ces réglages. Aucune règle temporaire active du projet n’a été trouvée.
-- Vérifications : 286 tests réussis (8 ignorés), compilation Python, syntaxe Shell et vérification du diff. Le contrôle multilingue a validé 32 documents principaux et les textes d’interface sans erreur. Sur l’hôte cible, cinq ports et quatre services systemd sont actifs et activés ; HTTP/HTTPS depuis le réseau local et la connexion à la console ont réussi. Des connexions réelles ont augmenté les deux compteurs des cinq nœuds. L’expiration et un quota de 1 octet ont déclenché les règles de 1 Mbps dans les deux sens ; un cycle arrivé à échéance a effacé l’usage et levé la limite. Les réglages de test ont été restaurés et une sauvegarde initiale de l’état a été créée. L’examen au navigateur a validé la console sur ordinateur et mobile ainsi que le menu des langues. Une mise à niveau sur place a conservé les identités des cinq nœuds, leurs paramètres de connexion et le mot de passe administrateur.
-- Reste à faire : mesurer les débits soutenus dans les deux sens sous la limite et vérifier le démarrage après un redémarrage réel. Les services systemd sont activés, mais l’hôte n’a pas été redémarré.
+- Vérifications : 287 tests réussis (8 ignorés), compilation Python, syntaxe Shell et vérification du diff. Le contrôle multilingue a validé 32 documents principaux et les textes d’interface sans erreur. Sur l’hôte cible, cinq ports et quatre services systemd sont actifs et activés ; HTTP/HTTPS depuis le réseau local et la connexion à la console ont réussi. Des connexions réelles ont augmenté les deux compteurs des cinq nœuds. L’expiration et un quota de 1 octet ont déclenché les règles de 1 Mbps dans les deux sens ; un cycle arrivé à échéance a effacé l’usage et levé la limite. Les réglages de test ont été restaurés et une sauvegarde initiale de l’état a été créée. L’examen au navigateur a validé la console sur ordinateur et mobile ainsi que le menu des langues. Une mise à niveau sur place a conservé les identités des cinq nœuds, leurs paramètres de connexion et le mot de passe administrateur. Un transfert proxy simultané de 4 MiB a atteint en moyenne 120,596 B/s en émission et 120,610 B/s en réception, tous deux sous 125,000 B/s.
+- Reste à faire : vérifier le démarrage après un redémarrage réel. Les services systemd sont activés, mais l’hôte n’a pas été redémarré.
 - Publication : `origin/main` reste à v2.0.0 ; la branche de la fonction est poussée dans le dépôt officiel et n’a pas de tag de version.
-- Étape suivante : mesurer le débit limité soutenu et, si possible, vérifier le démarrage après redémarrage ; puis relire le contenu public avant fusion et publication.
+- Étape suivante : si possible, vérifier le démarrage après redémarrage ; puis relire le contenu public avant fusion et publication.
 
 
 ## Historique des modifications
@@ -313,4 +313,6 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `eaceed8` fix(install): stage modules during in-place install
 - `5ff2a6b` fix(web): condense mobile navigation
 - `2477fcc` docs: record node deployment handoff
-- (this commit) docs(log): synchronize commit history
+- `d31e40f` docs(log): synchronize commit history
+- `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
+- (this commit) docs(log): record measured node acceptance

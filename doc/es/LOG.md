@@ -167,10 +167,10 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 - Rama: `feat/node-controls`, basada en v2.0.0 `main`; la función aún no está publicada.
 - Completado: cinco nodos proxy con números e ID estables, nombre/puerto/credencial/TLS SNI editables, restablecimiento aleatorio, contadores, cuota, ciclos programados y límites independientes de 1 Mbps para subida y descarga. La consola revisada y ocho idiomas de interfaz muestran los controles. No se hallaron reglas temporales activas del proyecto.
-- Comprobaciones: pasaron 286 pruebas (8 omitidas), la compilación de Python, la sintaxis de Shell y la revisión del diff. El comprobador multilingüe pasó 32 documentos principales y los textos de interfaz sin errores. En el servidor de destino están activos y habilitados cinco puertos y cuatro servicios systemd; funcionaron HTTP/HTTPS por LAN y el acceso autenticado a la consola. Las conexiones reales aumentaron ambos contadores en los cinco nodos. El vencimiento y una cuota de 1 byte activaron las reglas de 1 Mbps en ambas direcciones; un ciclo vencido borró el uso y levantó el límite. Se restauraron los ajustes de prueba y se creó un respaldo inicial del estado. La inspección en navegador validó la consola en escritorio y móvil y el menú de idiomas. Una actualización en el mismo directorio conservó las identidades de los cinco nodos, sus conexiones y la contraseña de administración.
-- Pendiente: medir la velocidad sostenida en ambos sentidos bajo el límite y comprobar el arranque tras un reinicio real. Los servicios systemd están habilitados, pero no se reinició el servidor.
+- Comprobaciones: pasaron 287 pruebas (8 omitidas), la compilación de Python, la sintaxis de Shell y la revisión del diff. El comprobador multilingüe pasó 32 documentos principales y los textos de interfaz sin errores. En el servidor de destino están activos y habilitados cinco puertos y cuatro servicios systemd; funcionaron HTTP/HTTPS por LAN y el acceso autenticado a la consola. Las conexiones reales aumentaron ambos contadores en los cinco nodos. El vencimiento y una cuota de 1 byte activaron las reglas de 1 Mbps en ambas direcciones; un ciclo vencido borró el uso y levantó el límite. Se restauraron los ajustes de prueba y se creó un respaldo inicial del estado. La inspección en navegador validó la consola en escritorio y móvil y el menú de idiomas. Una actualización en el mismo directorio conservó las identidades de los cinco nodos, sus conexiones y la contraseña de administración. Una transferencia simultánea de 4 MiB por proxy promedió 120,596 B/s de subida y 120,610 B/s de descarga, ambos por debajo de 125,000 B/s.
+- Pendiente: comprobar el arranque tras un reinicio real. Los servicios systemd están habilitados, pero no se reinició el servidor.
 - Publicación: `origin/main` sigue en v2.0.0; la rama de la función está en el repositorio formal y no tiene etiqueta de publicación.
-- Siguiente paso: medir la velocidad limitada sostenida y, cuando sea posible, comprobar el arranque tras reiniciar; después revisar el material público antes de fusionar y publicar.
+- Siguiente paso: cuando sea posible, comprobar el arranque tras reiniciar; después revisar el material público antes de fusionar y publicar.
 
 
 ## Historial de cambios
@@ -313,4 +313,6 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `eaceed8` fix(install): stage modules during in-place install
 - `5ff2a6b` fix(web): condense mobile navigation
 - `2477fcc` docs: record node deployment handoff
-- (this commit) docs(log): synchronize commit history
+- `d31e40f` docs(log): synchronize commit history
+- `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
+- (this commit) docs(log): record measured node acceptance

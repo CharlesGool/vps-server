@@ -169,10 +169,10 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 
 - 分支：`feat/node-controls`，以 v2.0.0 `main` 為基礎；此功能尚未發佈。
 - 已完成：五種代理節點有穩定編號與 ID、可修改名稱/連接埠/憑證/TLS SNI、隨機重設、流量計數、額度、排程週期，以及獨立的上傳與下載 1 Mbps 限速。改良後的主控台與八種介面語言均已接入。未發現生效中的專案暫時規則。
-- 檢查：286 項測試通過（8 項略過）；Python 編譯、Shell 語法與差異檢查通過。多語言檢查通過 32 份核心文件及介面文字，錯誤數為 0。目標主機的五個監聽埠與四項 systemd 服務均運作正常且已啟用；區域網路 HTTP/HTTPS 和主控台登入通過。五種節點的實際連線均增加雙向計數。到期與 1 位元組額度均觸發雙向 1 Mbps 規則；週期重設清零流量並解除限速。測試設定已還原，並建立初始狀態備份。瀏覽器檢查確認桌面與窄屏主控台及語言選單正常。原地升級保留五個節點的身分、連線設定和管理員密碼。
-- 待辦：實測限速下的持續雙向吞吐量，以及實際重新啟動後的自動啟動。systemd 服務已啟用，但尚未重新啟動主機。
+- 檢查：287 項測試通過（8 項略過）；Python 編譯、Shell 語法與差異檢查通過。多語言檢查通過 32 份核心文件及介面文字，錯誤數為 0。目標主機的五個監聽埠與四項 systemd 服務均運作正常且已啟用；區域網路 HTTP/HTTPS 和主控台登入通過。五種節點的實際連線均增加雙向計數。到期與 1 位元組額度均觸發雙向 1 Mbps 規則；週期重設清零流量並解除限速。測試設定已還原，並建立初始狀態備份。瀏覽器檢查確認桌面與窄屏主控台及語言選單正常。原地升級保留五個節點的身分、連線設定和管理員密碼。 同時進行的 4 MiB 代理傳輸測得上傳平均 120,596 B/s、下載平均 120,610 B/s，均低於 125,000 B/s。
+- 待辦：驗證實際重新啟動後的自動啟動。systemd 服務已啟用，但尚未重新啟動主機。
 - 發佈：正式 `origin/main` 仍為 v2.0.0；此功能分支已推送到正式儲存庫，尚無發佈標籤。
-- 下一步：測量持續限速吞吐量，並在可行時重啟驗證自動啟動；然後覆核公開內容，再決定合併與發佈。
+- 下一步：在可行時重啟驗證自動啟動；然後覆核公開內容，再決定合併與發佈。
 
 
 ## 變更紀錄
@@ -315,4 +315,6 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - `eaceed8` fix(install): stage modules during in-place install
 - `5ff2a6b` fix(web): condense mobile navigation
 - `2477fcc` docs: record node deployment handoff
-- (this commit) docs(log): synchronize commit history
+- `d31e40f` docs(log): synchronize commit history
+- `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
+- (this commit) docs(log): record measured node acceptance

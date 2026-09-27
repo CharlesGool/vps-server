@@ -222,10 +222,10 @@ These checked items are the former backlog's dated implementation and verificati
 
 - Branch: `feat/node-controls`, based on v2.0.0 `main`; the feature is not released.
 - Completed: five numbered proxy nodes with stable IDs, editable names/ports/credentials/TLS SNI, random reset, traffic counters, caps, timed cycles, and independent 1 Mbps upload/download policing. The revised console and eight interface catalogs expose the controls. No temporary project rules were found.
-- Checks: 286 tests passed (8 skipped); Python compilation, Shell syntax, and diff checks passed. The language checker passed 32 core documents and interface catalogs with 0 errors. On the target host, five listeners and four systemd services are active and enabled; LAN HTTP/HTTPS and authenticated console access passed. Real connections incremented both counters on all five nodes. Expiry and a 1-byte cap installed both directional 1 Mbps rules; a due cycle cleared usage and lifted the rules. Test settings were restored. An initial state backup was created. The desktop and mobile console layouts and language menu passed browser inspection. An in-place upgrade preserved all five node identities, connection settings, and the admin password.
-- Remaining: measure sustained bidirectional throughput under the limit and verify startup after an actual reboot. Enabled systemd units provide the boot mechanism; no reboot was performed.
+- Checks: 287 tests passed (8 skipped); Python compilation, Shell syntax, and diff checks passed. The language checker passed 32 core documents and interface catalogs with 0 errors. On the target host, five listeners and four systemd services are active and enabled; LAN HTTP/HTTPS and authenticated console access passed. Real connections incremented both counters on all five nodes. Expiry and a 1-byte cap installed both directional 1 Mbps rules; a due cycle cleared usage and lifted the rules. Test settings were restored. An initial state backup was created. The desktop and mobile console layouts and language menu passed browser inspection. An in-place upgrade preserved all five node identities, connection settings, and the admin password. A concurrent 4 MiB proxy transfer averaged 120,596 B/s upload and 120,610 B/s download, both below 125,000 B/s.
+- Remaining: verify startup after an actual reboot. Enabled systemd units provide the boot mechanism; no reboot was performed.
 - Publication: formal `origin/main` remains v2.0.0. This feature branch is pushed to the formal repository and has no release tag.
-- Next action: measure sustained throttled throughput and, when practical, verify boot after a reboot; then review the public changes before merging and releasing.
+- Next action: when practical, verify boot after a reboot; then review the public changes before merging and releasing.
 
 
 ## Changelog
@@ -466,4 +466,6 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `eaceed8` fix(install): stage modules during in-place install
 - `5ff2a6b` fix(web): condense mobile navigation
 - `2477fcc` docs: record node deployment handoff
-- (this commit) docs(log): synchronize commit history
+- `d31e40f` docs(log): synchronize commit history
+- `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
+- (this commit) docs(log): record measured node acceptance
