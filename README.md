@@ -49,15 +49,15 @@ See [current state and acceptance limits][local-link-001].
 - **Logs who connected.** Every inbound TCP connection, on any port, not just
   HTTP — read from `/proc/net/tcp[6]`, stored in SQLite, most recent 1000 kept.
 - **Serves an anytls proxy.** sing-box with a self-signed certificate, plus BBR.
-  When that module is installed, the console's `/proxy` page shows whether the
-  node is up and offers its Clash entry and `anytls://` link with a copy
-  button, so handing the node to a client does not mean going back to the
-  terminal.
-- **Serves a vmess/vless/trojan/shadowsocks proxy, any subset.** One more
-  sing-box process, sharing the same vendored binary as anytls. When
-  installed, the console's shared `/proxy` page gains a section per protocol
-  with its port, UUID or password, Clash entry, share link and QR code. Each
-  protocol has its own reset button, leaving the other credentials unchanged.
+  The authenticated `/proxy` page shows the node status, traffic, editable
+  connection settings, and a one-tap Clash Meta for Android import link with QR
+  code when a private LAN address is available.
+- **Serves vmess/vless/trojan/shadowsocks proxies, any subset.** One more
+  sing-box process shares the vendored binary with anytls. Each installed
+  protocol has its own numbered node, traffic cap in GiB, edit and random-reset
+  controls, and the same LAN-only Clash Meta import option. The import URL
+  contains an opaque token and changes after the node's connection settings
+  or name changes. The public ports do not serve proxy configurations.
 
 The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
 and Lucky remain experimental; their behavior has not been accepted on a real

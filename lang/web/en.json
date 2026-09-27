@@ -93,7 +93,7 @@
   "node_total": "Nodes",
   "node_active": "Active",
   "node_stopped": "Stopped",
-  "node_manage": "Manage node",
+  "node_manage": "Edit",
   "node_save_credential": "Save credential",
   "node_number": "Number",
   "node_traffic": "Traffic",
@@ -108,7 +108,6 @@
   "node_name": "Name",
   "node_credential": "Credential",
   "node_keep_credential": "Leave blank to keep current",
-  "node_cap_mib": "Traffic cap (MiB)",
   "node_expiry_utc": "Expiry (UTC)",
   "node_reset_schedule": "Reset cycle",
   "node_reset_none": "No reset",
@@ -196,5 +195,9 @@
   "log_portfwd_reapplied": "Reapplied {count} port forward(s) from {path}",
   "node_config_usage": "usage: node_config.py {anytls|vmess|vless|trojan|shadowsocks} < credential-stdin",
   "node_config_degraded": "DEGRADED: recovery failed",
-  "node_config_rejected": "node apply rejected or failed"
+  "node_config_rejected": "node apply rejected or failed",
+  "node_cap_gib": "Traffic cap (GiB)",
+  "node_clash_import": "Import to Clash Meta",
+  "node_clash_qr": "Show import QR code",
+  "node_cap_mib": "Traffic cap (MiB)"
 }

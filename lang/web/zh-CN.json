@@ -93,7 +93,7 @@
   "node_total": "节点总数",
   "node_active": "运行中",
   "node_stopped": "已停止",
-  "node_manage": "管理节点",
+  "node_manage": "编辑",
   "node_save_credential": "保存凭据",
   "node_number": "编号",
   "node_traffic": "流量",
@@ -108,7 +108,6 @@
   "node_name": "名称",
   "node_credential": "凭据",
   "node_keep_credential": "留空则保持原值",
-  "node_cap_mib": "流量上限（MiB）",
   "node_expiry_utc": "到期时间（UTC）",
   "node_reset_schedule": "重置周期",
   "node_reset_none": "不重置",
@@ -196,5 +195,9 @@
   "log_portfwd_reapplied": "已从 {path} 重新应用 {count} 条端口转发规则",
   "node_config_usage": "用法: node_config.py {anytls|vmess|vless|trojan|shadowsocks} < credential-stdin",
   "node_config_degraded": "DEGRADED: 恢复失败",
-  "node_config_rejected": "节点配置应用被拒绝或失败"
+  "node_config_rejected": "节点配置应用被拒绝或失败",
+  "node_cap_gib": "流量上限（GiB）",
+  "node_clash_import": "导入 Clash Meta",
+  "node_clash_qr": "显示导入二维码",
+  "node_cap_mib": "流量上限（MiB）"
 }

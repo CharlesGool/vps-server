@@ -93,7 +93,7 @@
   "node_total": "Nœuds",
   "node_active": "Actifs",
   "node_stopped": "Arrêtés",
-  "node_manage": "Gérer le nœud",
+  "node_manage": "Modifier",
   "node_save_credential": "Enregistrer l’identifiant",
   "node_number": "Numéro",
   "node_traffic": "Trafic",
@@ -108,7 +108,6 @@
   "node_name": "Nom",
   "node_credential": "Identifiant",
   "node_keep_credential": "Laisser vide pour conserver",
-  "node_cap_mib": "Plafond de trafic (Mio)",
   "node_expiry_utc": "Expiration (UTC)",
   "node_reset_schedule": "Cycle de remise à zéro",
   "node_reset_none": "Aucune",
@@ -196,5 +195,9 @@
   "log_portfwd_reapplied": "{count} redirection(s) de port réappliquée(s) depuis {path}",
   "node_config_usage": "utilisation : node_config.py {anytls|vmess|vless|trojan|shadowsocks} < credential-stdin",
   "node_config_degraded": "ÉTAT DÉGRADÉ : échec de la récupération",
-  "node_config_rejected": "Application de la configuration du nœud refusée ou échouée"
+  "node_config_rejected": "Application de la configuration du nœud refusée ou échouée",
+  "node_cap_gib": "Plafond de trafic (Gio)",
+  "node_clash_import": "Importer dans Clash Meta",
+  "node_clash_qr": "Afficher le code QR d’importation",
+  "node_cap_mib": "Plafond de trafic (Mio)"
 }

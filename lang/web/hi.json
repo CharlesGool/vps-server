@@ -93,7 +93,7 @@
   "node_total": "नोड",
   "node_active": "सक्रिय",
   "node_stopped": "बंद",
-  "node_manage": "नोड प्रबंधित करें",
+  "node_manage": "संपादित करें",
   "node_save_credential": "क्रेडेंशियल सहेजें",
   "node_number": "नंबर",
   "node_traffic": "ट्रैफ़िक",
@@ -108,7 +108,6 @@
   "node_name": "नाम",
   "node_credential": "क्रेडेंशियल",
   "node_keep_credential": "मौजूदा रखने के लिए खाली छोड़ें",
-  "node_cap_mib": "ट्रैफ़िक सीमा (MiB)",
   "node_expiry_utc": "समाप्ति (UTC)",
   "node_reset_schedule": "रीसेट चक्र",
   "node_reset_none": "रीसेट नहीं",
@@ -196,5 +195,9 @@
   "log_portfwd_reapplied": "{count} पोर्ट फ़ॉरवर्ड नियम {path} से दोबारा लागू किए गए",
   "node_config_usage": "उपयोग: node_config.py {anytls|vmess|vless|trojan|shadowsocks} < credential-stdin",
   "node_config_degraded": "स्थिति खराब: पुनर्प्राप्ति विफल हुई",
-  "node_config_rejected": "नोड कॉन्फ़िगरेशन लागू करने से इनकार हुआ या वह विफल हुआ"
+  "node_config_rejected": "नोड कॉन्फ़िगरेशन लागू करने से इनकार हुआ या वह विफल हुआ",
+  "node_cap_gib": "ट्रैफ़िक सीमा (GiB)",
+  "node_clash_import": "Clash Meta में आयात करें",
+  "node_clash_qr": "आयात QR कोड दिखाएँ",
+  "node_cap_mib": "ट्रैफ़िक सीमा (MiB)"
 }

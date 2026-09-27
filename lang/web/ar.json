@@ -93,7 +93,7 @@
   "node_total": "العقد",
   "node_active": "النشطة",
   "node_stopped": "متوقفة",
-  "node_manage": "إدارة العقدة",
+  "node_manage": "تعديل",
   "node_save_credential": "حفظ بيانات الاعتماد",
   "node_number": "الرقم",
   "node_traffic": "حركة البيانات",
@@ -108,7 +108,6 @@
   "node_name": "الاسم",
   "node_credential": "بيانات الاعتماد",
   "node_keep_credential": "اتركه فارغًا للإبقاء على الحالي",
-  "node_cap_mib": "حد البيانات (MiB)",
   "node_expiry_utc": "انتهاء الصلاحية (UTC)",
   "node_reset_schedule": "دورة إعادة التعيين",
   "node_reset_none": "بلا إعادة تعيين",
@@ -196,5 +195,9 @@
   "log_portfwd_reapplied": "أُعيد تطبيق {count} من قواعد تحويل المنافذ من {path}",
   "node_config_usage": "الاستخدام: node_config.py {anytls|vmess|vless|trojan|shadowsocks} < credential-stdin",
   "node_config_degraded": "حالة متدهورة: فشلت الاستعادة",
-  "node_config_rejected": "رُفض تطبيق إعداد العقدة أو فشل"
+  "node_config_rejected": "رُفض تطبيق إعداد العقدة أو فشل",
+  "node_cap_gib": "حد البيانات (GiB)",
+  "node_clash_import": "استيراد إلى Clash Meta",
+  "node_clash_qr": "عرض رمز QR للاستيراد",
+  "node_cap_mib": "حد البيانات (MiB)"
 }

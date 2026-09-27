@@ -577,7 +577,12 @@ dl.kv dd.secret code {
 .node-address span { color: var(--muted); flex: none; }
 .node-address code { color: var(--fg-2); text-align: end; overflow-wrap: anywhere; }
 .proxy-node-settings { border-top: 1px solid var(--card-border); margin: 0 -1.25rem -1.25rem; padding: 0 1.25rem; }
-.proxy-node-settings summary { cursor: pointer; padding: 0.8rem 0; color: var(--accent-strong); font-weight: 600; }
+.proxy-node-settings summary {
+  cursor: pointer; display: inline-block; margin: 0.7rem 0; padding: 0.35rem 0.8rem;
+  border: 1px solid var(--card-border); border-radius: 8px;
+  color: var(--accent-strong); font-weight: 600;
+}
+.proxy-node-settings summary:hover { background: var(--surface-2); }
 .proxy-node-settings summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .proxy-node-settings[open] summary { margin-bottom: 0.5rem; }
 .proxy-node-settings form { margin-bottom: 1rem; }
@@ -598,8 +603,12 @@ dl.kv dd.secret code {
 .node-form-grid label { min-width: 0; font-size: 0.8rem; }
 .node-form-grid input, .node-form-grid select { width: 100%; min-width: 0; margin-top: 0.3rem; }
 @media (max-width: 34rem) { .node-form-grid { grid-template-columns: 1fr; } }
-.proxy-notes { margin-top: 1.25rem; padding: 0.75rem 1rem; border-left: 3px solid var(--card-border); color: var(--muted); font-size: 0.82rem; }
-.proxy-notes p { margin: 0.4rem 0; }
+.node-share { display: flex; flex-wrap: wrap; align-items: start; gap: 0.75rem; margin: 0 -1.25rem; padding: 0.8rem 1.25rem; border-top: 1px solid var(--card-border); }
+.node-import { display: inline-block; padding: 0.38rem 0.75rem; border: 1px solid var(--card-border); border-radius: 8px; color: var(--accent-strong); font-weight: 600; font-size: 0.85rem; text-decoration: none; }
+.node-import:hover { background: var(--surface-2); }
+.node-import:focus-visible, .qr-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.node-share .qr-details { margin: 0; }
+.node-share .qr-details summary { padding: 0.42rem 0; }
 
 @media (max-width: 47rem) {
   .proxy-overview { align-items: stretch; flex-direction: column; }

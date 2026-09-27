@@ -170,9 +170,12 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - 分支：`feat/node-controls`，基于 v2.0.0 `main`；此功能尚未发布。
 - 已完成：五种代理节点具备稳定编号和 ID、可修改的名称/端口/凭据/TLS SNI、随机重置、流量计数、额度、定时周期及独立的上传和下载 1 Mbps 限速。改进后的控制台和八种界面语言均已接入。未发现生效中的项目临时规则。
 - 检查：287 项测试通过（8 项跳过）；Python 编译、Shell 语法和差异检查通过。多语言检查通过 32 份核心文档和界面文案，错误数为 0。目标主机的五个监听端口和四项 systemd 服务均正常运行且已启用；局域网 HTTP/HTTPS 和控制台登录通过。五种节点的真实连接均增加双向计数。到期及 1 字节额度均触发双向 1 Mbps 规则；周期重置清零流量并解除限速。测试设置已恢复，并建立了初始状态备份。浏览器检查确认桌面和窄屏控制台及语言菜单正常。原地升级保留了五个节点的身份、连接配置和管理员密码。 并发的 4 MiB 代理传输测得上传平均 120,596 B/s、下载平均 120,610 B/s，均低于 125,000 B/s。
-- 待办：通过实际重启验证自启动。systemd 服务已启用，但未重启主机。
+- 待办：通过实际重启验证自启动，并在真实 Android 手机上测试导入。systemd 服务已启用，但未重启主机；此次检查也没有可用的 Android 应用。
 - 发布：正式 `origin/main` 仍是 v2.0.0；此功能分支已推送到正式仓库，尚无发布标签。
-- 下一步：在可行时重启验证自启动；然后复核公开内容，再决定合并和发布。
+- 下一步：在可行时用真实手机检查 Android 导入并验证重启后的自启动；合并或发布前复核功能分支。
+- 本次更新：节点页提供直接“编辑”入口，流量上限使用 GiB，删去解释性备注，并为每个受管理节点提供带令牌的同局域网 Clash Meta for Android 导入链接及二维码。连接设置或名称变化会使旧 URL 失效。完整 UI 重设计留待以后进行；未发现项目临时规则。
+- 本次检查：289 项测试通过（跳过 8 项），Python 编译通过；真实主机通过局域网地址返回五份完整的单节点配置。Chromium 在桌面和 390 px 宽度下渲染五个 QR 码及“编辑”字段，未出现横向溢出。Android 导入尚未验证。
+- 部署：指定测试主机上的 `~/apps/vps-server` 已更新；此前应用文件备份在仓库外。持久化节点和管理员状态未改动。web、anytls 和 proxy 服务保持启用及运行。
 
 
 ## 变更日志
@@ -317,4 +320,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `2477fcc` docs: record node deployment handoff
 - `d31e40f` docs(log): synchronize commit history
 - `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
-- (this commit) docs(log): record measured node acceptance
+- `da5f84f` docs(log): record measured node acceptance
+- (this commit) feat(proxy): add Clash Meta import and GiB node controls

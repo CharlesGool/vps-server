@@ -856,7 +856,7 @@ def anytls_clash_line(node, host, name):
     """
     return (
         f'- {{ name: {name}, type: anytls, server: {host}, port: {node["port"]}, '
-        f'password: "{node["password"]}", sni: {node["sni"]}, '
+        f'password: {json.dumps(node["password"])}, sni: {json.dumps(node["sni"])}, '
         f'skip-cert-verify: true, udp: true }}'
     )
 
@@ -1187,16 +1187,71 @@ def proxy_clash_line(node, sni, host, name):
     if proto == "vmess":
         return (f'- {{ name: {name}, type: vmess, server: {host}, port: {port}, '
                 f'uuid: {secret}, alterId: 0, cipher: auto, tls: true, '
-                f'skip-cert-verify: true, servername: {sni}, udp: true }}')
+                f'skip-cert-verify: true, servername: {json.dumps(sni)}, udp: true }}')
     if proto == "vless":
         return (f'- {{ name: {name}, type: vless, server: {host}, port: {port}, '
                 f'uuid: {secret}, network: tcp, tls: true, skip-cert-verify: true, '
-                f'servername: {sni}, udp: true }}')
+                f'servername: {json.dumps(sni)}, udp: true }}')
     if proto == "trojan":
         return (f'- {{ name: {name}, type: trojan, server: {host}, port: {port}, '
-                f'password: "{secret}", sni: {sni}, skip-cert-verify: true, udp: true }}')
+                f'password: {json.dumps(secret)}, sni: {json.dumps(sni)}, skip-cert-verify: true, udp: true }}')
     return (f'- {{ name: {name}, type: ss, server: {host}, port: {port}, '
-            f'cipher: 2022-blake3-aes-128-gcm, password: "{secret}", udp: true }}')
+            f'cipher: 2022-blake3-aes-128-gcm, password: {json.dumps(secret)}, udp: true }}')
+
+
+def clash_share_token(node):
+    """A capability URL changes when this node's connection details change."""
+    material = json.dumps({"id": node["id"], "name": node["name"],
+                           "inbound": node["inbound"]}, sort_keys=True,
+                          separators=(",", ":")).encode()
+    return hmac.new(SESSION_SECRET.encode(), b"clash-profile-v1:" + material,
+                    "sha256").hexdigest()
+
+
+def clash_lan_host(host):
+    """Use a real private IPv4 address for same-LAN import links."""
+    addresses = [address for _, address in local_addresses()]
+    if host in addresses and is_lan_address(host):
+        return host
+    for address in addresses:
+        if is_lan_address(address):
+            return address
+    return None
+
+
+def is_lan_address(value):
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return address.version == 4 and any(address in network for network in (
+        ipaddress.ip_network("10.0.0.0/8"),
+        ipaddress.ip_network("172.16.0.0/12"),
+        ipaddress.ip_network("192.168.0.0/16")))
+
+
+def clash_profile(node, host):
+    """A complete single-node Mihomo profile, not just a proxy YAML entry."""
+    inbound, protocol = node["inbound"], node["protocol"]
+    name = json.dumps(node["name"], ensure_ascii=False)
+    if protocol == "anytls":
+        line = anytls_clash_line({"port": node["port"],
+                                 "password": inbound["users"][0]["password"],
+                                 "sni": _cert_common_name(inbound["tls"]["certificate_path"])},
+                                host, name)
+    else:
+        secret = (inbound["password"] if protocol == "shadowsocks" else
+                  inbound["users"][0]["uuid" if protocol in ("vmess", "vless")
+                                       else "password"])
+        sni = ("" if protocol == "shadowsocks" else
+               _cert_common_name(inbound["tls"]["certificate_path"]))
+        line = proxy_clash_line({"type": protocol, "port": node["port"],
+                                 "secret": secret}, sni, host, name)
+    return ("mixed-port: 7890\nallow-lan: false\nmode: rule\nlog-level: warning\n"
+            f"proxies:\n  {line}\n"
+            "proxy-groups:\n  - name: NODE\n    type: select\n    proxies:\n"
+            f"      - {name}\n      - DIRECT\n"
+            "rules:\n  - MATCH,NODE\n")
 
 
 def proxy_share_link(node, sni, host, name):
@@ -2016,13 +2071,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 # socketserver, which kills the keep-alive connection — and
                 # the speed test depends on that connection staying up.
                 try:
-                    log_visit(self.client_ip(), method, path, self._last_status)
+                    logged_path = "/clash/sub/[redacted]" if path.startswith("/clash/sub/") else path
+                    log_visit(self.client_ip(), method, logged_path, self._last_status)
                 except Exception as exc:
                     print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
 
     def _route(self, method, path, parsed):
         if path.startswith("/static/") or path == "/speedtest_worker.js":
             return self.serve_static(path)
+
+        if method == "GET" and path.startswith("/clash/sub/"):
+            return self.handle_clash_subscription(path)
 
         lang, query_lang = self.resolve_lang(parsed)
 
@@ -2640,6 +2699,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             )
 
         host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
+        lan_host = clash_lan_host(host) if AUTH_ENABLED else None
 
         notice = ""
         key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
@@ -2698,6 +2758,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               </dl>
               <div class="proxy-node-addresses">{"".join(blocks)}</div>
               {self.node_metrics(managed.get('anytls'), meter_nodes, t)}
+              {self.node_clash_share(managed.get('anytls'), lan_host, t)}
               <details class="proxy-node-settings">
                 <summary>{html.escape(t['node_manage'])}</summary>
                 {self.node_settings_form('anytls', anytls['port'], anytls['sni'], managed.get('anytls'), t)}
@@ -2762,6 +2823,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   </dl>
                   <div class="proxy-node-addresses">{"".join(blocks)}</div>
                   {self.node_metrics(managed.get(proto), meter_nodes, t)}
+                  {self.node_clash_share(managed.get(proto), lan_host, t)}
                   <details class="proxy-node-settings">
                     <summary>{html.escape(t['node_manage'])}</summary>
                     {self.node_settings_form(proto, node['port'], node['sni'], managed.get(proto), t)}
@@ -2786,7 +2848,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <header class="proxy-overview">
             <div><p class="proxy-eyebrow">{html.escape(t['node_overview'])}</p>
               <h1>{html.escape(t['proxy_heading'])}</h1>
-              <p class="muted">{html.escape(t['node_overview_intro'])}</p></div>
+              </div>
             <div class="proxy-summary" aria-label="{html.escape(t['node_summary'])}">
               <div><strong>{len(sections)}</strong><span>{html.escape(t['node_total'])}</span></div>
               <div><strong>{running_count}</strong><span>{html.escape(t['node_active'])}</span></div>
@@ -2794,15 +2856,60 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </header>
           {notice}
           <div class="proxy-node-grid">{"".join(sections)}</div>
-          <aside class="proxy-notes">
-            <p>{html.escape(t['proxy_host_note'])}</p>
-            <p class="warn">{html.escape(t['anytls_warning'])}</p>
-          </aside>
         </div>
         <script src="/static/copy.js"></script>
+        {'''<script src="/static/qrcode.js"></script>
+        <script src="/static/qrcode-utf8.js"></script>
+        <script src="/static/qrcode-render.js"></script>''' if lan_host and managed else ''}
         """
         self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def node_clash_share(self, node, lan_host, t):
+        if node is None or lan_host is None:
+            return ""
+        scheme = "https" if CONSOLE_TLS else "http"
+        url = (f"{scheme}://{lan_host}:{CONSOLE_PORT}/clash/sub/"
+               f"{node['protocol']}/{clash_share_token(node)}")
+        deep_link = "clash://install-config?url=" + quote(url, safe="")
+        escaped_link = html.escape(deep_link, quote=True)
+        return f'''<div class="node-share">
+          <a class="node-import" href="{escaped_link}">{html.escape(t['node_clash_import'])}</a>
+          <details class="qr-details"><summary>{html.escape(t['node_clash_qr'])}</summary>
+            <div class="qr" data-qr-text="{escaped_link}"></div>
+          </details>
+        </div>'''
+
+    def handle_clash_subscription(self, path):
+        parts = path.split("/")
+        peer = ipaddress.ip_address(self.client_address[0])
+        if (not AUTH_ENABLED or len(parts) != 5 or parts[:3] != ["", "clash", "sub"] or
+                parts[3] not in NODE_PROTOCOLS or
+                not re.fullmatch(r"[0-9a-f]{64}", parts[4]) or
+                not (is_lan_address(str(peer)) or peer.is_loopback)):
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        try:
+            inventory = read_inventory(state_path=NODE_STATE_PATH,
+                                       config_paths={"anytls": ANYTLS_CONFIG,
+                                                     "proxy": PROXY_CONFIG})
+            node = next(node for node in inventory["nodes"]
+                        if node["protocol"] == parts[3])
+            if not hmac.compare_digest(parts[4], clash_share_token(node)):
+                raise ValueError("stale link")
+            host = clash_lan_host("")
+            if host is None:
+                raise ValueError("no LAN address")
+            data = clash_profile(node, host).encode("utf-8")
+        except (OSError, ValueError, TypeError, KeyError, StopIteration, IndexError):
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        self.send_response(200)
+        self.send_header("Content-Type", "text/yaml; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(data)
 
     def node_metrics(self, node, meter_nodes, t):
         if node is None:
@@ -2819,7 +2926,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             node["expires_at"] is not None and
             datetime.fromisoformat(node["expires_at"]) <= datetime.now(timezone.utc))
         limit = t["node_limited"] if limited else t["node_normal"]
-        cap_label = size(cap) if cap is not None else t["node_unlimited"]
+        cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
         return f'''<div class="node-usage" aria-label="{html.escape(t['node_traffic'])}">
           <span class="node-number">#{node['number']}</span>
@@ -2834,7 +2941,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if node is None:
             return ""
         token = node_csrf_token(self.get_cookie("session"), protocol)
-        cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1048576)
+        cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1073741824)
         expiry = node["expires_at"][:16] if node["expires_at"] else ""
         next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
         options = "".join(f'<option value="{mode}"{" selected" if mode == node["reset_mode"] else ""}>{html.escape(t[key])}</option>'
@@ -2850,7 +2957,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <label>{html.escape(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{port}" required></label>
             <label>{html.escape(t['node_credential'])}<input name="credential" value="" placeholder="{html.escape(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
             {sni_field}
-            <label>{html.escape(t['node_cap_mib'])}<input type="number" name="cap_mib" min="0.001" max="100000000" step="any" value="{cap}" placeholder="{html.escape(t['node_unlimited'], quote=True)}"></label>
+            <label>{html.escape(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{html.escape(t['node_unlimited'], quote=True)}"></label>
             <label>{html.escape(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
             <label>{html.escape(t['node_reset_schedule'])}<select name="reset_mode">{options}</select></label>
             <label>{html.escape(t['node_reset_time_utc'])}<input type="datetime-local" name="next_reset_at" value="{next_reset}"></label>
@@ -2900,7 +3007,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 form.get("csrf", [""])[0], node_csrf_token(session, protocol)):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         expected = ({"protocol", "csrf", "confirm"} if reset else
-                    {"protocol", "csrf", "name", "port", "credential", "cap_mib",
+                    {"protocol", "csrf", "name", "port", "credential", "cap_gib",
                      "expires_at", "reset_mode", "next_reset_at"} |
                     ({"sni"} if protocol != "shadowsocks" else set()))
         if set(form) != expected:
@@ -2922,12 +3029,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 credential = form["credential"][0]
                 if credential:
                     request["credential"] = credential
-                cap = form["cap_mib"][0].strip()
+                cap = form["cap_gib"][0].strip()
                 if cap:
                     amount = Decimal(cap)
                     if not amount.is_finite() or not 0 < amount <= 100000000:
                         raise ValueError("invalid cap")
-                    request["cap_bytes"] = int(amount * 1048576)
+                    request["cap_bytes"] = int(amount * 1073741824)
                 else:
                     request["cap_bytes"] = None
                 def date_value(value):

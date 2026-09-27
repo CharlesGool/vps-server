@@ -33,8 +33,8 @@ metadata:
 - **從瀏覽器測量吞吐量.** 在持久化的隨機高位連接埠上,密碼保護的主控台使用 LibreSpeed 引擎測試上傳/下載速度.
 - **隨需用 iperf3 測量吞吐量與延遲.** 主控台開啟限時視窗;`iperf3 -s` 僅在視窗期間執行,到期後自行關閉.測試者可取得頻寬;Linux 用戶端還可從 `mean_rtt` 在 `--json` 輸出中取得往返時間.該欄位來自核心的 `TCP_INFO`,無法讀取它的用戶端(尤其 Windows 上 Cygwin 的 iperf3)不會提供此欄位.UDP 模式(`-u`)在各平台額外提供抖動及封包遺失率.
 - **記錄連線者.** 讀取 `/proc/net/tcp[6]`,將所有連接埠的每筆入站 TCP 連線(不只 HTTP)記入 SQLite,保留最新 1000 筆.
-- **提供 anytls 代理.** sing-box 搭配自簽憑證及 BBR.安裝該模組後,主控台的 `/proxy` 頁面顯示節點是否在線,提供 Clash 條目及帶複製按鈕的 `anytls://` 連結,毋須返回終端機即可將節點交給用戶端.
-- **提供 vmess/vless/trojan/shadowsocks 代理,任選子集.** 另一個 sing-box 行程,與 anytls 共用隨附的執行檔.安裝後,共用的 `/proxy` 頁面會為各協定增加一節,顯示連接埠,UUID 或密碼,Clash 條目,分享連結及 QR code.各協定有獨立的重設按鈕,不改動其他協定的憑證.
+- **提供 anytls 代理。** sing-box 使用自簽憑證及 BBR。通過驗證的 `/proxy` 頁面顯示節點狀態、流量與可編輯的連線設定；有私人區域網路位址時，亦提供 Clash Meta for Android 一鍵匯入連結及 QR 碼。
+- **提供 vmess/vless/trojan/shadowsocks 代理，可選任意組合。** 另一個 sing-box 行程與 anytls 共用隨附的執行檔。每種已安裝協定都有獨立編號的節點、以 GiB 為單位的流量上限、編輯及隨機重設控件，以及相同的區域網路 Clash Meta 匯入選項。匯入 URL 含有不透明權杖；節點連線設定或名稱改變後，舊連結即失效。公開連接埠不提供代理設定。
 
 web,iperf3,anytls,proxy,frps 與 Lucky 六個模組均可在安裝時選擇.frps 與 Lucky 仍屬實驗性模組;本版本尚未在實機完成其行為驗收.
 

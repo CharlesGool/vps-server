@@ -168,9 +168,12 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Rama: `feat/node-controls`, basada en v2.0.0 `main`; la función aún no está publicada.
 - Completado: cinco nodos proxy con números e ID estables, nombre/puerto/credencial/TLS SNI editables, restablecimiento aleatorio, contadores, cuota, ciclos programados y límites independientes de 1 Mbps para subida y descarga. La consola revisada y ocho idiomas de interfaz muestran los controles. No se hallaron reglas temporales activas del proyecto.
 - Comprobaciones: pasaron 287 pruebas (8 omitidas), la compilación de Python, la sintaxis de Shell y la revisión del diff. El comprobador multilingüe pasó 32 documentos principales y los textos de interfaz sin errores. En el servidor de destino están activos y habilitados cinco puertos y cuatro servicios systemd; funcionaron HTTP/HTTPS por LAN y el acceso autenticado a la consola. Las conexiones reales aumentaron ambos contadores en los cinco nodos. El vencimiento y una cuota de 1 byte activaron las reglas de 1 Mbps en ambas direcciones; un ciclo vencido borró el uso y levantó el límite. Se restauraron los ajustes de prueba y se creó un respaldo inicial del estado. La inspección en navegador validó la consola en escritorio y móvil y el menú de idiomas. Una actualización en el mismo directorio conservó las identidades de los cinco nodos, sus conexiones y la contraseña de administración. Una transferencia simultánea de 4 MiB por proxy promedió 120,596 B/s de subida y 120,610 B/s de descarga, ambos por debajo de 125,000 B/s.
-- Pendiente: comprobar el arranque tras un reinicio real. Los servicios systemd están habilitados, pero no se reinició el servidor.
+- Pendiente: comprobar el inicio automático mediante un reinicio real y probar la importación en un teléfono Android. Los servicios systemd están habilitados, pero no se reinició el servidor ni se disponía de la aplicación Android para esta prueba.
 - Publicación: `origin/main` sigue en v2.0.0; la rama de la función está en el repositorio formal y no tiene etiqueta de publicación.
-- Siguiente paso: cuando sea posible, comprobar el arranque tras reiniciar; después revisar el material público antes de fusionar y publicar.
+- Siguiente paso: cuando sea posible, comprobar la importación Android en un teléfono real y el arranque después de reiniciar; revisar la rama antes de fusionar o publicar.
+- Esta actualización: la página de nodos ofrece un control Edit directo, muestra los límites de tráfico en GiB, elimina las notas explicativas y proporciona a cada nodo gestionado un enlace y código QR de importación a Clash Meta for Android mediante token en la misma LAN. Los cambios de nombre o conexión invalidan la URL antigua. El rediseño completo de la UI queda registrado para más adelante; no se hallaron reglas temporales del proyecto.
+- Comprobaciones de esta actualización: pasaron 289 pruebas (8 omitidas) y la compilación de Python; el servidor real devolvió cinco perfiles completos de un solo nodo por su dirección LAN. Chromium mostró cinco códigos QR y los campos Edit sin desbordamiento horizontal en escritorio ni a 390 px de ancho. La importación en Android sigue sin verificarse.
+- Despliegue: se actualizó `~/apps/vps-server` en el servidor de prueba designado; los archivos anteriores se guardaron fuera del repositorio. No se modificó el estado persistente de nodos ni del administrador. Los servicios web, anytls y proxy siguen habilitados y activos.
 
 
 ## Historial de cambios
@@ -315,4 +318,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `2477fcc` docs: record node deployment handoff
 - `d31e40f` docs(log): synchronize commit history
 - `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
-- (this commit) docs(log): record measured node acceptance
+- `da5f84f` docs(log): record measured node acceptance
+- (this commit) feat(proxy): add Clash Meta import and GiB node controls

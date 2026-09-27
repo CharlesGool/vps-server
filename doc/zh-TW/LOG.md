@@ -170,9 +170,12 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - 分支：`feat/node-controls`，以 v2.0.0 `main` 為基礎；此功能尚未發佈。
 - 已完成：五種代理節點有穩定編號與 ID、可修改名稱/連接埠/憑證/TLS SNI、隨機重設、流量計數、額度、排程週期，以及獨立的上傳與下載 1 Mbps 限速。改良後的主控台與八種介面語言均已接入。未發現生效中的專案暫時規則。
 - 檢查：287 項測試通過（8 項略過）；Python 編譯、Shell 語法與差異檢查通過。多語言檢查通過 32 份核心文件及介面文字，錯誤數為 0。目標主機的五個監聽埠與四項 systemd 服務均運作正常且已啟用；區域網路 HTTP/HTTPS 和主控台登入通過。五種節點的實際連線均增加雙向計數。到期與 1 位元組額度均觸發雙向 1 Mbps 規則；週期重設清零流量並解除限速。測試設定已還原，並建立初始狀態備份。瀏覽器檢查確認桌面與窄屏主控台及語言選單正常。原地升級保留五個節點的身分、連線設定和管理員密碼。 同時進行的 4 MiB 代理傳輸測得上傳平均 120,596 B/s、下載平均 120,610 B/s，均低於 125,000 B/s。
-- 待辦：驗證實際重新啟動後的自動啟動。systemd 服務已啟用，但尚未重新啟動主機。
+- 待辦：透過實際重新開機驗證自動啟動，並在真正的 Android 手機測試匯入。systemd 服務已啟用，但主機未重新開機；本次亦沒有可用的 Android 應用程式。
 - 發佈：正式 `origin/main` 仍為 v2.0.0；此功能分支已推送到正式儲存庫，尚無發佈標籤。
-- 下一步：在可行時重啟驗證自動啟動；然後覆核公開內容，再決定合併與發佈。
+- 下一步：在可行時用真正的手機檢查 Android 匯入，並驗證重新開機後的自動啟動；合併或發佈前檢視功能分支。
+- 本次更新：節點頁提供直接「編輯」入口，流量上限使用 GiB，移除說明備註，並為每個受管理節點提供含權杖的同區域網路 Clash Meta for Android 匯入連結及 QR 碼。連線設定或名稱改變會使舊 URL 失效。完整 UI 重新設計留待日後進行；未發現專案暫時規則。
+- 本次檢查：289 項測試通過（略過 8 項），Python 編譯通過；真實主機透過區域網路位址傳回五份完整的單節點設定。Chromium 在桌面及 390 px 寬度下顯示五個 QR 碼和「編輯」欄位，沒有水平溢出。Android 匯入尚未驗證。
+- 部署：指定測試主機上的 `~/apps/vps-server` 已更新；先前應用程式檔案備份於儲存庫外。持久化節點及管理員狀態未變。web、anytls 和 proxy 服務仍已啟用並運作。
 
 
 ## 變更紀錄
@@ -317,4 +320,5 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - `2477fcc` docs: record node deployment handoff
 - `d31e40f` docs(log): synchronize commit history
 - `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
-- (this commit) docs(log): record measured node acceptance
+- `da5f84f` docs(log): record measured node acceptance
+- (this commit) feat(proxy): add Clash Meta import and GiB node controls

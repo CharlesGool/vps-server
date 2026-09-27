@@ -7,6 +7,7 @@ HTTP connections.
 
 import atexit
 import base64
+import html
 import http.client
 import json
 import os
@@ -23,7 +24,7 @@ import unittest
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote, urlsplit
 from unittest.mock import patch
 
 TEST_DATA_DIR = tempfile.mkdtemp(prefix="vpssrv-test-")
@@ -115,7 +116,7 @@ class ConsoleTest(unittest.TestCase):
 
             form = urlencode({"protocol": "anytls", "csrf": app.node_csrf_token(session, "anytls"),
                               "name": "New name", "port": "25002", "credential": "",
-                              "sni": "example.org", "cap_mib": "12", "expires_at": "",
+                              "sni": "example.org", "cap_gib": "12", "expires_at": "",
                               "reset_mode": "monthly", "next_reset_at": ""})
             conn = self.connect()
             conn.request("POST", "/proxy/node/edit", body=form,
@@ -127,7 +128,70 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 302)
             self.assertEqual(len(applied), 1)
             self.assertEqual(applied[0]["id"], identifier)
-            self.assertEqual(applied[0]["cap_bytes"], 12 * 1048576)
+            self.assertEqual(applied[0]["cap_bytes"], 12 * 1073741824)
+
+    def test_clash_subscription_is_single_node_and_revoked_on_edit(self):
+        node = {"id": "12345678-1234-4234-8234-123456789abc", "number": 1,
+                "name": "Office node", "protocol": "anytls", "port": 25001,
+                "inbound": {"type": "anytls", "listen_port": 25001,
+                            "users": [{"password": "test-secret"}],
+                            "tls": {"certificate_path": "/missing/cert.pem"}},
+                "cap_bytes": None, "upload_bytes": 0, "download_bytes": 0,
+                "expires_at": None, "reset_mode": "none", "next_reset_at": None}
+        state_file = Path(TEST_DATA_DIR) / "clash-node-state.json"
+        state_file.write_text("{}")
+        path = f"/clash/sub/anytls/{app.clash_share_token(node)}"
+        with patch.object(app, "read_inventory", return_value={"nodes": [node]}), \
+             patch.object(app, "NODE_STATE_PATH", state_file), \
+             patch.object(app, "anytls_node", return_value={"running": True, "port": 25001,
+                                                             "password": "test-secret", "sni": "example.org"}), \
+             patch.object(app, "proxy_nodes", return_value=[]), \
+             patch.object(app, "local_addresses", return_value=[("eth0", "192.168.50.23")]), \
+             patch.object(app, "_cert_common_name", return_value="example.org"):
+            conn = self.connect()
+            conn.request("GET", "/proxy", headers={"Cookie": "session=" + self.login()})
+            response = conn.getresponse()
+            page = response.read().decode()
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertIn("Traffic cap (GiB)", page)
+            self.assertIn('name="cap_gib"', page)
+            self.assertIn('class="node-import"', page)
+            self.assertIn("/static/qrcode-render.js", page)
+            link = html.unescape(re.search(r'class="node-import" href="([^"]+)', page).group(1))
+            self.assertEqual(urlsplit(link).scheme, "clash")
+            self.assertIn(path, unquote(link))
+            self.assertNotIn(node["id"], page)
+            conn = self.connect()
+            conn.request("GET", path)
+            response = conn.getresponse()
+            profile = response.read().decode()
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertIn("text/yaml", response.getheader("Content-Type"))
+            self.assertEqual(response.getheader("Cache-Control"), "no-store")
+            self.assertIn("mixed-port: 7890", profile)
+            self.assertIn("server: 192.168.50.23", profile)
+            self.assertIn('name: "Office node"', profile)
+            self.assertIn('password: "test-secret"', profile)
+            self.assertIn("- MATCH,NODE", profile)
+            node["name"] = "Renamed node"
+            conn = self.connect()
+            conn.request("GET", path)
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 404)
+
+    def test_clash_profile_escapes_custom_password(self):
+        password = 'quote" and\nline'
+        node = {"protocol": "trojan", "name": "Node", "port": 24000,
+                "inbound": {"users": [{"password": password}],
+                            "tls": {"certificate_path": "/missing/cert.pem"}}}
+        with patch.object(app, "_cert_common_name", return_value="example.org"):
+            profile = app.clash_profile(node, "192.168.50.23")
+        self.assertIn("password: " + json.dumps(password), profile)
+        self.assertNotIn(password, profile)
 
     def test_frps_panel_requires_auth_and_never_appears_on_auth_off_console(self):
         config = Path(TEST_DATA_DIR) / 'frps.toml'
