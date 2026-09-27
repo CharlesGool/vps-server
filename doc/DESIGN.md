@@ -56,11 +56,11 @@ describe the four previously documented modules.
 
 **Tracked goals and current status:**
 
-- [ ] 2026-09-19 Per-node traffic accounting, data cap, and expiry: track upload/download per node; disable the node when its cap or expiry date is reached; show totals in the console. Requires design and operator review.
+- [ ] 2026-09-19 Per-node traffic accounting, data cap, and expiry: track upload/download for each of the five proxy protocols; after the cap or expiry, police upload and download independently at 1 Mbps. A monthly or specified-time cycle clears the period count and lifts the limit. The branch implementation still requires live-host acceptance.
 - [x] 2026-09-19 Browser-based first-run setup: this checkout uses a short-lived setup wizard in `tools/setup_wizard/setup_wizard.py` when the interactive installer has no `VPSSRV_MODULES` value. It collects language, modules, ports, and authentication choices; the shell installer performs the selected actions only after validating the result. This checkout has not been accepted on a real host.
 - [ ] 2026-09-22 Complete frps console support for tokens and connection information. The installer now offers frps on this checkout, but the console requirement remains unscoped: decide whether token information means an auth token, client config snippet, or connected-proxy list.
 - [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
-- [ ] Scope the highly-customizable-node request recorded in the same snapshot; no implementation criteria were recorded there.
+- [ ] Complete live-host acceptance of the node controls: stable numbered nodes with editable names and hidden UUIDs; editable port, credential, and SNI for TLS nodes; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. The branch has local implementation and tests, but no host acceptance yet.
 
 The shared SQLite-lock concern is a [known unresolved measurement question][local-link-002], not a mandate to change the architecture. Historical completed work and verification records are in [LOG][local-link-003].
 

@@ -50,11 +50,11 @@ La version 2.0.0 comprend également des parcours d’installation expérimentau
 
 **Objectifs suivis et état actuel :**
 
-- [ ] 2026-09-19 Comptabilisation du trafic par nœud, quota de données et expiration : suivre les volumes montant et descendant par nœud ; désactiver le nœud lorsque son quota ou sa date d'expiration est atteint ; afficher les totaux dans la console. Conception et examen par l'opérateur nécessaires.
+- [ ] 2026-09-19 Trafic, quota de données et expiration par nœud : suivre les volumes montant et descendant de chaque nœud des cinq protocoles proxy ; après le quota ou l’expiration, limiter chaque direction séparément à 1 Mbps. Un cycle mensuel ou à une date définie remet à zéro les compteurs de la période et lève la limite. Cette branche attend encore une validation sur un hôte réel.
 - [x] 2026-09-19 Configuration initiale dans le navigateur : cette version utilise un assistant de configuration de courte durée dans `tools/setup_wizard/setup_wizard.py` lorsque l’installateur interactif ne reçoit aucune valeur `VPSSRV_MODULES`. Il recueille les choix de langue, de modules, de ports et d’authentification ; l’installateur shell n’exécute les actions choisies qu’après validation du résultat. Cette version n’a pas encore été validée sur un hôte réel.
 - [ ] 2026-09-22 Achever la prise en charge de frps dans la console pour les jetons et les informations de connexion. L’installateur propose désormais frps, mais le périmètre de la console reste à définir : ces informations désignent-elles un jeton d’authentification, un extrait de configuration client ou une liste des proxys connectés ?
 - [ ] Définir le périmètre de la demande plus large de fonctionnalités de `gdy666/lucky` consignée dans l’instantané du 2026-09-22. Le dépôt propose maintenant un parcours d’installation de Lucky, mais aucune liste de fonctionnalités plus larges ni aucun critère de validation n’étaient consignés.
-- [ ] Définir le périmètre de la demande de nœuds hautement personnalisables consignée dans le même instantané ; aucun critère d'implémentation n'y figure.
+- [ ] Terminer la validation des contrôles des nœuds sur un hôte réel : numéros stables, noms modifiables et UUID masqués ; modification du port, de l’identifiant et du SNI des nœuds TLS ; SNI indiqué comme sans objet pour Shadowsocks ; changement aléatoire du port et de l’identifiant sans modifier le SNI. La branche dispose d’une implémentation et de tests locaux, mais pas encore de validation sur hôte.
 
 La question du verrou SQLite partagé est une [question de mesure connue mais non résolue][local-link-002], pas une obligation de modifier l'architecture. Les travaux achevés et les vérifications historiques figurent dans le [LOG][local-link-003].
 

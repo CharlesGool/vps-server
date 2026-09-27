@@ -85,6 +85,8 @@ class OperationsTests(unittest.TestCase):
         identifier = node["id"]
         self.inventory["nodes"][1]["upload_bytes"] = 8
         self.inventory["nodes"][1]["download_bytes"] = 2
+        self.inventory["nodes"][1]["total_upload_bytes"] = 8
+        self.inventory["nodes"][1]["total_download_bytes"] = 2
         updated = edit_node(self.inventory, identifier,
                             {"name": "renamed", "port": 30000, "cap_bytes": 11,
                              "expires_at": "2031-01-01T00:00:00+00:00",
@@ -99,7 +101,6 @@ class OperationsTests(unittest.TestCase):
         for change in ({"id": str(uuid.uuid4())}, {"protocol": "trojan"},
                        {"inbound": {}}, {"upload_bytes": 0}, {"enabled": False},
                        {"cap_bytes": 0}, {"port": 20003}, {"port": 40000},
-                       {"name": self.inventory["nodes"][0]["name"]},
                        {"credential": "invalid"}, {"expires_at": "2030-01-01"}):
             with self.subTest(change=change), self.assertRaises(InvalidInventory):
                 edit_node(self.inventory, identifier, change, reserved_ports=[40000])
@@ -111,14 +112,15 @@ class OperationsTests(unittest.TestCase):
         first["expires_at"] = "2030-01-01T00:00:00+00:00"
         second["cap_bytes"] = 10
         second["upload_bytes"] = 10
+        second["total_upload_bytes"] = 10
         third["enabled"] = False
         original = copy.deepcopy(self.inventory)
         rendered = render_effective_config(self.inventory, now=NOW)
         self.assertEqual([i["tag"] for i in rendered["inbounds"]],
-                         [n["inbound"]["tag"] for n in (second, *self.inventory["nodes"][3:])])
+                         [n["inbound"]["tag"] for n in (first, second, *self.inventory["nodes"][3:])])
         self.assertEqual(self.inventory, original)
-        with self.assertRaises(InvalidInventory):
-            set_enabled_by_id(self.inventory, first["id"], True, now=NOW)
+        self.assertTrue(set_enabled_by_id(self.inventory, first["id"], True, now=NOW)
+                        ["nodes"][0]["enabled"])
         self.assertTrue(set_enabled_by_id(self.inventory, second["id"], True, now=NOW)
                         ["nodes"][1]["enabled"])
         enabled = set_enabled_by_id(self.inventory, third["id"], True, now=NOW)

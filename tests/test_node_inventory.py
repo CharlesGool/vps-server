@@ -47,6 +47,7 @@ class InventoryTests(unittest.TestCase):
         state = self.imported()
         self.assertEqual(state, self.imported())
         state["nodes"][0]["upload_bytes"] = 42
+        state["nodes"][0]["total_upload_bytes"] = 42
         self.assertEqual(import_legacy(self.anytls, self.proxy, migration_namespace=NAMESPACE,
                                        existing=state), state)
         self.assertEqual((self.anytls, self.proxy), original)
@@ -66,7 +67,8 @@ class InventoryTests(unittest.TestCase):
         second.update(id="6c101472-c204-460d-a193-29d72fb5e590", number=6,
                       name="second node", port=30001,
                       enabled=False, cap_bytes=1024, expires_at="2030-01-01T00:00:00+00:00",
-                      upload_bytes=200, download_bytes=400, counter_epoch=1)
+                      upload_bytes=200, download_bytes=400,
+                      total_upload_bytes=200, total_download_bytes=400, counter_epoch=1)
         second["inbound"]["tag"] = "anytls-second"
         second["inbound"]["listen_port"] = 30001
         state["nodes"].append(second)

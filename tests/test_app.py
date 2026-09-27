@@ -79,6 +79,56 @@ class ConsoleTest(unittest.TestCase):
         jar.load(cookie_header)
         return jar["session"].value
 
+    def test_managed_node_page_and_edit_request(self):
+        identifier = "12345678-1234-4234-8234-123456789abc"
+        node = {"id": identifier, "number": 7, "name": "Tokyo node",
+                "protocol": "anytls", "port": 25001,
+                "inbound": {"tls": {"certificate_path": "/missing/cert.pem"}},
+                "cap_bytes": 10485760, "upload_bytes": 1048576,
+                "download_bytes": 2097152, "expires_at": None,
+                "reset_mode": "monthly", "next_reset_at": "2030-02-01T00:00:00+00:00"}
+        applied = []
+        session = self.login()
+        state_file = Path(TEST_DATA_DIR) / "managed-node-state.json"
+        state_file.write_text("{}")
+        with patch.object(app, "read_inventory", return_value={"nodes": [node]}), \
+             patch.object(app, "NODE_STATE_PATH", state_file), \
+             patch.object(app, "_read_json", return_value={"ledger": {"nodes": {
+                 identifier: {"suspect": False}}}}), \
+             patch.object(app, "anytls_node", return_value={"running": True,
+                 "port": 25001, "password": "test-secret", "sni": "example.org"}), \
+             patch.object(app, "proxy_nodes", return_value=[]), \
+             patch.object(app, "address_entries", return_value=[]), \
+             patch.object(app, "node_control_apply", side_effect=lambda request: applied.append(request) or True):
+            conn = self.connect()
+            conn.request("GET", "/proxy", headers={"Cookie": f"session={session}"})
+            response = conn.getresponse()
+            body = response.read().decode()
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertIn("Tokyo node", body)
+            self.assertIn("#7", body)
+            self.assertIn("1.0 MiB", body)
+            self.assertIn('action="/proxy/node/edit"', body)
+            self.assertNotIn('action="/anytls/reset"', body)
+            self.assertNotIn(identifier, body)
+
+            form = urlencode({"protocol": "anytls", "csrf": app.node_csrf_token(session, "anytls"),
+                              "name": "New name", "port": "25002", "credential": "",
+                              "sni": "example.org", "cap_mib": "12", "expires_at": "",
+                              "reset_mode": "monthly", "next_reset_at": ""})
+            conn = self.connect()
+            conn.request("POST", "/proxy/node/edit", body=form,
+                         headers={"Cookie": f"session={session}",
+                                  "Content-Type": "application/x-www-form-urlencoded"})
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 302)
+            self.assertEqual(len(applied), 1)
+            self.assertEqual(applied[0]["id"], identifier)
+            self.assertEqual(applied[0]["cap_bytes"], 12 * 1048576)
+
     def test_frps_panel_requires_auth_and_never_appears_on_auth_off_console(self):
         config = Path(TEST_DATA_DIR) / 'frps.toml'
         config.write_text('bindAddr = "0.0.0.0"\nbindPort = 7000\nauth.token = "test-frps-secret"\n')
@@ -395,6 +445,8 @@ class ConsoleTest(unittest.TestCase):
             # STATIC_FILES are computed from the deployment, not patched here.
             prefix = Path(directory)
             shutil.copy2(repo_static.parent / "src" / "web" / "app.py", prefix / "app.py")
+            for module in ("node_accounting", "node_inventory", "node_state"):
+                shutil.copy2(repo_static.parent / "src" / "web" / f"{module}.py", prefix / f"{module}.py")
             shutil.copytree(repo_static, prefix / "static")
             shutil.copytree(repo_static.parent / "lang", prefix / "lang")
             check = '''import app, http.client, json, threading

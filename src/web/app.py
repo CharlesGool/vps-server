@@ -36,6 +36,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
@@ -61,6 +62,10 @@ def load_dotenv(path):
 BASE_DIR = Path(__file__).resolve().parent
 if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_file():
     BASE_DIR = BASE_DIR.parent.parent
+# The same modules live beside app.py after installation and under src/web in
+# a checkout. Keep their imports independent of the caller's working directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from node_state import read_inventory, _read_json
 
 
 def _read_version():
@@ -797,12 +802,13 @@ ANYTLS_RESET_UNIT = "vps-server-anytls-reset.service"
 
 
 def _cert_common_name(path):
-    """The SNI is not stored in the sing-box config — only as the self-signed
-    certificate's CN, which setup-anytls.sh sets from $SNI. Read it back from
-    there rather than duplicating the value somewhere it could drift.
-    """
+    """Read the node's requested server name from SAN, then legacy CN."""
     if not path or not shutil.which("openssl"):
         return ""
+    san = _cmd_output(["openssl", "x509", "-in", path, "-noout", "-ext", "subjectAltName"])
+    match = re.search(r"(?:DNS:|IP Address:)([^,\s]+)", san)
+    if match:
+        return match.group(1).strip()
     out = _cmd_output(["openssl", "x509", "-in", path, "-noout", "-subject"])
     match = re.search(r"CN\s*=\s*([^,/\n]+)", out)
     return match.group(1).strip() if match else ""
@@ -1019,6 +1025,10 @@ PROXY_SETUP = Path(
 )
 PROXY_RESET_TIMEOUT = 120
 PROXY_RESET_UNIT = "vps-server-proxy-reset.service"
+NODE_STATE_PATH = Path("/etc/vps-server-nodes/state.json")
+NODE_METER_PATH = NODE_STATE_PATH.parent / "meter.json"
+NODE_CONTROL_HELPER = BASE_DIR / "node_control.py"
+NODE_CONTROL_UNIT = "vps-server-node-control.service"
 NODE_CONFIG_HELPER = BASE_DIR / "node_config.py"  # installed, root-owned helper
 NODE_APPLY_UNIT = "vps-server-node-apply.service"
 NODE_APPLY_TIMEOUT = 120
@@ -1053,6 +1063,30 @@ def node_apply(protocol, credential):
     except OSError:
         return "node_apply_failed"
     return "node_apply_done" if result.returncode == 0 else "node_apply_failed"
+
+
+def node_control_apply(request):
+    """Send one ID-based edit to the privileged transactional helper."""
+    if not NODE_CONTROL_HELPER.is_file():
+        return False
+    direct = ["/usr/bin/python3", str(NODE_CONTROL_HELPER), "apply"]
+    systemd_run = shutil.which("systemd-run")
+    if not systemd_run and Path("/run/systemd/system").exists():
+        return False
+    command = (["systemd-run", "--pipe", "--wait", "--collect",
+                f"--unit={NODE_CONTROL_UNIT}", *direct]
+               if systemd_run else direct)
+    try:
+        result = subprocess.run(command, input=json.dumps(request).encode("utf-8"),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                timeout=NODE_APPLY_TIMEOUT, check=False)
+    except subprocess.TimeoutExpired:
+        if systemd_run:
+            _run_quiet(["systemctl", "stop", NODE_CONTROL_UNIT])
+        return False
+    except OSError:
+        return False
+    return result.returncode == 0
 # Display order only — config.json's own inbounds order already matches this
 # (setup-proxy.sh writes them in ALL_PROTOCOLS order), but a config hand-
 # edited or produced some other way should not scramble the console page.
@@ -1089,7 +1123,11 @@ def proxy_nodes():
             secret = user0.get("password", "")
         else:  # shadowsocks: password sits on the inbound itself, not a user
             secret = inbound.get("password", "")
-        nodes.append({"type": proto, "port": inbound.get("listen_port", ""), "secret": secret})
+        tls = inbound.get("tls") or {}
+        nodes.append({"type": proto, "port": inbound.get("listen_port", ""),
+                      "secret": secret,
+                      "sni": _cert_common_name(tls.get("certificate_path", ""))
+                      if proto != "shadowsocks" else ""})
     order = {p: i for i, p in enumerate(PROXY_PROTOCOL_ORDER)}
     nodes.sort(key=lambda n: order.get(n["type"], len(PROXY_PROTOCOL_ORDER)))
     return nodes
@@ -1256,7 +1294,8 @@ ANYTLS_MESSAGE_KEYS = frozenset({
     "anytls_reset_timeout", "anytls_reset_missing",
 })
 
-NODE_APPLY_MESSAGE_KEYS = frozenset({"node_apply_done", "node_apply_failed"})
+NODE_APPLY_MESSAGE_KEYS = frozenset({"node_apply_done", "node_apply_failed",
+                                     "node_settings_done", "node_settings_failed", "node_reset_done"})
 
 PROXY_MESSAGE_KEYS = frozenset({
     "proxy_reset_done", "proxy_reset_unconfirmed", "proxy_reset_failed",
@@ -2019,6 +2058,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.page_proxy(lang, query_lang)
         if method == "POST" and path == "/proxy/reset":
             return self.handle_proxy_reset()
+        if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/reset"):
+            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.handle_node_control(path.endswith("/reset"))
         if method == "POST" and path == "/proxy/apply":
             if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
@@ -2561,6 +2604,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         t = STRINGS[lang]
         anytls = anytls_node()
         nodes = proxy_nodes()
+        try:
+            inventory = read_inventory(state_path=NODE_STATE_PATH,
+                                       config_paths={"anytls": ANYTLS_CONFIG,
+                                                     "proxy": PROXY_CONFIG})
+            managed = {node["protocol"]: node for node in inventory["nodes"]} if inventory else {}
+            meter = _read_json(NODE_METER_PATH) or {}
+            meter_nodes = meter.get("ledger", {}).get("nodes", {})
+        except (OSError, ValueError, TypeError, AttributeError):
+            managed, meter_nodes = {}, {}
+        legacy_controls = not NODE_STATE_PATH.exists()
         if anytls is None and not nodes:
             body = f"""
             <div class="card">
@@ -2582,7 +2635,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             notice = (f'<p class="{cls}">'
                       f'{html.escape(t[key].format(service=ANYTLS_SERVICE))}</p>')
         elif key in NODE_APPLY_MESSAGE_KEYS:
-            cls = "notice" if key == "node_apply_done" else "error"
+            cls = "notice" if key in ("node_apply_done", "node_settings_done", "node_reset_done") else "error"
             notice = f'<p class="{cls}">{html.escape(t[key])}</p>'
         elif key in PROXY_MESSAGE_KEYS:
             cls = "notice" if key == "proxy_reset_done" else "error"
@@ -2615,7 +2668,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             sections.append(f"""
             <article class="proxy-node">
               <header class="proxy-node-header">
-                <div><span class="proxy-node-protocol">anytls</span><h2>anytls</h2></div>
+                <div><span class="proxy-node-protocol">anytls</span><h2>{html.escape(managed['anytls']['name'] if 'anytls' in managed else 'anytls')}</h2></div>
                 <span class="proxy-node-status {state_class}">{html.escape(t['node_active'] if anytls['running'] else t['node_stopped'])}</span>
               </header>
               {health}
@@ -2631,9 +2684,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 <dd>{html.escape(anytls['sni'] or '—')}</dd>
               </dl>
               <div class="proxy-node-addresses">{"".join(blocks)}</div>
+              {self.node_metrics(managed.get('anytls'), meter_nodes, t)}
               <details class="proxy-node-settings">
                 <summary>{html.escape(t['node_manage'])}</summary>
-                {self.node_credential_form('anytls', t['anytls_password'], t)}
+                {self.node_settings_form('anytls', anytls['port'], anytls['sni'], managed.get('anytls'), t)}
+                {self.node_credential_form('anytls', t['anytls_password'], t) if legacy_controls else ''}
+                {f'''
                 <form method="post" action="/anytls/reset" class="proxy-node-reset">
                   <label class="checkline">
                     <input type="checkbox" name="confirm" value="yes" required>
@@ -2641,18 +2697,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   </label>
                   <button type="submit" class="danger">{html.escape(t['anytls_reset'])}</button>
                 </form>
+                ''' if legacy_controls else ''}
               </details>
             </article>
             """)
 
         if nodes:
-            # One shared self-signed cert for every TLS-using protocol
-            # (vmess, vless, trojan) — see proxy/setup-proxy.sh — so the SNI
-            # is read back once from that one certificate's CN, same trick
-            # anytls uses for its own node. shadowsocks has no TLS layer, so
-            # it gets no SNI. The proxy module's own public-ip.txt is
-            # independent of anytls's — see address_entries()'s docstring.
-            sni = _cert_common_name(str(PROXY_CONFIG.parent / "cert" / "fullchain.pem"))
             proxy_entries = address_entries(t, proxy_public_address(), host)
             if proxy_running():
                 proxy_state = t["proxy_state_running"]
@@ -2671,7 +2721,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 if proto != "shadowsocks":
                     sni_row = f"""
                     <dt>{html.escape(t['proxy_sni'])}</dt>
-                    <dd>{html.escape(sni or '—')}</dd>
+                    <dd>{html.escape(node['sni'] or '—')}</dd>
                     """
                 blocks = []
                 for label, address in proxy_entries:
@@ -2683,7 +2733,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 <article class="proxy-node">
                   <header class="proxy-node-header">
                     <div><span class="proxy-node-protocol">{html.escape(proto)}</span>
-                      <h2>{html.escape(proto)}</h2></div>
+                      <h2>{html.escape(managed[proto]['name'] if proto in managed else proto)}</h2></div>
                     <span class="proxy-node-status {proxy_state_class}">{html.escape(t['node_active'] if proxy_state_class == 'is-open' else t['node_stopped'])}</span>
                   </header>
                   {proxy_health}
@@ -2698,9 +2748,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     {sni_row}
                   </dl>
                   <div class="proxy-node-addresses">{"".join(blocks)}</div>
+                  {self.node_metrics(managed.get(proto), meter_nodes, t)}
                   <details class="proxy-node-settings">
                     <summary>{html.escape(t['node_manage'])}</summary>
-                    {self.node_credential_form(proto, secret_label, t)}
+                    {self.node_settings_form(proto, node['port'], node['sni'], managed.get(proto), t)}
+                    {self.node_credential_form(proto, secret_label, t) if legacy_controls else ''}
+                    {f'''
                     <form method="post" action="/proxy/reset" class="proxy-node-reset">
                       <input type="hidden" name="protocol" value="{html.escape(proto)}">
                       <label class="checkline">
@@ -2709,6 +2762,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                       </label>
                       <button type="submit" class="danger">{html.escape(t['proxy_reset'])}</button>
                     </form>
+                    ''' if legacy_controls else ''}
                   </details>
                 </article>
                 """)
@@ -2737,6 +2791,66 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
+    def node_metrics(self, node, meter_nodes, t):
+        if node is None:
+            return ""
+        def size(value):
+            return f"{value / 1048576:.1f} MiB"
+        used = node["upload_bytes"] + node["download_bytes"]
+        cap = node["cap_bytes"]
+        try:
+            suspect = bool(meter_nodes[node["id"]]["suspect"])
+        except (KeyError, TypeError):
+            suspect = True
+        limited = suspect or (cap is not None and used >= cap) or (
+            node["expires_at"] is not None and
+            datetime.fromisoformat(node["expires_at"]) <= datetime.now(timezone.utc))
+        limit = t["node_limited"] if limited else t["node_normal"]
+        cap_label = size(cap) if cap is not None else t["node_unlimited"]
+        reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
+        return f'''<div class="node-usage" aria-label="{html.escape(t['node_traffic'])}">
+          <span class="node-number">#{node['number']}</span>
+          <div><small>{html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong></div>
+          <div><small>{html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong></div>
+          <div><small>{html.escape(t['node_cap'])}</small><strong>{html.escape(cap_label)}</strong></div>
+          <div><small>{html.escape(t['node_next_reset'])}</small><strong>{html.escape(reset_label)}</strong></div>
+          <span class="node-limit {'is-limited' if limited else ''}">{html.escape(limit)}</span>
+        </div>'''
+
+    def node_settings_form(self, protocol, port, sni, node, t):
+        if node is None:
+            return ""
+        token = node_csrf_token(self.get_cookie("session"), protocol)
+        cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1048576)
+        expiry = node["expires_at"][:16] if node["expires_at"] else ""
+        next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
+        options = "".join(f'<option value="{mode}"{" selected" if mode == node["reset_mode"] else ""}>{html.escape(t[key])}</option>'
+                          for mode, key in (("none", "node_reset_none"), ("monthly", "node_reset_monthly"), ("once", "node_reset_once")))
+        sni_field = (f'<label>{html.escape(t["proxy_sni"])}<input name="sni" value="{html.escape(sni, quote=True)}" required></label>'
+                     if protocol != "shadowsocks" else
+                     f'<p class="muted">{html.escape(t["proxy_sni"])}: {html.escape(t["node_not_applicable"])}</p>')
+        return f'''<form method="post" action="/proxy/node/edit" autocomplete="off" class="node-settings-form">
+          <input type="hidden" name="protocol" value="{html.escape(protocol)}">
+          <input type="hidden" name="csrf" value="{token}">
+          <div class="node-form-grid">
+            <label>{html.escape(t['node_name'])}<input name="name" maxlength="64" value="{html.escape(node['name'], quote=True)}" required></label>
+            <label>{html.escape(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{port}" required></label>
+            <label>{html.escape(t['node_credential'])}<input name="credential" value="" placeholder="{html.escape(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
+            {sni_field}
+            <label>{html.escape(t['node_cap_mib'])}<input type="number" name="cap_mib" min="0.001" max="100000000" step="any" value="{cap}" placeholder="{html.escape(t['node_unlimited'], quote=True)}"></label>
+            <label>{html.escape(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
+            <label>{html.escape(t['node_reset_schedule'])}<select name="reset_mode">{options}</select></label>
+            <label>{html.escape(t['node_reset_time_utc'])}<input type="datetime-local" name="next_reset_at" value="{next_reset}"></label>
+          </div><button type="submit">{html.escape(t['node_save_settings'])}</button>
+        </form>
+        <form method="post" action="/proxy/node/reset" class="proxy-node-reset">
+          <input type="hidden" name="protocol" value="{html.escape(protocol)}">
+          <input type="hidden" name="csrf" value="{token}">
+          <label class="checkline"><input type="checkbox" name="confirm" value="yes" required>
+            <span>{html.escape(t['node_random_confirm'])}</span></label>
+          <button type="submit" class="danger">{html.escape(t['node_random_reset'])}</button>
+        </form>'''
+
     def node_credential_form(self, protocol, label, t):
         token = node_csrf_token(self.get_cookie("session"), protocol)
         return f"""
@@ -2749,6 +2863,94 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <button type="submit">{html.escape(t['node_save_credential'])}</button>
         </form>
         """
+
+    def handle_node_control(self, reset):
+        """Validate the browser request, then identify the node only on server."""
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if (not 0 < length <= 4096 or
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
+                "application/x-www-form-urlencoded"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = parse_qs(self.rfile.read(length).decode("utf-8"),
+                            strict_parsing=True, keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if any(len(values) != 1 for values in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        protocol = form.get("protocol", [""])[0]
+        session = self.get_cookie("session")
+        if protocol not in NODE_PROTOCOLS or not hmac.compare_digest(
+                form.get("csrf", [""])[0], node_csrf_token(session, protocol)):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        expected = ({"protocol", "csrf", "confirm"} if reset else
+                    {"protocol", "csrf", "name", "port", "credential", "cap_mib",
+                     "expires_at", "reset_mode", "next_reset_at"} |
+                    ({"sni"} if protocol != "shadowsocks" else set()))
+        if set(form) != expected:
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if reset and form["confirm"][0] != "yes":
+            return self.redirect("/proxy?msg=node_settings_failed")
+        try:
+            inventory = read_inventory(state_path=NODE_STATE_PATH,
+                                       config_paths={"anytls": ANYTLS_CONFIG,
+                                                     "proxy": PROXY_CONFIG})
+            node = next(node for node in inventory["nodes"] if node["protocol"] == protocol)
+        except (OSError, ValueError, TypeError, StopIteration):
+            return self.redirect("/proxy?msg=node_settings_failed")
+        request = {"action": "reset" if reset else "edit", "id": node["id"]}
+        if not reset:
+            try:
+                request["name"] = form["name"][0]
+                request["port"] = int(form["port"][0])
+                credential = form["credential"][0]
+                if credential:
+                    request["credential"] = credential
+                cap = form["cap_mib"][0].strip()
+                if cap:
+                    amount = Decimal(cap)
+                    if not amount.is_finite() or not 0 < amount <= 100000000:
+                        raise ValueError("invalid cap")
+                    request["cap_bytes"] = int(amount * 1048576)
+                else:
+                    request["cap_bytes"] = None
+                def date_value(value):
+                    if not value:
+                        return None
+                    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
+                        raise ValueError("invalid date")
+                    return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).isoformat()
+                request["expires_at"] = date_value(form["expires_at"][0])
+                mode = form["reset_mode"][0]
+                if mode not in ("none", "monthly", "once"):
+                    raise ValueError("invalid reset mode")
+                request["reset_mode"] = mode
+                if mode == "monthly":
+                    now = datetime.now(timezone.utc)
+                    year = now.year + (now.month == 12)
+                    month = now.month % 12 + 1
+                    request["next_reset_at"] = datetime(year, month, 1,
+                                                           tzinfo=timezone.utc).isoformat()
+                elif mode == "once":
+                    request["next_reset_at"] = date_value(form["next_reset_at"][0])
+                    if request["next_reset_at"] is None or \
+                            datetime.fromisoformat(request["next_reset_at"]) <= datetime.now(timezone.utc):
+                        raise ValueError("reset must be future")
+                else:
+                    request["next_reset_at"] = None
+                if protocol != "shadowsocks":
+                    sni = form["sni"][0]
+                    current = _cert_common_name(node["inbound"]["tls"]["certificate_path"])
+                    if sni != current:
+                        request["sni"] = sni
+            except (ValueError, InvalidOperation, OverflowError, KeyError):
+                return self.redirect("/proxy?msg=node_settings_failed")
+        success = node_control_apply(request)
+        key = ("node_reset_done" if reset else "node_settings_done") if success else "node_settings_failed"
+        return self.redirect(f"/proxy?msg={key}", {"Cache-Control": "no-store"})
 
     def handle_node_apply(self):
         # Reject oversized/ambiguous forms before parsing or invoking the helper.
@@ -2775,10 +2977,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         credential = form["credential"][0]
         if not credential or len(credential.encode("utf-8")) > 128:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if NODE_STATE_PATH.exists():
+            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
         self.redirect(f"/proxy?msg={node_apply(protocol, credential)}",
                       {"Cache-Control": "no-store"})
 
     def handle_anytls_reset(self):
+        if NODE_STATE_PATH.exists():
+            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
         raw = self.read_body(LOGIN_BODY_LIMIT)
         form = parse_qs(raw.decode("utf-8", errors="replace"))
         # Checked on the server, not just by the `required` attribute: this
@@ -2791,6 +2997,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.redirect(f"/proxy?msg={anytls_reset()}")
 
     def handle_proxy_reset(self):
+        if NODE_STATE_PATH.exists():
+            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
         raw = self.read_body(LOGIN_BODY_LIMIT)
         form = parse_qs(raw.decode("utf-8", errors="replace"))
         if form.get("confirm", [""])[0] != "yes":

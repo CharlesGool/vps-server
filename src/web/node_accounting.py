@@ -4,10 +4,11 @@ Upload is client -> server; download is server -> client. The caller must supply
 one isolated counter per node's unique listener port, family and direction.
 Counters are unsigned 64-bit bytes with a monotonically increasing epoch. An
 unobserved interval or reset cannot recover lost bytes: suspicion is sticky and
-requires external reconciliation before service can be unrestricted again.
+requests a 1 Mbps safety limit until a new cycle begins.
 No kernel rules are read or installed here.
 """
 
+import calendar
 import copy
 from datetime import datetime, timezone
 
@@ -52,6 +53,7 @@ def _state(inventory, state):
     for node in inventory["nodes"]:
         for direction in DIRECTIONS:
             _uint(node[f"{direction}_bytes"])
+            _uint(node[f"total_{direction}_bytes"])
         _uint(node["counter_epoch"])
         _uint(node["upload_bytes"] + node["download_bytes"])
         entry = state["nodes"].get(node["id"])
@@ -126,6 +128,7 @@ def update_accounting(inventory, state, snapshots):
                 else:
                     delta = sample["bytes"] - previous["bytes"]
                 node[f"{direction}_bytes"] = _uint(node[f"{direction}_bytes"] + delta)
+                node[f"total_{direction}_bytes"] = _uint(node[f"total_{direction}_bytes"] + delta)
         _uint(node["upload_bytes"] + node["download_bytes"])
         entry["samples"] = current
     validate_inventory(result)
@@ -133,11 +136,7 @@ def update_accounting(inventory, state, snapshots):
 
 
 def desired_policy(inventory, state, *, now):
-    """Return per-ID desired decisions; suspect metrics fail closed (active=False).
-
-    None rates mean no shaping request, never an authorization to ignore a
-    suspect result. Expiry takes precedence over cap for active service.
-    """
+    """Return per-ID decisions; caps and dates both request a 1 Mbps limit."""
     validate_inventory(inventory)
     _state(inventory, state)
     _now(now)
@@ -149,10 +148,60 @@ def desired_policy(inventory, state, *, now):
                    datetime.fromisoformat(node["expires_at"]) <= now)
         used = node["upload_bytes"] + node["download_bytes"]
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
-        active = node["enabled"] and not expired and not suspect
+        active = node["enabled"]
+        throttled = capped or expired or suspect
         policy[node["id"]] = {"active": active, "expired": expired,
                               "capped": capped,
-                              "upload_bps": LIMIT_BPS if active and capped else None,
-                              "download_bps": LIMIT_BPS if active and capped else None,
+                              "upload_bps": LIMIT_BPS if active and throttled else None,
+                              "download_bps": LIMIT_BPS if active and throttled else None,
                               "suspect": suspect}
     return policy
+
+
+def _month_after(value):
+    """Advance a UTC date one month, clamping the day when necessary."""
+    year = value.year + (value.month == 12)
+    month = value.month % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def advance_cycles(inventory, state, *, now):
+    """Start due cycles after the latest counter sample has been persisted.
+
+    Period totals clear; lifetime totals and the last kernel-counter baseline do
+    not. A one-time reset clears its date deadline. Monthly resets move a date
+    deadline by the same number of calendar months as the reset boundary.
+    """
+    validate_inventory(inventory)
+    _state(inventory, state)
+    _now(now)
+    result, ledger = copy.deepcopy(inventory), copy.deepcopy(state)
+    for node in result["nodes"]:
+        if node["next_reset_at"] is None:
+            continue
+        due = datetime.fromisoformat(node["next_reset_at"])
+        if due > now:
+            continue
+        mode = node["reset_mode"]
+        if mode == "once":
+            node["reset_mode"] = "none"
+            node["next_reset_at"] = None
+            node["expires_at"] = None
+        else:
+            months = 0
+            while due <= now:
+                due = _month_after(due)
+                months += 1
+            node["next_reset_at"] = due.isoformat()
+            if node["expires_at"] is not None:
+                expiry = datetime.fromisoformat(node["expires_at"])
+                for _ in range(months):
+                    expiry = _month_after(expiry)
+                node["expires_at"] = expiry.isoformat()
+        node["upload_bytes"] = node["download_bytes"] = 0
+        entry = ledger["nodes"].get(node["id"])
+        if entry is not None and entry["samples"] is not None:
+            entry["suspect"] = False
+    validate_inventory(result)
+    return result, ledger

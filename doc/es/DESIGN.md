@@ -41,11 +41,11 @@ La versión 2.0.0 también contiene rutas de instalación experimentales para fr
 
 **Objetivos registrados y estado actual:**
 
-- [ ] 2026-09-19 Contabilización del tráfico por nodo, límite de datos y caducidad: registrar subida y bajada por nodo; desactivar el nodo cuando se alcance su límite o fecha de caducidad; mostrar los totales en la consola. Requiere diseño y revisión del operador.
+- [ ] 2026-09-19 Tráfico, límite de datos y caducidad por nodo: registrar subida y bajada de cada nodo de los cinco protocolos proxy; tras alcanzar el límite o la fecha de caducidad, limitar cada dirección a 1 Mbps. Un ciclo mensual o en una fecha indicada pone a cero el tráfico del período y retira el límite de velocidad. Esta rama aún requiere validación en un servidor real.
 - [x] 2026-09-19 Configuración inicial desde el navegador: este árbol usa un asistente de configuración de corta duración en `tools/setup_wizard/setup_wizard.py` cuando el instalador interactivo no recibe `VPSSRV_MODULES`. Recoge las opciones de idioma, módulos, puertos y autenticación; el instalador de shell ejecuta las acciones seleccionadas solo después de validar el resultado. Este árbol aún no se ha aceptado en un servidor real.
 - [ ] 2026-09-22 Completar el soporte de frps en la consola para tokens e información de conexión. El instalador actual ya ofrece frps, pero el requisito de la consola sigue sin delimitarse: decidir si la información del token significa un token de autenticación, un fragmento de configuración del cliente o una lista de proxies conectados.
 - [ ] Delimitar la solicitud más amplia de funciones de `gdy666/lucky` registrada en la instantánea de estado del 2026-09-22. El árbol actual ya ofrece una ruta de instalación de Lucky, pero no se registraron una lista más amplia de funciones ni criterios de aceptación.
-- [ ] Delimitar la petición de nodos muy personalizables registrada en el mismo estado; allí no se registraron criterios de implementación.
+- [ ] Completar la validación en un servidor real de los controles de nodos: numeración estable, nombres editables y UUID ocultos; edición de puerto, credencial y SNI en nodos TLS; SNI no aplicable para Shadowsocks; cambio aleatorio de puerto y credencial que conserva el SNI. La rama ya tiene implementación y pruebas locales, pero aún no validación en servidor.
 
 La preocupación por el bloqueo SQLite compartido es una [cuestión de medición conocida y sin resolver][local-link-002], no una orden de modificar la arquitectura. El trabajo histórico completado y las pruebas registradas están en [LOG][local-link-003].
 

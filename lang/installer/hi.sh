@@ -91,6 +91,7 @@ case "$key" in
   lucky_arch) fmt='Lucky के लिए linux amd64 आवश्यक है\n' ;;
   frps_port_verify) fmt='मौजूदा frps पोर्ट सत्यापित नहीं हो सका; वेब इंस्टॉलेशन अस्वीकार किया गया\n' ;;
   frps_console_conflict) fmt='कंसोल पोर्ट %s मौजूदा frps bindPort से टकराता है\n' ;;
+  node_meter_failed) fmt='नोड ट्रैफ़िक लेखांकन या गति सीमा सेवा शुरू नहीं हुई; प्रॉक्सी सेवाएँ बंद हैं। जाँचें: journalctl -u vps-server-node-meter.service -e\n' ;;
   frps_install_failed) fmt='frps इंस्टॉलेशन विफल हुआ\n' ;;
   lucky_install_failed) fmt='Lucky इंस्टॉलेशन विफल हुआ\n' ;;
   lucky_port_verify) fmt='मौजूदा Lucky व्यवस्थापक पोर्ट सत्यापित नहीं हो सका; वेब इंस्टॉलेशन अस्वीकार किया गया\n' ;;

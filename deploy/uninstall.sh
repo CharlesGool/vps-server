@@ -100,6 +100,18 @@ fi
 # remove. anytls goes before proxy so that if only anytls's config still
 # exists when proxy tears down, proxy's own shared-binary check (see
 # proxy/setup-proxy.sh) sees the correct, already-updated state.
+if [ -f /etc/systemd/system/vps-server-node-meter.service ]; then
+  systemctl disable --now vps-server-node-meter.service 2>/dev/null || true
+  if command -v nft >/dev/null 2>&1; then
+    nft delete table inet vps_server_nodes 2>/dev/null || true
+  fi
+  rm -f /etc/systemd/system/vps-server-node-meter.service \
+        /etc/systemd/system/vps-server-anytls.service.d/node-meter.conf \
+        /etc/systemd/system/vps-server-proxy.service.d/node-meter.conf
+  rmdir /etc/systemd/system/vps-server-anytls.service.d \
+        /etc/systemd/system/vps-server-proxy.service.d 2>/dev/null || true
+  systemctl daemon-reload
+fi
 if [ -f "/etc/systemd/system/${ANYTLS_SERVICE}" ]; then
   if [ -f "$PREFIX/anytls/setup-anytls.sh" ]; then
     msg anytls_removing "$ANYTLS_SERVICE"
@@ -116,6 +128,11 @@ if [ -f "/etc/systemd/system/${PROXY_SERVICE}" ]; then
   else
     msg proxy_orphan "$PROXY_SERVICE" "$PREFIX" "$PROXY_SERVICE" "$PROXY_SERVICE"
   fi
+fi
+
+if [ "${KEEP_DATA:-0}" != "1" ]; then
+  rm -rf /etc/vps-server-nodes
+  rm -f /etc/vps-server-node.lock
 fi
 
 if systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then

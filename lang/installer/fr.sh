@@ -91,6 +91,7 @@ case "$key" in
   lucky_arch) fmt='Lucky nécessite linux amd64\n' ;;
   frps_port_verify) fmt='Impossible de vérifier le port frps actuel ; installation Web refusée\n' ;;
   frps_console_conflict) fmt='Le port de console %s entre en conflit avec le bindPort frps actuel\n' ;;
+  node_meter_failed) fmt='Le service de comptabilisation ou de limitation des nœuds n’a pas démarré ; les services proxy restent arrêtés. Vérifiez : journalctl -u vps-server-node-meter.service -e\n' ;;
   frps_install_failed) fmt='Échec de l’installation de frps\n' ;;
   lucky_install_failed) fmt='Échec de l’installation de Lucky\n' ;;
   lucky_port_verify) fmt='Impossible de vérifier le port d’administration Lucky actuel ; installation Web refusée\n' ;;

@@ -553,6 +553,21 @@ dl.kv dd.secret code {
 .proxy-node-settings form { margin-bottom: 1rem; }
 .proxy-node-reset { padding-top: 1rem; border-top: 1px solid var(--card-border); }
 .proxy-node-reset .checkline { display: flex; }
+.node-usage {
+  display: grid; grid-template-columns: auto repeat(2, minmax(0, 1fr));
+  gap: 0.7rem; align-items: center; margin: 0 -1.25rem; padding: 0.9rem 1.25rem;
+  border-top: 1px solid var(--card-border); font-variant-numeric: tabular-nums;
+}
+.node-usage > div { display: flex; min-width: 0; flex-direction: column; gap: 0.15rem; }
+.node-usage small { color: var(--muted); font-size: 0.75rem; }
+.node-usage strong { font-size: 0.86rem; overflow-wrap: anywhere; }
+.node-number { align-self: start; padding: 0.28rem 0.46rem; border-radius: 7px; color: var(--accent-strong); background: var(--surface-2); font-weight: 700; }
+.node-limit { grid-column: 2 / -1; color: var(--success); font-size: 0.78rem; font-weight: 700; }
+.node-limit.is-limited { color: var(--error-strong); }
+.node-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 0.9rem; }
+.node-form-grid label { min-width: 0; font-size: 0.8rem; }
+.node-form-grid input, .node-form-grid select { width: 100%; min-width: 0; margin-top: 0.3rem; }
+@media (max-width: 34rem) { .node-form-grid { grid-template-columns: 1fr; } }
 .proxy-notes { margin-top: 1.25rem; padding: 0.75rem 1rem; border-left: 3px solid var(--card-border); color: var(--muted); font-size: 0.82rem; }
 .proxy-notes p { margin: 0.4rem 0; }
 

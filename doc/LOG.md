@@ -221,11 +221,11 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `feat/node-controls`, based on the formal v2.0.0 `main` branch at `56c9ed5`.
-- Completed in this branch: stable node-number fields and uniqueness validation in the offline inventory model; a responsive proxy-node card layout with status, connection facts, addresses, and folded settings; matching interface strings in eight languages.
-- Checks: 172 app tests passed (8 skipped), 45 node tests passed, and 5 localization tests passed; Python compilation and `git diff --check` passed. The current multi-language checker reports 16 missing-heading errors; those headings are also absent from `HEAD` and are unrelated to this branch's changes.
-- Remaining: wire the inventory model to installed services; implement editable names, ports, credentials, and per-node SNI; random reset; persistent per-node traffic counting, monthly or scheduled cycle reset, and bidirectional 1 Mbps limiting; complete host and responsive visual acceptance.
+- Completed locally: persistent numbered IDs, editable names/ports/credentials/per-node TLS SNI, random port and credential reset, per-node traffic counters, monthly or specified-time reset, and independent 1 Mbps upload/download policing. The console card and eight interface catalogs now expose the settings and traffic state. The installer creates a node meter service and the uninstaller removes its dedicated rules and unit.
+- Checks: 285 tests passed (8 skipped), including the managed-node HTTP flow; 58 node tests and 5 localization tests passed. Python compilation, shell syntax, and `git diff --check` passed. The multi-language checker reports 23 existing missing-heading and structure errors; live-host acceptance remains open.
+- Remaining: validate nftables and service ordering on a real host; verify actual bidirectional throughput, traffic count, cycle reset, upgrade preservation, console layout, and boot start. SSH password authentication to the target host was rejected, so no server files or services were changed.
 - Publication: the v2.0.0 release remains on formal `origin/main`; this feature branch is not a release.
-- Next action: complete the privileged node configuration and accounting path, then verify the integrated UI and service behavior before a release decision.
+- Next action: obtain working SSH access, inspect and back up the requested application directory, then perform a controlled deployment and live acceptance before a release decision.
 
 ## Changelog
 

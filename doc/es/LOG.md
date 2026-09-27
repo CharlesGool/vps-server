@@ -166,11 +166,11 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 ## Traspaso
 
 - Rama: `feat/node-controls`, basada en `56c9ed5` de la rama formal `main` de v2.0.0.
-- Completado en esta rama: numeración estable y validación de unicidad en el modelo de inventario sin conexión; página de nodos proxy con tarjetas adaptables que muestran estado, datos de conexión, direcciones y ajustes plegables; textos de interfaz en ocho idiomas.
-- Comprobaciones: pasaron 172 pruebas de la aplicación (8 omitidas), 45 pruebas de nodos y 5 de localización; pasaron la compilación de Python y `git diff --check`. El comprobador multilingüe actual señala 16 errores por títulos ausentes; esos títulos tampoco existen en `HEAD` y no se deben a los cambios de esta rama.
-- Pendiente: conectar el inventario con los servicios instalados; implementar la edición de nombre, puerto, credencial y SNI por nodo, el restablecimiento aleatorio, las estadísticas persistentes de tráfico, el inicio de un nuevo ciclo cada mes o en una fecha indicada y el límite bidireccional de 1 Mbps; completar la validación en un servidor y de la interfaz adaptable.
+- Completado localmente: números e ID persistentes; edición de nombre, puerto, credencial y SNI de cada nodo TLS; cambio aleatorio de puerto y credencial; contadores de tráfico por nodo; reinicio mensual o en una fecha indicada; y límite independiente de 1 Mbps para subida y bajada. Las tarjetas de la consola y los textos de interfaz en ocho idiomas muestran ahora los ajustes y el tráfico. El instalador crea el servicio de medición y el desinstalador elimina sus reglas y unidad propias.
+- Comprobaciones: pasaron 285 pruebas (8 omitidas), incluido el flujo HTTP de nodos administrados; también pasaron 58 pruebas de nodos y 5 de localización. Pasaron la compilación de Python, la sintaxis de Shell y `git diff --check`. El comprobador multilingüe señala 23 errores previos de títulos y estructura; falta la validación en un servidor real.
+- Pendiente: validar nftables y el orden de los servicios en un servidor real; comprobar la velocidad real en ambas direcciones, los contadores, el reinicio del ciclo, la conservación en actualizaciones, el diseño de la consola y el inicio al arrancar. Se rechazó la autenticación SSH con contraseña en el servidor de destino; no se cambiaron archivos ni servicios.
 - Publicación: v2.0.0 permanece en el `origin/main` formal; esta rama de funciones aún no es una versión publicada.
-- Siguiente paso: completar la configuración privilegiada de nodos y el registro de tráfico, comprobar la interfaz y los servicios integrados y después decidir sobre la publicación.
+- Siguiente paso: obtener acceso SSH válido, inspeccionar y respaldar el directorio de la aplicación solicitado, y luego desplegar de forma controlada y completar la validación real antes de decidir una publicación.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.

@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""Privileged, locked edits of the five installed proxy inbounds.
+
+Requests arrive on stdin, never argv. The web process launches this helper in
+a transient systemd unit, outside its read-only /etc sandbox. No secret or
+certificate material is written to logs or exception messages.
+"""
+
+import base64
+import copy
+import fcntl
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import uuid
+
+from node_inventory import InvalidInventory
+from node_operations import edit_node
+from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
+
+
+LOCK_PATH = Path("/etc/vps-server-node.lock")
+BINARY = Path("/usr/local/bin/sing-box-vps-server")
+SERVICES = {"anytls": "vps-server-anytls.service", "proxy": "vps-server-proxy.service"}
+PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
+APP_DIR = Path(__file__).resolve().parent
+EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
+                         "expires_at", "reset_mode", "next_reset_at"))
+_HOST_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
+
+
+class NodeControlError(ValueError):
+    """The edit was rejected; installed state remains available."""
+
+
+class DegradedNodeControl(RuntimeError):
+    """The edit and recovery both failed; operator intervention is required."""
+
+
+def _sni(value):
+    if not isinstance(value, str) or not 1 <= len(value) <= 253 or value != value.strip():
+        raise NodeControlError("invalid SNI")
+    try:
+        ipaddress.ip_address(value)
+        return value
+    except ValueError:
+        pass
+    if not all(_HOST_LABEL.fullmatch(label) for label in value.split(".")):
+        raise NodeControlError("invalid SNI")
+    return value.lower()
+
+
+def _free_port(port):
+    for family, address in ((socket.AF_INET, "0.0.0.0"), (socket.AF_INET6, "::")):
+        for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+            try:
+                with socket.socket(family, kind) as probe:
+                    probe.bind((address, port))
+            except OSError as exc:
+                # A host may have IPv6 disabled. Other bind failures are real
+                # conflicts or permission errors, and fail the edit closed.
+                if family == socket.AF_INET6 and exc.errno in (97, 93):
+                    continue
+                raise NodeControlError("requested port is unavailable") from exc
+
+
+def _reserved_ports():
+    """Keep node listeners clear of fixed ports and persisted DNAT ports."""
+    reserved = {80, 443, 5201}
+    for path in (APP_DIR / "console_port.txt",):
+        try:
+            reserved.add(int(path.read_text().strip()))
+        except (OSError, ValueError):
+            pass
+    state = APP_DIR / "data" / "portfwd.json"
+    try:
+        rules = json.loads(state.read_text())
+    except FileNotFoundError:
+        rules = []
+    except (OSError, ValueError) as exc:
+        raise NodeControlError("cannot read reserved port state") from exc
+    if not isinstance(rules, list):
+        raise NodeControlError("invalid reserved port state")
+    for rule in rules:
+        if not isinstance(rule, dict) or type(rule.get("public_port")) is not int:
+            raise NodeControlError("invalid reserved port state")
+        reserved.add(rule["public_port"])
+    return reserved
+
+
+def _stage(path, payload):
+    fd, name = tempfile.mkstemp(prefix=".node-edit-", dir=Path(path).parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as output:
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        return Path(name)
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
+
+
+def _replace(stage, path):
+    os.replace(stage, path)
+    fd = os.open(Path(path).parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _certificate(directory, identifier, sni):
+    """Create a fresh per-node self-signed certificate without changing peers."""
+    target = Path(directory) / "certs" / identifier / uuid.uuid4().hex
+    target.mkdir(mode=0o700, parents=True)
+    cert, key = target / "fullchain.pem", target / "key.pem"
+    # CN is limited to 64 characters; SAN carries the full requested name.
+    try:
+        ipaddress.ip_address(sni)
+        san = "IP:" + sni
+    except ValueError:
+        san = "DNS:" + sni
+    try:
+        subprocess.run(["openssl", "req", "-x509", "-nodes", "-newkey", "ec",
+                        "-pkeyopt", "ec_paramgen_curve:prime256v1", "-keyout", str(key),
+                        "-out", str(cert), "-days", "3650", "-subj", "/CN=" + sni[:64],
+                        "-addext", "subjectAltName=" + san], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        key.chmod(0o600)
+        cert.chmod(0o600)
+    except BaseException:
+        shutil.rmtree(target)
+        raise
+    return cert, key, target
+
+
+class HostBackend:
+    def check(self, config):
+        subprocess.run([str(BINARY), "check", "-c", str(config)], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+
+    def active(self, service):
+        return subprocess.run(["systemctl", "is-active", "--quiet", service],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              timeout=10).returncode == 0
+
+    def restart(self, service):
+        subprocess.run(["systemctl", "restart", service], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        if not self.active(service):
+            raise NodeControlError("node service did not become active")
+
+    def stop(self, service):
+        subprocess.run(["systemctl", "stop", service], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+
+    def start(self, service):
+        subprocess.run(["systemctl", "start", service], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        if not self.active(service):
+            raise NodeControlError("node service did not become active")
+
+    def reconcile(self, *, state_path, config_paths):
+        # The caller already owns LOCK_PATH. The node is stopped during a
+        # port change, so no traffic can escape before nft rules are updated.
+        from node_meter import tick
+        tick(state_path=state_path, config_paths=config_paths,
+             meter_path=Path(state_path).parent / "meter.json", lock_held=True)
+
+    def _firewall(self):
+        if shutil.which("ufw") and "Status: active" in subprocess.run(
+                ["ufw", "status"], capture_output=True, text=True, timeout=10).stdout:
+            return "ufw"
+        if shutil.which("firewall-cmd") and subprocess.run(
+                ["firewall-cmd", "--state"], capture_output=True, timeout=10).returncode == 0:
+            return "firewalld"
+        if shutil.which("iptables"):
+            return "iptables"
+        return None
+
+    def firewall(self, port, opening, protocol="tcp"):
+        backend = self._firewall()
+        if backend is None:
+            return
+        transports = ("tcp", "udp") if protocol == "shadowsocks" else ("tcp",)
+        for transport in transports:
+            self._firewall_transport(backend, port, opening, transport)
+        if backend == "firewalld":
+            subprocess.run(["firewall-cmd", "--reload"], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+
+    def _firewall_transport(self, backend, port, opening, transport):
+        if backend == "ufw":
+            if not opening and f"{port}/{transport}" not in subprocess.run(
+                    ["ufw", "status"], capture_output=True, text=True,
+                    timeout=10, check=True).stdout:
+                return
+            cmd = ["ufw", "allow", f"{port}/{transport}"] if opening else \
+                  ["ufw", "delete", "allow", f"{port}/{transport}"]
+        elif backend == "firewalld":
+            if not opening and subprocess.run(
+                    ["firewall-cmd", "--permanent", f"--query-port={port}/{transport}"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=10).returncode != 0:
+                return
+            flag = "--add-port" if opening else "--remove-port"
+            cmd = ["firewall-cmd", "--permanent", f"{flag}={port}/{transport}"]
+        else:
+            exists = subprocess.run(["iptables", "-C", "INPUT", "-p", transport,
+                                     "--dport", str(port), "-j", "ACCEPT"],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    timeout=10).returncode == 0
+            if (opening and exists) or (not opening and not exists):
+                return
+            cmd = ["iptables", "-I" if opening else "-D", "INPUT", "-p", transport,
+                   "--dport", str(port), "-j", "ACCEPT"]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=20)
+
+
+def _random_credential(protocol):
+    if protocol in ("vmess", "vless"):
+        return str(uuid.uuid4())
+    if protocol == "shadowsocks":
+        return base64.b64encode(secrets.token_bytes(16)).decode("ascii")
+    return secrets.token_urlsafe(24)
+
+
+def _candidate_document(document, old, new):
+    result = copy.deepcopy(document)
+    matches = [index for index, item in enumerate(result["inbounds"])
+               if item["tag"] == old["inbound"]["tag"]]
+    if len(matches) != 1:
+        raise NodeControlError("installed node is not unique")
+    result["inbounds"][matches[0]] = copy.deepcopy(new["inbound"])
+    return result
+
+
+def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
+                  lock_path=LOCK_PATH, backend=None, require_root=True):
+    """Apply one ID-based edit or reset with config, service and state rollback."""
+    if require_root and os.geteuid() != 0:
+        raise PermissionError("node control requires root")
+    if not isinstance(request, dict) or set(request) - {"action", "id", *EDIT_FIELDS} or \
+            request.get("action") not in ("edit", "reset") or not isinstance(request.get("id"), str):
+        raise NodeControlError("invalid node request")
+    if request["action"] == "reset" and set(request) != {"action", "id"}:
+        raise NodeControlError("reset has unexpected fields")
+    backend = backend or HostBackend()
+    Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        inventory = read_inventory(state_path=state_path, config_paths=config_paths)
+        if inventory is None:
+            inventory = initialize_inventory(state_path=state_path, config_paths=config_paths)
+        matches = [node for node in inventory["nodes"] if node["id"] == request["id"]]
+        if len(matches) != 1:
+            raise NodeControlError("node ID not found")
+        old = matches[0]
+        reserved = _reserved_ports()
+        module = "anytls" if old["protocol"] == "anytls" else "proxy"
+        config_path = Path(config_paths[module])
+        changes = {key: value for key, value in request.items() if key in EDIT_FIELDS - {"sni"}}
+        if request["action"] == "reset":
+            for _ in range(100):
+                port = 20000 + secrets.randbelow(40000)
+                try:
+                    if port not in reserved | {node["port"] for node in inventory["nodes"]}:
+                        _free_port(port)
+                        break
+                except NodeControlError:
+                    pass
+            else:
+                raise NodeControlError("no random port available")
+            changes = {"port": port, "credential": _random_credential(old["protocol"])}
+        if not changes and "sni" not in request:
+            raise NodeControlError("no changes requested")
+        new_port = changes.get("port", old["port"])
+        if new_port != old["port"]:
+            if new_port in reserved:
+                raise NodeControlError("requested port is reserved")
+            _free_port(new_port)
+        candidate = edit_node(inventory, old["id"], changes, reserved_ports=[])
+        new = next(node for node in candidate["nodes"] if node["id"] == old["id"])
+        cert_directory = None
+        if "sni" in request:
+            if old["protocol"] == "shadowsocks":
+                raise NodeControlError("SNI does not apply to Shadowsocks")
+            requested_sni = _sni(request["sni"])
+            cert, key, cert_directory = _certificate(Path(state_path).parent, old["id"], requested_sni)
+            new["inbound"]["tls"]["certificate_path"] = str(cert)
+            new["inbound"]["tls"]["key_path"] = str(key)
+        document = json.loads(config_path.read_text(encoding="utf-8"))
+        changed_config = new["inbound"] != old["inbound"]
+        staged = None
+        old_bytes = config_path.read_bytes()
+        opened = False
+        swapped = False
+        stopped = False
+        state_written = False
+        committed = False
+        active = backend.active(SERVICES[module]) if changed_config else False
+        try:
+            if changed_config:
+                proposed = _candidate_document(document, old, new)
+                staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode("utf-8"))
+                backend.check(staged)
+                if new_port != old["port"]:
+                    opened = True
+                    backend.firewall(new_port, True, old["protocol"])
+                    if active:
+                        backend.stop(SERVICES[module])
+                        stopped = True
+                _replace(staged, config_path)
+                swapped = True
+            write_inventory(candidate, state_path=state_path)
+            state_written = True
+            backend.reconcile(state_path=state_path, config_paths=config_paths)
+            if active:
+                if stopped:
+                    backend.start(SERVICES[module])
+                else:
+                    backend.restart(SERVICES[module])
+            if new_port != old["port"]:
+                backend.firewall(old["port"], False, old["protocol"])
+            committed = True
+            return candidate
+        except BaseException as exc:
+            if swapped or stopped or state_written:
+                try:
+                    if swapped:
+                        restore = _stage(config_path, old_bytes)
+                        try:
+                            _replace(restore, config_path)
+                        finally:
+                            restore.unlink(missing_ok=True)
+                    write_inventory(inventory, state_path=state_path)
+                    backend.reconcile(state_path=state_path, config_paths=config_paths)
+                    if active:
+                        (backend.start if stopped else backend.restart)(SERVICES[module])
+                    if new_port != old["port"]:
+                        backend.firewall(old["port"], True, old["protocol"])
+                    if opened:
+                        backend.firewall(new_port, False, old["protocol"])
+                except BaseException as recovery_error:
+                    raise DegradedNodeControl("node rollback failed") from recovery_error
+            elif opened:
+                backend.firewall(new_port, False, old["protocol"])
+            raise NodeControlError("node change failed; previous configuration restored") from exc
+        finally:
+            if staged is not None:
+                staged.unlink(missing_ok=True)
+            if cert_directory is not None and not committed:
+                shutil.rmtree(cert_directory, ignore_errors=True)
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ("init", "apply"):
+        return 2
+    try:
+        if sys.argv[1] == "init":
+            if os.geteuid() != 0:
+                return 1
+            with open(LOCK_PATH, "a+b") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                initialize_inventory()
+        else:
+            raw = sys.stdin.buffer.read(4097)
+            if len(raw) > 4096:
+                return 2
+            apply_request(json.loads(raw))
+    except (InvalidInventory, NodeControlError, DegradedNodeControl, OSError,
+            subprocess.SubprocessError, ValueError):
+        # Detailed errors can contain paths or config facts. The console uses
+        # its own localized status message and journalctl for diagnostics.
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

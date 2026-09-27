@@ -646,6 +646,11 @@ install_iperf3() {
 
 install_anytls() {
   msg anytls_start
+  # Once node identity and limits exist, the UI owns edits. Re-running the
+  # legacy setup script would replace per-node TLS paths and desync state.
+  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$ANYTLS_CONFIG_PATH" ]; then
+    return 0
+  fi
   # Its own script owns everything anytls: deps, binary, config, unit,
   # firewall, BBR, and the client-config summary it prints at the end.
   ANYTLS_PORT="${ANYTLS_PORT:-}" ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-}" \
@@ -655,6 +660,9 @@ install_anytls() {
 
 install_proxy() {
   msg proxy_start "${PROXY_PROTOCOLS:-vmess,vless,trojan,shadowsocks}"
+  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$PROXY_CONFIG_PATH" ]; then
+    return 0
+  fi
   # Same shape as install_anytls(): its own script owns deps, the shared
   # binary, config, unit, firewall and the client-config summary. Every
   # PROXY_<PROTO>_* credential/port var is passed through unset by default —
@@ -667,6 +675,58 @@ install_proxy() {
   PROXY_TROJAN_PORT="${PROXY_TROJAN_PORT:-}" PROXY_TROJAN_PASSWORD="${PROXY_TROJAN_PASSWORD:-}" \
   PROXY_SS_PORT="${PROXY_SS_PORT:-}" PROXY_SS_PASSWORD="${PROXY_SS_PASSWORD:-}" \
   VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/proxy/setup-proxy.sh"
+}
+
+install_node_meter() {
+  [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ] || return 0
+  # The installer held the node lock while preserving and applying legacy
+  # configs. Release it before init or starting the notify-type meter unit.
+  if [ -n "${node_lock:-}" ]; then
+    exec {node_lock}>&-
+    unset node_lock
+  fi
+  if ! command -v nft >/dev/null 2>&1; then
+    apt-get update -qq && apt-get install -y -qq nftables || return 1
+  fi
+  /usr/bin/python3 "$PREFIX/node_control.py" init || return 1
+  local was_anytls=0 was_proxy=0
+  systemctl is-active --quiet vps-server-anytls.service && was_anytls=1 || true
+  systemctl is-active --quiet vps-server-proxy.service && was_proxy=1 || true
+  mkdir -p /etc/systemd/system/vps-server-anytls.service.d \
+           /etc/systemd/system/vps-server-proxy.service.d
+  for unit in vps-server-anytls vps-server-proxy; do
+    cat > "/etc/systemd/system/${unit}.service.d/node-meter.conf" <<EOF
+[Unit]
+Requires=vps-server-node-meter.service
+After=vps-server-node-meter.service
+EOF
+  done
+  cat > /etc/systemd/system/vps-server-node-meter.service <<EOF
+[Unit]
+Description=vps-server node traffic accounting and limits
+After=network-online.target
+Wants=network-online.target
+Before=vps-server-anytls.service vps-server-proxy.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/python3 $PREFIX/node_meter.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/etc/vps-server-nodes /etc/vps-server-node.lock
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl stop vps-server-anytls.service vps-server-proxy.service >/dev/null 2>&1 || true
+  systemctl enable vps-server-node-meter.service || return 1
+  systemctl restart vps-server-node-meter.service || return 1
+  [ "$was_anytls" = 0 ] || systemctl start vps-server-anytls.service || return 1
+  [ "$was_proxy" = 0 ] || systemctl start vps-server-proxy.service || return 1
 }
 
 # A later web install must not displace an already-running frps listener.
@@ -788,8 +848,18 @@ copy_selected_files() {
   fi
   # Even in-place installs need the deployed root entry point, not merely
   # the checkout's vendor path. Source and destination are distinct here.
-  if has_module anytls || has_module proxy; then
+  if has_module anytls || has_module proxy || [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     copy_singbox_binary
+  fi
+  if has_module web || has_module anytls || has_module proxy || \
+     [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
+    # The Web UI imports the inventory even without nodes, and the controller
+    # also runs for proxy-only installs without the Web UI.
+    for item in node_inventory node_operations node_accounting node_state node_control node_meter; do
+      if [ -f "$SRC_DIR/src/web/$item.py" ]; then
+        cp "$SRC_DIR/src/web/$item.py" "$PREFIX/$item.py"
+      fi
+    done
   fi
   if has_module lucky && [ "$SRC_DIR" != "$prefix_abs" ]; then
     mkdir -p "$PREFIX/vendor/lucky"
@@ -820,6 +890,7 @@ if ! has_module web; then
   msg to_remove "$PREFIX" "$SERVICE_NAME"
   [ "$ANYTLS_FAILED" = "0" ] || { msg anytls_failed >&2; exit 1; }
   [ "$PROXY_FAILED" = "0" ] || { msg proxy_failed >&2; exit 1; }
+  install_node_meter || die "$(msg node_meter_failed)"
   [ "$FRPS_FAILED" = "0" ] || die "$(msg frps_install_failed)"
   if has_module lucky; then
     PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
@@ -1161,3 +1232,4 @@ if [ "$PROXY_FAILED" = "1" ]; then
   msg proxy_failed >&2
   exit 1
 fi
+install_node_meter || die "$(msg node_meter_failed)"

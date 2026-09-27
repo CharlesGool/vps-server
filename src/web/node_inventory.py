@@ -35,8 +35,12 @@ class Node(TypedDict):
     enabled: bool
     cap_bytes: int | None
     expires_at: str | None
+    reset_mode: str
+    next_reset_at: str | None
     upload_bytes: int
     download_bytes: int
+    total_upload_bytes: int
+    total_download_bytes: int
     counter_epoch: int
 
 
@@ -164,7 +168,7 @@ def validate_inventory(inventory: Inventory) -> None:
     nodes = inventory["nodes"]
     if not isinstance(nodes, list):
         raise InvalidInventory("nodes must be a list")
-    ids, numbers, tags, ports, names = set(), set(), set(), set(), set()
+    ids, numbers, tags, ports = set(), set(), set(), set()
     outbound_tags = {item["tag"] for item in base["outbounds"]}
     for node in nodes:
         if not isinstance(node, dict) or set(node) != set(Node.__annotations__):
@@ -181,25 +185,36 @@ def validate_inventory(inventory: Inventory) -> None:
         cap = node["cap_bytes"]
         if cap is not None and (type(cap) is not int or cap <= 0):
             raise InvalidInventory("invalid cap")
-        expiry = node["expires_at"]
-        if expiry is not None:
-            if not isinstance(expiry, str):
-                raise InvalidInventory("invalid expiry")
-            try:
-                date = datetime.fromisoformat(expiry)
-            except ValueError as exc:
-                raise InvalidInventory("invalid expiry") from exc
-            if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
-                raise InvalidInventory("expiry must be UTC")
-        if any(type(node[k]) is not int or node[k] < 0 for k in ("upload_bytes", "download_bytes", "counter_epoch")):
+        for key in ("expires_at", "next_reset_at"):
+            value = node[key]
+            if value is not None:
+                if not isinstance(value, str):
+                    raise InvalidInventory("invalid node date")
+                try:
+                    date = datetime.fromisoformat(value)
+                except ValueError as exc:
+                    raise InvalidInventory("invalid node date") from exc
+                if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
+                    raise InvalidInventory("node date must be UTC")
+        if node["reset_mode"] not in ("none", "monthly", "once") or \
+                (node["reset_mode"] == "none") != (node["next_reset_at"] is None):
+            raise InvalidInventory("invalid reset schedule")
+        if node["reset_mode"] == "monthly" and node["next_reset_at"] is not None:
+            date = datetime.fromisoformat(node["next_reset_at"])
+            if date.day != 1 or date.hour or date.minute or date.second or date.microsecond:
+                raise InvalidInventory("monthly reset must start at 00:00 UTC on day one")
+        if any(type(node[k]) is not int or node[k] < 0 for k in
+               ("upload_bytes", "download_bytes", "total_upload_bytes", "total_download_bytes", "counter_epoch")):
             raise InvalidInventory("invalid counters")
-        if identifier in ids or tag in tags or tag in outbound_tags or port in ports or node["name"] in names:
-            raise InvalidInventory("duplicate node identity, name, port or tag")
+        if node["upload_bytes"] > node["total_upload_bytes"] or \
+                node["download_bytes"] > node["total_download_bytes"]:
+            raise InvalidInventory("period usage exceeds lifetime usage")
+        if identifier in ids or tag in tags or tag in outbound_tags or port in ports:
+            raise InvalidInventory("duplicate node identity, port or tag")
         ids.add(identifier)
         numbers.add(number)
         tags.add(tag)
         ports.add(port)
-        names.add(node["name"])
     if numbers and inventory["next_number"] <= max(numbers):
         raise InvalidInventory("next node number must exceed existing numbers")
 
@@ -251,8 +266,11 @@ def import_legacy(anytls: bytes | str | dict[str, Any] | None,
                               number=len(nodes) + 1,
                               name=name, protocol=protocol, port=port,
                               inbound=copy.deepcopy(inbound), enabled=True,
-                              cap_bytes=None, expires_at=None, upload_bytes=0,
-                              download_bytes=0, counter_epoch=0))
+                              cap_bytes=None, expires_at=None,
+                              reset_mode="none", next_reset_at=None,
+                              upload_bytes=0, download_bytes=0,
+                              total_upload_bytes=0, total_download_bytes=0,
+                              counter_epoch=0))
     inventory = Inventory(version=1, next_number=len(nodes) + 1,
                           migration_namespace=str(namespace),
                           migration_hashes=hashes, base_config=copy.deepcopy(bases[0]),

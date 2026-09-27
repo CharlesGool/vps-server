@@ -91,6 +91,7 @@ case "$key" in
   lucky_arch) fmt='Lucky 需要 linux amd64 架構\n' ;;
   frps_port_verify) fmt='無法核實現有 frps 連接埠;拒絕安裝 web 模組\n' ;;
   frps_console_conflict) fmt='控制台連接埠 %s 與現有 frps 的 bindPort 衝突\n' ;;
+  node_meter_failed) fmt='節點流量統計或限速服務啟動失敗；代理服務維持停止。請檢查：journalctl -u vps-server-node-meter.service -e\n' ;;
   frps_install_failed) fmt='frps 安裝失敗\n' ;;
   lucky_install_failed) fmt='Lucky 安裝失敗\n' ;;
   lucky_port_verify) fmt='無法核實現有 Lucky 管理連接埠;拒絕安裝 web 模組\n' ;;

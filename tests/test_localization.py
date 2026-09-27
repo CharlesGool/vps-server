@@ -20,7 +20,7 @@ class LocalizationTest(unittest.TestCase):
         catalogs = {tag: json.loads((CATALOG_DIR / f"{tag}.json").read_text(encoding="utf-8"))
                     for tag in TAGS}
         english = catalogs["en"]
-        self.assertEqual(len(english), 171)
+        self.assertEqual(len(english), 198)
         formatter = string.Formatter()
         def fields(value):
             return {field for _, field, _, _ in formatter.parse(value) if field is not None}
@@ -61,7 +61,7 @@ class LocalizationTest(unittest.TestCase):
                                      re.findall(r"<[^>]+>", english[key]), (tag, key))
 
     def test_shell_catalogs_keep_keys_and_printf_shapes(self):
-        expected_counts = {"installer": 95, "anytls": 72, "proxy": 51,
+        expected_counts = {"installer": 96, "anytls": 72, "proxy": 51,
                            "frps": 16, "lucky": 23, "uninstaller": 15}
         format_pattern = r"%(?:[0-9]+\$)?[-+ #0]*[0-9.]*(?:s|d|i|u|f|%)"
         for component, expected_count in expected_counts.items():

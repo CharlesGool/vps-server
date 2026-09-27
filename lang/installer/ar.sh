@@ -91,6 +91,7 @@ case "$key" in
   lucky_arch) fmt='يتطلب Lucky نظام linux amd64\n' ;;
   frps_port_verify) fmt='تعذّر التحقق من منفذ frps الحالي؛ رُفض تثبيت الويب\n' ;;
   frps_console_conflict) fmt='يتعارض منفذ لوحة التحكم %s مع frps bindPort الحالي\n' ;;
+  node_meter_failed) fmt='تعذر بدء خدمة حساب حركة العقد أو تحديد السرعة؛ ستبقى خدمات الوكيل متوقفة. افحص: journalctl -u vps-server-node-meter.service -e\n' ;;
   frps_install_failed) fmt='فشل تثبيت frps\n' ;;
   lucky_install_failed) fmt='فشل تثبيت Lucky\n' ;;
   lucky_port_verify) fmt='تعذّر التحقق من منفذ إدارة Lucky الحالي؛ رُفض تثبيت الويب\n' ;;

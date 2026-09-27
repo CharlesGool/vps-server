@@ -13,7 +13,8 @@ import uuid
 from node_inventory import InvalidInventory, PROTOCOLS, render_config, validate_inventory
 
 
-_EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "expires_at"})
+_EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "expires_at",
+                       "reset_mode", "next_reset_at"})
 _UUID_PROTOCOLS = frozenset({"vmess", "vless"})
 
 
@@ -103,9 +104,8 @@ def _expiry(value):
 
 
 def _effective(node, now):
-    # Reaching a byte cap requests bandwidth shaping, not inbound removal.
-    return (node["enabled"] and
-            (node["expires_at"] is None or datetime.fromisoformat(node["expires_at"]) > now))
+    # Quota and date limits change bandwidth policy, never inbound presence.
+    return node["enabled"]
 
 
 def _new_uuid(factory):
@@ -116,7 +116,8 @@ def _new_uuid(factory):
 
 
 def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id=None,
-                cap_bytes=None, expires_at=None, uuid_factory=uuid.uuid4):
+                cap_bytes=None, expires_at=None, reset_mode="none", next_reset_at=None,
+                uuid_factory=uuid.uuid4):
     """Copy one same-protocol inbound, replacing its identity and secret."""
     validate_inventory(inventory)
     reserved = _reserved(reserved_ports)
@@ -155,7 +156,10 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
     node = {"id": identifier, "number": candidate["next_number"],
             "name": name, "protocol": protocol, "port": port,
             "inbound": inbound, "enabled": True, "cap_bytes": cap_bytes,
-            "expires_at": expires_at, "upload_bytes": 0, "download_bytes": 0,
+            "expires_at": expires_at, "reset_mode": reset_mode,
+            "next_reset_at": next_reset_at,
+            "upload_bytes": 0, "download_bytes": 0,
+            "total_upload_bytes": 0, "total_download_bytes": 0,
             "counter_epoch": 0}
     candidate["nodes"].append(node)
     candidate["next_number"] += 1
@@ -192,7 +196,7 @@ def edit_node(inventory, identifier, changes, *, reserved_ports):
     if "credential" in changes:
         _set_credential(node, changes["credential"])
         _unique_credential(candidate, node)
-    for key in ("name", "cap_bytes", "expires_at"):
+    for key in ("name", "cap_bytes", "expires_at", "reset_mode", "next_reset_at"):
         if key in changes:
             node[key] = changes[key]
     _expiry(node["expires_at"])
@@ -212,8 +216,6 @@ def set_enabled_by_id(inventory, identifier, enabled, *, now):
     node = _node(candidate, identifier)
     if enabled:
         node["enabled"] = True
-        if not _effective(node, now):
-            raise InvalidInventory("cannot enable expired or exhausted node")
     else:
         node["enabled"] = False
     validate_inventory(candidate)
@@ -221,7 +223,7 @@ def set_enabled_by_id(inventory, identifier, enabled, *, now):
 
 
 def render_effective_config(inventory, *, now):
-    """Render enabled, unexpired inbounds; caps are enforced by a separate shaper."""
+    """Render enabled inbounds; caps and dates are enforced by a shaper."""
     validate_inventory(inventory)
     _now(now)
     candidate = copy.deepcopy(inventory)
