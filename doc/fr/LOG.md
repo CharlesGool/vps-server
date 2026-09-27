@@ -165,12 +165,14 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `feat/node-controls`, basée sur `56c9ed5` de la branche officielle `main` de v2.0.0.
-- Terminé localement : numéros et ID persistants ; modification du nom, du port, de l’identifiant et du SNI de chaque nœud TLS ; changement aléatoire du port et de l’identifiant ; compteurs de trafic par nœud ; remise à zéro mensuelle ou à une date définie ; limite indépendante de 1 Mbps dans chaque sens. Les cartes de la console et les textes d’interface dans huit langues montrent désormais les réglages et le trafic. L’installateur crée un service de mesure et le désinstallateur retire ses règles et son unité dédiées.
-- Vérifications : 285 tests ont réussi (8 ignorés), dont le parcours HTTP des nœuds gérés ; 58 tests des nœuds et 5 tests de localisation ont aussi réussi. La compilation Python, la syntaxe Shell et `git diff --check` ont réussi. Après rétablissement des titres requis et alignement de la structure, le vérificateur multilingue passe les 32 documents principaux et les catalogues d’interface avec 0 erreur ; la validation sur hôte réel reste à faire.
-- À faire : vérifier nftables et l’ordre des services sur un hôte réel ; mesurer les débits réels dans les deux sens, les compteurs, la remise à zéro du cycle, la conservation lors d’une mise à niveau, la mise en page de la console et le démarrage au boot. L’authentification SSH par mot de passe a été refusée sur l’hôte cible ; aucun fichier ni service du serveur n’a été modifié.
-- Publication : v2.0.0 reste sur la branche officielle `origin/main` ; cette branche de fonctionnalité n’est pas une version publiée.
-- Étape suivante : obtenir un accès SSH valide, inspecter et sauvegarder le répertoire d’application demandé, puis déployer de façon contrôlée et valider sur l’hôte avant toute décision de publication.
+- Branche : `feat/node-controls`, basée sur v2.0.0 `main` ; la fonction n’est pas encore publiée.
+- Réalisé : cinq nœuds proxy avec numéros et ID stables, noms/ports/identifiants/TLS SNI modifiables, réinitialisation aléatoire, compteurs, quotas, cycles programmés et limites indépendantes de 1 Mbps en émission et en réception. La console remaniée et huit langues d’interface affichent ces réglages. Aucune règle temporaire active du projet n’a été trouvée.
+- Vérifications : 286 tests réussis (8 ignorés), compilation Python, syntaxe Shell et vérification du diff. Le contrôle multilingue a validé 32 documents principaux et les textes d’interface sans erreur. Sur l’hôte cible, cinq ports et quatre services systemd sont actifs et activés ; HTTP/HTTPS depuis le réseau local et la connexion à la console ont réussi. Des connexions réelles ont augmenté les deux compteurs des cinq nœuds. L’expiration et un quota de 1 octet ont déclenché les règles de 1 Mbps dans les deux sens ; un cycle arrivé à échéance a effacé l’usage et levé la limite. Les réglages de test ont été restaurés et une sauvegarde initiale de l’état a été créée. L’examen au navigateur a validé la console sur ordinateur et mobile ainsi que le menu des langues. Une mise à niveau sur place a conservé les identités des cinq nœuds, leurs paramètres de connexion et le mot de passe administrateur.
+- Reste à faire : mesurer les débits soutenus dans les deux sens sous la limite et vérifier le démarrage après un redémarrage réel. Les services systemd sont activés, mais l’hôte n’a pas été redémarré.
+- Publication : `origin/main` reste à v2.0.0 ; la branche de la fonction est poussée dans le dépôt officiel et n’a pas de tag de version.
+- Étape suivante : mesurer le débit limité soutenu et, si possible, vérifier le démarrage après redémarrage ; puis relire le contenu public avant fusion et publication.
+
+
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.

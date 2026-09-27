@@ -165,12 +165,14 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `feat/node-controls`, basada en `56c9ed5` de la rama formal `main` de v2.0.0.
-- Completado localmente: números e ID persistentes; edición de nombre, puerto, credencial y SNI de cada nodo TLS; cambio aleatorio de puerto y credencial; contadores de tráfico por nodo; reinicio mensual o en una fecha indicada; y límite independiente de 1 Mbps para subida y bajada. Las tarjetas de la consola y los textos de interfaz en ocho idiomas muestran ahora los ajustes y el tráfico. El instalador crea el servicio de medición y el desinstalador elimina sus reglas y unidad propias.
-- Comprobaciones: pasaron 285 pruebas (8 omitidas), incluido el flujo HTTP de nodos administrados; también pasaron 58 pruebas de nodos y 5 de localización. Pasaron la compilación de Python, la sintaxis de Shell y `git diff --check`. Tras restaurar los títulos exigidos y alinear la estructura, el comprobador multilingüe pasa los 32 documentos principales y los catálogos de interfaz con 0 errores; falta la validación en un servidor real.
-- Pendiente: validar nftables y el orden de los servicios en un servidor real; comprobar la velocidad real en ambas direcciones, los contadores, el reinicio del ciclo, la conservación en actualizaciones, el diseño de la consola y el inicio al arrancar. Se rechazó la autenticación SSH con contraseña en el servidor de destino; no se cambiaron archivos ni servicios.
-- Publicación: v2.0.0 permanece en el `origin/main` formal; esta rama de funciones aún no es una versión publicada.
-- Siguiente paso: obtener acceso SSH válido, inspeccionar y respaldar el directorio de la aplicación solicitado, y luego desplegar de forma controlada y completar la validación real antes de decidir una publicación.
+- Rama: `feat/node-controls`, basada en v2.0.0 `main`; la función aún no está publicada.
+- Completado: cinco nodos proxy con números e ID estables, nombre/puerto/credencial/TLS SNI editables, restablecimiento aleatorio, contadores, cuota, ciclos programados y límites independientes de 1 Mbps para subida y descarga. La consola revisada y ocho idiomas de interfaz muestran los controles. No se hallaron reglas temporales activas del proyecto.
+- Comprobaciones: pasaron 286 pruebas (8 omitidas), la compilación de Python, la sintaxis de Shell y la revisión del diff. El comprobador multilingüe pasó 32 documentos principales y los textos de interfaz sin errores. En el servidor de destino están activos y habilitados cinco puertos y cuatro servicios systemd; funcionaron HTTP/HTTPS por LAN y el acceso autenticado a la consola. Las conexiones reales aumentaron ambos contadores en los cinco nodos. El vencimiento y una cuota de 1 byte activaron las reglas de 1 Mbps en ambas direcciones; un ciclo vencido borró el uso y levantó el límite. Se restauraron los ajustes de prueba y se creó un respaldo inicial del estado. La inspección en navegador validó la consola en escritorio y móvil y el menú de idiomas. Una actualización en el mismo directorio conservó las identidades de los cinco nodos, sus conexiones y la contraseña de administración.
+- Pendiente: medir la velocidad sostenida en ambos sentidos bajo el límite y comprobar el arranque tras un reinicio real. Los servicios systemd están habilitados, pero no se reinició el servidor.
+- Publicación: `origin/main` sigue en v2.0.0; la rama de la función está en el repositorio formal y no tiene etiqueta de publicación.
+- Siguiente paso: medir la velocidad limitada sostenida y, cuando sea posible, comprobar el arranque tras reiniciar; después revisar el material público antes de fusionar y publicar.
+
+
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.

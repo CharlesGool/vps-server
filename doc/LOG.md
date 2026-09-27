@@ -220,12 +220,13 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `feat/node-controls`, based on the formal v2.0.0 `main` branch at `56c9ed5`.
-- Completed locally: persistent numbered IDs, editable names/ports/credentials/per-node TLS SNI, random port and credential reset, per-node traffic counters, monthly or specified-time reset, and independent 1 Mbps upload/download policing. The console card and eight interface catalogs now expose the settings and traffic state. The installer creates a node meter service and the uninstaller removes its dedicated rules and unit.
-- Checks: 285 tests passed (8 skipped), including the managed-node HTTP flow; 58 node tests and 5 localization tests passed. Python compilation, shell syntax, and `git diff --check` passed. The multi-language checker now passes all 32 core documents and interface catalogs with 0 errors after restoring required headings and matching structure; live-host acceptance remains open.
-- Remaining: validate nftables and service ordering on a real host; verify actual bidirectional throughput, traffic count, cycle reset, upgrade preservation, console layout, and boot start. SSH password authentication to the target host was rejected, so no server files or services were changed.
-- Publication: the v2.0.0 release remains on formal `origin/main`; this feature branch is not a release.
-- Next action: obtain working SSH access, inspect and back up the requested application directory, then perform a controlled deployment and live acceptance before a release decision.
+- Branch: `feat/node-controls`, based on v2.0.0 `main`; the feature is not released.
+- Completed: five numbered proxy nodes with stable IDs, editable names/ports/credentials/TLS SNI, random reset, traffic counters, caps, timed cycles, and independent 1 Mbps upload/download policing. The revised console and eight interface catalogs expose the controls. No temporary project rules were found.
+- Checks: 286 tests passed (8 skipped); Python compilation, Shell syntax, and diff checks passed. The language checker passed 32 core documents and interface catalogs with 0 errors. On the target host, five listeners and four systemd services are active and enabled; LAN HTTP/HTTPS and authenticated console access passed. Real connections incremented both counters on all five nodes. Expiry and a 1-byte cap installed both directional 1 Mbps rules; a due cycle cleared usage and lifted the rules. Test settings were restored. An initial state backup was created. The desktop and mobile console layouts and language menu passed browser inspection. An in-place upgrade preserved all five node identities, connection settings, and the admin password.
+- Remaining: measure sustained bidirectional throughput under the limit and verify startup after an actual reboot. Enabled systemd units provide the boot mechanism; no reboot was performed.
+- Publication: formal `origin/main` remains v2.0.0. This feature branch is pushed to the formal repository and has no release tag.
+- Next action: measure sustained throttled throughput and, when practical, verify boot after a reboot; then review the public changes before merging and releasing.
+
 
 ## Changelog
 
