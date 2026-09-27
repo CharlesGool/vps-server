@@ -165,11 +165,11 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `feat/node-management`, basée sur `feat/ui-redesign`. Aucune règle temporaire du projet n’a été trouvée.
+- Branche : `feat/node-management`, basée sur `feat/ui-redesign`, poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
 - Terminé : la page des proxies accepte plusieurs nœuds d’un même protocole, dont plusieurs AnyTLS sur des ports distincts. Chaque nœud dispose d’une modification dans sa carte ciblée par ID, d’un formulaire séparé pour les limites de trafic, d’une réinitialisation aléatoire, de la création et de la suppression, ainsi que d’un abonnement Clash ciblé par ID. Les couleurs des visites entrantes et sortantes se distinguent mieux, Proxy est traduit dans les huit catalogues, les notes redondantes ont été retirées et les polices intégrées utilisent `font-display: optional`.
 - Contrôles : 293 tests automatisés ont réussi (8 ignorés), ainsi que la compilation Python, le vérificateur de langues et la vérification du diff. Les cinq nouveaux modèles d’entrée et une configuration vide ont passé le vérificateur sing-box inclus. Chromium a affiché 5 nœuds avec leurs données visibles et la modification au même emplacement, sans débordement horizontal sur ordinateur ni à 390 px. Avec les polices retardées de 1.2 seconde, les dimensions et la position du titre sont restées stables.
 - Déploiement : `~/apps/vps-server` a été mis à jour sur l’hôte de test désigné et une sauvegarde privée a été conservée hors du dépôt. Un second nœud AnyTLS temporaire a écouté sur un port distinct, figuré à côté du premier, puis a été supprimé depuis la console. Son inscription de port et son certificat ont été retirés. L’identité, la configuration et les limites des cinq nœuds initiaux correspondent à la sauvegarde. Les quatre services sont actifs et activés au démarrage ; HTTP/HTTPS publics et la console authentifiée ont répondu 200 sur le LAN. Une ancienne incohérence du registre de port AnyTLS a aussi été corrigée.
-- Reste à faire : pousser la branche de fonctionnalité. L’importation Android Clash sur un vrai téléphone et le démarrage après un véritable redémarrage restent non vérifiés. Action suivante : pousser `feat/node-management` vers le dépôt GitHub officiel, puis examiner sa fusion et sa publication.
+- Reste à faire : l’importation Android Clash sur un vrai téléphone et le démarrage après un véritable redémarrage restent non vérifiés. Action suivante : examiner `feat/node-management` pour sa fusion et sa publication, puis effectuer ces deux vérifications lorsque cela sera possible.
 
 ## Historique des modifications
 
@@ -316,4 +316,5 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `da5f84f` docs(log): record measured node acceptance
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
-- (this commit) feat(nodes): support multiple nodes and in-place editing
+- `9a615ab` feat(nodes): support multiple nodes and in-place editing
+- (this commit) docs(log): record node management delivery

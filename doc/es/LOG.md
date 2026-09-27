@@ -165,11 +165,11 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `feat/node-management`, basada en `feat/ui-redesign`. No se encontraron reglas temporales del proyecto.
+- Rama: `feat/node-management`, basada en `feat/ui-redesign`, subida al repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
 - Completado: la página de proxies admite varios nodos del mismo protocolo, incluidos varios AnyTLS en puertos distintos. Cada nodo tiene edición por ID dentro de la tarjeta, un formulario separado para límites de tráfico, restablecimiento aleatorio, creación y eliminación, y una suscripción Clash por ID. Los colores de entrada y salida de visitas recientes se distinguen mejor, Proxy está traducido en los ocho catálogos, se eliminaron notas redundantes y las fuentes incluidas usan `font-display: optional`.
 - Comprobaciones: pasaron 293 pruebas automatizadas (8 omitidas), la compilación de Python, la verificación de idiomas y la comprobación de diferencias. Las cinco plantillas de entrada nuevas y una configuración vacía pasaron el verificador sing-box incluido. Chromium mostró 5 nodos con datos visibles y edición en el mismo lugar, sin desbordamiento horizontal en escritorio ni a 390 px. Con las fuentes retrasadas 1.2 segundos, el título no cambió de posición ni tamaño.
 - Despliegue: se actualizó `~/apps/vps-server` en el servidor de pruebas designado y se conservó una copia privada fuera del repositorio. Un segundo nodo AnyTLS temporal escuchó en otro puerto, apareció junto al original y después se eliminó desde la consola. Se retiraron su registro de puerto y certificado. La identidad, configuración y límites de los cinco nodos originales coinciden con la copia. Los cuatro servicios están activos y habilitados; HTTP/HTTPS públicos y la consola autenticada devolvieron 200 desde la LAN. También se corrigió una discrepancia previa en el registro del puerto AnyTLS.
-- Pendiente: subir la rama de función. La importación en Android Clash desde un teléfono real y el inicio tras un reinicio real siguen sin comprobarse. Siguiente acción: subir `feat/node-management` al repositorio oficial de GitHub y revisar su integración y publicación.
+- Pendiente: la importación en Android Clash desde un teléfono real y el inicio tras un reinicio real siguen sin comprobarse. Siguiente acción: revisar `feat/node-management` para su integración y publicación, y después realizar esas dos pruebas cuando sea posible.
 
 ## Historial de cambios
 
@@ -316,4 +316,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `da5f84f` docs(log): record measured node acceptance
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
-- (this commit) feat(nodes): support multiple nodes and in-place editing
+- `9a615ab` feat(nodes): support multiple nodes and in-place editing
+- (this commit) docs(log): record node management delivery

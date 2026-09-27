@@ -167,11 +167,11 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 
 ## 交接
 
-- 分支：`feat/node-management`，基于 `feat/ui-redesign`。未发现临时项目规则。
+- 分支：`feat/node-management`，基于 `feat/ui-redesign`，已推送至正式 GitHub 仓库。未发现临时项目规则。
 - 已完成：代理页面支持同协议多个节点，包括在不同端口运行多个 AnyTLS。每个节点都有卡片内按 ID 定位的编辑功能、独立的流量限制表单、随机重置、新建和删除，以及按 ID 定位的 Clash 订阅。最近访问的入站和出站颜色更易区分，Proxy 已在八种语言中翻译，冗余说明已移除，自带字体改用 `font-display: optional`。
 - 检查：293 项自动化测试通过（8 项跳过）；Python 编译、语言检查及差异检查通过。五种新入站模板及空配置通过随附的 sing-box 检查。Chromium 在桌面和 390 px 宽度下显示 5 个节点、默认信息和原位编辑，没有横向溢出。字体延迟 1.2 秒时，标题尺寸和位置不变。
 - 部署：已在指定测试机的 `~/apps/vps-server` 下更新项目，私人备份保留在仓库外。临时第二个 AnyTLS 节点在独立端口监听，与原节点同时显示，随后通过控制台删除；其端口登记和证书已移除。原五个节点的身份、配置和限制与备份一致。四个服务均运行且已启用；局域网访问公共 HTTP/HTTPS 和需登录的控制台均返回 200。升级前已存在的 AnyTLS 端口登记不一致也已修正。
-- 剩余：推送功能分支。真实手机上的 Android Clash 导入及实际重启后的启动仍未验证。下一步：将 `feat/node-management` 推送到正式 GitHub 仓库，再审查合并与发布。
+- 剩余：真实手机上的 Android Clash 导入及实际重启后的启动仍未验证。下一步：审查 `feat/node-management` 的合并与发布，条件允许时完成手机和重启验证。
 
 ## 变更日志
 
@@ -318,4 +318,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `da5f84f` docs(log): record measured node acceptance
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
-- (this commit) feat(nodes): support multiple nodes and in-place editing
+- `9a615ab` feat(nodes): support multiple nodes and in-place editing
+- (this commit) docs(log): record node management delivery

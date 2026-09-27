@@ -220,11 +220,11 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `feat/node-management`, based on `feat/ui-redesign`. No temporary project rules were found.
+- Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
 - Completed: the proxy page supports multiple nodes of the same protocol, including multiple AnyTLS listeners on different ports. Each node has an ID-based editor in its card, a separate traffic-limit form, random reset, creation and deletion, and an ID-based Clash subscription. Recent-visitor directions have distinct colors, Proxy is translated in all eight catalogs, redundant console notes are removed, and bundled fonts use `font-display: optional`.
 - Checks: 293 automated tests passed (8 skipped); Python compilation, the language checker, and diff checks passed. All five generated inbound templates and an empty config passed the vendored sing-box checker. Chromium showed five nodes with visible facts, in-place edit, and no horizontal overflow at desktop and 390 px widths. With fonts delayed by 1.2 seconds, the heading bounds did not change.
 - Deployment: updated the designated test host under `~/apps/vps-server`; a private backup was retained outside the repository. A temporary second AnyTLS node listened on a distinct port, appeared next to the original, then was deleted through the console. Its temporary port registration and certificate were removed. The original five node identities, configuration and limits match the backup. Four services are active and enabled; public HTTP/HTTPS and the authenticated console returned 200 from the LAN. A pre-existing AnyTLS port registry mismatch was corrected.
-- Remaining: push the feature branch. Android Clash import on a real phone and startup after an actual reboot remain unverified. Next action: push `feat/node-management` to the formal GitHub repository, then review it for merge and release.
+- Remaining: Android Clash import on a real phone and startup after an actual reboot remain unverified. Next action: review `feat/node-management` for merge and release, then run those two device and reboot checks when practical.
 
 ## Changelog
 
@@ -469,4 +469,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `da5f84f` docs(log): record measured node acceptance
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
-- (this commit) feat(nodes): support multiple nodes and in-place editing
+- `9a615ab` feat(nodes): support multiple nodes and in-place editing
+- (this commit) docs(log): record node management delivery

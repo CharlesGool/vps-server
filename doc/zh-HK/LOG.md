@@ -128,11 +128,11 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 
 ## 交接
 
-- 分支：`feat/node-management`，基於 `feat/ui-redesign`。未發現臨時項目規則。
+- 分支：`feat/node-management`，基於 `feat/ui-redesign`，已推送至正式 GitHub 倉庫。未發現臨時項目規則。
 - 已完成：代理頁面支援同協定多個節點，包括在不同連接埠運作的多個 AnyTLS。每個節點都有卡片內按 ID 定位的編輯功能、獨立的流量限制表單、隨機重設、新增及刪除，以及按 ID 定位的 Clash 訂閱。最近訪問的入站及出站顏色更易區分，Proxy 已翻譯成八種語言，冗餘說明已移除，內建字型改用 `font-display: optional`。
 - 檢查：293 項自動化測試通過（8 項跳過）；Python 編譯、語言檢查及差異檢查通過。五種新入站範本及空設定通過隨附的 sing-box 檢查。Chromium 在桌面及 390 px 寬度下顯示 5 個節點、預設資料及原位編輯，沒有橫向溢出。字型延遲 1.2 秒時，標題大小和位置不變。
 - 部署：已在指定測試機的 `~/apps/vps-server` 更新項目，私人備份保留在倉庫外。臨時第二個 AnyTLS 節點在獨立連接埠監聽，與原節點同時顯示，其後透過控制台刪除；其連接埠登記及憑證已移除。原五個節點的身份、設定及限制與備份一致。四個服務均運行且已啟用；從局域網存取公開 HTTP/HTTPS 及需登入的控制台均回傳 200。升級前已存在的 AnyTLS 連接埠登記不一致亦已修正。
-- 待辦：推送功能分支。真實手機上的 Android Clash 匯入及實際重新開機後的啟動仍未驗證。下一步：將 `feat/node-management` 推送至正式 GitHub 倉庫，再審查合併與發行。
+- 待辦：真實手機上的 Android Clash 匯入及實際重新開機後的啟動仍未驗證。下一步：審查 `feat/node-management` 的合併與發行，條件允許時完成手機及重新開機驗證。
 
 ## 變更記錄
 
@@ -279,4 +279,5 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - `da5f84f` docs(log): record measured node acceptance
 - `b74b412` feat(proxy): add Clash Meta import and GiB node controls
 - `773eedf` feat(web): unify console and setup interface design
-- (this commit) feat(nodes): support multiple nodes and in-place editing
+- `9a615ab` feat(nodes): support multiple nodes and in-place editing
+- (this commit) docs(log): record node management delivery
