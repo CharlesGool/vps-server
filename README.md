@@ -1,20 +1,35 @@
+---
+name: project-readme
+description: Project overview and usage
+metadata:
+  version: "1.0.0"
+  lang: "en"
+---
+
 # vps-server
 
-**English** | [简体中文](doc/zh_cn/README.md) | [繁體中文](doc/zh_tw/README.md) | [繁體中文（香港）](doc/zh_hk/README.md) | [हिन्दी](doc/hi/README.md) | [Español](doc/es/README.md) | [العربية](doc/ar/README.md) | [Français](doc/fr/README.md)
+## Multi-language
+
+**English** | [简体中文](doc/zh-CN/README.md) | [繁體中文 (台灣)](doc/zh-TW/README.md) | [繁體中文 (香港)](doc/zh-HK/README.md) | [हिन्दी](doc/hi/README.md) | [Español](doc/es/README.md) | [العربية](doc/ar/README.md) | [Français](doc/fr/README.md)
 
 ## Documentation
 
+- Project overview: [README](README.md)
+
 - Design rationale: [DESIGN](doc/DESIGN.md)
-- Release history: [CHANGELOG](doc/CHANGELOG.md)
-- Current state: [STATUS](doc/STATUS.md)
-- Requirement list: [BACKLOG](doc/BACKLOG.md)
-- Rejected ideas: [DECISIONS](doc/DECISIONS.md)
+
+- Release history: [LOG](doc/LOG.md)
+
 - Third-party notices: [THIRD_PARTY_NOTICES](doc/THIRD_PARTY_NOTICES.md)
 
-A one-command bundle for a Debian/Ubuntu VPS: a public page anyone can hit to
-prove your IP's web ports are reachable, a password-protected console for
-speed testing and connection logging, an on-demand iperf3 window, and an
-anytls proxy.
+## Introduction
+
+A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
+reachability, an operator console for speed tests and connection logging, an
+on-demand iperf3 window, and sing-box proxy nodes. The four-protocol `proxy`
+module described here exists on the unmerged `feat/proxy-protocols` branch;
+the v1.1.2 release tag in the install commands below does **not** include it.
+See [current state and acceptance limits][local-link-001].
 
 ## What it does
 
@@ -35,12 +50,19 @@ anytls proxy.
 - **Logs who connected.** Every inbound TCP connection, on any port, not just
   HTTP — read from `/proc/net/tcp[6]`, stored in SQLite, most recent 1000 kept.
 - **Serves an anytls proxy.** sing-box with a self-signed certificate, plus BBR.
-  When that module is installed, the console gains a page showing whether the
-  node is up and offering its Clash entry and `anytls://` link with a copy
+  When that module is installed, the console's `/proxy` page shows whether the
+  node is up and offers its Clash entry and `anytls://` link with a copy
   button, so handing the node to a client does not mean going back to the
   terminal.
+- **Serves a vmess/vless/trojan/shadowsocks proxy, any subset.** One more
+  sing-box process, sharing the same vendored binary as anytls. When
+  installed, the console's shared `/proxy` page gains a section per protocol
+  with its port, UUID or password, Clash entry, share link and QR code. Each
+  protocol has its own reset button, leaving the other credentials unchanged.
 
-Each of the three modules — web, iperf3, anytls — is selectable at install time.
+The documented release modules are web, iperf3, anytls, and proxy. This
+unreleased checkout also exposes experimental frps and Lucky installation
+paths. Their host behavior and release acceptance have not been verified here.
 
 **Non-goals:** no ACME or domain names (443 is self-signed on purpose); no
 always-on iperf3; no reverse proxy or containers; the public page never reveals
@@ -54,10 +76,11 @@ maintained, and their code is vendored here rather than absorbed.
 - Runtime: Python 3.9+ (the distro's `python3` is enough — there are no Python
   dependencies to install)
 - Architecture: any for the web and iperf3 modules; **x86-64 only** for anytls,
-  because the vendored sing-box binary is amd64
-- Ports 80 and 443 must be free — the installer refuses rather than competing
-  with an existing nginx, Apache, Caddy, or `vps-webserver`
-- External services: none. Installation needs only your distro's package mirror.
+  proxy, frps, and Lucky, because the bundled executables target amd64
+- For the web module on its default public ports, 80 and 443 **MUST** be free — the
+  installer refuses rather than competing with nginx, Apache, Caddy, or `vps-webserver`
+- External services: none at runtime. Installation needs your distro's package mirror; optional public-IP lookup may contact an external service.
+- Minimum: the OS, runtime, architecture, and free ports above. No additional recommended hardware requirement is recorded; a VPS with roughly 150 MB disk accommodates the vendored binary.
 
 ## Install
 
@@ -79,22 +102,30 @@ bash install.sh
 ```
 
 `install.sh` asks which modules to install, the interface language, whether to
-password-protect the console, and which ports to use.
+password-protect the console, and which ports to use. The tagged v1.1.2 install
+supports web, iperf3, and anytls; the additional proxy module is branch work,
+not part of that tag.
 
 **Re-running it upgrades in place.** It detects an existing install, offers to
 keep its configuration, and only asks about settings the installed version did
 not have — each with its default, so pressing Enter is a valid answer. The
-console password, the persisted port, the certificates, the visitor log and
-the anytls node's credentials all survive. Answer `n` to the upgrade question
-to re-ask everything instead.
+console password, the persisted port, the certificates, the visitor log, the
+anytls node's credentials, and (on this unmerged branch) every installed
+proxy protocol's port and credential all survive. Answer `n` to the upgrade
+question to re-ask settings instead.
 
-## Quick start
+## Guidance
+
+### Quick start
+
+This unreleased checkout puts web implementation in `src/web/app.py` and runs the installers from `deploy/`. The bundled binary and license notice are under `third_party/sing-box/`; release metadata is under `config/`. Installed files remain flat at `$PREFIX/app.py`, `$PREFIX/static/`, `$PREFIX/anytls/`, `$PREFIX/proxy/`, and `$PREFIX/sing-box`. This is not a new release or a real-host validation.
 
 ```bash
-bash install.sh                              # interactive: modules, language, password, port
-sudo VPSSRV_MODULES=web,iperf3 bash install.sh   # unattended, no prompts
+bash deploy/install.sh                       # interactive: temporary browser setup wizard
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
 systemctl status vps-server-web              # is it up
-bash anytls/setup-anytls.sh status           # anytls node details, if that module is installed
+bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
+bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
 ```
 
 Then, from a different machine:
@@ -105,7 +136,7 @@ curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
 iperf3 -c <ip> -p 5201 --json              # only while a window is open
 ```
 
-## Verify it works
+### Verify it works
 
 After `bash install.sh` you should see a summary block naming each installed
 module and its port. Then:
@@ -123,8 +154,10 @@ module and its port. Then:
   not a fault.
 - If you installed anytls: `systemctl status vps-server-anytls` reports
   `active (running)`.
+- If you installed proxy: `systemctl status vps-server-proxy` reports
+  `active (running)`.
 
-## Configuration
+### Configuration
 
 Every variable has a working default; `.env` is optional. The most load-bearing
 ones:
@@ -138,23 +171,45 @@ ones:
 | `VPSSRV_AUTH` | Require a password on the console | `1` | no |
 | `VPSSRV_IPERF_PORT` | Port an open iperf3 window listens on | `5201` | no |
 | `VPSSRV_IPERF_MAX_MINUTES` | Cap the console cannot exceed | `60` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | no |
 
-Full reference: see `doc/DESIGN.md` → Configuration reference.
+Full reference: [Configuration reference][local-link-002].
 
 ## Uninstall
 
+Run as root, from the installer checkout, with the same `PREFIX` and
+`SERVICE_NAME` values used at install time (the installer's summary prints
+the exact removal command). To remove the installed modules and units **while
+keeping data** in `$PREFIX` for a later reinstall:
+
 ```bash
-bash uninstall.sh              # removes whichever modules are installed, and the data
-KEEP_DATA=1 bash uninstall.sh  # keeps the visitor database and the console password
+KEEP_DATA=1 bash uninstall.sh
 ```
+
+To remove the installed modules and **delete data as well** (including the
+visitor log, console password, saved port, and certificates in `$PREFIX`):
+
+```bash
+bash uninstall.sh
+```
+
+Both modes tear down the anytls/proxy services and their separate module
+configs if installed. `KEEP_DATA=1` retains `$PREFIX`, not those module configs.
+
+## Acknowledgements
+
+The browser test uses [LibreSpeed](https://github.com/librespeed/speedtest); QR rendering uses [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator); the bundled proxy core is [sing-box](https://github.com/SagerNet/sing-box). See [third-party notices][local-link-003] for the inventory and original license paths.
 
 ## License
 
-GPL-3.0. This project redistributes the sing-box binary, which is GPL-3.0, so
-the combined work is GPL-3.0 — see `LICENSE`. Vendored third-party components,
-their versions, and the corresponding-source links the GPL requires are recorded
-in [THIRD_PARTY_NOTICES.md](doc/THIRD_PARTY_NOTICES.md).
+Project license: GPL-3.0 (SPDX: `GPL-3.0-only`); read the full [LICENSE][local-link-004]. The historical combination rationale is in [Decisions][local-link-005]. Recorded third-party components, original license paths, source links, and release-review gaps are in [THIRD_PARTY_NOTICES.md][local-link-006]. This documentation migration is not a new legal review.
 
 This project is not affiliated with or endorsed by sing-box/SagerNet or
 LibreSpeed.
+
+[local-link-001]: doc/LOG.md#current-state-and-acceptance-limits
+[local-link-002]: doc/DESIGN.md#configuration-reference
+[local-link-003]: doc/THIRD_PARTY_NOTICES.md
+[local-link-004]: LICENSE
+[local-link-005]: doc/LOG.md#decisions
+[local-link-006]: doc/THIRD_PARTY_NOTICES.md

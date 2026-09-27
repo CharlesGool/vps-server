@@ -1,0 +1,9 @@
+{
+  "unsupported_list": "lista de artefactos no admitida o inexistente",
+  "empty_list": "lista de artefactos vacía",
+  "invalid_path_hash": "ruta o hash de artefacto no válido o duplicado",
+  "missing_artifact": "FALLO {name}: falta o está fuera del árbol de trabajo",
+  "hash_mismatch": "FALLO {name}: el SHA-256 no coincide",
+  "artifact_ok": "OK   {name}: {hash}",
+  "invalid_lock": "Bloqueo de dependencias no válido: {error}"
+}

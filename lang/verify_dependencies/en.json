@@ -1,0 +1,9 @@
+{
+  "unsupported_list": "unsupported or missing artifact list",
+  "empty_list": "empty artifact list",
+  "invalid_path_hash": "invalid or duplicate artifact path/hash",
+  "missing_artifact": "FAIL {name}: missing or outside checkout",
+  "hash_mismatch": "FAIL {name}: SHA-256 mismatch",
+  "artifact_ok": "OK   {name}: {hash}",
+  "invalid_lock": "Invalid dependency lock: {error}"
+}

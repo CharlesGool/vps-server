@@ -10,6 +10,10 @@
   --accent-2: #818cf8;
   --error: #f87171;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  /* Deliberately the same literal in both themes: a QR code's generated SVG
+     hardcodes a white background to stay scannable, so the frame around it
+     must not go dark and clash. */
+  --qr-bg: #ffffff;
 
   /* Foreground pairs and solid fills. Components must use these rather than
      writing a hex inline: a literal cannot follow the theme, so every one of
@@ -44,6 +48,7 @@
     --accent-2: #4f46e5;
     --error: #dc2626;
     --shadow: 0 10px 30px rgba(30, 60, 120, 0.12);
+    --qr-bg: #ffffff;
 
     /* Not the dark values inverted — per the dark-mode rule, each side is
        tuned against its own surfaces. On white, the same hues have to go
@@ -452,6 +457,28 @@ button.copybtn.copied {
   color: var(--accent);
 }
 
+.qr-details { margin-top: 0.6rem; }
+.qr-details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.9rem;
+  width: fit-content;
+}
+.qr {
+  /* The generated SVG hardcodes a white background and black modules —
+     correct regardless of page theme, since a QR scanner needs that
+     contrast — but the box itself still needs a light frame so it does
+     not look like a rendering glitch sitting on a dark page. */
+  width: 160px;
+  max-width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--qr-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+.qr svg { display: block; width: 100%; height: auto; }
+
 dl.kv dd.secret { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 dl.kv dd.secret code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -469,6 +496,11 @@ dl.kv dd.secret code {
    the label inherited, and .inline-form label now sets those itself. */
 .checkline { flex-direction: row; align-items: center; gap: 0.45rem; }
 .checkline input[type="checkbox"] { width: auto; margin: 0; }
+
+/* The per-node reset control sits directly under a .node-addr h2, with the
+   port/credential dl.kv right after it — .inline-form's own margin is 0, so
+   without this the two would run together with no breathing room. */
+.reset-inline { margin-bottom: 0.9rem; }
 
 /* Narrow screens. The two-column key/value grid is the one that actually
    breaks: a label like "SNI (read back from the certificate CN)" takes the

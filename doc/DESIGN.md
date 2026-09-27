@@ -1,25 +1,38 @@
+---
+name: project-design
+description: Project architecture and design constraints
+metadata:
+  version: "1.0.0"
+  lang: "en"
+---
+
 # vps-server — Design
 
-**English** | [简体中文](zh_cn/DESIGN.md) | [繁體中文](zh_tw/DESIGN.md) | [繁體中文（香港）](zh_hk/DESIGN.md) | [हिन्दी](hi/DESIGN.md) | [Español](es/DESIGN.md) | [العربية](ar/DESIGN.md) | [Français](fr/DESIGN.md)
+## Multi-language
+
+**English** | [简体中文](zh-CN/DESIGN.md) | [繁體中文 (台灣)](zh-TW/DESIGN.md) | [繁體中文 (香港)](zh-HK/DESIGN.md) | [हिन्दी](hi/DESIGN.md) | [Español](es/DESIGN.md) | [العربية](ar/DESIGN.md) | [Français](fr/DESIGN.md)
 
 ## Documentation
 
 - Project overview: [README](../README.md)
-- Release history: [CHANGELOG](CHANGELOG.md)
-- Current state: [STATUS](STATUS.md)
-- Requirement list: [BACKLOG](BACKLOG.md)
-- Rejected ideas: [DECISIONS](DECISIONS.md)
+
+- Design rationale: [DESIGN](DESIGN.md)
+
+- Release history: [LOG](LOG.md)
+
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-> Success criterion for this document: someone else, on a different machine,
-> can rebuild this project from it. Assume the reader cannot see your machine.
+## Design Goals
 
-## Goals & non-goals
+**Implemented goals (including work on an unmerged branch; see [acceptance limits][local-link-001]):**
 
-**Goals**
+The current checkout also contains experimental frps and Lucky installer paths.
+Their host behavior and release acceptance remain unverified; the goals below
+describe the four modules documented for the earlier feature branch.
 
-- Install, on a fresh Debian/Ubuntu VPS, a single bundle that provides four
-  things, each independently selectable at install time:
+- Install, on a fresh Debian/Ubuntu VPS, a single bundle with four selectable
+  modules providing five capabilities (the web module includes the public page
+  and private console):
   1. **Public reachability page** — a deliberately minimal page served on TCP
      **80 and 443** with no authentication, so that anyone given only the IP can
      confirm in a browser whether this host's web ports are reachable from where
@@ -32,17 +45,30 @@
      and it closes itself when the window expires.
   4. **anytls proxy** — a sing-box `anytls` inbound with a self-signed
      certificate, plus BBR.
+  5. **proxy** — any subset of sing-box `vmess`/`vless`/`trojan`/`shadowsocks`
+     inbounds, sharing one systemd unit, one config, and the same vendored
+     sing-box binary the anytls module uses. See "The proxy module" below.
 - Be installable with no outbound network access beyond the distro package
   mirror. The sing-box binary ships in the repository.
 - Coexist on the same host with `vps-webserver` and `Anytsl-Serve` without
   colliding on systemd unit names, install prefixes, environment variable
   prefixes, or persisted ports.
 
+**Tracked goals and current status:**
+
+- [ ] 2026-09-19 Per-node traffic accounting, data cap, and expiry: track upload/download per node; disable the node when its cap or expiry date is reached; show totals in the console. Requires design and operator review.
+- [x] 2026-09-19 Browser-based first-run setup: this checkout uses a short-lived setup wizard in `tools/setup_wizard/setup_wizard.py` when the interactive installer has no `VPSSRV_MODULES` value. It collects language, modules, ports, and authentication choices; the shell installer performs the selected actions only after validating the result. This checkout has not been accepted on a real host.
+- [ ] 2026-09-22 Complete frps console support for tokens and connection information. The installer now offers frps on this checkout, but the console requirement remains unscoped: decide whether token information means an auth token, client config snippet, or connected-proxy list.
+- [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
+- [ ] Scope the highly-customizable-node request recorded in the same snapshot; no implementation criteria were recorded there.
+
+The shared SQLite-lock concern is a [known unresolved measurement question][local-link-002], not a mandate to change the architecture. Historical completed work and verification records are in [LOG][local-link-003].
+
 **Non-goals**
 
 - **Not a replacement for `vps-webserver` or `Anytsl-Serve`.** Both remain
   independently maintained and independently released. vps-server vendors their
-  code rather than importing or superseding it; see `DECISIONS.md` for the
+  code rather than importing or superseding it; see [Decisions][local-link-004] for the
   drift trade-off this accepts and the mitigation.
 - **No ACME / Let's Encrypt / domain names.** TLS on 443 is a self-signed
   certificate. The public page's job is to answer "can you reach this IP at
@@ -60,9 +86,7 @@
 
 ## Architecture
 
-Two processes plus one transient child. Nothing talks to anything else over the
-network; the console and the public page are two listeners inside one Python
-process, sharing state in memory.
+The web service, anytls service, and optional proxy service run as separate processes; the web service also spawns a transient iperf3 child. The console and public page use separate listeners within one Python process and share in-memory state. Only configured client traffic reaches these services.
 
 ```
                        ┌──────────────────────── vps-server-web.service ───────┐
@@ -91,15 +115,14 @@ process, sharing state in memory.
                        └─────────────────────────────────┘
 ```
 
-The two systemd units are independent: either can be installed without the
-other, and neither restarts the other.
+The diagram shows the web and anytls units; the optional `vps-server-proxy.service` runs up to four independent inbounds in a third process, sharing the vendored sing-box binary but not either unit's state. Each module can be selected separately; see [The proxy module][local-link-005].
 
 ### Why the public page and the console are separate listeners
 
 They have opposite security postures, and merging them would force one of the
 two to give up its own. The console is authenticated and on an unguessable port
-precisely so that it is not casually discoverable; the public page must be
-trivially discoverable and must not ask for a password. So: different ports,
+precisely so that it is not casually discoverable; the public page **MUST** be
+trivially discoverable and **MUST NOT** ask for a password. So: different ports,
 different request handlers, different route tables. A request arriving on 80/443
 can never reach a console route, because `ProbeHandler` has no such routes — not
 because a check rejected it. That is the point; an authorization check can be
@@ -143,7 +166,14 @@ password back out of `config.json` and passing them in. Without that step
 client would break on a routine upgrade — see the gotcha below, which still
 applies to a *deliberate* re-install.
 
-### The console's anytls page
+### The console's anytls section
+
+**Lives on `/proxy` now, not its own page** (2026-09-22) — see "The proxy
+module" below for why anytls and the proxy module's protocols were merged
+onto one page. `/anytls` still exists as a redirect to `/proxy`, and
+`POST /anytls/reset` is unchanged; only the standalone `GET /anytls` page
+and its own nav link/dashboard tile are gone. Everything below still
+describes how the anytls section of that merged page behaves.
 
 The console reads the installed node out of `VPSSRV_ANYTLS_CONFIG` and renders
 its status plus a ready-to-paste Clash entry and `anytls://` link.
@@ -175,7 +205,7 @@ is correct because the environments that lack it are the same ones where
 firewall. A reset that fails after withdrawing the old rule leaves a running
 node with no way in, which is worse than one that never started.
 
-Two details are load-bearing. The **node password is on that page in clear**,
+Two details are load-bearing. The **node password is on that console section in clear**,
 which is acceptable only because the page lives on `ConsoleHandler`, behind
 the login; `ProbeHandler` has no route to it, and a test asserts the public
 listener 404s `/anytls` and never contains the password. And the **server
@@ -187,6 +217,83 @@ needs a different address edits the line after copying.
 The SNI is not stored in sing-box's config at all — `setup-anytls.sh` only
 bakes it into the self-signed certificate's CN — so the console reads it back
 from the certificate rather than keeping a second copy that could drift.
+
+### The proxy module
+
+The former backlog asked whether the already-vendored sing-box binary covers more
+protocols than anytls, or whether a second backend would be needed. It does:
+`vmess`, `vless`, `trojan` and `shadowsocks` (2022-blake3-aes-128-gcm) each
+pass `sing-box check`, and — confirmed by actually running it, not just
+validating the config — all four bind their ports and accept connections
+simultaneously in one `sing-box run` process. No second backend was added.
+
+Unlike anytls, this is **one systemd unit (`vps-server-proxy.service`) with up
+to four simultaneous inbounds in one `config.json`**, not four clones of the
+anytls shape. Reasons: one unit to monitor instead of four, one shared
+self-signed certificate instead of three (shadowsocks needs none), and it is
+the shape a later per-node traffic-accounting feature would want anyway — one
+process whose `inbounds` array is already the node list. `deploy/proxy/setup-proxy.sh`
+is first-party to vps-server, not vendored from anywhere, since none of these
+four protocols come from Anytsl-Serve.
+
+It **shares the vendored sing-box binary with the anytls module**
+(`/usr/local/bin/sing-box-vps-server`) rather than carrying a second ~57 MB
+copy. Both modules' `uninstall()` check whether the *other* module's config
+still exists before deleting that binary — anytls's own vendored
+`setup-anytls.sh` gained this check as a local, documented deviation (see
+`deploy/anytls/.upstream-version`) specifically because the binary is no longer
+anytls's alone to delete.
+
+`PROXY_PROTOCOLS` (comma-separated, default all four) is validated into a
+global array, not echoed through `$(...)` command substitution — an early
+version validated it inside a function called as `read -ra x <<< "$(fn)"`,
+and `exit 1` inside that substitution's subshell only killed the subshell:
+the parent script silently continued with an empty protocol list and started
+a service with zero inbounds. Same class of bug as the `prompt_new_settings()`
+entry in [Decisions][local-link-006]. Each protocol's port comes from a distinct
+5000-wide range under 60000 (not 10000-wide from 60000, which overflowed
+sing-box's `uint16 listen_port` past 65535 on whichever install happened to
+roll a high port — caught by five repeated fresh installs, not by the first
+one). Preserving credentials across an upgrade works the same way as anytls's
+`preserve_anytls()`: `preserve_proxy()` reads every installed protocol's port
+and credential back out of `config.json`, plus the protocol *set* itself, so
+`VPSSRV_MODULES=proxy` on a re-run does not silently drop or add a protocol.
+
+The console's `/proxy` page renders one section per installed protocol —
+port, UUID or password (whichever the protocol uses), the shared SNI (read
+back from the certificate CN, same trick as anytls), and a Clash entry plus
+share link (`vmess://`, `vless://`, `trojan://`, `ss://`) per detected
+address. **Each protocol has its own reset button**, not one shared "reset
+everything" button — an operator pointed out that a combined button forces
+rotating protocols nobody asked to touch, e.g. a leaked vmess UUID
+shouldn't mean re-configuring every trojan/vless/shadowsocks client too.
+`setup-proxy.sh reset <protocol>` rotates only that one's port and
+credential; `load_installed_vars()` reads every *other* protocol's current
+values back from disk first, so they survive untouched. `reset` with no
+argument still rotates everything currently installed — kept for the
+terminal/scriptable path, not exposed anywhere in the console UI. Both
+forms run via the same outside-the-sandbox `systemd-run` pattern
+`anytls_reset()` uses, for the same `ProtectSystem=strict` reason. One real
+cost of the shared systemd service (see above): resetting one protocol
+still restarts the whole service, so every other protocol's *connections*
+drop briefly even though their credentials don't change.
+
+`PortForwardManager.reserved_ports()` treats every installed proxy protocol's
+port the same way it already treats the anytls node's port and the console's
+own: reserved, so a port-forward rule cannot be pointed at a port a proxy
+protocol already owns.
+
+**The console's `/proxy` page also shows the anytls node**, if installed —
+an operator reported having anytls on its own separate page as an artificial
+split, since both are "proxy nodes" from their point of view regardless of
+which of the two independent backends serves each one. `/anytls` redirects
+here; `POST /anytls/reset` is unchanged, just redirects back to `/proxy`
+afterwards. The two modules keep fully independent state (anytls's own
+`public-ip.txt`/`SERVER_IP` are not the proxy module's — each can be
+configured differently) and independent reset buttons; only the page they
+render onto is shared. This is also why the whole page went through one
+`address_entries()` helper instead of anytls's and page_proxy's own
+near-duplicate copies of the same dedup logic: two call sites, one function.
 
 ### iperf3 window lifecycle
 
@@ -234,7 +341,7 @@ reboot, so it is built differently.
      `DROP` policy on that chain (common on a Docker host, for instance)
      would otherwise silently eat the forwarded traffic.
 3. `net.ipv4.ip_forward` is turned on the first time any rule needs it
-   (`_ensure_ip_forward()`), and never turned back off — see DECISIONS.md
+   (`_ensure_ip_forward()`), and never turned back off — see [Decisions][local-link-007]
    (2026-09-19) for why.
 4. The rule set lives in `PORTFWD_STATE_FILE` (JSON), not just in memory.
    Every process start calls `PortForwardManager.load()`, which withdraws
@@ -245,33 +352,47 @@ reboot, so it is built differently.
 5. A clean stop (`SIGTERM`, same signal handler the iperf3 window uses) calls
    `PortForwardManager.shutdown()`, which withdraws every enabled rule's
    iptables state but leaves the JSON `enabled` flag untouched — restarting
-   the service, or the host, must bring every one of them straight back via
+   the service, or the host, **MUST** bring every one of them straight back via
    `load()`. This is the same fail-safe direction as the iperf3 window: if
-   the process managing the state is not running, the state must not
+   the process managing the state is not running, the state **MUST NOT**
    silently outlive it.
 
-`target_host` must be a literal IPv4 address, not a hostname: `iptables
---to-destination` takes an address, and this project makes no outbound DNS
+`target_host` **MUST** be a literal IPv4 address, not a hostname: `iptables --to-destination` takes an address, and this project makes no outbound DNS
 lookup at request time (see the "Zero third-party runtime dependencies"
 decision). A Tailscale device's IP is stable and shown in `tailscale status`
 or `tailscale ip` on that device.
+
+## Design Constraints
+
+- Keep console routes out of `ProbeHandler`; authentication is not a substitute for the separate public route table.
+- Keep iperf3 time-boxed and remove the firewall rule on close or shutdown.
+- Reapply persisted forwards from JSON at process start; withdraw runtime rules at a clean stop without resetting the host-wide `ip_forward` toggle.
+- Preserve node credentials and selected settings on upgrade; use the owning setup scripts for rotation, outside the web unit's filesystem sandbox.
+- Do not decouple the shared `_db_lock` without evidence of harmful latency: the historical 60-flooder measurement did not reproduce a slowdown. See [Bugs][local-link-008].
+
+## External Interfaces
+
+- HTTP/HTTPS: public listeners on 80/443 expose only the reachability page; the operator console uses a separate persisted port. iperf3 listens only within an authenticated time-boxed window.
+- The console reads `/proc/net/tcp[6]` to log inbound TCP connections; it does not export proxy secrets on public routes.
+- `install.sh` uses the distro package manager and optionally looks up the public IP during installation; the service itself makes no outbound request at runtime. `setup-anytls.sh` and `setup-proxy.sh` manage sing-box units and certificates. iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs credential resets outside the web sandbox.
 
 ## Tech stack
 
 | Layer | Choice | Version | Why |
 |---|---|---|---|
-| Runtime | Python, standard library only | 3.9+ | Inherited from `vps-webserver`: no third-party packages means no dependency resolution on a fresh VPS and nothing to keep patched |
+| Runtime | Python, standard library only | 3.9+ | Inherited from `vps-webserver`: no third-party Python packages; the distro-managed interpreter and libraries still require security updates |
 | HTTP server | `http.server.ThreadingHTTPServer` | stdlib | Three listeners of a few requests each; a framework would be dead weight |
 | TLS | `ssl` + `openssl`-generated self-signed cert | stdlib / distro | No domain, no ACME (see non-goals) |
-| Store | `sqlite3` | stdlib | Visitor log must survive restarts |
+| Store | `sqlite3` | stdlib | Visitor log **MUST** survive restarts |
 | Speedtest engine | LibreSpeed, vendored unmodified | v6.2.1 | LGPL-3.0; already vendored and working in `vps-webserver` |
-| Bandwidth probe | `iperf3` from the distro | distro-pinned | The de-facto tool testers already have on the client side |
+| QR code rendering | kazuhikoarase/qrcode-generator, vendored unmodified | js2.0.4 | MIT; small, no build step, plain `<script>` tag like LibreSpeed |
+| Bandwidth probe | `iperf3` from the distro | not pinned by this project | The de-facto tool testers already have on the client side |
 | Proxy core | sing-box, vendored binary (amd64) | v1.13.14 | GPL-3.0; shipping the binary keeps install offline-capable |
 | Init | systemd | — | Target OS default |
 | Installer | Bash | — | Inherited from both upstreams |
 
 Rejected alternatives and the reasoning behind each choice live in
-`DECISIONS.md` — do not restate them here.
+[Decisions][local-link-009] — do not restate them here.
 
 ## Reproduction requirements
 
@@ -279,26 +400,44 @@ Rejected alternatives and the reasoning behind each choice live in
 
 - OS: Debian 11+ / Ubuntu 20.04+, systemd, run as root
 - Runtime: Python 3.9+ (distro python3 is sufficient)
-- Architecture: **x86-64 only** for the anytls module — the vendored sing-box
-  binary is amd64. The web and iperf3 modules are architecture-independent.
+- Architecture: **x86-64 only** for the anytls and proxy modules — both point
+  at the same vendored amd64 sing-box binary. The web and iperf3 modules are
+  architecture-independent.
 - Hardware: no GPU; ~150 MB disk (of which ~57 MB is the sing-box binary), any
   amount of RAM a VPS normally has
-- Dependency restore command: none. There is no Python lockfile because there
-  are no Python dependencies; see `THIRD_PARTY_NOTICES.md`.
+- Vendored artifact integrity check: from the repository root, run
+  `python3 tools/verify_dependencies/verify_dependencies.py`. This compares the five tracked third-party
+  distributables with [config/dependencies.lock.json][local-link-010] using
+  SHA-256 without executing them. The recorded version and upstream revision
+  fields are prior project records, not independently verified upstream
+  identities. LibreSpeed's exact upstream revision is not recorded.
+- There is no third-party Python package lock because `app.py` uses the standard
+  library. This artifact lock is not a dependency restore command or a complete
+  system-package lock; see [THIRD_PARTY_NOTICES.md][local-link-011].
 
 ### External dependencies
 
 | Item | Source | Placed at |
 |---|---|---|
 | `iperf3` | distro package manager (`apt-get install iperf3`) | system path |
-| `openssl`, `curl`, `jq`, `iproute2` | distro package manager | system path |
+| `openssl`, `curl`, `jq`, `iproute2`, `procps`, `iptables`, `ca-certificates` | distro package manager or existing host installation | system path |
 | sing-box binary | ships in this repository | `/usr/local/bin/sing-box-vps-server` |
-| LibreSpeed engine | ships in this repository | `$PREFIX/static/` |
+| LibreSpeed engine and qrcode-generator library | ship in this repository | `$PREFIX/static/` |
 | TLS certificates | generated on first run by the installer | `$VPSSRV_CERT_DIR` |
 
-No API keys. The service makes no outbound request at runtime except the
-optional public-IP lookup during install, which degrades to a warning if it
-fails.
+The installer installs missing system packages (including optional `iperf3`)
+from the target Debian/Ubuntu package repositories without selecting exact
+versions or repository snapshots. Python, OpenSSL, shell/system tools and
+systemd are also provided by the target OS. The host operator relies on the
+chosen distro's security-maintained package channels for updates. This avoids
+bundling their binaries, but package versions, hashes and transitive resolution
+can differ across hosts and time; **a strict, fully reproducible dependency
+restore is not achieved**. Achieving one would require a separately approved
+installer change and a selected distribution/repository snapshot. The lock's
+machine-readable `exclusions` records this boundary, not a fictitious pin.
+
+No API keys. The web service makes no outbound public-IP lookup at runtime.
+The installer may perform an optional outbound lookup; failure only warns.
 
 ### Paths & mounts
 
@@ -308,6 +447,7 @@ fails.
 | `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
+| `/etc/vps-server-proxy/` | installer | sing-box `config.json` (up to 4 inbounds) and its own self-signed cert |
 
 ### Configuration reference
 
@@ -345,11 +485,15 @@ reconfigure another.
 | `VPSSRV_WARMUP_SECONDS` | Discarded warmup at the start of each direction | `2` | no |
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Parallel streams per direction | `6` / `3` | no |
 | `VPSSRV_PING_SAMPLES` | Round trips used for the latency figure | `20` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | no |
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
 | `VPSSRV_ANYTLS_SETUP` | Script the console runs to rotate the node's credentials | `$PREFIX/anytls/setup-anytls.sh` | no |
+| `PROXY_PROTOCOLS`, `PROXY_SNI`, `SERVER_IP` | The proxy module's own script-level knobs — first-party, so no vendoring constraint, but kept unprefixed to match anytls's script-vs-console distinction | see `.env.example` | no |
+| `VPSSRV_PROXY_CONFIG` | Where the console reads the installed node set from | `/etc/vps-server-proxy/config.json` | no |
+| `VPSSRV_PROXY_SERVICE` | Unit the console checks for node liveness | `vps-server-proxy.service` | no |
+| `VPSSRV_PROXY_SETUP` | Script the console runs to rotate the selected protocol's credentials | `$PREFIX/proxy/setup-proxy.sh` | no |
 
 The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
 renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and
@@ -358,10 +502,11 @@ exists to avoid.
 
 ## Setup from scratch
 
-1. `git clone <repo>` and `cd` into it — verify: `ls sing-box` shows a ~57 MB file.
-2. `bash install.sh` — the installer asks which modules to install, the UI
-   language, whether to password-protect the console, and the ports. Verify:
-   it prints a summary block listing each installed module and its port.
+1. `git clone <repo>` and `cd` into it — verify: `ls -lh third_party/sing-box/sing-box` shows the ~57 MB binary.
+2. `bash deploy/install.sh` — an interactive run starts a temporary browser
+   setup wizard for modules, UI language, console authentication, and ports.
+   Open the printed URL and enter its one-time token; after applying the
+   validated selection, verify the terminal summary lists each module and port.
 3. `systemctl status vps-server-web` — verify: `active (running)`.
 4. From another machine, open `http://<ip>/` — verify: the reachability page
    renders and shows your own source IP.
@@ -376,34 +521,69 @@ exists to avoid.
    verify: `active (running)`; the installer's summary printed a client config
    line.
 
-## Data model / file layout
+## Data Design
+
+The visitor database and `portfwd.json` (enabled forwarding rules) persist under
+`$VPSSRV_DATA_DIR`. The console password, selected port, web certificates and
+`.install-state` live under `$PREFIX`; the sing-box module configs and their
+certificates live in `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`.
+See [Paths & mounts][local-link-012]. The iperf3 deadline stays in memory
+and does not survive restart.
+
+### Data model / file layout
 
 ```
-repo/
-├── install.sh                 # module-selecting installer (web / anytls / iperf3)
-├── uninstall.sh               # removes the modules it finds
-├── app.py                     # the web service: console + public listeners
-├── static/                    # LibreSpeed engine (vendored) + own UI assets
-├── systemd/
-│   └── vps-server-web.service # the anytls unit is not here: setup-anytls.sh
-│                              # writes it at install time, so it is never
-│                              # shipped and never stale
-├── anytls/
-│   ├── setup-anytls.sh        # vendored from Anytsl-Serve, renamed units/paths
-│   ├── sing-box.version       # which sing-box release the binary below is
-│   └── .upstream-version      # records: Anytsl-Serve v1.2.0
-├── sing-box                   # vendored amd64 binary
-├── .upstream-version          # records: vps-webserver v0.4.1
-├── tests/
-├── LICENSE                    # GPL-3.0
-├── LICENSES/                  # upstream licence texts
-└── doc/                       # the six governance docs + doc/zh_cn/, doc/zh_tw/
+<project root>/
+├── snapshots/                 # private snapshots; not part of the Git repository
+└── repo/                      # Git working tree; paths below are relative to it
+    ├── README.md              # entry point for users and documentation navigation
+    ├── config/VERSION         # release version used in checkout
+    ├── src/web/app.py         # web service implementation
+    ├── deploy/
+    │   ├── install.sh         # module-selecting installer
+    │   ├── uninstall.sh       # module removal
+    │   ├── systemd/vps-server-web.service
+    │   ├── anytls/setup-anytls.sh
+    │   ├── proxy/setup-proxy.sh
+    │   ├── frps/setup-frps.sh
+    │   └── lucky/setup-lucky.sh
+    ├── static/                # first-party UI assets and vendored browser libraries
+    │   └── third_party/
+    │       ├── librespeed/    # speedtest.js, speedtest_worker.js
+    │       └── qrcode/        # qrcode.js, qrcode-utf8.js
+    ├── lang/                  # interface catalogs for web, installers, and tools
+    ├── third_party/sing-box/
+    │   ├── sing-box           # vendored amd64 binary
+    │   ├── sing-box.version   # binary version metadata
+    │   └── LICENSE            # original upstream notice
+    ├── tools/verify_dependencies/verify_dependencies.py # checks config/dependencies.lock.json from repo root
+    ├── config/dependencies.lock.json
+    ├── config/upstream-version # records: vps-webserver v0.4.1
+    ├── deploy/anytls/.upstream-version # records: Anytsl-Serve v1.2.0
+    ├── tests/
+    ├── LICENSE                # GPL-3.0
+    └── doc/
+        ├── DESIGN.md          # architecture, constraints, and tracked goals
+        ├── LOG.md             # bugs, dated decisions, verification, release history
+        ├── THIRD_PARTY_NOTICES.md
+        └── <lang>/            # translated docs (seven language directories)
 ```
+
+These are checkout paths only: installation still places the application,
+proxy executable, and browser assets under `$PREFIX/app.py`, `$PREFIX/sing-box`,
+and `$PREFIX/static/`. Existing HTTP asset URLs are unchanged. The root-level
+`app.py`, `install.sh`, and `uninstall.sh` remain entry points.
+
+Only `repo/` is tracked by Git; `snapshots/` is separate and private. Start at
+[README][local-link-013], use [LOG][local-link-014] for historical verification and
+release history, and consult [third-party notices][local-link-015] for
+upstream assets. Documentation does not make a snapshot or installed host a
+reproducible source checkout.
 
 SQLite schema is inherited unchanged from `vps-webserver`: one `visits` table,
 trimmed to the most recent 1000 rows. `portfwd.json` is a flat JSON list of
 rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
-`target_port`, `enabled`, `created`) — see `PortForwardManager` in `app.py`.
+`target_port`, `enabled`, `created`) — see `PortForwardManager` in `src/web/app.py`.
 
 ## Known limitations & gotchas
 
@@ -423,7 +603,7 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
 - **`iperf3` is not version-pinned.** It comes from the distro, so its version
   varies by release. The wire protocol has been stable across the 3.x line, but
   a client much older than the server can fail the version handshake.
-- **amd64 only for anytls.** The vendored binary is not multi-arch; on arm64 the
+- **amd64 only for anytls and proxy.** The vendored binary is not multi-arch; on arm64 the
   installer skips the module with an explanation rather than installing a binary
   that cannot execute.
 - **Self-signed TLS means a browser warning on 443, every time.** This is
@@ -465,33 +645,51 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   client configured against the previous values. `install.sh` no longer does
   this — the upgrade path reads both back out of `config.json` and passes
   them in — but a direct call still will. To keep the node, pass the current
-  values, both of which are on the console's anytls page:
-  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash anytls/setup-anytls.sh`.
+  values, both of which are on the console's anytls section of `/proxy`:
+  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
   Upstream behaviour, inherited deliberately. `setup-anytls.sh reset` rotates
   them on purpose, and the console's reset button is the supported way to ask
   for that.
-- **The console's public-address block only appears after an anytls install.**
-  `public-ip.txt` is written by `setup-anytls.sh`, so an install that predates
-  that file simply shows the interface addresses until the module is
-  re-installed. That is the cost of refusing to do an outbound lookup at
-  render time.
+- **The console's public-address block only appears when `SERVER_IP` was set
+  explicitly.** `get_ip()` used to fall back to an outbound curl lookup
+  (`api.ip.sb`, then `ifconfig.me`); dropped entirely (2026-09-22) because on
+  the common case — a VPS with no NAT — that returned the exact same address
+  `get_lan_ips()` already reports, showing one IP twice on the node page. On
+  a box genuinely behind NAT with no override, it was worse: an address this
+  node is not reachable at without a port-forward this project cannot
+  confirm exists. `public-ip.txt` (still written by `setup-anytls.sh`/
+  `setup-proxy.sh`, still the only way the console avoids an outbound lookup
+  at render time) now only exists when the operator passed `SERVER_IP`/
+  `PROXY_PROTOCOLS`' sibling `SERVER_IP` — the deliberate, known-correct case
+  (e.g. NAT with port-forwarding actually configured).
+- **`body` fed into `render_page()`** **MUST** be exactly one top-level element.
+  `<main>` is `display: flex` with no `flex-direction` override, so more than
+  one top-level sibling (e.g. one `<div class="card wide">` per protocol)
+  lays out side by side instead of stacked — a real, shipped bug in an
+  earlier version of the `/proxy` page, reported by an operator as "layout
+  is messed up". Every page wraps everything in one outer card and nests
+  repeated sections as `.node-addr` divs inside it instead.
 - **Teardown needs the same `PREFIX` and `SERVICE_NAME` the install used.**
   `uninstall.sh` with no environment reads the defaults, finds nothing at
   those paths, and reports success having removed nothing. The installer's
   closing line prints the exact command with the values filled in; use that
   rather than typing it from memory.
 
-## How to extend
+## Extension
+
+### How to extend
 
 - **A new module** (something else the installer can optionally set up): add a
-  `<name>/setup-<name>.sh`, a `systemd/vps-server-<name>.service`, a branch in
-  `install.sh`'s module menu, and a teardown branch in `uninstall.sh`. Modules
-  do not call each other.
+  `deploy/<name>/setup-<name>.sh`, its systemd unit (shipped in `deploy/systemd/` or generated
+  by its setup script), a branch in `deploy/install.sh`'s module menu, and a teardown
+  branch in `deploy/uninstall.sh`. Modules do not call each other.
 - **A new console page**: add a route to `ConsoleHandler`. Do not add routes to
   `ProbeHandler` — its route table being nearly empty is a security property,
   not an oversight.
-- **A new language**: extend the `STRINGS` table in `app.py` and the `msg()`
-  table in `install.sh`, then add a `doc/<lang>/` tree.
+- **A new language**: add matching catalogs under every `lang/<component>/`
+  directory, register the code in the web selector and changelog mapping,
+  installer, setup wizard, and module script loaders, then add a matching
+  `doc/<BCP47>/` tree.
 - **A new colour**: add a token to `:root` in `static/style.css` *and* a
   light-mode value in the `prefers-color-scheme: light` block, then use the
   token. Never write a hex into a component rule — a literal cannot follow the
@@ -503,5 +701,22 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   enforces the structural half of this but cannot judge a ratio.
 - **Refreshing a vendored upstream**: re-copy from the upstream tag, update the
   matching `.upstream-version` file in the same commit, and note the bump in
-  `CHANGELOG.md`. Never hand-edit vendored code in place — a local edit that is
+  [LOG.md][local-link-016]. Never hand-edit vendored code in place — a local edit that is
   not reflected upstream makes the next refresh a silent regression.
+
+[local-link-001]: LOG.md#current-state-and-acceptance-limits
+[local-link-002]: LOG.md#bugs
+[local-link-003]: LOG.md#completed-work-history
+[local-link-004]: LOG.md#decisions
+[local-link-005]: #the-proxy-module
+[local-link-006]: LOG.md#decisions
+[local-link-007]: LOG.md#decisions
+[local-link-008]: LOG.md#bugs
+[local-link-009]: LOG.md#decisions
+[local-link-010]: ../config/dependencies.lock.json
+[local-link-011]: THIRD_PARTY_NOTICES.md
+[local-link-012]: #paths--mounts
+[local-link-013]: ../README.md
+[local-link-014]: LOG.md
+[local-link-015]: THIRD_PARTY_NOTICES.md
+[local-link-016]: LOG.md#changelog

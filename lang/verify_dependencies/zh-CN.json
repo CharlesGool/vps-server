@@ -1,0 +1,9 @@
+{
+  "unsupported_list": "制品清单缺失或格式不受支持",
+  "empty_list": "制品清单为空",
+  "invalid_path_hash": "制品路径或哈希值无效或重复",
+  "missing_artifact": "FAIL {name}:文件缺失或位于检出目录之外",
+  "hash_mismatch": "FAIL {name}:SHA-256 不匹配",
+  "artifact_ok": "OK   {name}: {hash}",
+  "invalid_lock": "依赖锁定文件无效:{error}"
+}

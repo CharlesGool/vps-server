@@ -6,11 +6,14 @@ HTTP connections.
 """
 
 import atexit
+import base64
 import http.client
 import json
 import os
 import re
 import shutil
+import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -20,6 +23,8 @@ import unittest
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlencode
+from unittest.mock import patch
 
 TEST_DATA_DIR = tempfile.mkdtemp(prefix="vpssrv-test-")
 # Cleaned up once, when the process exits. This used to happen in one test
@@ -36,7 +41,7 @@ os.environ["VPSSRV_CERT_DIR"] = str(Path(TEST_DATA_DIR) / "certs")
 os.environ["VPSSRV_CONSOLE_TLS"] = "0"  # the shared fixture drives plain HTTP; TLS has its own case
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import app  # noqa: E402  (import must follow env setup above)
+from src.web import app  # noqa: E402  (import must follow env setup above)
 
 
 class ConsoleTest(unittest.TestCase):
@@ -73,6 +78,57 @@ class ConsoleTest(unittest.TestCase):
         jar = SimpleCookie()
         jar.load(cookie_header)
         return jar["session"].value
+
+    def test_frps_panel_requires_auth_and_never_appears_on_auth_off_console(self):
+        config = Path(TEST_DATA_DIR) / 'frps.toml'
+        config.write_text('bindAddr = "0.0.0.0"\nbindPort = 7000\nauth.token = "test-frps-secret"\n')
+        with patch.object(app, 'FRPS_CONFIG', config):
+            conn = self.connect()
+            conn.request('GET', '/frps')
+            response = conn.getresponse()
+            self.assertEqual(response.status, 302)
+            self.assertNotIn(b'test-frps-secret', response.read())
+            conn.close()
+            cookie = self.login()
+            conn = self.connect()
+            conn.request('GET', '/frps', headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader('Cache-Control'), 'no-store')
+            self.assertIn(b'test-frps-secret', response.read())
+            conn.close()
+            with patch.object(app, 'AUTH_ENABLED', False):
+                conn = self.connect()
+                conn.request('GET', '/frps')
+                response = conn.getresponse()
+                self.assertNotIn(b'test-frps-secret', response.read())
+                conn.close()
+
+    def test_lucky_credentials_only_on_authenticated_console(self):
+        config = Path(TEST_DATA_DIR) / 'lucky.json'
+        config.write_text(json.dumps({'BaseConfigure': {'AdminWebListenPort': 16601,
+            'AdminAccount': 'test-lucky-account', 'AdminPassword': 'test-lucky-secret',
+            'AllowInternetaccess': False}}))
+        with patch.object(app, 'LUCKY_CONFIG', config):
+            conn = self.connect()
+            conn.request('GET', '/lucky')
+            response = conn.getresponse()
+            self.assertEqual(response.status, 302)
+            self.assertNotIn(b'test-lucky-secret', response.read())
+            conn.close()
+            conn = self.connect()
+            conn.request('GET', '/lucky', headers={'Cookie': 'session=' + self.login()})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader('Cache-Control'), 'no-store')
+            self.assertIn(b'test-lucky-secret', response.read())
+            conn.close()
+            with patch.object(app, 'AUTH_ENABLED', False):
+                conn = self.connect()
+                conn.request('GET', '/lucky')
+                response = conn.getresponse()
+                self.assertNotIn(b'test-lucky-secret', response.read())
+                conn.close()
 
     # -- auth --------------------------------------------------------------
 
@@ -199,7 +255,7 @@ class ConsoleTest(unittest.TestCase):
 
     # -- speed test ----------------------------------------------------
     # Endpoints match LibreSpeed's own garbage.php/empty.php/getIP.php
-    # contract exactly (see DECISIONS.md, 2026-08-25) so the vendored
+    # contract exactly (see vps-webserver DECISIONS.md, 2026-08-25) so the vendored
     # static/speedtest.js + speedtest_worker.js need no server-side quirks.
 
     def test_speedtest_garbage_returns_requested_chunks(self):
@@ -314,6 +370,62 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn(b"LibreSpeed", resp.read())
         conn.close()
 
+    def test_vendored_static_urls_in_checkout_and_deployment(self):
+        session = self.login()
+        paths = {
+            "/static/speedtest.js": "librespeed/speedtest.js",
+            "/speedtest_worker.js": "librespeed/speedtest_worker.js",
+            "/static/qrcode.js": "qrcode/qrcode.js",
+            "/static/qrcode-utf8.js": "qrcode/qrcode-utf8.js",
+        }
+        repo_static = Path(__file__).resolve().parents[1] / "static"
+        for url, relative in paths.items():
+            self.assertEqual(app.STATIC_FILES[url][1], repo_static / "third_party" / relative)
+            self.assertTrue(app.STATIC_FILES[url][1].is_file())
+        for url, relative in paths.items():
+            with self.subTest(layout="checkout", url=url):
+                conn = self.connect()
+                conn.request("GET", url, headers={"Cookie": f"session={session}"})
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 200)
+                self.assertEqual(resp.read(), (repo_static / "third_party" / relative).read_bytes())
+                conn.close()
+        with tempfile.TemporaryDirectory() as directory:
+            # A fresh process imports the copied app.py, so its BASE_DIR and
+            # STATIC_FILES are computed from the deployment, not patched here.
+            prefix = Path(directory)
+            shutil.copy2(repo_static.parent / "src" / "web" / "app.py", prefix / "app.py")
+            shutil.copytree(repo_static, prefix / "static")
+            shutil.copytree(repo_static.parent / "lang", prefix / "lang")
+            check = '''import app, http.client, json, threading
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+paths = json.loads(__import__("os").environ["TEST_STATIC_PATHS"])
+server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+thread = threading.Thread(target=server.serve_forever, daemon=True)
+thread.start()
+try:
+    for url, relative in paths.items():
+        expected = app.BASE_DIR / "static" / "third_party" / relative
+        assert app.STATIC_FILES[url][1] == expected, url
+        conn = http.client.HTTPConnection("127.0.0.1", server.server_port)
+        conn.request("GET", url)
+        response = conn.getresponse()
+        assert response.status == 200, (url, response.status)
+        assert response.read() == expected.read_bytes(), url
+        conn.close()
+finally:
+    server.shutdown()
+    server.server_close()
+'''
+            env = os.environ.copy()
+            env.update(PYTHONPATH=str(prefix), VPSSRV_DATA_DIR=str(prefix / "data"),
+                       VPSSRV_PASSWORD_FILE=str(prefix / "password"), VPSSRV_AUTH="0",
+                       VPSSRV_TRACK_CONNECTIONS="0", TEST_STATIC_PATHS=json.dumps(paths))
+            result = subprocess.run([sys.executable, "-c", check], cwd=prefix,
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_speedtest_requires_login(self):
         conn = self.connect()
         conn.request("GET", "/speedtest/garbage?ckSize=1")
@@ -400,38 +512,33 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertIn(f"v{app.VERSION}", body)
         conn.close()
 
+    def require_log_files(self, *paths):
+        if any(not Path(path).is_file() for path in paths):
+            self.skipTest("LOG translations are omitted from the code-only test checkout")
+
     def changelog_sentinel(self, path):
         """A distinctive phrase from the file that should have been rendered.
 
-        Taken from the file at test time rather than hard-coded. The previous
-        version pinned the literal words of the unreleased placeholder, so
-        every one of these tests broke the moment a real CHANGELOG section was
-        written — which is the one moment they most needed to still work.
+        Taken from the LOG release section at test time so changes to the
+        release prose do not invalidate a page-rendering test.
         """
-        text = Path(path).read_text()
-        # Skip headings: the category names (### Fixed, ### Added) are copied
-        # verbatim into every language, so the first line under a version
-        # whose only content is a category would be identical in all three and
-        # discriminate nothing. Also skip any line containing a backtick: a
-        # wrapped inline-code span can open or close mid-line, and a raw "`"
-        # never survives rendering (it becomes <code>), so slicing across one
-        # produces a sentinel that can never match the rendered HTML — hit
-        # twice for real, once in English wrapping and once in a zh_tw
-        # translation, each time on an 18-character CJK window that's easy to
-        # land inside since so few characters fit in it.
-        body = re.split(r"^## v", text, flags=re.M)
-        self.assertGreater(len(body), 1, f"no version section in {path}")
-        for line in body[1].splitlines()[1:]:
-            s = line.strip()
-            if s and not s.startswith(("#", "-", ">", "<", "|")) and "`" not in s:
-                return s[:18]
+        section = app.changelog_section(Path(path).read_text(encoding="utf-8"))
+        self.assertIsNotNone(section, f"no changelog section in {path}")
+        release = re.split(r"^### v[^\n]*$", section, maxsplit=1, flags=re.M)
+        self.assertEqual(len(release), 2, f"no version section in {path}")
+        for line in release[1].splitlines():
+            s = line.strip().removeprefix("- ")
+            if not s or s.startswith(("#", ">", "<", "|")):
+                continue
+            # Inline code becomes HTML; use only a long prose span outside it.
+            for prose in re.split(r"`[^`]*`", s):
+                prose = prose.strip()
+                if len(prose) >= 18:
+                    return prose[:18]
         self.fail(f"no prose under the first version heading in {path}")
 
     def test_maintainer_comments_are_not_rendered(self):
-        # Every CHANGELOG here ends with an HTML comment telling whoever edits
-        # it which headings must stay in English. It shipped visible in
-        # v1.0.0: the renderer had no comment handling at all, so each line of
-        # it became its own paragraph, escaped `<!--` included.
+        # An HTML comment in a release section must not become visible prose.
         session = self.login()
         for lang in ("en", "zh_cn", "zh_tw"):
             with self.subTest(lang=lang):
@@ -450,6 +557,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
                 self.assertNotIn("locates the current section", body)
 
     def test_changelog_page_renders_current_version_section(self):
+        self.require_log_files("doc/LOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog", headers={"Cookie": f"session={session}"})
@@ -461,6 +569,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.close()
 
     def test_changelog_follows_language_toggle(self):
+        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=zh_cn", headers={"Cookie": f"session={session}"})
@@ -468,15 +577,12 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertEqual(resp.status, 200)
         body = resp.read().decode()
         conn.close()
-        # Discriminate on prose, not on headings: this project's translation
-        # convention keeps the section headings (Added / Changed / Fixed) in
-        # English in every language, because release-preflight.sh and the
-        # GitHub release notes both key off the English file's structure.
-        # An "English headings are absent" check would therefore never pass.
-        self.assertIn(self.changelog_sentinel("doc/zh_cn/CHANGELOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/LOG.md"), body)
+        self.assertNotIn(app.STRINGS["zh_cn"]["changelog_fallback"], body)
 
     def test_changelog_traditional_chinese(self):
+        self.require_log_files("doc/LOG.md", "doc/zh-TW/LOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=zh_tw", headers={"Cookie": f"session={session}"})
@@ -485,31 +591,59 @@ class ChangelogAndVersionTest(unittest.TestCase):
         body = resp.read().decode()
         conn.close()
         self.assertIn("<h2>", body, "zh_tw changelog headings were not rendered")
-        self.assertIn(self.changelog_sentinel("doc/zh_tw/CHANGELOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/zh-TW/LOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/LOG.md"), body)
+        self.assertNotIn(app.STRINGS["zh_tw"]["changelog_fallback"], body)
 
     def test_changelog_fallback_notice_when_translation_missing(self):
+        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md", "doc/zh-TW/LOG.md")
         session = self.login()
-        original = app.CHANGELOG_PATHS["zh_cn"]
-        app.CHANGELOG_PATHS["zh_cn"] = Path("/nonexistent/CHANGELOG_zh_cn.md")
-        try:
-            conn = self.connect()
-            conn.request("GET", "/changelog?lang=zh_cn", headers={"Cookie": f"session={session}"})
-            resp = conn.getresponse()
-            body = resp.read().decode()
-            conn.close()
-            self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)  # fell back to English
-            self.assertIn(app.STRINGS["zh_cn"]["changelog_fallback"], body)
-        finally:
-            app.CHANGELOG_PATHS["zh_cn"] = original
+        for lang in ("zh_cn", "zh_tw"):
+            with self.subTest(lang=lang):
+                original = app.CHANGELOG_PATHS[lang]
+                app.CHANGELOG_PATHS[lang] = Path(f"/nonexistent/LOG_{lang}.md")
+                try:
+                    conn = self.connect()
+                    conn.request("GET", f"/changelog?lang={lang}",
+                                 headers={"Cookie": f"session={session}"})
+                    resp = conn.getresponse()
+                    body = resp.read().decode()
+                    conn.close()
+                    self.assertIn(self.changelog_sentinel("doc/LOG.md"), body)
+                    self.assertNotIn(self.changelog_sentinel(f"doc/{'zh-CN' if lang == 'zh_cn' else 'zh-TW'}/LOG.md"), body)
+                    self.assertIn(app.STRINGS[lang]["changelog_fallback"], body)
+                finally:
+                    app.CHANGELOG_PATHS[lang] = original
+
+    def test_changelog_missing_section_does_not_show_other_log_sections(self):
+        session = self.login()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "LOG.md"
+            path.write_text("## Bugs\n- private detail\n## Decisions\n- no release\n")
+            original = app.CHANGELOG_PATHS["zh_cn"]
+            app.CHANGELOG_PATHS["zh_cn"] = path
+            try:
+                conn = self.connect()
+                conn.request("GET", "/changelog?lang=zh_cn",
+                             headers={"Cookie": f"session={session}"})
+                body = conn.getresponse().read().decode()
+                conn.close()
+                self.assertIn(app.STRINGS["zh_cn"]["changelog_missing"], body)
+                self.assertNotIn("private detail", body)
+                self.assertNotIn("no release", body)
+            finally:
+                app.CHANGELOG_PATHS["zh_cn"] = original
 
     def test_changelog_english_by_default(self):
+        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md", "doc/zh-TW/LOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=en", headers={"Cookie": f"session={session}"})
         body = conn.getresponse().read().decode()
         conn.close()
-        self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/LOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/zh-TW/LOG.md"), body)
 
     def test_changelog_requires_login(self):
         conn = self.connect()
@@ -520,18 +654,16 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.close()
 
     def test_changelog_markdown_is_escaped_not_injected(self):
-        # CHANGELOG.md is author-controlled, but rendering must still escape:
-        # a stray tag in a release note should not become live markup.
-        # Content only renders from the first "## " heading onwards.
+        # LOG.md is author-controlled, but rendering must still escape tags.
         out = app.render_changelog(
-            "## v1.0.0\n- oops <script>alert(1)</script> and `code`"
+            "### v1.0.0\n- oops <script>alert(1)</script> and `code`"
         )
         self.assertNotIn("<script>", out)
         self.assertIn("&lt;script&gt;", out)
         self.assertIn("<code>code</code>", out)
 
     def test_changelog_renders_headings_and_bullets(self):
-        out = app.render_changelog("## v1.0.0\n\n### Added\n- thing **bold**\n")
+        out = app.render_changelog("### v1.0.0\n\n#### Added\n- thing **bold**\n")
         self.assertIn("<h2>v1.0.0</h2>", out)
         self.assertIn("<h3>Added</h3>", out)
         self.assertIn("<li>thing <strong>bold</strong>", out)
@@ -541,10 +673,41 @@ class ChangelogAndVersionTest(unittest.TestCase):
 
     def test_changelog_skips_maintainer_preamble(self):
         out = app.render_changelog(
-            "# Changelog\n\nNotes for maintainers only.\n\n## v1.0.0\n- real change\n"
+            "Notes for maintainers only.\n\n### v1.0.0\n- real change\n"
         )
         self.assertNotIn("maintainers", out)
         self.assertIn("real change", out)
+
+    def test_changelog_section_excludes_other_modules_and_escapes_html(self):
+        source = "## Bugs\n- secret <script>x</script>\n## Changelog\n\n### v1.2.0 — 2026-09-22\n#### Fixed\n- safe <script>x</script>\n## Decisions\n- private detail\n"
+        section = app.changelog_section(source)
+        self.assertIsNotNone(section)
+        out = app.render_changelog(section)
+        self.assertIn("<h2>v1.2.0", out)
+        self.assertIn("<h3>Fixed</h3>", out)
+        self.assertIn("&lt;script&gt;", out)
+        self.assertNotIn("<script>", out)
+        self.assertNotIn("secret", out)
+        self.assertNotIn("private detail", out)
+
+    def test_changelog_comment_is_not_rendered(self):
+        out = app.render_changelog("### v1.2.0\n#### Fixed\n- visible\n<!-- private release-preflight.sh -->\n")
+        self.assertIn("visible", out)
+        self.assertNotIn("release-preflight.sh", out)
+
+    def test_changelog_section_missing_or_empty(self):
+        self.assertIsNone(app.changelog_section("## Bugs\n- not release notes\n"))
+        self.assertIsNone(app.changelog_section("## Changelog\n\n## Decisions\n- no release\n"))
+        self.assertIsNone(app.changelog_section("## Changelog\nnotes without a version\n"))
+
+    def test_installer_copies_log_not_legacy_changelog(self):
+        installer = Path("deploy/install.sh").read_text()
+        items = re.search(r'^    local doc_items="([^\"]+)"', installer, re.MULTILINE)
+        self.assertIsNotNone(items)
+        self.assertIn("doc/LOG.md", items.group(1))
+        self.assertIn("doc/zh-CN/LOG.md", items.group(1))
+        self.assertIn("doc/zh-TW/LOG.md", items.group(1))
+        self.assertNotIn("doc/CHANGELOG.md", items.group(1))
 
 
 class ConnectionTrackingTest(unittest.TestCase):
@@ -688,7 +851,7 @@ class TlsTest(unittest.TestCase):
         # There is deliberately no HTTP-to-HTTPS redirect listener left to
         # test: port 80 now belongs to the public reachability page, and
         # redirecting it would destroy the very thing that page measures —
-        # whether port 80 itself answers. See DECISIONS.md (2026-09-12).
+        # whether port 80 itself answers. See doc/LOG.md#decisions (2026-09-12).
         import ssl as _ssl
 
         context = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)
@@ -806,6 +969,17 @@ class AuthDisabledTest(unittest.TestCase):
             resp.read()
             conn.close()
 
+    def test_frps_token_not_exposed_when_auth_disabled(self):
+        config = Path(TEST_DATA_DIR) / 'frps-off.toml'
+        config.write_text('bindPort = 7000\nauth.token = "auth-off-frps-secret"\n')
+        with patch.object(app, 'FRPS_CONFIG', config):
+            for path in ('/', '/frps'):
+                conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=10)
+                conn.request('GET', path)
+                resp = conn.getresponse()
+                self.assertNotIn(b'auth-off-frps-secret', resp.read())
+                conn.close()
+
     def test_nav_hides_the_logout_link(self):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         conn.request("GET", "/")
@@ -835,7 +1009,7 @@ class StartupDefaultsTest(unittest.TestCase):
         repo_root = str(Path(__file__).resolve().parent.parent)
         try:
             result = subprocess.run(
-                [sys.executable, "-c", f"import app; print({expression})"],
+                [sys.executable, "-c", f"from src.web import app; print({expression})"],
                 cwd=repo_root, env=env, capture_output=True, text=True, timeout=60,
             )
         finally:
@@ -855,6 +1029,181 @@ class StartupDefaultsTest(unittest.TestCase):
         # Regression: an operator-chosen port was being ignored in favour of a
         # random one (the cause was install.sh's prompt, but pin the app side).
         self.assertEqual(self._probe("app.CONSOLE_PORT", {"VPSSRV_CONSOLE_PORT": "51234"}), "51234")
+
+
+class SignalShutdownTest(unittest.TestCase):
+    """main() must exit promptly on SIGTERM once it is actually serving —
+    the real process, not just the ConsoleHandler class other tests drive
+    directly, since this is exercising main()'s own try/finally.
+    """
+
+    def test_sigterm_after_startup_exits_promptly(self):
+        tmp = tempfile.mkdtemp(prefix="vpssrv-signal-test-")
+        port_file = Path(tmp) / "console_port.txt"
+        env = dict(os.environ)
+        env.update({
+            "VPSSRV_DATA_DIR": tmp,
+            "VPSSRV_HOST": "127.0.0.1",
+            "VPSSRV_PUBLIC_ENABLE": "0",
+            "VPSSRV_IPERF_ENABLE": "0",
+            "VPSSRV_PORTFWD_ENABLE": "0",
+            "VPSSRV_CONSOLE_PORT": "0",
+            "VPSSRV_CONSOLE_PORT_FILE": str(port_file),
+            "VPSSRV_PASSWORD_FILE": str(Path(tmp) / "admin_password.txt"),
+            "VPSSRV_CERT_DIR": str(Path(tmp) / "certs"),
+            "VPSSRV_TRACK_CONNECTIONS": "0",
+        })
+        repo_root = str(Path(__file__).resolve().parent.parent)
+        proc = subprocess.Popen(
+            [sys.executable, "src/web/app.py"],
+            cwd=repo_root, env=env,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            port = None
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                if proc.poll() is not None:
+                    self.fail("server exited before it started listening")
+                if port_file.exists():
+                    try:
+                        port = int(port_file.read_text().strip())
+                        break
+                    except ValueError:
+                        pass
+                time.sleep(0.1)
+            self.assertIsNotNone(port, "console never wrote its port file")
+
+            for _ in range(50):
+                try:
+                    with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                        break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                self.fail("console port never accepted a connection")
+
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                self.fail("process did not exit within 5s of SIGTERM")
+            self.assertEqual(proc.returncode, 0)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class LoginRateLimitTest(unittest.TestCase):
+    """LoginRateLimiter in isolation — mocked into app.LOGIN_LIMITER so
+    other test classes' logins (all from 127.0.0.1) never share a counter
+    with these deliberately-triggered failures.
+    """
+
+    def setUp(self):
+        self.original_limiter = app.LOGIN_LIMITER
+        app.LOGIN_LIMITER = app.LoginRateLimiter(
+            max_attempts=3, window_seconds=60, lockout_seconds=2
+        )
+
+    def tearDown(self):
+        app.LOGIN_LIMITER = self.original_limiter
+
+    def test_allows_attempts_under_the_limit(self):
+        limiter = app.LOGIN_LIMITER
+        limiter.record_failure("1.2.3.4")
+        limiter.record_failure("1.2.3.4")
+        allowed, retry_after = limiter.check("1.2.3.4")
+        self.assertTrue(allowed)
+        self.assertEqual(retry_after, 0)
+
+    def test_locks_out_after_max_attempts(self):
+        limiter = app.LOGIN_LIMITER
+        for _ in range(3):
+            limiter.record_failure("1.2.3.4")
+        allowed, retry_after = limiter.check("1.2.3.4")
+        self.assertFalse(allowed)
+        self.assertGreater(retry_after, 0)
+
+    def test_success_clears_the_lockout(self):
+        limiter = app.LOGIN_LIMITER
+        for _ in range(3):
+            limiter.record_failure("1.2.3.4")
+        self.assertFalse(limiter.check("1.2.3.4")[0])
+        limiter.record_success("1.2.3.4")
+        self.assertTrue(limiter.check("1.2.3.4")[0])
+
+    def test_lockout_expires_on_its_own(self):
+        limiter = app.LOGIN_LIMITER
+        for _ in range(3):
+            limiter.record_failure("1.2.3.4")
+        self.assertFalse(limiter.check("1.2.3.4")[0])
+        time.sleep(2.1)
+        self.assertTrue(limiter.check("1.2.3.4")[0])
+
+    def test_different_ips_tracked_independently(self):
+        limiter = app.LOGIN_LIMITER
+        for _ in range(3):
+            limiter.record_failure("1.2.3.4")
+        self.assertFalse(limiter.check("1.2.3.4")[0])
+        self.assertTrue(limiter.check("5.6.7.8")[0])
+
+    def test_failures_outside_the_window_do_not_count(self):
+        limiter = app.LoginRateLimiter(max_attempts=3, window_seconds=0.1, lockout_seconds=5)
+        limiter.record_failure("1.2.3.4")
+        time.sleep(0.2)
+        limiter.record_failure("1.2.3.4")
+        limiter.record_failure("1.2.3.4")
+        # The first failure aged out of the window, so only 2 of 3 still count.
+        self.assertTrue(limiter.check("1.2.3.4")[0])
+
+
+class LoginRateLimitHttpTest(unittest.TestCase):
+    """The real /login route, driven over HTTP, actually returns 429 once
+    locked out — not just that the limiter object itself works.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+        cls.server.daemon_threads = True
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.original_limiter = app.LOGIN_LIMITER
+        app.LOGIN_LIMITER = app.LoginRateLimiter(
+            max_attempts=2, window_seconds=60, lockout_seconds=30
+        )
+
+    def tearDown(self):
+        app.LOGIN_LIMITER = self.original_limiter
+
+    def attempt(self, password):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request(
+            "POST", "/login", body=f"password={password}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        resp = conn.getresponse()
+        resp.read()
+        conn.close()
+        return resp.status
+
+    def test_locked_out_after_configured_attempts(self):
+        self.assertEqual(self.attempt("wrong-1"), 401)
+        self.assertEqual(self.attempt("wrong-2"), 401)
+        # Third attempt, even with the correct password, is refused outright.
+        self.assertEqual(self.attempt(app.ADMIN_PASSWORD), 429)
 
 
 class ProbePageTest(unittest.TestCase):
@@ -884,6 +1233,27 @@ class ProbePageTest(unittest.TestCase):
         conn.close()
         return resp, body
 
+    def test_lucky_route_is_absent_from_public_listener(self):
+        config = Path(TEST_DATA_DIR) / 'public-lucky.json'
+        config.write_text(json.dumps({'BaseConfigure': {'AdminWebListenPort': 16601,
+            'AdminAccount': 'admin', 'AdminPassword': 'public-lucky-secret'}}))
+        with patch.object(app, 'LUCKY_CONFIG', config):
+            for path in ('/', '/lucky'):
+                response, body = self.get(path)
+                self.assertNotIn('public-lucky-secret', body)
+                if path == '/lucky':
+                    self.assertEqual(response.status, 404)
+
+    def test_frps_route_is_absent_from_public_listener(self):
+        config = Path(TEST_DATA_DIR) / 'frps-public.toml'
+        config.write_text('bindPort = 7000\nauth.token = "public-frps-secret"\n')
+        with patch.object(app, 'FRPS_CONFIG', config):
+            for path in ('/', '/frps'):
+                response, body = self.get(path)
+                self.assertNotIn('public-frps-secret', body)
+                if path == '/frps':
+                    self.assertEqual(response.status, 404)
+
     def test_root_reports_reachability_without_any_session(self):
         resp, body = self.get("/")
         self.assertEqual(resp.status, 200)
@@ -905,11 +1275,12 @@ class ProbePageTest(unittest.TestCase):
     def test_no_console_route_exists_here(self):
         # The security property this whole class exists for. These must 404
         # because ProbeHandler has no such routes — not because a check
-        # rejected them. See DECISIONS.md (2026-09-12).
+        # rejected them. See doc/LOG.md#decisions (2026-09-12).
         for path in ("/login", "/logout", "/visitors", "/speedtest",
                      "/speedtest/garbage", "/speedtest/empty", "/speedtest/getip",
                      "/changelog", "/iperf", "/iperf/open", "/iperf/close",
-                     "/anytls", "/anytls/reset", "/static/style.css", "/static/copy.js",
+                     "/anytls", "/anytls/reset", "/proxy", "/proxy/reset",
+                     "/static/style.css", "/static/copy.js",
                      "/speedtest_worker.js"):
             with self.subTest(path=path):
                 resp, _ = self.get(path)
@@ -1125,38 +1496,41 @@ class AnytlsPageTest(unittest.TestCase):
 
     # -- the page ---------------------------------------------------------
 
-    def test_page_shows_both_copyable_forms(self):
-        resp, body = self.get("/anytls")
+    def test_page_hides_anytls_share_link_qr_and_clash(self):
+        resp, body = self.get("/proxy")
         self.assertEqual(resp.status, 200)
-        self.assertIn('id="anytls-clash-0"', body)
-        self.assertIn('id="anytls-link-0"', body)
+        self.assertNotIn('id="anytls-clash-', body)
+        self.assertNotIn(app.STRINGS["en"]["anytls_clash"], body)
+        self.assertNotIn('id="anytls-link-', body)
+        self.assertNotIn('data-qr-text=', body)
+        self.assertNotIn('class="qr-details"', body)
+        self.assertNotIn('anytls://', body)
         self.assertIn("/static/copy.js", body)
 
     def test_page_shows_port_password_and_sni_as_fields(self):
-        # The operator asked for the same three facts the installer prints,
-        # readable without picking them out of the Clash line.
-        _, body = self.get("/anytls")
+        # Keep the installer facts readable as separate fields.
+        _, body = self.get("/proxy")
         for key in ("anytls_port", "anytls_password", "anytls_sni"):
             self.assertIn(app.STRINGS["en"][key], body)
         self.assertIn('id="anytls-pw"', body, "the password needs its own copy button")
         self.assertIn("27999", body)
         self.assertIn(self.FAKE_PASSWORD, body)
 
-    def test_one_configuration_block_per_address(self):
-        _, body = self.get("/anytls")
-        # Whatever this host's interfaces are, every listed address gets its
-        # own Clash entry and link rather than one block for a single guess.
-        blocks = body.count('class="node-addr"')
-        self.assertGreaterEqual(blocks, 1)
-        self.assertEqual(body.count('id="anytls-clash-'), blocks)
-        self.assertEqual(body.count('id="anytls-link-'), blocks)
+    def test_page_keeps_addresses_without_share_links_or_qr_scripts(self):
+        _, body = self.get("/proxy")
+        self.assertIn("127.0.0.1", body)
+        self.assertNotIn('id="anytls-link-', body)
+        self.assertNotIn('data-qr-text=', body)
+        for script in ("/static/qrcode.js", "/static/qrcode-utf8.js",
+                       "/static/qrcode-render.js"):
+            self.assertNotIn(f'<script src="{script}"', body)
 
     def test_public_address_comes_from_the_file_not_a_lookup(self):
         public_file = self.config.parent / "public-ip.txt"
         public_file.write_text("198.51.100.7\n")
         try:
             self.assertEqual(app.anytls_public_address(), "198.51.100.7")
-            _, body = self.get("/anytls")
+            _, body = self.get("/proxy")
             self.assertIn("198.51.100.7", body)
             self.assertIn(app.STRINGS["en"]["anytls_public"], body)
         finally:
@@ -1187,7 +1561,7 @@ class AnytlsPageTest(unittest.TestCase):
         return resp
 
     def test_reset_form_requires_a_confirmation(self):
-        _, body = self.get("/anytls")
+        _, body = self.get("/proxy")
         self.assertIn('action="/anytls/reset"', body)
         self.assertIn('name="confirm"', body)
         self.assertIn(app.STRINGS["en"]["anytls_reset_confirm"], body)
@@ -1203,7 +1577,7 @@ class AnytlsPageTest(unittest.TestCase):
             resp = self.post("/anytls/reset", "")
             self.assertEqual(resp.status, 302)
             self.assertEqual(resp.getheader("Location"),
-                             "/anytls?msg=anytls_reset_unconfirmed")
+                             "/proxy?msg=anytls_reset_unconfirmed")
             self.assertEqual(called, [], "the node must not be touched")
         finally:
             app.anytls_reset = original
@@ -1215,7 +1589,7 @@ class AnytlsPageTest(unittest.TestCase):
         try:
             resp = self.post("/anytls/reset", "confirm=yes")
             self.assertEqual(resp.getheader("Location"),
-                             "/anytls?msg=anytls_reset_done")
+                             "/proxy?msg=anytls_reset_done")
             self.assertEqual(len(called), 1)
         finally:
             app.anytls_reset = original
@@ -1229,7 +1603,7 @@ class AnytlsPageTest(unittest.TestCase):
                 with self.subTest(body=body):
                     resp = self.post("/anytls/reset", body)
                     self.assertEqual(resp.getheader("Location"),
-                                     "/anytls?msg=anytls_reset_unconfirmed")
+                                     "/proxy?msg=anytls_reset_unconfirmed")
             self.assertEqual(called, [])
         finally:
             app.anytls_reset = original
@@ -1273,9 +1647,9 @@ class AnytlsPageTest(unittest.TestCase):
     def test_reset_result_messages_are_whitelisted(self):
         # Same guard as the iperf page: the key indexes STRINGS, so an
         # arbitrary ?msg= would otherwise render chosen text on the page.
-        _, body = self.get("/anytls?msg=anytls_warning")
+        _, body = self.get("/proxy?msg=anytls_warning")
         self.assertNotIn('class="notice"', body)
-        _, body = self.get("/anytls?msg=anytls_reset_done")
+        _, body = self.get("/proxy?msg=anytls_reset_done")
         self.assertIn('class="notice"', body)
 
     def test_local_addresses_skip_virtual_interfaces(self):
@@ -1293,7 +1667,7 @@ class AnytlsPageTest(unittest.TestCase):
         app.ANYTLS_SERVICE = "vps-server-anytls-does-not-exist.service"
         try:
             self.assertFalse(app.anytls_node()["running"])
-            _, body = self.get("/anytls")
+            _, body = self.get("/proxy")
             self.assertIn("is-closed", body)
             self.assertIn("vps-server-anytls-does-not-exist.service", body,
                           "the page should name the unit to check")
@@ -1305,25 +1679,511 @@ class AnytlsPageTest(unittest.TestCase):
         app._run_quiet = lambda cmd: True
         try:
             self.assertTrue(app.anytls_node()["running"])
-            _, body = self.get("/anytls")
+            _, body = self.get("/proxy")
             self.assertIn("is-open", body)
         finally:
             app._run_quiet = original
 
     def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
         _, body = self.get("/")
-        self.assertIn('href="/anytls"', body)
+        self.assertIn('href="/proxy"', body)
 
         app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
         _, body = self.get("/")
-        self.assertNotIn('href="/anytls"', body,
+        self.assertNotIn('href="/proxy"', body,
                          "a link that can only say 'not installed' is worse than none")
 
     def test_page_is_graceful_when_not_installed(self):
         app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
-        resp, body = self.get("/anytls")
+        resp, body = self.get("/proxy")
         self.assertEqual(resp.status, 200)
         self.assertNotIn(self.FAKE_PASSWORD, body)
+
+
+class ProxyPageTest(unittest.TestCase):
+    """The console's multi-protocol proxy page: parsing, links, and the page."""
+
+    FAKE_VMESS_UUID = "11111111-1111-1111-1111-111111111111"
+    FAKE_VLESS_UUID = "22222222-2222-2222-2222-222222222222"
+    FAKE_TROJAN_PASSWORD = "TEST-TROJAN-PASSWORD"
+    FAKE_SS_PASSWORD = "TEST-SS-PASSWORD"
+    FAKE_SNI = "www.example.invalid"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = Path(TEST_DATA_DIR) / "proxy"
+        (cls.dir / "cert").mkdir(parents=True, exist_ok=True)
+        cls.cert = cls.dir / "cert" / "fullchain.pem"
+        key = cls.dir / "cert" / "key.pem"
+        subprocess.run(
+            ["openssl", "req", "-x509", "-nodes", "-newkey", "ec",
+             "-pkeyopt", "ec_paramgen_curve:prime256v1",
+             "-keyout", str(key), "-out", str(cls.cert), "-days", "1",
+             "-subj", f"/CN={cls.FAKE_SNI}"],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        cls.config = cls.dir / "config.json"
+        cls.config.write_text(json.dumps({
+            "inbounds": [
+                {"type": "vmess", "listen_port": 41001,
+                 "users": [{"name": "vmess", "uuid": cls.FAKE_VMESS_UUID, "alterId": 0}],
+                 "tls": {"enabled": True, "certificate_path": str(cls.cert)}},
+                {"type": "vless", "listen_port": 45001,
+                 "users": [{"name": "vless", "uuid": cls.FAKE_VLESS_UUID}],
+                 "tls": {"enabled": True, "certificate_path": str(cls.cert)}},
+                {"type": "trojan", "listen_port": 50001,
+                 "users": [{"name": "trojan", "password": cls.FAKE_TROJAN_PASSWORD}],
+                 "tls": {"enabled": True, "certificate_path": str(cls.cert)}},
+                {"type": "shadowsocks", "listen_port": 55001,
+                 "method": "2022-blake3-aes-128-gcm", "password": cls.FAKE_SS_PASSWORD},
+            ],
+        }))
+
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.ConsoleHandler)
+        cls.server.daemon_threads = True
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.password = app.ADMIN_PASSWORD
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.original_config = app.PROXY_CONFIG
+        app.PROXY_CONFIG = self.config
+
+    def tearDown(self):
+        app.PROXY_CONFIG = self.original_config
+
+    def login(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", "/login", body=f"password={self.password}",
+                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        resp = conn.getresponse()
+        cookie_header = resp.getheader("Set-Cookie")
+        resp.read()
+        conn.close()
+        jar = SimpleCookie()
+        jar.load(cookie_header)
+        return jar["session"].value
+
+    def get(self, path):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", path, headers={"Cookie": f"session={session}"})
+        resp = conn.getresponse()
+        body = resp.read().decode()
+        conn.close()
+        return resp, body
+
+    def post(self, path, body):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", path, body=body, headers={
+            "Cookie": f"session={session}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        })
+        resp = conn.getresponse()
+        resp.read()
+        conn.close()
+        return resp
+
+    # -- credential-only apply ---------------------------------------------
+
+    def request_apply(self, session=None, fields=None):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        if session is not None:
+            headers["Cookie"] = f"session={session}"
+        conn.request("POST", "/proxy/apply", body=urlencode(fields or {}), headers=headers)
+        response = conn.getresponse()
+        status, location, cache = (response.status, response.getheader("Location"),
+                                   response.getheader("Cache-Control"))
+        body = response.read()
+        conn.close()
+        return status, location, cache, body
+
+    def test_node_apply_requires_auth_and_session_even_when_auth_off(self):
+        session = self.login()
+        fields = {"protocol": "vmess", "credential": self.FAKE_VMESS_UUID,
+                  "csrf": app.node_csrf_token(session, "vmess")}
+        with patch.object(app, "node_apply") as apply:
+            self.assertNotEqual(self.request_apply(fields=fields)[0], 200)
+            with patch.object(app, "AUTH_ENABLED", False):
+                self.assertEqual(self.request_apply(session, fields)[0], 403)
+                conn = http.client.HTTPConnection("127.0.0.1", self.port)
+                conn.request("GET", "/proxy", headers={"Cookie": f"session={session}"})
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 403)
+                resp.read()
+                conn.close()
+            apply.assert_not_called()
+
+    def test_node_apply_csrf_rejects_forgery_missing_and_other_session(self):
+        session, other = self.login(), self.login()
+        fields = {"protocol": "vmess", "credential": self.FAKE_VMESS_UUID}
+        with patch.object(app, "node_apply") as apply:
+            for csrf in ("", "forged", app.node_csrf_token(other, "vmess"),
+                         app.node_csrf_token(session, "vless")):
+                status, _, _, _ = self.request_apply(session, {**fields, "csrf": csrf})
+                self.assertEqual(status, 403)
+            apply.assert_not_called()
+
+    def test_node_apply_has_no_public_route(self):
+        server = ThreadingHTTPServer(("127.0.0.1", 0), app.ProbeHandler)
+        server.daemon_threads = True
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1])
+            conn.request("POST", "/proxy/apply", body="credential=secret")
+            response = conn.getresponse()
+            self.assertNotEqual(response.status, 200)
+            self.assertNotIn(b"secret", response.read())
+            conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_node_apply_only_accepts_exact_fields_and_protocol(self):
+        session = self.login()
+        fields = {"protocol": "bogus", "credential": "secret",
+                  "csrf": app.node_csrf_token(session, "bogus")}
+        with patch.object(app, "node_apply") as apply:
+            self.assertEqual(self.request_apply(session, fields)[0], 403)
+            fields["protocol"] = "vmess"
+            fields["csrf"] = app.node_csrf_token(session, "vmess")
+            self.assertEqual(self.request_apply(session, {**fields, "port": "99"})[0], 400)
+            self.assertEqual(self.request_apply(session, {**fields, "credential": "x" * 2000})[0], 400)
+            apply.assert_not_called()
+
+    def test_node_apply_form_wiring_and_stdin_no_secret_in_location_or_argv(self):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port)
+        conn.request("GET", "/proxy", headers={"Cookie": f"session={session}"})
+        resp = conn.getresponse()
+        page = resp.read().decode()
+        self.assertEqual(resp.getheader("Cache-Control"), "no-store")
+        conn.close()
+        self.assertEqual(page.count('action="/proxy/apply"'), 4 + int(app.anytls_node() is not None))
+        self.assertIn('port edit unavailable on legacy firewall rules', page)
+        self.assertIn('readonly', page)
+        helper = self.dir / "node_config.py"
+        helper.write_text("# test helper path\n")
+        secret = "new-secret-value"
+        fields = {"protocol": "trojan", "credential": secret,
+                  "csrf": app.node_csrf_token(session, "trojan")}
+        with patch.object(app, "NODE_CONFIG_HELPER", helper), \
+             patch.object(app.shutil, "which", return_value="/usr/bin/systemd-run"), \
+             patch.object(app.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            status, location, cache, body = self.request_apply(session, fields)
+            self.assertEqual((status, location, cache),
+                             (302, "/proxy?msg=node_apply_done", "no-store"))
+            self.assertNotIn(secret.encode(), body)
+            argv = run.call_args.args[0]
+            self.assertEqual(argv[:4], ["systemd-run", "--pipe", "--wait", "--collect"])
+            self.assertEqual(argv[-3:], ["/usr/bin/python3", str(helper), "trojan"])
+            self.assertNotIn(secret, " ".join(argv) + location)
+            self.assertEqual(run.call_args.kwargs["input"], secret.encode())
+
+    def test_node_apply_failure_never_exposes_helper_exception(self):
+        helper = self.dir / "node_config.py"
+        helper.write_text("# test helper path\n")
+        with patch.object(app, "NODE_CONFIG_HELPER", helper), \
+             patch.object(app.shutil, "which", return_value="/usr/bin/systemd-run"), \
+             patch.object(app.subprocess, "run", side_effect=OSError("sensitive detail")):
+            self.assertEqual(app.node_apply("vmess", "private-value"), "node_apply_failed")
+
+    # -- reading the installed nodes ---------------------------------------
+
+    def test_reads_all_four_protocols_in_order(self):
+        nodes = app.proxy_nodes()
+        self.assertEqual([n["type"] for n in nodes],
+                         ["vmess", "vless", "trojan", "shadowsocks"])
+
+    def test_secret_field_matches_each_protocol(self):
+        nodes = {n["type"]: n for n in app.proxy_nodes()}
+        self.assertEqual(nodes["vmess"]["secret"], self.FAKE_VMESS_UUID)
+        self.assertEqual(nodes["vless"]["secret"], self.FAKE_VLESS_UUID)
+        self.assertEqual(nodes["trojan"]["secret"], self.FAKE_TROJAN_PASSWORD)
+        self.assertEqual(nodes["shadowsocks"]["secret"], self.FAKE_SS_PASSWORD)
+
+    def test_absent_config_is_not_an_error(self):
+        app.PROXY_CONFIG = Path("/nonexistent/config.json")
+        self.assertEqual(app.proxy_nodes(), [])
+        self.assertFalse(app.proxy_installed())
+
+    def test_malformed_config_is_not_an_error(self):
+        broken = self.dir / "broken.json"
+        broken.write_text("{ this is not json")
+        app.PROXY_CONFIG = broken
+        self.assertEqual(app.proxy_nodes(), [], "a bad config must not 500 the console")
+
+    def test_unknown_inbound_types_are_ignored(self):
+        odd = self.dir / "odd.json"
+        odd.write_text(json.dumps({"inbounds": [
+            {"type": "hysteria2", "listen_port": 1},
+            {"type": "vmess", "listen_port": 41001,
+             "users": [{"uuid": self.FAKE_VMESS_UUID}]},
+        ]}))
+        app.PROXY_CONFIG = odd
+        nodes = app.proxy_nodes()
+        self.assertEqual([n["type"] for n in nodes], ["vmess"])
+
+    # -- clash lines and share links, one per protocol scheme --------------
+
+    def test_vmess_share_link_is_a_valid_base64_json_blob(self):
+        node = {"type": "vmess", "port": 41001, "secret": self.FAKE_VMESS_UUID}
+        link = app.proxy_share_link(node, self.FAKE_SNI, "198.51.100.7", "n")
+        self.assertTrue(link.startswith("vmess://"))
+        payload = json.loads(base64.b64decode(link[len("vmess://"):]))
+        self.assertEqual(payload["add"], "198.51.100.7")
+        self.assertEqual(payload["port"], "41001")
+        self.assertEqual(payload["id"], self.FAKE_VMESS_UUID)
+        self.assertEqual(payload["sni"], self.FAKE_SNI)
+        self.assertEqual(payload["tls"], "tls")
+
+    def test_vless_share_link_shape(self):
+        node = {"type": "vless", "port": 45001, "secret": self.FAKE_VLESS_UUID}
+        link = app.proxy_share_link(node, self.FAKE_SNI, "198.51.100.7", "n")
+        self.assertTrue(link.startswith(f"vless://{self.FAKE_VLESS_UUID}@198.51.100.7:45001"))
+        self.assertIn("security=tls", link)
+        self.assertIn(f"sni={self.FAKE_SNI}", link)
+
+    def test_trojan_share_link_percent_encodes_the_password(self):
+        node = {"type": "trojan", "port": 50001, "secret": "a/b+c="}
+        link = app.proxy_share_link(node, self.FAKE_SNI, "198.51.100.7", "n")
+        self.assertIn("a%2Fb%2Bc%3D@", link)
+        self.assertNotIn("a/b+c=@", link)
+
+    def test_shadowsocks_share_link_is_method_colon_password_base64(self):
+        node = {"type": "shadowsocks", "port": 55001, "secret": self.FAKE_SS_PASSWORD}
+        link = app.proxy_share_link(node, "", "198.51.100.7", "n")
+        self.assertTrue(link.startswith("ss://"))
+        userinfo = link[len("ss://"):].split("@")[0]
+        decoded = base64.b64decode(userinfo).decode()
+        self.assertEqual(decoded, f"2022-blake3-aes-128-gcm:{self.FAKE_SS_PASSWORD}")
+
+    def test_clash_lines_use_the_right_type_per_protocol(self):
+        nodes = {n["type"]: n for n in app.proxy_nodes()}
+        self.assertIn("type: vmess", app.proxy_clash_line(nodes["vmess"], self.FAKE_SNI, "h", "n"))
+        self.assertIn("type: vless", app.proxy_clash_line(nodes["vless"], self.FAKE_SNI, "h", "n"))
+        self.assertIn("type: trojan", app.proxy_clash_line(nodes["trojan"], self.FAKE_SNI, "h", "n"))
+        self.assertIn("type: ss", app.proxy_clash_line(nodes["shadowsocks"], "", "h", "n"))
+
+    # -- the page ---------------------------------------------------------
+
+    def test_page_shows_one_section_per_protocol(self):
+        _, body = self.get("/proxy")
+        for proto in ("vmess", "vless", "trojan", "shadowsocks"):
+            self.assertIn(f"<h2>{proto}</h2>", body)
+
+    def test_page_shows_ports_secrets_and_sni_without_clash_configuration(self):
+        _, body = self.get("/proxy")
+        for port in ("41001", "45001", "50001", "55001"):
+            self.assertIn(port, body)
+        for secret in (self.FAKE_VMESS_UUID, self.FAKE_VLESS_UUID,
+                       self.FAKE_TROJAN_PASSWORD, self.FAKE_SS_PASSWORD):
+            self.assertIn(secret, body)
+        self.assertIn(self.FAKE_SNI, body)
+        self.assertNotIn('id="proxy-vmess-clash-', body)
+        self.assertNotIn('id="proxy-vless-clash-', body)
+        self.assertNotIn('id="proxy-trojan-clash-', body)
+        self.assertNotIn('id="proxy-shadowsocks-clash-', body)
+        for proto in ("vmess", "vless", "trojan", "shadowsocks"):
+            self.assertNotIn(f'id="proxy-{proto}-link-', body)
+            self.assertIn(f'id="proxy-{proto}-secret"', body)
+        self.assertIn("127.0.0.1", body)
+
+    def test_page_hides_proxy_share_links_and_qr(self):
+        resp, body = self.get("/proxy")
+        self.assertEqual(resp.status, 200)
+        self.assertNotIn('data-qr-text=', body)
+        self.assertNotIn('class="qr-details"', body)
+        for scheme in ("vmess://", "vless://", "trojan://", "ss://"):
+            self.assertNotIn(scheme, body)
+        for script in ("/static/qrcode.js", "/static/qrcode-utf8.js",
+                       "/static/qrcode-render.js"):
+            self.assertNotIn(f'<script src="{script}"', body)
+
+    def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
+        _, body = self.get("/")
+        self.assertIn('href="/proxy"', body)
+
+        # /proxy shows anytls too now (see page_proxy()'s docstring), so
+        # hiding the link needs BOTH modules absent — anytls_installed()
+        # checks the real, unmocked ANYTLS_CONFIG default, which genuinely
+        # exists on some hosts (this one included).
+        original_anytls_config = app.ANYTLS_CONFIG
+        app.PROXY_CONFIG = Path("/nonexistent/config.json")
+        app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
+        try:
+            _, body = self.get("/")
+            self.assertNotIn(
+                'href="/proxy"', body,
+                "a link that can only say 'not installed' is worse than none",
+            )
+        finally:
+            app.ANYTLS_CONFIG = original_anytls_config
+
+    def test_page_is_graceful_when_not_installed(self):
+        original_anytls_config = app.ANYTLS_CONFIG
+        app.PROXY_CONFIG = Path("/nonexistent/config.json")
+        app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
+        try:
+            resp, body = self.get("/proxy")
+            self.assertEqual(resp.status, 200)
+            self.assertNotIn(self.FAKE_TROJAN_PASSWORD, body)
+        finally:
+            app.ANYTLS_CONFIG = original_anytls_config
+
+    # -- rotating the credentials -------------------------------------------
+
+    def test_reset_form_requires_a_confirmation(self):
+        _, body = self.get("/proxy")
+        self.assertIn('action="/proxy/reset"', body)
+        self.assertIn('name="confirm"', body)
+
+    def test_each_protocol_has_its_own_reset_form(self):
+        # One combined "reset everything" button used to force rotating
+        # protocols nobody asked to touch — reported by an operator. Each
+        # protocol section now carries its own hidden protocol field.
+        _, body = self.get("/proxy")
+        for proto in ("vmess", "vless", "trojan", "shadowsocks"):
+            self.assertIn(f'<input type="hidden" name="protocol" value="{proto}">', body)
+        self.assertEqual(
+            body.count('action="/proxy/reset"'), 4,
+            "one reset form per protocol, not one shared form",
+        )
+
+    def test_unconfirmed_reset_changes_nothing(self):
+        called = []
+        original = app.proxy_reset
+        app.proxy_reset = lambda protocol=None: called.append(protocol) or "proxy_reset_done"
+        try:
+            resp = self.post("/proxy/reset", "protocol=vmess")
+            self.assertEqual(resp.status, 302)
+            self.assertEqual(resp.getheader("Location"),
+                             "/proxy?msg=proxy_reset_unconfirmed")
+            self.assertEqual(called, [], "the nodes must not be touched")
+        finally:
+            app.proxy_reset = original
+
+    def test_confirmed_reset_runs_once_for_the_given_protocol(self):
+        called = []
+        original = app.proxy_reset
+        app.proxy_reset = lambda protocol=None: called.append(protocol) or "proxy_reset_done"
+        try:
+            resp = self.post("/proxy/reset", "confirm=yes&protocol=trojan")
+            self.assertEqual(resp.getheader("Location"), "/proxy?msg=proxy_reset_done")
+            self.assertEqual(called, ["trojan"],
+                             "only the named protocol may be touched")
+        finally:
+            app.proxy_reset = original
+
+    def test_an_unknown_protocol_is_rejected(self):
+        called = []
+        original = app.proxy_reset
+        app.proxy_reset = lambda protocol=None: called.append(protocol) or "proxy_reset_done"
+        try:
+            resp = self.post("/proxy/reset", "confirm=yes&protocol=bogus")
+            self.assertEqual(resp.getheader("Location"),
+                             "/proxy?msg=proxy_reset_unconfirmed")
+            self.assertEqual(called, [], "an unrecognised protocol must not reach the script")
+        finally:
+            app.proxy_reset = original
+
+    def test_reset_command_targets_only_the_given_protocol(self):
+        original = app.shutil.which
+        app.shutil.which = lambda name: None  # exercise the direct-call form
+        try:
+            cmd = app.proxy_reset_command("vmess")
+            self.assertEqual(cmd, ["bash", str(app.PROXY_SETUP), "reset", "vmess"])
+            # No argument still means "reset everything currently installed" —
+            # the pre-existing behaviour, kept for the terminal / VPSSRV_
+            # scriptable path, not exposed anywhere in the console UI any more.
+            self.assertEqual(app.proxy_reset_command(),
+                             ["bash", str(app.PROXY_SETUP), "reset"])
+        finally:
+            app.shutil.which = original
+
+    # -- reserved_ports() awareness ------------------------------------------
+
+    def test_portfwd_reserves_every_installed_proxy_port(self):
+        mgr = app.PortForwardManager(self.dir / "portfwd.json", 10)
+        reserved = mgr.reserved_ports()
+        for port in (41001, 45001, 50001, 55001):
+            self.assertIn(port, reserved,
+                         "a port-forward rule must not be able to steal a proxy port")
+
+    # -- the anytls+proxy merge ---------------------------------------------
+
+    def test_anytls_and_proxy_share_one_page_in_one_card(self):
+        # The point of the merge: an operator with both modules installed
+        # sees anytls next to vmess/vless/trojan/shadowsocks on the SAME
+        # page, not two separate pages/nav entries. And the whole thing is
+        # exactly one top-level <div class="card wide">, not one per
+        # protocol — <main> is `display: flex` with no direction override,
+        # so more than one top-level card renders side by side instead of
+        # stacked, which is the layout bug an operator reported.
+        anytls_dir = Path(TEST_DATA_DIR) / "anytls-merge"
+        (anytls_dir / "cert").mkdir(parents=True, exist_ok=True)
+        cert = anytls_dir / "cert" / "fullchain.pem"
+        key = anytls_dir / "cert" / "key.pem"
+        subprocess.run(
+            ["openssl", "req", "-x509", "-nodes", "-newkey", "ec",
+             "-pkeyopt", "ec_paramgen_curve:prime256v1",
+             "-keyout", str(key), "-out", str(cert), "-days", "1",
+             "-subj", "/CN=merge.example.invalid"],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        anytls_config = anytls_dir / "config.json"
+        anytls_config.write_text(json.dumps({
+            "inbounds": [{
+                "type": "anytls", "listen_port": 28111,
+                "users": [{"name": "anytls", "password": "MERGE-TEST-PW"}],
+                "tls": {"enabled": True, "certificate_path": str(cert)},
+            }],
+        }))
+        original_anytls_config = app.ANYTLS_CONFIG
+        app.ANYTLS_CONFIG = anytls_config
+        try:
+            _, body = self.get("/proxy")
+            self.assertIn("<h2>anytls</h2>", body)
+            for proto in ("vmess", "vless", "trojan", "shadowsocks"):
+                self.assertIn(f"<h2>{proto}</h2>", body)
+            self.assertEqual(
+                body.count('class="card wide"'), 1,
+                "everything must nest inside one top-level card, or <main>'s "
+                "flex layout lays multiple cards out side by side instead of "
+                "stacked",
+            )
+            # One /anytls link (in the version-tag/changelog area doesn't
+            # exist), one nav entry, one dashboard tile — not two of each.
+            self.assertEqual(body.count('href="/proxy"'), 1)
+        finally:
+            app.ANYTLS_CONFIG = original_anytls_config
+
+    def test_anytls_reset_redirects_to_the_merged_page(self):
+        original = app.anytls_reset
+        app.anytls_reset = lambda: "anytls_reset_done"
+        try:
+            resp = self.post("/anytls/reset", "confirm=yes")
+            self.assertEqual(resp.getheader("Location"), "/proxy?msg=anytls_reset_done")
+        finally:
+            app.anytls_reset = original
+
+    def test_old_anytls_url_redirects_to_the_merged_page(self):
+        session = self.login()
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", "/anytls", headers={"Cookie": f"session={session}"})
+        resp = conn.getresponse()
+        resp.read()
+        conn.close()
+        self.assertEqual(resp.status, 302)
+        self.assertEqual(resp.getheader("Location"), "/proxy")
 
 
 class PortForwardManagerTest(unittest.TestCase):
@@ -1626,6 +2486,43 @@ class IperfLabelTest(unittest.TestCase):
             app.IPERF_WINDOW = original
             app.firewall_port = original_firewall
 
+    @unittest.skipUnless(shutil.which("iperf3"), "iperf3 is not installed")
+    def test_open_window_carries_a_live_countdown(self):
+        # A static "9m 59s left" baked in at render time and never updated —
+        # reported by an operator watching the page — is what this guards
+        # against: the page must ship enough for JS to tick the number down
+        # itself rather than relying on a manual reload.
+        original = app.IPERF_WINDOW
+        app.IPERF_WINDOW = app.IperfWindow(port=15299, max_minutes=5)
+        original_firewall = app.firewall_port
+        app.firewall_port = lambda port, opening: True
+        try:
+            ok, key = app.IPERF_WINDOW.open(1)
+            self.assertTrue(ok, key)
+            body = self._page()
+            self.assertIn("data-iperf-deadline=", body)
+            self.assertIn('id="iperf-mins"', body)
+            self.assertIn('id="iperf-secs"', body)
+            self.assertIn("/static/iperf-countdown.js", body)
+        finally:
+            app.IPERF_WINDOW.close()
+            app.IPERF_WINDOW = original
+            app.firewall_port = original_firewall
+
+    def test_closed_window_has_no_countdown_script(self):
+        body = self._page()
+        self.assertNotIn("data-iperf-deadline=", body)
+        self.assertNotIn("/static/iperf-countdown.js", body)
+
+    def test_page_offers_default_reverse_and_udp_commands(self):
+        body = self._page()
+        port = app.IPERF_WINDOW.port
+        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} --json", body)
+        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} -R --json", body)
+        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} -u -b 100M --json", body)
+        for key in ("iperf_cmd_default", "iperf_cmd_reverse", "iperf_cmd_udp"):
+            self.assertIn(app.STRINGS["en"][key], body)
+
 
 class InstallerContractTest(unittest.TestCase):
     """install.sh and app.py have to agree on the set of settings.
@@ -1640,12 +2537,12 @@ class InstallerContractTest(unittest.TestCase):
     ROOT = Path(__file__).resolve().parent.parent
 
     def known_vars(self):
-        text = (self.ROOT / "install.sh").read_text()
+        text = (self.ROOT / "deploy/install.sh").read_text()
         block = re.search(r'^KNOWN_VARS="(.*?)"$', text, re.S | re.M).group(1)
         return set(block.split())
 
     def app_vars(self):
-        text = (self.ROOT / "app.py").read_text()
+        text = (self.ROOT / "src" / "web" / "app.py").read_text()
         return set(re.findall(r'os\.environ\.get\(\s*"(VPSSRV_[A-Z0-9_]+)"', text))
 
     def test_installer_knows_every_variable_app_reads(self):
@@ -1656,29 +2553,30 @@ class InstallerContractTest(unittest.TestCase):
     def test_known_vars_are_all_real(self):
         # The other direction: a name left in KNOWN_VARS after the setting it
         # referred to was removed writes a dead Environment= line forever.
-        text = (self.ROOT / "app.py").read_text()
+        text = (self.ROOT / "src" / "web" / "app.py").read_text()
         for var in sorted(self.known_vars()):
             with self.subTest(var=var):
                 self.assertIn(var, text, f"{var} is not read anywhere in app.py")
 
-    def test_version_file_agrees_with_status(self):
-        # The UI reads VERSION; the release checklist reads STATUS.md's front
-        # matter. Two records of the same fact drift, and the drift is
-        # invisible — the console would keep naming a version nobody tagged.
-        version = (self.ROOT / "VERSION").read_text().strip()
-        status = re.search(r"^version:\s*(\S+)\s*$",
-                           (self.ROOT / "doc" / "STATUS.md").read_text(), re.M).group(1)
-        if status == "unreleased":
-            self.skipTest("no release cut yet")
-        self.assertEqual(f"v{version}", status,
-                         "VERSION and doc/STATUS.md name different releases")
+    def test_version_file_agrees_with_latest_log_release(self):
+        if not (self.ROOT / "doc" / "LOG.md").is_file():
+            self.skipTest("LOG.md is omitted from the code-only test checkout")
+        # The UI reads VERSION; LOG is the sole release-history source.
+        # Unreleased branch work must not appear as a newer tagged release.
+        version = (self.ROOT / "config/VERSION").read_text().strip()
+        section = app.changelog_section((self.ROOT / "doc" / "LOG.md").read_text())
+        self.assertIsNotNone(section)
+        latest = re.search(r"^### (v[^ ]+) [—-] \d{4}-\d{2}-\d{2}$", section, re.M)
+        self.assertIsNotNone(latest, "LOG has no dated release heading")
+        self.assertEqual(f"v{version}", latest.group(1),
+                         "VERSION and LOG name different latest releases")
 
     def test_version_is_not_a_constant_in_the_source(self):
         # webui.md §1: the displayed version must come from the real tag, so
         # that an untagged build says dev-<sha> instead of impersonating the
         # last release. A literal here is wrong the moment somebody tags and
         # forgets to edit it, with nothing to report it.
-        source = (self.ROOT / "app.py").read_text()
+        source = (self.ROOT / "src" / "web" / "app.py").read_text()
         self.assertNotRegex(source, r'^VERSION\s*=\s*["\']',
                             "VERSION must be derived, not written in app.py")
         self.assertIn("_read_version()", source)

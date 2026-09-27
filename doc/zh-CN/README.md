@@ -1,0 +1,159 @@
+---
+name: project-readme-zh-cn
+description: 项目概览与使用说明
+metadata:
+  version: "1.0.0"
+  lang: "zh-CN"
+---
+
+# vps-server
+
+## 多语言
+
+[English](../../README.md) | **简体中文** | [繁體中文(台灣)](../zh-TW/README.md) | [繁體中文(香港)](../zh-HK/README.md) | [हिन्दी](../hi/README.md) | [Español](../es/README.md) | [العربية](../ar/README.md) | [Français](../fr/README.md)
+
+## 文档
+
+- 项目概览:[README](README.md)
+
+- 设计思路:[DESIGN](DESIGN.md)
+
+- 发布历史:[LOG](LOG.md)
+
+- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+
+## 简介
+
+这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.本文介绍的四协议 `proxy` 模块位于尚未合并的 `feat/proxy-protocols` 分支;以下安装命令所用的 v1.1.2 发布标签**不**包含该模块.参见[当前状态与验收限制][local-link-001].
+
+## 功能
+
+- **让任何人验证可达性.** 端口 **80** 和
+  **443** 上提供刻意保持极简,无需登录的页面.把 IP 交给对方;如果页面能显示,说明对方所在位置能访问你的 Web 端口.页面只报告对方的源 IP,服务器时钟及其到达时使用的端口和协议,不透露其他主机信息.
+- **在浏览器中测量吞吐量.** 带密码保护的控制台运行在持久化的随机高位端口,通过 LibreSpeed 引擎进行上传/下载测试.
+- **按需用 iperf3 测量吞吐量和延迟.** 控制台开启限时窗口;`iperf3 -s` 只在窗口期内运行,到期自动关闭.测试者可通过 iperf3 获取带宽;在 Linux 客户端上还可从其 `mean_rtt` 在 `--json` 输出中获取往返时延.该字段来自内核的 `TCP_INFO`;无法读取它的客户端(尤其是 Windows 上 Cygwin 环境中的 iperf3)没有该字段.UDP 模式(`-u`)在所有平台上都提供抖动和丢包数据.
+- **记录连接者.** 记录所有端口上的每条入站 TCP 连接,不限于 HTTP;数据从 `/proc/net/tcp[6]` 读取,存入 SQLite,保留最近 1000 条.
+- **提供 anytls 代理.** 使用自签名证书的 sing-box,另加 BBR.安装该模块后,控制台的 `/proxy` 页面显示节点是否在线,提供 Clash 条目和带复制按钮的 `anytls://` 链接;将节点交给客户端无需再返回终端.
+- **提供 vmess/vless/trojan/shadowsocks 代理,可选择任意子集.** 另一 sing-box 进程与 anytls 共用仓库内的二进制文件.安装后,控制台共用的 `/proxy` 页面为每种协议增加一个分区,显示端口,UUID 或密码,Clash 条目,分享链接及二维码.每种协议都有独立的重置按钮,不会更改其他协议的凭据.
+
+web,iperf3,anytls,proxy 四个模块均可在安装时选择.
+
+以上四个模块是已记录的发布模块.当前未发布的检出版本还提供实验性的 frps 和 Lucky 安装路径;此次文档迁移没有验证它们在真实主机上的行为或发布验收.
+
+**非目标:** 不提供 ACME 或域名(443 刻意使用自签名证书);不提供常驻 iperf3;不提供反向代理或容器;公开页面绝不暴露主机名,内核,运行时间,服务列表或代理参数.本项目不取代 `vps-webserver` 或 `Anytsl-Serve`——二者继续独立维护,其代码在此以随附副本形式使用,而非并入项目.
+
+## 要求
+
+- 操作系统:Debian 11+ 或 Ubuntu 20.04+,systemd,以 root 身份运行
+- 运行时:Python 3.9+(发行版自带的 `python3` 即可,无需安装 Python 依赖)
+- 架构:web 与 iperf3 模块支持任意架构;anytls,proxy,frps 和 Lucky **仅支持 x86-64**,因为随附的可执行文件面向 amd64
+- web 模块使用默认公开端口时,80 和 443 **必须**保持空闲;若已被 nginx,Apache,Caddy 或 `vps-webserver` 占用,安装程序将拒绝安装,而不会争抢端口
+- 外部服务:运行时不需要.安装需要发行版软件包镜像;可选的公网 IP 查询可能访问外部服务.
+- 最低要求:上述系统,运行时,架构及空闲端口.未记录其他推荐硬件配置;约 150 MB 的 VPS 磁盘空间可容纳随附二进制文件.
+
+## 安装
+
+一行命令快速安装(最新发布标签,无配置变量):
+
+```bash
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+```
+
+分步安装并配置:
+
+```bash
+# Always clone a tag, not the default branch — the branch tip may be mid-work.
+# Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
+git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+cd vps-server
+cp .env.example .env   # optional — every variable has a working default
+bash install.sh
+```
+
+`install.sh` 会询问安装哪些模块,界面语言,是否给控制台加密码保护,以及使用哪些端口.已标记发布的 v1.1.2 安装程序支持 web,iperf3 和 anytls;额外的 proxy 模块属于分支开发成果,不在该标签中.
+
+**重新运行可就地升级.** 安装程序检测现有安装,询问是否保留配置,仅对已安装版本不知道的设置提问;每项都有默认值,直接按回车即可.控制台密码,持久化端口,证书,访客日志,anytls 节点凭据,以及(在这个未合并分支上)每种已安装代理协议的端口与凭据都会保留.在升级询问处回答 `n` 可重新填写设置.
+
+## 指南
+
+### 快速开始
+
+当前未发布的检出版本将 Web 实现放在 `src/web/app.py`,安装与卸载脚本从 `deploy/` 运行.随附的二进制文件及许可声明位于 `third_party/sing-box/`;发布元数据位于 `config/`.已安装文件仍平铺在 `$PREFIX/app.py`,`$PREFIX/static/`,`$PREFIX/anytls/`,`$PREFIX/proxy/` 和 `$PREFIX/sing-box`.这不是新版本,也未在真实主机验证.
+
+```bash
+bash deploy/install.sh                       # interactive: temporary browser setup wizard
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
+systemctl status vps-server-web              # is it up
+bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
+bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
+```
+
+然后在另一台机器上运行:
+
+```bash
+curl -sS  http://<ip>/                     # reachability over plain HTTP
+curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
+iperf3 -c <ip> -p 5201 --json              # only while a window is open
+```
+
+### 验证运行
+
+运行 `bash install.sh` 后应看到列出每个已安装模块及其端口的摘要.接着:
+
+- `systemctl status vps-server-web` 显示 `active (running)`.
+- 从**另一台机器**打开 `http://<ip>/`,显示标题为“Reachable”的页面及你自己的公网 IP.接受证书警告后打开 `https://<ip>/`,会看到相同页面,协议行显示 HTTPS.
+- 登录 `http://<ip>:<console port>/`,仪表盘显示 iperf3 控件,窗口处于关闭状态.
+- 开启五分钟窗口后,在另一台机器运行 `iperf3 -c <ip> -p 5201 --json`,会得到吞吐量数值且包含 `mean_rtt`.五分钟后相同命令无法连接——这表示窗口自动关闭,并非故障.
+- 若安装了 anytls:`systemctl status vps-server-anytls` 显示 `active (running)`.
+- 若安装了 proxy:`systemctl status vps-server-proxy` 显示 `active (running)`.
+
+### 配置
+
+每个变量都有可用的默认值;`.env` 可选.关键变量如下:
+
+| 变量 | 含义 | 默认值 | 是否必需 |
+|---|---|---|---|
+| `VPSSRV_PUBLIC_HTTP_PORT` | 公开可达性页面的明文端口 | `80` | 否 |
+| `VPSSRV_PUBLIC_HTTPS_PORT` | 公开可达性页面的 TLS 端口 | `443` | 否 |
+| `VPSSRV_PUBLIC_ENABLE` | 是否提供公开页面 | `1` | 否 |
+| `VPSSRV_CONSOLE_PORT` | 控制台端口;`0` 表示生成并记住端口 | `0` | 否 |
+| `VPSSRV_AUTH` | 控制台是否要求密码 | `1` | 否 |
+| `VPSSRV_IPERF_PORT` | 已开启的 iperf3 窗口监听的端口 | `5201` | 否 |
+| `VPSSRV_IPERF_MAX_MINUTES` | 控制台不可超过的时长上限 | `60` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | 否 |
+
+完整说明:[配置参考][local-link-002].
+
+## 卸载
+
+以 root 身份从安装程序的检出目录运行卸载脚本,使用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`(安装摘要会打印准确的卸载命令).要移除已安装的模块及 unit,**同时
+保留** `$PREFIX` 中的数据供以后重装:
+
+```bash
+KEEP_DATA=1 bash uninstall.sh
+```
+
+要移除模块并**删除数据**(包括 `$PREFIX` 中的访客日志,控制台密码,已保存端口及证书):
+
+```bash
+bash uninstall.sh
+```
+
+两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置.`KEEP_DATA=1` 保留 `$PREFIX`,不保留这些模块配置.
+
+## 致谢
+
+浏览器测速使用 [LibreSpeed](https://github.com/librespeed/speedtest);二维码渲染使用 [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);随附的代理核心为 [sing-box](https://github.com/SagerNet/sing-box).组件清单和原始许可证路径见[第三方声明][local-link-003].
+
+## 许可证
+
+项目许可证:GPL-3.0(SPDX:`GPL-3.0-only`);请阅读完整的 [LICENSE][local-link-004].历史组合理由见[决策][local-link-005].已记录的第三方组件,原始许可证路径,源码链接和发布审核缺口见 [THIRD_PARTY_NOTICES.md][local-link-006].此次文档迁移不构成新的法律审查.
+
+本项目与 sing-box/SagerNet 或 LibreSpeed 无关联,亦未获其背书.
+
+[local-link-001]: LOG.md#当前状态与验收限制
+[local-link-002]: DESIGN.md#配置参考
+[local-link-003]: THIRD_PARTY_NOTICES.md
+[local-link-004]: ../../LICENSE
+[local-link-005]: LOG.md#决策
+[local-link-006]: THIRD_PARTY_NOTICES.md

@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "coverage": "Only the seven third-party bundled distributable artifacts listed below. SHA-256 values were computed from this checkout; versions and source revisions are inherited project records, not independently verified against upstream releases.",
+  "artifacts": [
+    {
+      "component": "Lucky",
+      "version": "v2.27.2 Linux x86_64",
+      "upstream": "https://github.com/gdy666/lucky",
+      "recorded_upstream_revision": null,
+      "path": "third_party/lucky/lucky",
+      "sha256": "7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a"
+    },
+    {
+      "component": "frps",
+      "version": "v0.71.0 linux amd64",
+      "upstream": "https://github.com/fatedier/frp",
+      "recorded_upstream_revision": null,
+      "path": "third_party/frp/frps",
+      "sha256": "b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654"
+    },
+    {
+      "component": "sing-box",
+      "version": "v1.13.14",
+      "upstream": "https://github.com/SagerNet/sing-box",
+      "recorded_upstream_revision": "25a600db24f7680ad9806ce5427bd0ab8afe1114",
+      "path": "third_party/sing-box/sing-box",
+      "sha256": "68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7"
+    },
+    {
+      "component": "LibreSpeed",
+      "version": "v6.2.1",
+      "upstream": "https://github.com/librespeed/speedtest",
+      "recorded_upstream_revision": null,
+      "path": "static/third_party/librespeed/speedtest.js",
+      "sha256": "dc6fd7f01809f8898e1b2208fd03716d764543254654eaddc775a0b38cbccc39"
+    },
+    {
+      "component": "LibreSpeed",
+      "version": "v6.2.1",
+      "upstream": "https://github.com/librespeed/speedtest",
+      "recorded_upstream_revision": null,
+      "path": "static/third_party/librespeed/speedtest_worker.js",
+      "sha256": "3dc577e830a7255eacd9335865af9c4a77ca1d7c115e8bfc7e1717d2c4ed08d0"
+    },
+    {
+      "component": "qrcode-generator",
+      "version": "js2.0.4",
+      "upstream": "https://github.com/kazuhikoarase/qrcode-generator",
+      "recorded_upstream_revision": "83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8",
+      "path": "static/third_party/qrcode/qrcode.js",
+      "sha256": "79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c"
+    },
+    {
+      "component": "qrcode-generator",
+      "version": "js2.0.4",
+      "upstream": "https://github.com/kazuhikoarase/qrcode-generator",
+      "recorded_upstream_revision": "83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8",
+      "path": "static/third_party/qrcode/qrcode-utf8.js",
+      "sha256": "e522d64003b332e29271fdce4993ed3ae2934c8947f41654bd324ddcfa2de301"
+    }
+  ],
+  "exclusions": [
+    {
+      "items": [
+        "iperf3",
+        "python3 and its standard library",
+        "openssl",
+        "curl",
+        "jq",
+        "iproute2",
+        "procps",
+        "iptables",
+        "ca-certificates",
+        "systemd and other host tools/libraries"
+      ],
+      "reason": "Distribution-managed system packages are supplied by the target Debian/Ubuntu security-maintained package repositories or preinstalled by the OS. The installer does not select package versions or a repository snapshot; no portable exact versions, package hashes, or transitive dependency closure are established by this lock."
+    },
+    {
+      "items": [
+        "project-owned application, glue code, setup scripts and own-project vendoring"
+      ],
+      "reason": "First-party code is revision-controlled in Git; provenance of imports from this author's projects is recorded in .upstream-version and deploy/anytls/.upstream-version, not in this third-party artifact lock."
+    }
+  ]
+}

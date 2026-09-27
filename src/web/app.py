@@ -1,0 +1,3184 @@
+#!/usr/bin/env python3
+"""vps-server: public reachability page, speed-test console, iperf3 window.
+
+Three listeners in one process, served by two request handlers:
+
+  ProbeHandler    ports 80 and 443, no authentication. Serves one page that
+                  says "you reached this host", echoes the caller's source
+                  address, and discloses nothing else about the machine.
+  ConsoleHandler  a persisted random high port, password-protected. Browser
+                  speed test, visitor log, and the iperf3 window control.
+
+The split is a security property, not an organisational one: a request
+arriving on 80/443 cannot reach a console route because ProbeHandler has no
+such route — not because a check rejected it. An authorization check can be
+bugged into allowing; an absent route cannot. See doc/LOG.md#decisions (2026-09-12)
+before considering merging the two.
+
+Standard-library only (see doc/LOG.md#decisions). Run with `python3 app.py`.
+"""
+
+import base64
+import hmac
+import html
+import http.cookies
+import ipaddress
+import json
+import os
+import re
+import secrets
+import shutil
+import signal
+import sqlite3
+import ssl
+import subprocess
+import sys
+import threading
+import time
+from datetime import datetime, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, quote, urlsplit
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+
+def load_dotenv(path):
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+# Checkout imports src.web.app (or runs src/web/app.py); deployment copies this
+# implementation to the root as app.py without the checkout entry.
+BASE_DIR = Path(__file__).resolve().parent
+if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_file():
+    BASE_DIR = BASE_DIR.parent.parent
+
+
+def _read_version():
+    """The version this build actually is, from the VERSION file beside us.
+
+    Not a constant in this file, on purpose. A hand-written one is wrong the
+    moment somebody tags a release and forgets to edit it, and nothing
+    reports that — the console just keeps claiming the previous version to
+    whoever is looking at it three deploys later.
+
+    install.sh writes this file: from `git describe --tags --exact-match`
+    when it is installing from a git checkout, from `dev-<short sha>` when
+    that checkout is not sitting on a tag, and from the copy committed at
+    release time when there is no git at all (a tarball). A build that cannot
+    establish what it is says so rather than guessing.
+    """
+    try:
+        version_file = BASE_DIR / "config" / "VERSION"
+        if not version_file.is_file():
+            version_file = BASE_DIR / "VERSION"
+        value = version_file.read_text().strip()
+    except OSError:
+        return "dev-unknown"
+    return value or "dev-unknown"
+
+
+VERSION = _read_version()
+
+load_dotenv(BASE_DIR / ".env")
+
+def _load_strings():
+    """Load reviewed interface catalogs from the checkout or installed prefix."""
+    files = {"en": "en", "zh_cn": "zh-CN", "zh_tw": "zh-TW",
+             "zh_hk": "zh-HK", "hi": "hi", "es": "es", "ar": "ar", "fr": "fr"}
+    catalogs = {}
+    for code, tag in files.items():
+        with (BASE_DIR / "lang" / "web" / f"{tag}.json").open(encoding="utf-8") as source:
+            catalog = json.load(source)
+        if not isinstance(catalog, dict) or not all(isinstance(key, str) and isinstance(value, str)
+                                                     for key, value in catalog.items()):
+            raise ValueError(f"invalid interface catalog: {tag}")
+        catalogs[code] = catalog
+    keys = set(catalogs["en"])
+    if any(set(catalog) != keys for catalog in catalogs.values()):
+        raise ValueError("interface catalog keys differ across languages")
+    return catalogs
+
+
+STRINGS = _load_strings()
+
+# With no cookie/query/matching Accept-Language, fall back to this. Validated
+# against STRINGS so a typo'd VPSSRV_DEFAULT_LANG can't 500 the whole app.
+DEFAULT_LANG = os.environ.get("VPSSRV_DEFAULT_LANG", "en")
+if DEFAULT_LANG not in STRINGS:
+    DEFAULT_LANG = "en"
+
+
+
+def _log_text(key, **values):
+    """Format an operator-visible diagnostic in the configured language."""
+    return STRINGS[DEFAULT_LANG][key].format(**values)
+
+HOST = os.environ.get("VPSSRV_HOST", "0.0.0.0")
+DATA_DIR = Path(os.environ.get("VPSSRV_DATA_DIR", str(BASE_DIR / "data")))
+TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
+MAX_TEST_MB = int(os.environ.get("VPSSRV_MAX_TEST_MB", "200"))
+
+# TLS for the console. Off by default: the only certificate this app can
+# produce on its own is self-signed, and that means a browser warning to click
+# through on every fresh browser for no authentication benefit. Set
+# VPSSRV_CONSOLE_TLS=1 to serve the console over HTTPS too (self-signed unless
+# VPSSRV_TLS_CERT/VPSSRV_TLS_KEY point at a real certificate).
+CONSOLE_TLS = os.environ.get("VPSSRV_CONSOLE_TLS", "0") == "1"
+# The console port is resolved by ensure_console_port() further down (it needs
+# _write_secret_file, defined below) — with no VPSSRV_CONSOLE_PORT set it
+# generates and persists a random port rather than defaulting to 80 or 443,
+# which now belong to the public page.
+CONSOLE_PORT_FILE = Path(
+    os.environ.get("VPSSRV_CONSOLE_PORT_FILE", str(BASE_DIR / "console_port.txt"))
+)
+CERT_DIR = Path(os.environ.get("VPSSRV_CERT_DIR", str(BASE_DIR / "certs")))
+TLS_CERT = os.environ.get("VPSSRV_TLS_CERT", "")
+TLS_KEY = os.environ.get("VPSSRV_TLS_KEY", "")
+
+# The public reachability page. Unlike everything else in this file it is meant
+# to be found: it answers "are this host's web ports reachable from where you
+# are", and that only works if a stranger holding nothing but the IP can load
+# it. Hence no auth, and hence the two best-known ports.
+#
+# There is deliberately no HTTP-to-HTTPS redirect. Upstream had one, but
+# redirecting port 80 would destroy the very thing being measured — whether 80
+# itself is reachable — by turning a successful plain-HTTP fetch into a hop to
+# a port that may well be blocked.
+PUBLIC_ENABLED = os.environ.get("VPSSRV_PUBLIC_ENABLE", "1") == "1"
+PUBLIC_HTTP_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTP_PORT", "80"))
+PUBLIC_HTTPS_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTPS_PORT", "443"))
+
+# Speed-test tuning. Defaults follow LibreSpeed's methodology: several parallel
+# streams, a duration-based measurement window, and a warmup/grace period whose
+# bytes are discarded so TCP slow-start doesn't drag the number down.
+TEST_SECONDS = int(os.environ.get("VPSSRV_TEST_SECONDS", "10"))
+WARMUP_SECONDS = float(os.environ.get("VPSSRV_WARMUP_SECONDS", "2"))
+DOWNLOAD_STREAMS = int(os.environ.get("VPSSRV_DOWNLOAD_STREAMS", "6"))
+UPLOAD_STREAMS = int(os.environ.get("VPSSRV_UPLOAD_STREAMS", "3"))
+PING_SAMPLES = int(os.environ.get("VPSSRV_PING_SAMPLES", "20"))
+OVERHEAD_FACTOR = 1.06  # compensate for TCP/IP/HTTP header overhead
+
+# Connection tracking: poll the kernel TCP table so the visitor log covers
+# every device reaching this host, not only those that opened this web page.
+TRACK_CONNECTIONS = os.environ.get("VPSSRV_TRACK_CONNECTIONS", "1") == "1"
+CONN_POLL_SECONDS = float(os.environ.get("VPSSRV_CONN_POLL_SECONDS", "5"))
+
+# The admin password lives next to the app by default so it is easy to find
+# and edit when deploying on another machine (VPSSRV_PASSWORD_FILE overrides).
+PASSWORD_FILE = Path(os.environ.get("VPSSRV_PASSWORD_FILE", str(BASE_DIR / "admin_password.txt")))
+# Login can be turned off at install time (see install.sh) for setups relying
+# on the random port alone. The password file is still generated either way
+# so flipping this back on later doesn't require a restart-time prompt.
+AUTH_ENABLED = os.environ.get("VPSSRV_AUTH", "1") == "1"
+
+# Login rate limiting — defensive depth, not a fix for a real hole: the
+# generated password is secrets.token_urlsafe(15), already far out of brute
+# force reach. This only slows down noise and gives a floor against a
+# password chosen by hand instead of generated. See doc/LOG.md#decisions (2026-09-22).
+LOGIN_MAX_ATTEMPTS = int(os.environ.get("VPSSRV_LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_WINDOW_SECONDS = int(os.environ.get("VPSSRV_LOGIN_WINDOW_SECONDS", "60"))
+LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30"))
+
+# iperf3 window. There is no "leave it running" option on purpose: an
+# unauthenticated public `iperf3 -s` lets any stranger saturate the uplink for
+# as long as they like, and nothing about the host surfaces that it is
+# happening. See doc/LOG.md#decisions (2026-09-12).
+IPERF_ENABLED = os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1"
+IPERF_PORT = int(os.environ.get("VPSSRV_IPERF_PORT", "5201"))
+IPERF_DEFAULT_MINUTES = int(os.environ.get("VPSSRV_IPERF_DEFAULT_MINUTES", "10"))
+IPERF_MAX_MINUTES = int(os.environ.get("VPSSRV_IPERF_MAX_MINUTES", "60"))
+
+# Port forwarding. Unlike the iperf3 window, a forward is configuration, not a
+# timed loan of the uplink — it is meant to still be there after a restart or
+# a reboot. See PortForwardManager for how that is reconciled with rules
+# living in the kernel, which remembers nothing on its own.
+PORTFWD_ENABLED = os.environ.get("VPSSRV_PORTFWD_ENABLE", "1") == "1"
+PORTFWD_MAX_RULES = int(os.environ.get("VPSSRV_PORTFWD_MAX_RULES", "20"))
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+os.chmod(DATA_DIR, 0o700)
+
+SECRET_FILE = DATA_DIR / "session_secret.txt"
+DB_FILE = DATA_DIR / "visitors.db"
+PORTFWD_STATE_FILE = DATA_DIR / "portfwd.json"
+
+SESSION_TTL_SECONDS = 12 * 3600
+MAX_VISITOR_ROWS = 1000
+DOWNLOAD_CHUNK = 1024 * 1024  # 1 MiB fill buffer, repeated to build the response
+LOGIN_BODY_LIMIT = 4096
+
+
+def _write_secret_file(path, value):
+    path.write_text(value + "\n")
+    os.chmod(path, 0o600)
+
+
+def ensure_admin_password():
+    if PASSWORD_FILE.exists():
+        return PASSWORD_FILE.read_text().strip()
+    password = secrets.token_urlsafe(15)
+    _write_secret_file(PASSWORD_FILE, password)
+    print(_log_text('log_admin_password', path=PASSWORD_FILE), file=sys.stderr)
+    return password
+
+
+def ensure_console_port():
+    """Explicit VPSSRV_CONSOLE_PORT always wins and is never persisted.
+    Otherwise pick a random port once and remember it — regenerating on every
+    restart would make the console impossible to find again.
+    """
+    # "0" means auto, the same as unset — which is what .env.example ships and
+    # what the documentation has always said. Treating it as a literal port
+    # number binds port 0, and the kernel then hands out a different ephemeral
+    # port on every restart, none of them written to the port file. Anyone who
+    # copied .env.example to .env got a console that moved every time the
+    # service restarted and a summary that could not name it.
+    env_port = os.environ.get("VPSSRV_CONSOLE_PORT", "").strip()
+    if env_port and env_port != "0":
+        return int(env_port)
+    if CONSOLE_PORT_FILE.exists():
+        return int(CONSOLE_PORT_FILE.read_text().strip())
+    port = 20000 + secrets.randbelow(40000)  # 20000-59999
+    _write_secret_file(CONSOLE_PORT_FILE, str(port))
+    print(_log_text('log_console_port', port=port, path=CONSOLE_PORT_FILE), file=sys.stderr)
+    return port
+
+
+def ensure_session_secret():
+    if SECRET_FILE.exists():
+        return SECRET_FILE.read_text().strip()
+    secret = secrets.token_hex(32)
+    _write_secret_file(SECRET_FILE, secret)
+    return secret
+
+
+def ensure_tls_files():
+    """Return (cert_path, key_path), generating a self-signed pair if needed.
+
+    Uses the `openssl` CLI because the standard library can't create
+    certificates and this project has no third-party dependencies; openssl is
+    part of a Debian/Ubuntu base install. See doc/LOG.md#decisions.
+    """
+    if TLS_CERT and TLS_KEY:
+        cert, key = Path(TLS_CERT), Path(TLS_KEY)
+        if not cert.exists() or not key.exists():
+            raise SystemExit(
+                f"VPSSRV_TLS_CERT/VPSSRV_TLS_KEY were set but not found: {cert}, {key}"
+            )
+        return cert, key
+
+    CERT_DIR.mkdir(parents=True, exist_ok=True)
+    os.chmod(CERT_DIR, 0o700)
+    cert, key = CERT_DIR / "cert.pem", CERT_DIR / "key.pem"
+    if cert.exists() and key.exists():
+        return cert, key
+
+    if not shutil.which("openssl"):
+        raise SystemExit(
+            "openssl not found — install it (apt install openssl), or point "
+            "VPSSRV_TLS_CERT/VPSSRV_TLS_KEY at an existing certificate, or set "
+            "VPSSRV_CONSOLE_TLS=0 to serve plain HTTP."
+        )
+    subprocess.run(
+        [
+            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", str(key), "-out", str(cert),
+            "-days", "3650", "-subj", "/CN=vps-server",
+            "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    os.chmod(key, 0o600)
+    os.chmod(cert, 0o644)
+    print(_log_text('log_certificate', path=CERT_DIR), file=sys.stderr)
+    return cert, key
+
+
+ADMIN_PASSWORD = ensure_admin_password()
+CONSOLE_PORT = ensure_console_port()
+SESSION_SECRET = ensure_session_secret()
+FILL_BUFFER = os.urandom(DOWNLOAD_CHUNK)
+
+# ---------------------------------------------------------------------------
+# Firewall — best effort, for the transient iperf3 port only
+#
+# Rules are added to the running configuration only, never persisted. That
+# matches the window itself: both are gone after a reboot, and neither can
+# leave the port open because something crashed before tidying up.
+# ---------------------------------------------------------------------------
+
+
+def _cmd_output(cmd):
+    """Stdout of `cmd` if it succeeded, empty string otherwise. Never raises."""
+    try:
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            check=False, text=True,
+        )
+    except OSError:
+        return ""
+    return result.stdout if result.returncode == 0 else ""
+
+
+def _run_quiet(cmd):
+    try:
+        return subprocess.run(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+        ).returncode == 0
+    except OSError:
+        return False
+
+
+def firewall_backend():
+    """Which firewall is actually running, or None.
+
+    `ufw status` exits 0 whether or not ufw is enabled, so the exit code alone
+    would happily "open" a port in a firewall that is not filtering anything
+    and report success.
+    """
+    if shutil.which("ufw") and "Status: active" in _cmd_output(["ufw", "status"]):
+        return "ufw"
+    if shutil.which("firewall-cmd") and _cmd_output(["firewall-cmd", "--state"]).strip() == "running":
+        return "firewalld"
+    if shutil.which("iptables"):
+        return "iptables"
+    return None
+
+
+def firewall_port(port, opening):
+    """Open or close `port`/tcp. Best effort; returns True if a rule was applied.
+
+    A host with no firewall, or one managed by something not handled here,
+    must still get a usable window — so a failure is reported to stderr and
+    otherwise ignored rather than blocking the operator.
+    """
+    backend = firewall_backend()
+    if backend == "ufw":
+        cmd = ["ufw", "allow", f"{port}/tcp"] if opening else \
+              ["ufw", "delete", "allow", f"{port}/tcp"]
+    elif backend == "firewalld":
+        flag = "--add-port" if opening else "--remove-port"
+        cmd = ["firewall-cmd", f"{flag}={port}/tcp"]
+    elif backend == "iptables":
+        flag = "-I" if opening else "-D"
+        cmd = ["iptables", flag, "INPUT", "-p", "tcp", "--dport", str(port),
+               "-j", "ACCEPT"]
+    else:
+        return False
+    if _run_quiet(cmd):
+        return True
+    print(_log_text('log_firewall_open' if opening else 'log_firewall_close', port=port, backend=backend), file=sys.stderr)
+    return False
+
+
+# ---------------------------------------------------------------------------
+# iperf3 window
+# ---------------------------------------------------------------------------
+
+
+class IperfWindow:
+    """A time-boxed `iperf3 -s`, opened from the console and self-closing.
+
+    The state lives in memory and nowhere else. If the service dies, the
+    window dies with it — the safe direction to fail. A restart never
+    resurrects a window somebody opened and forgot about.
+    """
+
+    def __init__(self, port, max_minutes):
+        self._port = port
+        self._max_minutes = max_minutes
+        self._lock = threading.RLock()
+        self._proc = None
+        self._deadline = 0.0
+        self._timer = None
+
+    @property
+    def port(self):
+        return self._port
+
+    def state(self):
+        """(is_open, remaining_seconds), reaping an iperf3 that died on its own."""
+        with self._lock:
+            self._reap()
+            if self._proc is None:
+                return False, 0
+            return True, max(0, int(self._deadline - time.time()))
+
+    def open(self, minutes):
+        """Open or extend a window. Returns (ok, key) where key is a STRINGS key."""
+        if not IPERF_ENABLED:
+            return False, "iperf_disabled"
+        if not shutil.which("iperf3"):
+            return False, "iperf_missing"
+        try:
+            minutes = int(minutes)
+        except (TypeError, ValueError):
+            minutes = IPERF_DEFAULT_MINUTES
+        minutes = max(1, min(minutes, self._max_minutes))
+
+        with self._lock:
+            self._reap()
+            if self._proc is not None:
+                # Already open. Extend it instead of spawning a second server
+                # on the same port, which would only fail to bind.
+                self._deadline = time.time() + minutes * 60
+                self._arm()
+                return True, "iperf_extended"
+            try:
+                proc = subprocess.Popen(
+                    ["iperf3", "--server", "--port", str(self._port)],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except OSError:
+                return False, "iperf_missing"
+            # iperf3 exits straight away if the port is taken. Without this
+            # pause the console would report an open window that is not
+            # listening to anything.
+            time.sleep(0.3)
+            if proc.poll() is not None:
+                return False, "iperf_port_busy"
+            self._proc = proc
+            self._deadline = time.time() + minutes * 60
+            firewall_port(self._port, opening=True)
+            self._arm()
+            return True, "iperf_opened"
+
+    def close(self):
+        with self._lock:
+            self._close()
+
+    # -- internals; every one of these runs under self._lock ---------------
+
+    def _arm(self):
+        if self._timer is not None:
+            self._timer.cancel()
+        self._timer = threading.Timer(
+            max(0.0, self._deadline - time.time()), self._expire
+        )
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _expire(self):
+        with self._lock:
+            # An open() between this timer firing and acquiring the lock may
+            # have pushed the deadline out. Only close if time really is up.
+            if self._proc is not None and time.time() >= self._deadline - 0.5:
+                self._close()
+
+    def _reap(self):
+        if self._proc is not None and self._proc.poll() is not None:
+            self._proc = None
+            self._deadline = 0.0
+            firewall_port(self._port, opening=False)
+
+    def _close(self):
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
+        proc, self._proc = self._proc, None
+        self._deadline = 0.0
+        if proc is None:
+            return
+        # Withdraw the rule whatever happens to the process. A child that will
+        # not die within ten seconds is a problem; a firewall left open for a
+        # window this object already reports as closed is a worse one, and
+        # letting TimeoutExpired escape here produced exactly that — the state
+        # said shut, the port stayed open.
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    print(_log_text('log_iperf_stuck', pid=proc.pid), file=sys.stderr)
+        finally:
+            firewall_port(self._port, opening=False)
+
+
+IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES)
+
+# ---------------------------------------------------------------------------
+# Port forwarding — persistent iptables DNAT rules, console-managed
+#
+# A forward relays a public TCP/UDP port on this host to a device reachable
+# over Tailscale or the LAN — the way a box with a public IP can stand in for
+# one that has none. Unlike the iperf3 window this is meant to survive a
+# restart, so the rule set lives in PORTFWD_STATE_FILE and is (re-)applied to
+# iptables every time this process starts, never trusted to still be sitting
+# in the kernel's tables from before. See doc/DESIGN.md#data-design and doc/LOG.md#decisions
+# (2026-09-19).
+# ---------------------------------------------------------------------------
+
+PORTFWD_TAG_PREFIX = "vps-server-portfwd-"
+
+
+def _valid_port(value):
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    return port if 1 <= port <= 65535 else None
+
+
+def _valid_target_host(value):
+    # IPv4 only, matching every other address-handling function in this file
+    # (local_addresses(), tailscale_address()) — and a literal address is
+    # required anyway, since iptables --to-destination cannot take a hostname.
+    try:
+        ipaddress.IPv4Address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _portfwd_comment(rule_id):
+    return f"{PORTFWD_TAG_PREFIX}{rule_id}"
+
+
+def _portfwd_specs(rule):
+    """[(table, chain, match-args, action-args)] for one rule.
+
+    The same list builds both the -A and the -D command for a rule — only the
+    verb differs — so closing a rule can never drift from opening it by one
+    flag the way two hand-written copies eventually would.
+    """
+    comment = _portfwd_comment(rule["id"])
+    protocols = ["tcp", "udp"] if rule["protocol"] == "both" else [rule["protocol"]]
+    specs = []
+    for proto in protocols:
+        specs.append(("nat", "PREROUTING",
+            ["-p", proto, "--dport", str(rule["public_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "DNAT",
+             "--to-destination", f'{rule["target_host"]}:{rule["target_port"]}']))
+        specs.append(("nat", "POSTROUTING",
+            ["-p", proto, "-d", rule["target_host"], "--dport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "MASQUERADE"]))
+        specs.append(("filter", "FORWARD",
+            ["-p", proto, "-d", rule["target_host"], "--dport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "ACCEPT"]))
+        specs.append(("filter", "FORWARD",
+            ["-p", proto, "-s", rule["target_host"], "--sport", str(rule["target_port"])],
+            ["-m", "comment", "--comment", comment, "-j", "ACCEPT"]))
+    return specs
+
+
+def _ensure_ip_forward():
+    """Turn on net.ipv4.ip_forward if it is not already on.
+
+    Never turned back off: it is a single host-wide toggle, and other
+    software already running here (Docker, for one) may depend on it too.
+    Symmetrically closing it when the last forward is removed would risk
+    breaking whatever else asked for it first — see doc/LOG.md#decisions.
+    """
+    try:
+        current = Path("/proc/sys/net/ipv4/ip_forward").read_text().strip()
+    except OSError:
+        return
+    if current != "1":
+        _run_quiet(["sysctl", "-w", "net.ipv4.ip_forward=1"])
+
+
+def portfwd_rule_apply(rule, opening):
+    """Add (opening=True) or withdraw (opening=False) one rule's iptables state.
+
+    Best effort, like firewall_port(): a host with no iptables must not block
+    the console, so failure is reported to stderr and otherwise swallowed.
+    Withdrawal ignores failure outright — the rule may simply not be present,
+    which is the normal case the first time a rule is ever applied.
+    """
+    if not shutil.which("iptables"):
+        print(_log_text('log_iptables_missing'), file=sys.stderr)
+        return False
+    ok = True
+    for table, chain, match, action in _portfwd_specs(rule):
+        verb = "-A" if opening else "-D"
+        cmd = ["iptables", "-t", table, verb, chain, *match, *action]
+        if not _run_quiet(cmd) and opening:
+            ok = False
+    if not ok:
+        print(_log_text('log_portfwd_apply', rule_id=rule['id']), file=sys.stderr)
+    return ok
+
+
+class PortForwardManager:
+    """Console-configured DNAT rules, one process-wide instance (PORTFWD).
+
+    State is plain JSON, read into memory once and rewritten on every change.
+    A rule's `enabled` flag is the source of truth for whether it should be
+    live; whether it actually IS live in the kernel right now is never read
+    back from iptables, only driven forward from here — see load().
+    """
+
+    def __init__(self, state_file, max_rules):
+        self._state_file = state_file
+        self._max_rules = max_rules
+        self._lock = threading.RLock()
+        self._rules = self._read()
+
+    def _read(self):
+        try:
+            data = json.loads(self._state_file.read_text())
+        except (OSError, ValueError):
+            return []
+        return data if isinstance(data, list) else []
+
+    def _write(self):
+        tmp = self._state_file.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(self._rules, indent=2))
+        tmp.replace(self._state_file)
+
+    def list_rules(self):
+        with self._lock:
+            return list(self._rules)
+
+    def reserved_ports(self, exclude_id=None):
+        """Every public port this install already answers on.
+
+        Checked before a forward is added or re-enabled — DNAT would
+        otherwise silently steal traffic meant for the console, the public
+        page, the iperf3 window, the anytls node, or any installed proxy
+        protocol.
+        """
+        reserved = {PUBLIC_HTTP_PORT, PUBLIC_HTTPS_PORT, CONSOLE_PORT}
+        if IPERF_ENABLED:
+            reserved.add(IPERF_PORT)
+        node = anytls_node()
+        if node and node.get("port"):
+            try:
+                reserved.add(int(node["port"]))
+            except (TypeError, ValueError):
+                pass
+        frps = frps_node()
+        if frps:
+            reserved.add(frps['port'])
+        lucky = lucky_admin()
+        if lucky:
+            reserved.add(lucky['AdminWebListenPort'])
+        for pnode in proxy_nodes():
+            if pnode.get("port"):
+                try:
+                    reserved.add(int(pnode["port"]))
+                except (TypeError, ValueError):
+                    pass
+        with self._lock:
+            for r in self._rules:
+                if r["id"] != exclude_id:
+                    reserved.add(r["public_port"])
+        return reserved
+
+    def add(self, protocol, public_port, target_host, target_port, label):
+        if not PORTFWD_ENABLED:
+            return None, "portfwd_module_disabled"
+        with self._lock:
+            if len(self._rules) >= self._max_rules:
+                return None, "portfwd_limit"
+            if public_port in self.reserved_ports():
+                return None, "portfwd_port_taken"
+            rule = {
+                "id": secrets.token_hex(4),
+                "label": label[:80],
+                "protocol": protocol,
+                "public_port": public_port,
+                "target_host": target_host,
+                "target_port": target_port,
+                "enabled": True,
+                "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            }
+            self._rules.append(rule)
+            self._write()
+            _ensure_ip_forward()
+            portfwd_rule_apply(rule, opening=True)
+            return rule, "portfwd_added"
+
+    def remove(self, rule_id):
+        with self._lock:
+            rule = next((r for r in self._rules if r["id"] == rule_id), None)
+            if rule is None:
+                return "portfwd_not_found"
+            if rule["enabled"]:
+                portfwd_rule_apply(rule, opening=False)
+            self._rules = [r for r in self._rules if r["id"] != rule_id]
+            self._write()
+            return "portfwd_removed"
+
+    def set_enabled(self, rule_id, enabled):
+        with self._lock:
+            rule = next((r for r in self._rules if r["id"] == rule_id), None)
+            if rule is None:
+                return "portfwd_not_found"
+            if rule["enabled"] == enabled:
+                return "portfwd_enabled" if enabled else "portfwd_disabled"
+            if enabled and rule["public_port"] in self.reserved_ports(exclude_id=rule_id):
+                return "portfwd_port_taken"
+            rule["enabled"] = enabled
+            self._write()
+            if enabled:
+                _ensure_ip_forward()
+                portfwd_rule_apply(rule, opening=True)
+            else:
+                portfwd_rule_apply(rule, opening=False)
+            return "portfwd_enabled" if enabled else "portfwd_disabled"
+
+    def load(self):
+        """Reapply every enabled rule at process startup.
+
+        The kernel remembers nothing across a reboot, and may still hold last
+        run's rules if this is only a service restart — so each enabled rule
+        is withdrawn before it is (re-)added, which is safe to do unconditio-
+        nally whether the rule was already present or not.
+        """
+        with self._lock:
+            if any(r["enabled"] for r in self._rules):
+                _ensure_ip_forward()
+            for rule in self._rules:
+                if rule["enabled"]:
+                    portfwd_rule_apply(rule, opening=False)
+                    portfwd_rule_apply(rule, opening=True)
+
+    def shutdown(self):
+        """Withdraw every enabled rule's kernel state on a clean stop.
+
+        Deliberately not marked disabled in PORTFWD_STATE_FILE: restarting
+        the service, or the host, must bring every one of these straight back
+        via load(), the same fail-safe direction the iperf3 window already
+        takes — if the thing managing the state is not running, the state
+        must not silently outlive it.
+        """
+        with self._lock:
+            for rule in self._rules:
+                if rule["enabled"]:
+                    portfwd_rule_apply(rule, opening=False)
+
+
+PORTFWD = PortForwardManager(PORTFWD_STATE_FILE, PORTFWD_MAX_RULES)
+
+# ---------------------------------------------------------------------------
+# anytls node, read-only
+#
+# The console can show the installed anytls node so its client configuration
+# can be copied without going back to the terminal. Everything below returns
+# the node PASSWORD, so it must only ever reach ConsoleHandler — which is
+# behind the login — and never ProbeHandler, which has no route to it.
+#
+# Nothing here writes: to change the node, re-run anytls/setup-anytls.sh.
+# ---------------------------------------------------------------------------
+
+ANYTLS_CONFIG = Path(
+    os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
+)
+ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
+ANYTLS_SETUP = Path(
+    os.environ.get("VPSSRV_ANYTLS_SETUP", str(BASE_DIR / "anytls" / "setup-anytls.sh"))
+)
+# Generous: the script may hit apt, openssl and a service restart. A web
+# request blocking for a few seconds is fine for an operator action; blocking
+# forever because systemd is wedged is not.
+ANYTLS_RESET_TIMEOUT = 120
+# Fixed, so two resets cannot run at once. It also has to be stoppable by name
+# when the timeout fires; see anytls_reset().
+ANYTLS_RESET_UNIT = "vps-server-anytls-reset.service"
+
+
+def _cert_common_name(path):
+    """The SNI is not stored in the sing-box config — only as the self-signed
+    certificate's CN, which setup-anytls.sh sets from $SNI. Read it back from
+    there rather than duplicating the value somewhere it could drift.
+    """
+    if not path or not shutil.which("openssl"):
+        return ""
+    out = _cmd_output(["openssl", "x509", "-in", path, "-noout", "-subject"])
+    match = re.search(r"CN\s*=\s*([^,/\n]+)", out)
+    return match.group(1).strip() if match else ""
+
+
+def anytls_installed():
+    """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
+    return ANYTLS_CONFIG.is_file()
+
+
+def anytls_node():
+    """The installed node's parameters, or None if the module is not installed."""
+    try:
+        config = json.loads(ANYTLS_CONFIG.read_text())
+    except (OSError, ValueError):
+        return None
+    for inbound in config.get("inbounds", []):
+        if inbound.get("type") != "anytls":
+            continue
+        users = inbound.get("users") or [{}]
+        tls = inbound.get("tls") or {}
+        return {
+            "port": inbound.get("listen_port", ""),
+            "password": users[0].get("password", ""),
+            "sni": _cert_common_name(tls.get("certificate_path", "")),
+            "running": _run_quiet(["systemctl", "is-active", "--quiet", ANYTLS_SERVICE]),
+        }
+    return None
+
+
+def anytls_clash_line(node, host, name):
+    """One Clash proxy entry. Same shape setup-anytls.sh prints, so a config
+    assembled from either source looks the same.
+    """
+    return (
+        f'- {{ name: {name}, type: anytls, server: {host}, port: {node["port"]}, '
+        f'password: "{node["password"]}", sni: {node["sni"]}, '
+        f'skip-cert-verify: true, udp: true }}'
+    )
+
+
+def anytls_share_link(node, host, name):
+    return (
+        f'anytls://{quote(node["password"], safe="")}@{host}:{node["port"]}'
+        f'?insecure=1&sni={node["sni"]}#{quote(name, safe="")}'
+    )
+
+
+# Mirrors setup-anytls.sh's get_lan_ips filter. Keeping a second copy of the
+# list is a drift risk; the alternative is the console shelling into the
+# vendored script to ask, which is worse.
+VIRTUAL_IFACE_PREFIXES = ("docker", "br-", "veth", "virbr", "cni", "flannel", "kube")
+
+
+def local_addresses():
+    """[(interface, address)] for real interfaces.
+
+    Read from the kernel's own list, so this costs no outbound request —
+    unlike the public address, which is exactly why that one is a file written
+    at install time rather than a lookup here.
+    """
+    found = []
+    output = _cmd_output(["ip", "-o", "-4", "addr", "show", "scope", "global"])
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        iface, cidr = parts[1], parts[3]
+        if iface.startswith(VIRTUAL_IFACE_PREFIXES) or iface.startswith("tailscale"):
+            continue
+        found.append((iface, cidr.split("/")[0]))
+    return found
+
+
+def tailscale_address():
+    for line in _cmd_output(["ip", "-o", "-4", "addr", "show", "tailscale0"]).splitlines():
+        parts = line.split()
+        if len(parts) >= 4:
+            return parts[3].split("/")[0]
+    return ""
+
+
+def address_entries(t, public_address, host):
+    """[(label, address)] shared by both the anytls and proxy console
+    sections: public first (only when a module's own install-time detection
+    left one — see anytls_public_address()/proxy_public_address()), then
+    each real interface, then Tailscale, then the address that reached this
+    console if none of those already covers it.
+
+    Each later source is skipped if it repeats an address an earlier one
+    already contributed — on a typical VPS with no NAT, the public address
+    *is* the address bound to the main interface, so without this a
+    single-NIC box showed the exact same IP twice, once labelled "public"
+    and once "LAN-eth0" (found by an operator testing on a real VPS). A home
+    box behind NAT, where the public and LAN addresses genuinely differ, is
+    unaffected.
+    """
+    entries = []
+    seen = set()
+    if public_address:
+        entries.append((t["anytls_public"], public_address))
+        seen.add(public_address)
+    for iface, address in local_addresses():
+        if address in seen:
+            continue
+        entries.append((t["anytls_lan"].format(iface=iface), address))
+        seen.add(address)
+    tailscale = tailscale_address()
+    if tailscale and tailscale not in seen:
+        entries.append(("Tailscale", tailscale))
+        seen.add(tailscale)
+    if host not in seen:
+        entries.append((t["anytls_this"], host))
+    return entries
+
+
+def anytls_public_address():
+    """Whatever setup-anytls.sh detected at install time, or "".
+
+    A file rather than a live lookup, deliberately: app.py makes no outbound
+    request at runtime, and a public address does not move often enough to
+    justify breaking that rule for a display field. Re-run setup-anytls.sh if
+    the address changes.
+    """
+    try:
+        value = (ANYTLS_CONFIG.parent / "public-ip.txt").read_text().strip()
+    except OSError:
+        return ""
+    return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
+
+
+def anytls_reset_command():
+    """argv for a reset, run outside this service's sandbox where possible.
+
+    The unit this process runs under has ProtectSystem=strict with only
+    ReadWritePaths=$PREFIX, so /etc is read-only to it — and a reset has to
+    write /etc/vps-server-anytls and a unit file. Running it inside the
+    sandbox fails partway through, after the old port's firewall rule is
+    already gone.
+
+    The fix is not to widen this service's write access for the lifetime of
+    the install so that one button works. It is to hand the privileged work to
+    a transient unit, which systemd starts outside our sandbox. The fixed unit
+    name also serialises resets; --collect reaps it either way.
+
+    Without systemd-run — a container, a stripped image — run it directly.
+    Hardening is omitted in exactly those environments anyway, so the direct
+    call is the one that works there.
+    """
+    direct = ["bash", str(ANYTLS_SETUP), "reset"]
+    if shutil.which("systemd-run"):
+        return ["systemd-run", "--pipe", "--wait", "--collect",
+                f"--unit={ANYTLS_RESET_UNIT}", *direct]
+    return direct
+
+
+def anytls_reset():
+    """Rotate the node's port and password. Returns a STRINGS key.
+
+    The console deliberately does not write anytls state itself:
+    setup-anytls.sh owns it, including the part that is easy to get wrong —
+    withdrawing the old port's firewall rule before opening the new one.
+    Duplicating that here would leave two copies to drift apart.
+    """
+    if not ANYTLS_SETUP.is_file():
+        return "anytls_reset_missing"
+    try:
+        result = subprocess.run(
+            anytls_reset_command(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=ANYTLS_RESET_TIMEOUT,
+            check=False,
+            text=True,
+        )
+    except subprocess.TimeoutExpired:
+        # The timeout kills the systemd-run client, not the unit it asked
+        # systemd to start — that runs outside this process tree and would
+        # carry on, possibly rotating the credentials minutes after the
+        # console reported a timeout. The fixed unit name would then make the
+        # retry this message suggests fail with "unit already exists", which
+        # says nothing about what actually happened.
+        _run_quiet(["systemctl", "stop", ANYTLS_RESET_UNIT])
+        return "anytls_reset_timeout"
+    except OSError:
+        return "anytls_reset_missing"
+    if result.returncode != 0:
+        # The script's own diagnostics are the useful part and the console
+        # cannot improve on them, so put them where an operator will look
+        # rather than flattening everything into one generic failure.
+        print(_log_text('log_anytls_reset', code=result.returncode, output=result.stdout), file=sys.stderr)
+        return "anytls_reset_failed"
+    return "anytls_reset_done"
+
+
+# ---------------------------------------------------------------------------
+# proxy nodes (vmess/vless/trojan/shadowsocks), read-only
+#
+# Same shape as the anytls block above, generalized to sing-box's multiple
+# inbounds sharing ONE service/config (proxy/setup-proxy.sh's own design —
+# see doc/LOG.md#completed-work-history and doc/LOG.md#decisions):
+# a single install can have any subset of the four protocols, so proxy_nodes() returns a list instead of the single
+# dict anytls_node() returns.
+#
+# Nothing here writes: to change the node set, re-run proxy/setup-proxy.sh.
+# ---------------------------------------------------------------------------
+
+PROXY_CONFIG = Path(
+    os.environ.get("VPSSRV_PROXY_CONFIG", "/etc/vps-server-proxy/config.json")
+)
+PROXY_SERVICE = os.environ.get("VPSSRV_PROXY_SERVICE", "vps-server-proxy.service")
+PROXY_SETUP = Path(
+    os.environ.get("VPSSRV_PROXY_SETUP", str(BASE_DIR / "proxy" / "setup-proxy.sh"))
+)
+PROXY_RESET_TIMEOUT = 120
+PROXY_RESET_UNIT = "vps-server-proxy-reset.service"
+NODE_CONFIG_HELPER = BASE_DIR / "node_config.py"  # installed, root-owned helper
+NODE_APPLY_UNIT = "vps-server-node-apply.service"
+NODE_APPLY_TIMEOUT = 120
+NODE_APPLY_BODY_LIMIT = 1024
+NODE_PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
+
+
+def node_csrf_token(session, protocol):
+    return hmac.new(SESSION_SECRET.encode(),
+                    f"node-apply:{session}:{protocol}".encode(), "sha256").hexdigest()
+
+
+def node_apply(protocol, credential):
+    """Use the installed privileged helper, never putting credentials in argv."""
+    if not NODE_CONFIG_HELPER.is_file():
+        return "node_apply_failed"
+    direct = ["/usr/bin/python3", str(NODE_CONFIG_HELPER), protocol]
+    systemd_run = shutil.which("systemd-run")
+    if not systemd_run and Path("/run/systemd/system").exists():
+        return "node_apply_failed"  # never run inside the production web sandbox
+    command = (["systemd-run", "--pipe", "--wait", "--collect",
+                f"--unit={NODE_APPLY_UNIT}", *direct]
+               if systemd_run else direct)
+    try:
+        result = subprocess.run(command, input=credential.encode("utf-8"),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                timeout=NODE_APPLY_TIMEOUT, check=False)
+    except subprocess.TimeoutExpired:
+        if command[0] == "systemd-run":
+            _run_quiet(["systemctl", "stop", NODE_APPLY_UNIT])
+        return "node_apply_failed"
+    except OSError:
+        return "node_apply_failed"
+    return "node_apply_done" if result.returncode == 0 else "node_apply_failed"
+# Display order only — config.json's own inbounds order already matches this
+# (setup-proxy.sh writes them in ALL_PROTOCOLS order), but a config hand-
+# edited or produced some other way should not scramble the console page.
+PROXY_PROTOCOL_ORDER = ("vmess", "vless", "trojan", "shadowsocks")
+
+
+def proxy_installed():
+    """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
+    return PROXY_CONFIG.is_file()
+
+
+def proxy_nodes():
+    """[{type, port, secret}] for every installed protocol, in display order.
+
+    `secret` is the uuid for vmess/vless or the password for trojan/
+    shadowsocks — one field name regardless of protocol, since exactly one of
+    "the identifier IS the credential" is true for all four and the caller
+    (page_proxy) already knows which is which from `type`.
+    """
+    try:
+        config = json.loads(PROXY_CONFIG.read_text())
+    except (OSError, ValueError):
+        return []
+    nodes = []
+    for inbound in config.get("inbounds", []):
+        proto = inbound.get("type")
+        if proto not in PROXY_PROTOCOL_ORDER:
+            continue
+        users = inbound.get("users") or [{}]
+        user0 = users[0]
+        if proto in ("vmess", "vless"):
+            secret = user0.get("uuid", "")
+        elif proto == "trojan":
+            secret = user0.get("password", "")
+        else:  # shadowsocks: password sits on the inbound itself, not a user
+            secret = inbound.get("password", "")
+        nodes.append({"type": proto, "port": inbound.get("listen_port", ""), "secret": secret})
+    order = {p: i for i, p in enumerate(PROXY_PROTOCOL_ORDER)}
+    nodes.sort(key=lambda n: order.get(n["type"], len(PROXY_PROTOCOL_ORDER)))
+    return nodes
+
+
+FRPS_CONFIG = Path(os.environ.get('VPSSRV_FRPS_CONFIG', '/etc/vps-server-frps/frps.toml'))
+FRPS_SERVICE = 'vps-server-frps.service'
+LUCKY_CONFIG = Path(os.environ.get('VPSSRV_LUCKY_CONFIG', '/etc/vps-server-lucky/config.json'))
+LUCKY_SERVICE = 'vps-server-lucky.service'
+
+
+def lucky_admin():
+    """Never expose Lucky credentials without console authentication."""
+    try:
+        data = json.loads(LUCKY_CONFIG.read_text())['BaseConfigure']
+        port = data['AdminWebListenPort']
+        if type(port) is not int or not 1 <= port <= 65535:
+            return None
+        return data
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+
+def frps_node():
+    """Read-only server parameters; do not expose them outside an authenticated console."""
+    try:
+        text = FRPS_CONFIG.read_text()
+        fields = dict(re.findall(r'^([\w.]+)\s*=\s*(.+?)\s*$', text, re.M))
+        port = int(fields['bindPort'])
+        token = fields['auth.token'].strip('"')
+        if not 1 <= port <= 65535 or not token:
+            return None
+        return {'address': fields.get('bindAddr', '"0.0.0.0"').strip('"'),
+                'port': port, 'token': token}
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def proxy_running():
+    return _run_quiet(["systemctl", "is-active", "--quiet", PROXY_SERVICE])
+
+
+def proxy_clash_line(node, sni, host, name):
+    proto, port, secret = node["type"], node["port"], node["secret"]
+    if proto == "vmess":
+        return (f'- {{ name: {name}, type: vmess, server: {host}, port: {port}, '
+                f'uuid: {secret}, alterId: 0, cipher: auto, tls: true, '
+                f'skip-cert-verify: true, servername: {sni}, udp: true }}')
+    if proto == "vless":
+        return (f'- {{ name: {name}, type: vless, server: {host}, port: {port}, '
+                f'uuid: {secret}, network: tcp, tls: true, skip-cert-verify: true, '
+                f'servername: {sni}, udp: true }}')
+    if proto == "trojan":
+        return (f'- {{ name: {name}, type: trojan, server: {host}, port: {port}, '
+                f'password: "{secret}", sni: {sni}, skip-cert-verify: true, udp: true }}')
+    return (f'- {{ name: {name}, type: ss, server: {host}, port: {port}, '
+            f'cipher: 2022-blake3-aes-128-gcm, password: "{secret}", udp: true }}')
+
+
+def proxy_share_link(node, sni, host, name):
+    proto, port, secret = node["type"], node["port"], node["secret"]
+    if proto == "vmess":
+        payload = {
+            "v": "2", "ps": name, "add": host, "port": str(port), "id": secret,
+            "aid": "0", "net": "tcp", "type": "none", "host": "", "path": "",
+            "tls": "tls", "sni": sni, "scy": "auto",
+        }
+        blob = base64.b64encode(json.dumps(payload).encode()).decode()
+        return f"vmess://{blob}"
+    if proto == "vless":
+        return (f'vless://{secret}@{host}:{port}?encryption=none&security=tls'
+                f'&sni={quote(sni, safe="")}&allowInsecure=1&type=tcp#{quote(name, safe="")}')
+    if proto == "trojan":
+        return (f'trojan://{quote(secret, safe="")}@{host}:{port}'
+                f'?sni={quote(sni, safe="")}&allowInsecure=1#{quote(name, safe="")}')
+    blob = base64.b64encode(f"2022-blake3-aes-128-gcm:{secret}".encode()).decode()
+    return f"ss://{blob}@{host}:{port}#{quote(name, safe='')}"
+
+
+def proxy_public_address():
+    """Same reasoning as anytls_public_address(): a file written at install
+    time, not a live lookup — app.py makes no outbound request at runtime.
+    """
+    try:
+        value = (PROXY_CONFIG.parent / "public-ip.txt").read_text().strip()
+    except OSError:
+        return ""
+    return value if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", value) else ""
+
+
+def proxy_reset_command(protocol=None):
+    """Same sandboxing workaround as anytls_reset_command() — see its
+    docstring. ConsoleHandler's unit has ProtectSystem=strict, so a reset has
+    to run outside this process's own sandbox to reach /etc.
+
+    `protocol`, when given, rotates only that one protocol's port and
+    credential — setup-proxy.sh's `reset <protocol>` form, added after an
+    operator pointed out that a single "reset everything" button forces
+    rotating protocols nobody asked to touch. `None` keeps the old
+    "reset everything currently installed" behaviour.
+    """
+    direct = ["bash", str(PROXY_SETUP), "reset"]
+    if protocol:
+        direct.append(protocol)
+    if shutil.which("systemd-run"):
+        return ["systemd-run", "--pipe", "--wait", "--collect",
+                f"--unit={PROXY_RESET_UNIT}", *direct]
+    return direct
+
+
+def proxy_reset(protocol=None):
+    """Rotate one protocol's (or, with no argument, every currently-
+    installed protocol's) port and credential. Returns a STRINGS key. Same
+    non-duplication reasoning as anytls_reset(): setup-proxy.sh owns the
+    state, including which protocol set survives a reset (it reads that
+    back from the config it is about to overwrite).
+    """
+    if not PROXY_SETUP.is_file():
+        return "proxy_reset_missing"
+    try:
+        result = subprocess.run(
+            proxy_reset_command(protocol),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=PROXY_RESET_TIMEOUT,
+            check=False,
+            text=True,
+        )
+    except subprocess.TimeoutExpired:
+        _run_quiet(["systemctl", "stop", PROXY_RESET_UNIT])
+        return "proxy_reset_timeout"
+    except OSError:
+        return "proxy_reset_missing"
+    if result.returncode != 0:
+        print(_log_text('log_proxy_reset', code=result.returncode, output=result.stdout), file=sys.stderr)
+        return "proxy_reset_failed"
+    return "proxy_reset_done"
+
+
+def render_copyable(t, label, value, ident):
+    return f"""
+    <div class="copyrow">
+      <div class="copyhead">
+        <span>{html.escape(label)}</span>
+        <button type="button" class="copybtn" data-copy="{ident}"
+                data-copied="{html.escape(t['copied'])}"
+                >{html.escape(t['copy'])}</button>
+      </div>
+      <pre class="cmd" id="{ident}">{html.escape(value)}</pre>
+    </div>
+    """
+
+# Result keys the console may echo back after a redirect. Whitelisted because
+# the key indexes STRINGS: without this, a crafted ?msg= would be a way to
+# render any string from the table on an authenticated page.
+IPERF_MESSAGE_KEYS = frozenset({
+    "iperf_opened", "iperf_extended", "iperf_shut",
+    "iperf_disabled", "iperf_missing", "iperf_port_busy",
+})
+
+ANYTLS_MESSAGE_KEYS = frozenset({
+    "anytls_reset_done", "anytls_reset_unconfirmed", "anytls_reset_failed",
+    "anytls_reset_timeout", "anytls_reset_missing",
+})
+
+NODE_APPLY_MESSAGE_KEYS = frozenset({"node_apply_done", "node_apply_failed"})
+
+PROXY_MESSAGE_KEYS = frozenset({
+    "proxy_reset_done", "proxy_reset_unconfirmed", "proxy_reset_failed",
+    "proxy_reset_timeout", "proxy_reset_missing",
+})
+
+PORTFWD_MESSAGE_KEYS = frozenset({
+    "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
+    "portfwd_invalid", "portfwd_port_taken", "portfwd_limit", "portfwd_not_found",
+    "portfwd_module_disabled",
+})
+
+# ---------------------------------------------------------------------------
+# Internationalization (English / Simplified Chinese / Traditional Chinese)
+# ---------------------------------------------------------------------------
+
+
+# Rendered in the navigation in display order.
+LANG_NAMES = {"en": "English", "zh_cn": "简体中文", "zh_tw": "繁體中文",
+              "zh_hk": "繁體中文 (香港)", "hi": "हिन्दी", "es": "Español",
+              "ar": "العربية", "fr": "Français"}
+
+# The runtime language codes (zh_cn/zh_tw, with underscores) are legacy
+# identifiers; documentation directories use BCP-47 tags. These codes
+# aren't valid BCP-47 <html lang> values — that
+# needs a hyphen. Only used for the <html lang="..."> attribute.
+HTML_LANG_TAGS = {"zh_cn": "zh-CN", "zh_tw": "zh-TW", "zh_hk": "zh-HK"}
+RTL_ATTR = {"ar": ' dir="rtl"'}
+
+
+def pick_lang(cookie_lang, query_lang, accept_language):
+    for candidate in (query_lang, cookie_lang):
+        if candidate in STRINGS:
+            return candidate
+    if accept_language:
+        # Only the first (highest-priority) tag matters here.
+        primary = accept_language.split(",")[0].strip().lower()
+        if primary.startswith("zh"):
+            if "hk" in primary or "mo" in primary:
+                return "zh_hk"
+            if "tw" in primary or "hant" in primary:
+                return "zh_tw"
+            return "zh_cn"
+        for code in ("hi", "es", "ar", "fr", "en"):
+            if primary == code or primary.startswith(code + "-"):
+                return code
+    return DEFAULT_LANG
+
+
+# ---------------------------------------------------------------------------
+# Sessions — in memory; a restart forces re-login, acceptable for this tool.
+# ---------------------------------------------------------------------------
+
+_sessions = {}
+_sessions_lock = threading.Lock()
+
+
+def create_session():
+    token = secrets.token_urlsafe(32)
+    with _sessions_lock:
+        _sessions[token] = time.time() + SESSION_TTL_SECONDS
+    return token
+
+
+def session_valid(token):
+    if not token:
+        return False
+    with _sessions_lock:
+        expiry = _sessions.get(token)
+        if expiry is None:
+            return False
+        if expiry < time.time():
+            del _sessions[token]
+            return False
+        return True
+
+
+def destroy_session(token):
+    with _sessions_lock:
+        _sessions.pop(token, None)
+
+
+# ---------------------------------------------------------------------------
+# Login rate limiting — per source IP, in memory, reset by a restart just
+# like sessions are. A lockout is cleared by a successful login or by
+# waiting it out; it is never permanent, so a forgetful operator cannot
+# lock themselves out for good.
+# ---------------------------------------------------------------------------
+
+
+class LoginRateLimiter:
+    def __init__(self, max_attempts, window_seconds, lockout_seconds):
+        self._max_attempts = max_attempts
+        self._window = window_seconds
+        self._lockout = lockout_seconds
+        self._lock = threading.Lock()
+        self._failures = {}       # ip -> [failure timestamps within window]
+        self._locked_until = {}   # ip -> unix time the lockout ends
+
+    def check(self, ip):
+        """(allowed, retry_after_seconds). retry_after is 0 when allowed."""
+        with self._lock:
+            until = self._locked_until.get(ip)
+            if until is None:
+                return True, 0
+            remaining = until - time.time()
+            if remaining <= 0:
+                del self._locked_until[ip]
+                self._failures.pop(ip, None)
+                return True, 0
+            return False, int(remaining) + 1
+
+    def record_failure(self, ip):
+        with self._lock:
+            now = time.time()
+            attempts = [t for t in self._failures.get(ip, []) if now - t < self._window]
+            attempts.append(now)
+            if len(attempts) >= self._max_attempts:
+                self._locked_until[ip] = now + self._lockout
+                self._failures.pop(ip, None)
+            else:
+                self._failures[ip] = attempts
+            self._prune(now)
+
+    def record_success(self, ip):
+        with self._lock:
+            self._failures.pop(ip, None)
+            self._locked_until.pop(ip, None)
+
+    def _prune(self, now):
+        # Runs on every failure, not on a timer: cheap, and keeps a scan
+        # hammering many source IPs from growing these dicts without bound.
+        for ip in [i for i, until in self._locked_until.items() if until < now]:
+            del self._locked_until[ip]
+        for ip in [i for i, ts in self._failures.items()
+                   if not any(now - t < self._window for t in ts)]:
+            del self._failures[ip]
+
+
+LOGIN_LIMITER = LoginRateLimiter(LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS, LOGIN_LOCKOUT_SECONDS)
+
+
+# ---------------------------------------------------------------------------
+# Visitor log — one row per IP (deduplicated), trimmed to the newest
+# MAX_VISITOR_ROWS unique IPs after each write.
+#
+# Two independent sources feed it:
+#   * HTTP requests to this app (method/path/status are recorded), and
+#   * the kernel's TCP table, polled in the background, which catches every
+#     device connecting to *any* listening port on this host — SSH, other
+#     services, port scans — not just the ones that opened this web page.
+# ---------------------------------------------------------------------------
+
+_db_lock = threading.Lock()
+
+
+def ip_scope(ip):
+    """Classify an address so the UI can filter loopback/LAN noise out."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return "public"
+    if addr.is_loopback:
+        return "loopback"
+    if addr.is_private or addr.is_link_local:
+        return "private"
+    return "public"
+
+
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS visitors (
+                ip          TEXT PRIMARY KEY,
+                first_seen  TEXT NOT NULL,
+                last_seen   TEXT NOT NULL,
+                hits        INTEGER NOT NULL,
+                last_method TEXT NOT NULL,
+                last_path   TEXT NOT NULL,
+                last_status INTEGER NOT NULL
+            )
+            """
+        )
+        # Migrate databases created before connection tracking existed. Adding
+        # columns one at a time keeps existing visitor history intact.
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(visitors)")}
+        for column, ddl in (
+            ("conn_seen", "ALTER TABLE visitors ADD COLUMN conn_seen INTEGER NOT NULL DEFAULT 0"),
+            ("ports", "ALTER TABLE visitors ADD COLUMN ports TEXT NOT NULL DEFAULT ''"),
+            ("scope", "ALTER TABLE visitors ADD COLUMN scope TEXT NOT NULL DEFAULT 'public'"),
+            ("direction", "ALTER TABLE visitors ADD COLUMN direction TEXT NOT NULL DEFAULT 'in'"),
+        ):
+            if column not in existing:
+                conn.execute(ddl)
+        # Backfill scope for rows that predate the column.
+        for (ip,) in conn.execute("SELECT ip FROM visitors WHERE scope = 'public'").fetchall():
+            conn.execute("UPDATE visitors SET scope = ? WHERE ip = ?", (ip_scope(ip), ip))
+
+
+def _trim(conn):
+    conn.execute(
+        "DELETE FROM visitors WHERE ip NOT IN "
+        "(SELECT ip FROM visitors ORDER BY last_seen DESC LIMIT ?)",
+        (MAX_VISITOR_ROWS,),
+    )
+
+
+def log_visit(ip, method, path, status):
+    ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with _db_lock, sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            """
+            INSERT INTO visitors (ip, first_seen, last_seen, hits, last_method,
+                                  last_path, last_status, scope)
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+            ON CONFLICT(ip) DO UPDATE SET
+                last_seen   = excluded.last_seen,
+                hits        = hits + 1,
+                last_method = excluded.last_method,
+                last_path   = excluded.last_path,
+                last_status = excluded.last_status
+            """,
+            (ip, ts, ts, method, path[:512], status, ip_scope(ip)),
+        )
+        _trim(conn)
+
+
+def record_connections(observations):
+    """Record remote IPs seen in the kernel TCP table.
+
+    `observations` maps an IP to {"ports": set, "inbound": bool}. These rows
+    carry no method/path — the peer did not necessarily speak HTTP.
+    """
+    if not observations:
+        return
+    ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with _db_lock, sqlite3.connect(DB_FILE) as conn:
+        for ip, entry in observations.items():
+            port_text = ",".join(str(p) for p in sorted(entry["ports"])[:8])
+            direction = "in" if entry["inbound"] else "out"
+            conn.execute(
+                """
+                INSERT INTO visitors (ip, first_seen, last_seen, hits, last_method,
+                                      last_path, last_status, conn_seen, ports,
+                                      scope, direction)
+                VALUES (?, ?, ?, 0, '', '', 0, 1, ?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    last_seen = excluded.last_seen,
+                    conn_seen = conn_seen + 1,
+                    ports     = excluded.ports,
+                    -- once a peer has ever connected in, it stays a visitor
+                    direction = CASE WHEN visitors.direction = 'in' THEN 'in'
+                                     ELSE excluded.direction END
+                """,
+                (ip, ts, ts, port_text, ip_scope(ip), direction),
+            )
+        _trim(conn)
+
+
+def recent_visitors(limit=MAX_VISITOR_ROWS):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        return conn.execute(
+            "SELECT ip, first_seen, last_seen, hits, conn_seen, ports, scope, "
+            "direction, last_method, last_path, last_status "
+            "FROM visitors ORDER BY last_seen DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+
+
+# ---------------------------------------------------------------------------
+# Kernel TCP table polling
+# ---------------------------------------------------------------------------
+
+TCP_LISTEN = "0A"
+
+# States that mean "a real peer is or was on the other end of this socket".
+# Counting only ESTABLISHED missed two useful cases: SYN_RECV is a half-open
+# connection (what a SYN scan leaves behind), and the closing states are
+# connections that already finished — including them recovers short-lived
+# connections that would otherwise vanish between two polls.
+#   01 ESTABLISHED  03 SYN_RECV   04 FIN_WAIT1  05 FIN_WAIT2
+#   06 TIME_WAIT    08 CLOSE_WAIT 09 LAST_ACK   0B CLOSING
+# Deliberately excluded: 02 SYN_SENT (our own outbound attempt, may never
+# connect), 07 CLOSE (dead socket), 0A LISTEN (our own listener).
+TCP_PEER_STATES = frozenset({"01", "03", "04", "05", "06", "08", "09", "0B"})
+
+
+def _decode_addr(field):
+    """Decode a `/proc/net/tcp[6]` hex address into (ip, port).
+
+    Addresses are stored as little-endian 32-bit words, so each 8-hex-digit
+    group has to be byte-swapped before it means anything.
+    """
+    hex_addr, _, hex_port = field.partition(":")
+    port = int(hex_port, 16)
+    raw = bytes.fromhex(hex_addr)
+    words = [raw[i:i + 4][::-1] for i in range(0, len(raw), 4)]
+    packed = b"".join(words)
+    addr = ipaddress.ip_address(packed)
+    # ::ffff:1.2.3.4 is the same machine as 1.2.3.4; show the familiar form.
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
+        addr = addr.ipv4_mapped
+    return str(addr), port
+
+
+def _read_proc_net(path):
+    try:
+        with open(path, "r") as fh:
+            return fh.read().splitlines()[1:]  # drop the header row
+    except OSError:
+        return []
+
+
+def observed_connections():
+    """Remote IP -> {"ports": set(local ports), "inbound": bool}.
+
+    Every TCP socket with a real peer is reported, whatever the port and
+    whatever the connection state (see TCP_PEER_STATES) — that is the point:
+    any device that talked to this machine should show up, not only the ones
+    that hit a port we happen to be listening on right now. UDP and ICMP are
+    *not* covered; the kernel keeps no peer address for them.
+
+    Direction is still derived (local port in the listening set == someone
+    connected to us) so that our *own* outbound connections — a git pull, an
+    API call — are visible but not mislabelled as visitors.
+    """
+    listening = set()
+    established = []
+    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
+        for line in _read_proc_net(path):
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            local, remote, state = parts[1], parts[2], parts[3]
+            try:
+                if state == TCP_LISTEN:
+                    listening.add(_decode_addr(local)[1])
+                elif state in TCP_PEER_STATES:
+                    established.append((_decode_addr(local), _decode_addr(remote)))
+            except (ValueError, IndexError):
+                continue  # a malformed row must not kill the poller
+
+    observations = {}
+    for (_, local_port), (remote_ip, remote_port) in established:
+        inbound = local_port in listening
+        entry = observations.setdefault(remote_ip, {"ports": set(), "inbound": False})
+        # Record the port that identifies the service being used: ours when
+        # they connected in, theirs when we connected out.
+        entry["ports"].add(local_port if inbound else remote_port)
+        if inbound:
+            entry["inbound"] = True
+    return observations
+
+
+def connection_poller(stop_event):
+    while not stop_event.is_set():
+        try:
+            record_connections(observed_connections())
+        except Exception as exc:  # never let the poller take the server down
+            print(_log_text('log_connection_poller', error=exc), file=sys.stderr)
+        stop_event.wait(CONN_POLL_SECONDS)
+
+
+init_db()
+
+# ---------------------------------------------------------------------------
+# HTML rendering
+# ---------------------------------------------------------------------------
+
+
+def render_lang_switcher(lang):
+    parts = []
+    for code, name in LANG_NAMES.items():
+        cls = "lang active" if code == lang else "lang"
+        parts.append(f'<a class="{cls}" href="?lang={code}">{html.escape(name)}</a>')
+    return "\n".join(parts)
+
+
+def _inline_md(text):
+    """Escape first, then re-introduce only `code` and **bold**.
+
+    Everything is HTML-escaped before any markup is added, so nothing in
+    LOG.md can inject markup into the page.
+    """
+    out = html.escape(text)
+    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
+    return out
+
+
+def changelog_section(markdown):
+    """Return only LOG.md's Changelog body, or None when it is absent/empty."""
+    match = re.search(r"^## (?:Changelog|变更日志|變更紀錄|變更記錄|परिवर्तन सूची|Historial de cambios|سجل التغييرات|Historique des modifications)[ \t]*$", markdown, re.MULTILINE)
+    if not match:
+        return None
+    tail = markdown[match.end():]
+    next_section = re.search(r"^## [^#]", tail, re.MULTILINE)
+    section = tail[:next_section.start()] if next_section else tail
+    return section if re.search(r"^### v[^\s]+", section, re.MULTILINE) else None
+
+
+def render_changelog(markdown):
+    """Render LOG's changelog headings and lists after selecting its section."""
+    html_parts = []
+    in_list = False
+    in_item = False
+    in_comment = False
+    started = False  # skip notes before the first version
+
+    def close_list():
+        nonlocal in_list, in_item
+        if in_item:
+            html_parts.append("</li>")
+            in_item = False
+        if in_list:
+            html_parts.append("</ul>")
+            in_list = False
+
+    for raw in markdown.splitlines():
+        stripped = raw.strip()
+        # A comment is, by definition, not for the reader. Without this the
+        # maintainer's note at the foot of the file came out as a run of
+        # paragraphs on the changelog page — escaped `<!--` and all — because
+        # every line it contains falls through to the plain-paragraph branch.
+        if in_comment:
+            if "-->" in stripped:
+                in_comment = False
+            continue
+        if stripped.startswith("<!--"):
+            if "-->" not in stripped:
+                in_comment = True
+            continue
+        if stripped.startswith("### v"):
+            started = True
+            close_list()
+            html_parts.append(f"<h2>{_inline_md(stripped[4:])}</h2>")
+            continue
+        if not started:
+            continue
+        if stripped.startswith("#### "):
+            close_list()
+            html_parts.append(f"<h3>{_inline_md(stripped[5:])}</h3>")
+        elif stripped.startswith("- "):
+            if not in_list:
+                html_parts.append("<ul>")
+                in_list = True
+            if in_item:
+                html_parts.append("</li>")
+            html_parts.append(f"<li>{_inline_md(stripped[2:])}")
+            in_item = True
+        elif not stripped:
+            close_list()
+        elif in_item:
+            # A wrapped bullet: keep it inside the same <li>.
+            html_parts.append(f" {_inline_md(stripped)}")
+        else:
+            html_parts.append(f"<p>{_inline_md(stripped)}</p>")
+    close_list()
+    return "\n".join(html_parts)
+
+
+def render_page(title, body, lang, active=None, show_nav=True):
+    t = STRINGS[lang]
+    lang_switcher = render_lang_switcher(lang)
+    version_tag = f'<a class="version" href="/changelog">v{VERSION}</a>'
+    nav = ""
+    if show_nav:
+        def link(href, key):
+            cls = ' class="active"' if active == key else ""
+            return f'<a{cls} href="{href}">{html.escape(t[key])}</a>'
+
+        # No session to end when auth is off — offering "Log out" would be a
+        # link to nowhere (the route itself redirects to / in that mode).
+        logout_link = (
+            f'<a href="/logout">{html.escape(t["logout"])}</a>' if AUTH_ENABLED else ""
+        )
+        iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
+        # Only when a module is actually installed — a link to a page that
+        # can only say "not installed" is worse than no link. anytls and the
+        # proxy module live on the same /proxy page (see page_proxy()'s
+        # docstring), so one link covers either or both being installed.
+        proxy_link = link('/proxy', 'proxy') if (anytls_installed() or proxy_installed()) else ""
+        lucky_link = '<a href="/lucky">Lucky</a>' if LUCKY_CONFIG.is_file() and AUTH_ENABLED else ""
+        frps_link = '<a href="/frps">frps</a>' if FRPS_CONFIG.is_file() and AUTH_ENABLED else ""
+        portfwd_link = link('/portfwd', 'portfwd') if PORTFWD_ENABLED else ""
+        nav = f"""
+        <nav class="topnav">
+          <div class="brandwrap">
+            <a class="brand" href="/">{html.escape(t['title'])}</a>
+            {version_tag}
+          </div>
+          <div class="navlinks">
+            {link('/speedtest', 'speedtest')}
+            {iperf_link}
+            {proxy_link}
+            {frps_link}
+            {lucky_link}
+            {portfwd_link}
+            {link('/visitors', 'visitors')}
+            {link('/changelog', 'changelog')}
+            {logout_link}
+            {lang_switcher}
+          </div>
+        </nav>
+        """
+    else:
+        nav = f"""
+        <nav class="topnav minimal">
+          <div class="brandwrap">
+            <span class="brand">{html.escape(t['title'])}</span>
+            <span class="version">v{VERSION}</span>
+          </div>
+          <div class="navlinks">{lang_switcher}</div>
+        </nav>
+        """
+    return f"""<!doctype html>
+<html lang="{HTML_LANG_TAGS.get(lang, lang)}"{RTL_ATTR.get(lang, "")}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(title)} — {html.escape(t['title'])}</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{nav}
+<main>
+{body}
+</main>
+</body>
+</html>"""
+
+
+CHANGELOG_PATHS = {
+    code: BASE_DIR / "doc" / tag / "LOG.md"
+    for code, tag in (("zh_cn", "zh-CN"), ("zh_tw", "zh-TW"),
+                      ("zh_hk", "zh-HK"), ("hi", "hi"), ("es", "es"),
+                      ("ar", "ar"), ("fr", "fr"))
+}
+
+STATIC_FILES = {
+    "/static/style.css": ("text/css", BASE_DIR / "static" / "style.css"),
+    "/static/speedtest.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "librespeed" / "speedtest.js"),
+    "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
+    "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
+    "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
+    "/static/qrcode.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode.js"),
+    "/static/qrcode-utf8.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode-utf8.js"),
+    "/static/qrcode-render.js": ("application/javascript", BASE_DIR / "static" / "qrcode-render.js"),
+    "/static/iperf-countdown.js": ("application/javascript", BASE_DIR / "static" / "iperf-countdown.js"),
+    # speedtest.js spawns `new Worker("speedtest_worker.js?r=...")`. That call
+    # runs in the *page's* context, so the browser resolves it relative to the
+    # page URL (/speedtest), not relative to /static/speedtest.js — it lands
+    # on /speedtest_worker.js, not /static/speedtest_worker.js. Serving it at
+    # both paths sidesteps relying on that resolution quirk.
+    "/speedtest_worker.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "librespeed" / "speedtest_worker.js"),
+}
+
+# ---------------------------------------------------------------------------
+# Request handler
+# ---------------------------------------------------------------------------
+
+
+class ConsoleHandler(BaseHTTPRequestHandler):
+    """The authenticated console, on its own hard-to-guess port.
+
+    Every route that does anything lives here. ProbeHandler, further down,
+    deliberately shares none of it.
+    """
+
+    # No version suffix: the console is not meant to be inventoried by
+    # whatever finds the port.
+    server_version = "vps-server"
+    # HTTP/1.1 keep-alive matters beyond convenience here: every speed-test
+    # request that instead paid a fresh TCP+TLS handshake was measuring
+    # connection setup, not throughput — the likely cause of the wildly low
+    # upload numbers the hand-rolled test used to produce. LibreSpeed's own
+    # docs also assume a persistent connection for accurate ping timing.
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, format, *args):
+        pass  # every request is recorded in the visitor log instead
+
+    def version_string(self):
+        # The base class appends sys_version to server_version, so setting the
+        # latter alone still answers "Server: vps-server Python/3.10.12".
+        return self.server_version
+
+    def send_response(self, code, message=None):
+        self._last_status = code
+        super().send_response(code, message)
+
+    def end_headers(self):
+        # Once the headers are out, the response is committed: anything that
+        # goes wrong afterwards must not try to send a second one.
+        self._body_started = True
+        super().end_headers()
+
+    # -- helpers ---------------------------------------------------------
+
+    def get_cookie(self, name):
+        raw = self.headers.get("Cookie")
+        if not raw:
+            return None
+        jar = http.cookies.SimpleCookie()
+        jar.load(raw)
+        morsel = jar.get(name)
+        return morsel.value if morsel else None
+
+    def is_authenticated(self):
+        if not AUTH_ENABLED:
+            return True
+        return session_valid(self.get_cookie("session"))
+
+    def client_ip(self):
+        if TRUST_PROXY:
+            xff = self.headers.get("X-Forwarded-For")
+            if xff:
+                return xff.split(",")[0].strip()
+        return self.client_address[0]
+
+    def resolve_lang(self, parsed):
+        query_lang = parse_qs(parsed.query).get("lang", [None])[0]
+        cookie_lang = self.get_cookie("lang")
+        accept = self.headers.get("Accept-Language", "")
+        return pick_lang(cookie_lang, query_lang, accept), query_lang
+
+    def send_html(self, status, body, extra_headers=None):
+        data = body.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def send_json(self, status, obj):
+        data = json.dumps(obj).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def redirect(self, location, extra_headers=None):
+        self.send_response(302)
+        self.send_header("Location", location)
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def read_body(self, limit):
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+        except ValueError:
+            length = 0
+        length = max(0, min(length, limit))
+        return self.rfile.read(length) if length else b""
+
+    def maybe_lang_cookie(self, query_lang):
+        # Persist an explicit ?lang= choice so it sticks across pages.
+        if query_lang in STRINGS:
+            return {"Set-Cookie": f"lang={query_lang}; Path=/; Max-Age={365 * 24 * 3600}; SameSite=Lax"}
+        return {}
+
+    # -- dispatch ----------------------------------------------------------
+
+    def do_GET(self):
+        self._dispatch("GET")
+
+    def do_POST(self):
+        self._dispatch("POST")
+
+    def _dispatch(self, method):
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        self._last_status = 200
+        self._body_started = False
+        try:
+            self._route(method, path, parsed)
+        except (BrokenPipeError, ConnectionResetError):
+            self._last_status = 0  # client disconnected mid-stream, not a real outcome
+        except Exception:
+            self._last_status = 500
+            # Only when nothing has been sent yet. /speedtest/garbage streams
+            # hundreds of megabytes after its headers are out; an SSLError or
+            # timeout partway through used to land here and append a second
+            # status line and a JSON body into the middle of a response whose
+            # Content-Length promised raw bytes — a reply no client can parse.
+            if not self._body_started:
+                try:
+                    self.send_json(500, {"error": "internal server error"})
+                except Exception:
+                    pass
+            else:
+                self.close_connection = True
+        finally:
+            if self._last_status:
+                # A failure to record the visit must not take down a request
+                # that otherwise succeeded. Raising here escapes into
+                # socketserver, which kills the keep-alive connection — and
+                # the speed test depends on that connection staying up.
+                try:
+                    log_visit(self.client_ip(), method, path, self._last_status)
+                except Exception as exc:
+                    print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
+
+    def _route(self, method, path, parsed):
+        if path.startswith("/static/") or path == "/speedtest_worker.js":
+            return self.serve_static(path)
+
+        lang, query_lang = self.resolve_lang(parsed)
+
+        # With auth off there is nothing to log in or out of: a login form
+        # that accepts nothing and a logout link that ends no session are
+        # both dead ends, so send those paths back to the dashboard.
+        if path in ("/login", "/logout") and not AUTH_ENABLED:
+            return self.redirect("/")
+
+        if method == "GET" and path == "/login":
+            return self.page_login(lang, query_lang)
+        if method == "POST" and path == "/login":
+            return self.handle_login(lang)
+        if method == "GET" and path == "/logout":
+            return self.handle_logout()
+
+        if not self.is_authenticated():
+            return self.redirect("/login")
+
+        if method == "GET" and path == "/":
+            return self.page_dashboard(lang, query_lang)
+        if method == "GET" and path == "/speedtest":
+            return self.page_speedtest(lang, query_lang)
+        if method == "GET" and path == "/speedtest/garbage":
+            return self.handle_speedtest_garbage(parsed)
+        if method == "GET" and path == "/speedtest/empty":
+            return self.handle_speedtest_ping()
+        if method == "POST" and path == "/speedtest/empty":
+            return self.handle_speedtest_upload()
+        if method == "GET" and path == "/speedtest/getip":
+            return self.handle_speedtest_getip()
+        # /anytls used to be its own page; it now lives on /proxy alongside
+        # every other protocol (see page_proxy()'s docstring). Redirected
+        # rather than dropped, for anyone with the old URL bookmarked.
+        if method == "GET" and path == "/anytls":
+            return self.redirect("/proxy")
+        if method == "POST" and path == "/anytls/reset":
+            return self.handle_anytls_reset()
+        if method == "GET" and path == "/lucky" and AUTH_ENABLED:
+            return self.page_lucky(lang, query_lang)
+        if method == "GET" and path == "/frps" and AUTH_ENABLED:
+            return self.page_frps(lang, query_lang)
+        if method == "GET" and path == "/proxy":
+            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.page_proxy(lang, query_lang)
+        if method == "POST" and path == "/proxy/reset":
+            return self.handle_proxy_reset()
+        if method == "POST" and path == "/proxy/apply":
+            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.handle_node_apply()
+        if method == "GET" and path == "/iperf":
+            return self.page_iperf(lang, query_lang)
+        if method == "POST" and path == "/iperf/open":
+            return self.handle_iperf_open()
+        if method == "POST" and path == "/iperf/close":
+            return self.handle_iperf_close()
+        if method == "GET" and path == "/portfwd":
+            return self.page_portfwd(lang, query_lang)
+        if method == "POST" and path == "/portfwd/add":
+            return self.handle_portfwd_add()
+        if method == "POST" and path == "/portfwd/enable":
+            return self.handle_portfwd_enable()
+        if method == "POST" and path == "/portfwd/disable":
+            return self.handle_portfwd_disable()
+        if method == "POST" and path == "/portfwd/delete":
+            return self.handle_portfwd_delete()
+        if method == "GET" and path == "/visitors":
+            return self.page_visitors(lang, query_lang)
+        if method == "GET" and path == "/changelog":
+            return self.page_changelog(lang, query_lang)
+
+        self.send_html(404, render_page(STRINGS[lang]["not_found"],
+                                        f'<div class="card"><p>{STRINGS[lang]["not_found"]}</p></div>',
+                                        lang, show_nav=self.is_authenticated()))
+
+    # -- static --------------------------------------------------------
+
+    def serve_static(self, path):
+        entry = STATIC_FILES.get(path)
+        if not entry:
+            return self.send_html(404, "not found")
+        content_type, file_path = entry
+        data = file_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(data)
+
+    # -- auth ------------------------------------------------------------
+
+    def page_login(self, lang, query_lang, status=200, error=None):
+        t = STRINGS[lang]
+        error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
+        body = f"""
+        <div class="card narrow">
+          <h1>{html.escape(t['login'])}</h1>
+          {error_html}
+          <form method="post" action="/login">
+            <label>{html.escape(t['password'])}
+              <input type="password" name="password" autocomplete="current-password" autofocus required>
+            </label>
+            <button type="submit">{html.escape(t['login'])}</button>
+          </form>
+        </div>
+        """
+        headers = self.maybe_lang_cookie(query_lang)
+        self.send_html(status, render_page(t['login'], body, lang, show_nav=False), headers)
+
+    def handle_login(self, lang):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        ip = self.client_ip()
+        allowed, retry_after = LOGIN_LIMITER.check(ip)
+        if not allowed:
+            return self.page_login(
+                lang, None, status=429,
+                error=STRINGS[lang]["login_locked"].format(seconds=retry_after),
+            )
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        submitted = form.get("password", [""])[0]
+        if hmac.compare_digest(submitted, ADMIN_PASSWORD):
+            LOGIN_LIMITER.record_success(ip)
+            token = create_session()
+            cookie = (
+                f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
+                f"Max-Age={SESSION_TTL_SECONDS}"
+            )
+            return self.redirect("/", {"Set-Cookie": cookie})
+        LOGIN_LIMITER.record_failure(ip)
+        self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"])
+
+    def handle_logout(self):
+        token = self.get_cookie("session")
+        if token:
+            destroy_session(token)
+        cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
+        self.redirect("/login", {"Set-Cookie": cookie})
+
+    # -- dashboard ---------------------------------------------------------
+
+    def page_dashboard(self, lang, query_lang):
+        t = STRINGS[lang]
+        iperf_tile = ""
+        if IPERF_ENABLED:
+            is_open, _ = IPERF_WINDOW.state()
+            iperf_tile = f"""
+            <a class="tile" href="/iperf">
+              <span class="tile-icon">{'🟢' if is_open else '📡'}</span>
+              <span class="tile-label">{html.escape(t['iperf'])}</span>
+            </a>
+            """
+        # One tile for both: anytls and the proxy module live on the same
+        # /proxy page now (see page_proxy()'s docstring).
+        proxy_tile = ""
+        if anytls_installed() or proxy_installed():
+            proxy_tile = f"""
+            <a class="tile" href="/proxy">
+              <span class="tile-icon">🧦</span>
+              <span class="tile-label">{html.escape(t['proxy'])}</span>
+            </a>
+            """
+        portfwd_tile = ""
+        if PORTFWD_ENABLED:
+            active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
+            portfwd_tile = f"""
+            <a class="tile" href="/portfwd">
+              <span class="tile-icon">{'🔀' if active else '🔌'}</span>
+              <span class="tile-label">{html.escape(t['portfwd'])}</span>
+            </a>
+            """
+        body = f"""
+        <div class="card">
+          <h1>{html.escape(t['dashboard'])}</h1>
+          <div class="tiles">
+            <a class="tile" href="/speedtest">
+              <span class="tile-icon">⚡</span>
+              <span class="tile-label">{html.escape(t['speedtest'])}</span>
+            </a>
+            {iperf_tile}
+            {proxy_tile}
+            {portfwd_tile}
+            <a class="tile" href="/visitors">
+              <span class="tile-icon">📋</span>
+              <span class="tile-label">{html.escape(t['visitors'])}</span>
+            </a>
+          </div>
+        </div>
+        """
+        self.send_html(200, render_page(t['dashboard'], body, lang, active=None),
+                       self.maybe_lang_cookie(query_lang))
+
+    # -- speed test ----------------------------------------------------
+
+    def page_speedtest(self, lang, query_lang):
+        t = STRINGS[lang]
+        ip = html.escape(self.client_ip())
+        config = {
+            # Maps onto LibreSpeed's own Settings keys — see vps-webserver
+            # DECISIONS.md (2026-08-25, "Vendor LibreSpeed's official test engine").
+            "urlDl": "/speedtest/garbage",
+            "urlUl": "/speedtest/empty",
+            "urlPing": "/speedtest/empty",
+            "urlGetIp": "/speedtest/getip",
+            # "P_D_U": ping+jitter, download, upload. No "I" (IP lookup) —
+            # the IP is already server-rendered above, so skip the extra
+            # round trip.
+            "testOrder": "P_D_U",
+            "timeDlMax": TEST_SECONDS,
+            "timeUlMax": TEST_SECONDS,
+            "warmup": WARMUP_SECONDS,
+            "pingSamples": PING_SAMPLES,
+            "downloadStreams": DOWNLOAD_STREAMS,
+            "uploadStreams": UPLOAD_STREAMS,
+            "overhead": OVERHEAD_FACTOR,
+            "chunkSizeMiB": min(100, MAX_TEST_MB),
+        }
+        i18n = {k: t[k] for k in ("run_test", "running", "download", "upload",
+                                  "latency", "jitter", "waiting", "warmup",
+                                  "measuring", "done", "idle")}
+        info = t["test_info"].format(sec=TEST_SECONDS, warm=int(WARMUP_SECONDS),
+                                     pings=PING_SAMPLES)
+        body = f"""
+        <div class="card">
+          <h1>{html.escape(t['speedtest'])}</h1>
+          <p class="muted">{html.escape(t['your_ip'])}: <strong>{ip}</strong></p>
+          <div class="gauges latency-row">
+            <div class="gauge small-gauge">
+              <div class="gauge-label">⏱ {html.escape(t['latency'])}</div>
+              <div class="gauge-value" id="latency-value">{html.escape(t['idle'])}</div>
+              <div class="gauge-unit">ms</div>
+              <div class="gauge-state muted" id="latency-state">{html.escape(t['waiting'])}</div>
+            </div>
+            <div class="gauge small-gauge">
+              <div class="gauge-label">〜 {html.escape(t['jitter'])}</div>
+              <div class="gauge-value" id="jitter-value">{html.escape(t['idle'])}</div>
+              <div class="gauge-unit">ms</div>
+              <div class="gauge-state muted" id="jitter-state">&nbsp;</div>
+            </div>
+          </div>
+          <div class="gauges">
+            <div class="gauge">
+              <div class="gauge-label">⬇ {html.escape(t['download'])}</div>
+              <div class="gauge-value" id="download-value">{html.escape(t['idle'])}</div>
+              <div class="gauge-unit">Mbps</div>
+              <div class="bar"><span id="download-bar"></span></div>
+              <div class="gauge-state muted" id="download-state">{html.escape(t['waiting'])}</div>
+            </div>
+            <div class="gauge">
+              <div class="gauge-label">⬆ {html.escape(t['upload'])}</div>
+              <div class="gauge-value" id="upload-value">{html.escape(t['idle'])}</div>
+              <div class="gauge-unit">Mbps</div>
+              <div class="bar"><span id="upload-bar"></span></div>
+              <div class="gauge-state muted" id="upload-state">{html.escape(t['waiting'])}</div>
+            </div>
+          </div>
+          <button id="run">{html.escape(t['run_test'])}</button>
+          <p class="muted small">{html.escape(info)}</p>
+        </div>
+        <script id="speedtest-config" type="application/json">{json.dumps(config)}</script>
+        <script id="speedtest-i18n" type="application/json">{json.dumps(i18n)}</script>
+        <script src="/static/speedtest.js"></script>
+        <script src="/static/speedtest-ui.js"></script>
+        """
+        self.send_html(200, render_page(t['speedtest'], body, lang, active="speedtest"),
+                       self.maybe_lang_cookie(query_lang))
+
+    # These three implement LibreSpeed's own client/server contract exactly
+    # (garbage.php / empty.php / getIP.php equivalents) rather than a
+    # hand-rolled protocol — see vps-webserver DECISIONS.md (2026-08-25). Header set and
+    # ckSize clamping match the reference PHP backend byte-for-byte so the
+    # vendored speedtest.js/speedtest_worker.js need no server-side quirks.
+
+    def handle_speedtest_garbage(self, parsed):
+        q = parse_qs(parsed.query)
+        try:
+            chunks = int(q.get("ckSize", ["4"])[0])
+        except ValueError:
+            chunks = 4
+        if chunks <= 0:
+            chunks = 4
+        # Upstream clamps at 1024 (1 GiB); MAX_TEST_MB is our own additional
+        # ceiling on top of that.
+        chunks = min(chunks, 1024, MAX_TEST_MB)
+
+        self.send_response(200)
+        self.send_header("Content-Description", "File Transfer")
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Disposition", "attachment; filename=random.dat")
+        self.send_header("Content-Transfer-Encoding", "binary")
+        self.send_header("Content-Length", str(chunks * DOWNLOAD_CHUNK))
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0")
+        self.send_header("Cache-Control", "post-check=0, pre-check=0")
+        self.send_header("Pragma", "no-cache")
+        self.end_headers()
+        for _ in range(chunks):
+            self.wfile.write(FILL_BUFFER)
+
+    def handle_speedtest_ping(self):
+        """GET on the same endpoint upload POSTs to — LibreSpeed times the
+        round trip of downloading this empty response itself; there is no
+        separate ping protocol. See doc.md in the upstream repo.
+        """
+        self.send_response(200)
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0")
+        self.send_header("Cache-Control", "post-check=0, pre-check=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def handle_speedtest_upload(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+        except ValueError:
+            length = 0
+        length = max(0, min(length, MAX_TEST_MB * 1024 * 1024 + 1024))
+
+        remaining = length
+        buf = bytearray(DOWNLOAD_CHUNK)
+        view = memoryview(buf)
+        while remaining > 0:
+            n = self.rfile.readinto(view[: min(len(buf), remaining)])
+            if not n:
+                break
+            remaining -= n
+
+        # The client only checks the HTTP status, never the response body.
+        self.send_response(200)
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0")
+        self.send_header("Cache-Control", "post-check=0, pre-check=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def handle_speedtest_getip(self):
+        # No ISP/geolocation lookup — that would need an outbound call to a
+        # third party, which conflicts with the zero-dependency design (see
+        # vps-webserver DECISIONS.md, "Zero third-party runtime dependencies").
+        self.send_json(200, {"processedString": self.client_ip(), "rawIspInfo": ""})
+
+    # -- iperf3 window -------------------------------------------------
+
+    def page_iperf(self, lang, query_lang):
+        t = STRINGS[lang]
+        port = IPERF_WINDOW.port
+        is_open, remaining = IPERF_WINDOW.state()
+
+        notice = ""
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        if key in IPERF_MESSAGE_KEYS:
+            notice = f'<p class="notice">{html.escape(t[key].format(port=port))}</p>'
+
+        countdown_script = ""
+        if is_open:
+            # The countdown used to be a static string baked in at render
+            # time — an operator reported it never moving, only a manual
+            # reload showed a new value. deadline is an absolute Unix
+            # timestamp so /static/iperf-countdown.js can tick the visible
+            # minutes/seconds down every second without another request,
+            # and reload once it reaches zero (the window has actually
+            # closed itself server-side by then). None of the interpolated
+            # values are attacker-controlled — port is server config, mins/
+            # secs are ints — so building this without html.escape is safe;
+            # escaping it would also escape the <span> tags the script needs.
+            deadline = int(time.time()) + remaining
+            state = t["iperf_state_open"].format(
+                port=port,
+                mins=f'<span id="iperf-mins">{remaining // 60}</span>',
+                secs=f'<span id="iperf-secs">{remaining % 60}</span>',
+            )
+            state_attr = f' data-iperf-deadline="{deadline}"'
+            countdown_script = '<script src="/static/iperf-countdown.js"></script>'
+            # While a window is open, submitting the same form pushes the
+            # deadline out rather than starting a second server. Labelling it
+            # "open" then leaves two buttons that look like they compete; the
+            # pair only reads correctly as extend / close.
+            open_label = t["iperf_extend"]
+            close_form = f"""
+            <form method="post" action="/iperf/close">
+              <button type="submit" class="danger">{html.escape(t['iperf_close'])}</button>
+            </form>
+            """
+        else:
+            state = html.escape(t["iperf_state_closed"].format(port=port))
+            state_attr = ""
+            open_label = t["iperf_open"]
+            close_form = ""
+
+        # The Host header is what the operator actually typed to get here, so
+        # it is the address their tester should aim at too. It is only echoed
+        # into a command example, and it is escaped.
+        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
+        commands = render_copyable(
+            t, t['iperf_cmd_default'], f"iperf3 -c {host} -p {port} --json", "iperf-cmd-default",
+        ) + render_copyable(
+            t, t['iperf_cmd_reverse'], f"iperf3 -c {host} -p {port} -R --json", "iperf-cmd-reverse",
+        ) + render_copyable(
+            t, t['iperf_cmd_udp'], f"iperf3 -c {host} -p {port} -u -b 100M --json", "iperf-cmd-udp",
+        )
+
+        body = f"""
+        <div class="card">
+          <h1>{html.escape(t['iperf_heading'])}</h1>
+          {notice}
+          <p class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</p>
+          <div class="iperf-actions">
+            <form method="post" action="/iperf/open" class="inline-form">
+              <label>{html.escape(t['iperf_minutes'])}
+                <input type="number" name="minutes" min="1" max="{IPERF_MAX_MINUTES}"
+                       value="{IPERF_DEFAULT_MINUTES}" required>
+              </label>
+              <button type="submit">{html.escape(open_label)}</button>
+            </form>
+            {close_form}
+          </div>
+          <p class="muted">{html.escape(t['iperf_howto'])}</p>
+          {commands}
+          <p class="muted small">{html.escape(t['iperf_info'])}</p>
+        </div>
+        <script src="/static/copy.js"></script>
+        {countdown_script}
+        """
+        self.send_html(200, render_page(t['iperf_heading'], body, lang, active="iperf"),
+                       self.maybe_lang_cookie(query_lang))
+
+    def handle_iperf_open(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        minutes = form.get("minutes", [str(IPERF_DEFAULT_MINUTES)])[0]
+        _, key = IPERF_WINDOW.open(minutes)
+        self.redirect(f"/iperf?msg={key}")
+
+    def handle_iperf_close(self):
+        self.read_body(LOGIN_BODY_LIMIT)  # drain: keep-alive needs the body gone
+        IPERF_WINDOW.close()
+        self.redirect("/iperf?msg=iperf_shut")
+
+    # -- port forwarding -------------------------------------------------
+
+    def page_portfwd(self, lang, query_lang):
+        t = STRINGS[lang]
+        notice = ""
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        if key in PORTFWD_MESSAGE_KEYS:
+            cls = "notice" if key in (
+                "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
+            ) else "error"
+            notice = f'<p class="{cls}">{html.escape(t[key].format(max=PORTFWD_MAX_RULES))}</p>'
+
+        rows = []
+        for rule in PORTFWD.list_rules():
+            label = html.escape(rule["label"] or rule["id"])
+            proto = html.escape(rule["protocol"].upper())
+            state_cls = "is-open" if rule["enabled"] else "is-closed"
+            state_label = t["portfwd_state_on"] if rule["enabled"] else t["portfwd_state_off"]
+            toggle_action = "/portfwd/disable" if rule["enabled"] else "/portfwd/enable"
+            toggle_label = t["portfwd_disable"] if rule["enabled"] else t["portfwd_enable"]
+            rows.append(f"""
+            <div class="node-addr">
+              <h2>{label}</h2>
+              <p class="iperf-state {state_cls}">{html.escape(state_label)}
+                &mdash; {proto} :{rule['public_port']} {html.escape(t['portfwd_via'])}
+                {html.escape(rule['target_host'])}:{rule['target_port']}</p>
+              <div class="iperf-actions">
+                <form method="post" action="{toggle_action}" class="inline-form">
+                  <input type="hidden" name="id" value="{html.escape(rule['id'])}">
+                  <button type="submit">{html.escape(toggle_label)}</button>
+                </form>
+                <form method="post" action="/portfwd/delete" class="inline-form">
+                  <input type="hidden" name="id" value="{html.escape(rule['id'])}">
+                  <button type="submit" class="danger">{html.escape(t['portfwd_delete'])}</button>
+                </form>
+              </div>
+            </div>
+            """)
+        rules_html = "".join(rows) if rows else f'<p class="muted">{html.escape(t["portfwd_none"])}</p>'
+
+        add_form = ""
+        if PORTFWD_ENABLED:
+            add_form = f"""
+            <div class="node-addr">
+              <h2>{html.escape(t['portfwd_add'])}</h2>
+              <form method="post" action="/portfwd/add" class="inline-form">
+                <label>{html.escape(t['portfwd_label'])}
+                  <input type="text" name="label" maxlength="80">
+                </label>
+                <label>{html.escape(t['portfwd_protocol'])}
+                  <select name="protocol">
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="both">TCP+UDP</option>
+                  </select>
+                </label>
+                <label>{html.escape(t['portfwd_public_port'])}
+                  <input type="number" name="public_port" min="1" max="65535" required>
+                </label>
+                <label>{html.escape(t['portfwd_target_host'])}
+                  <input type="text" name="target_host" placeholder="100.x.x.x" required>
+                </label>
+                <label>{html.escape(t['portfwd_target_port'])}
+                  <input type="number" name="target_port" min="1" max="65535" required>
+                </label>
+                <button type="submit">{html.escape(t['portfwd_add'])}</button>
+              </form>
+            </div>
+            """
+
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(t['portfwd_heading'])}</h1>
+          {notice}
+          <p class="muted">{html.escape(t['portfwd_intro'])}</p>
+          {rules_html}
+          {add_form}
+          <p class="muted small">{html.escape(t['portfwd_howto'])}</p>
+        </div>
+        """
+        self.send_html(200, render_page(t['portfwd_heading'], body, lang, active="portfwd"),
+                       self.maybe_lang_cookie(query_lang))
+
+    def handle_portfwd_add(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        protocol = form.get("protocol", ["tcp"])[0]
+        if protocol not in ("tcp", "udp", "both"):
+            protocol = "tcp"
+        label = form.get("label", [""])[0].strip()
+        public_port = _valid_port(form.get("public_port", [""])[0])
+        target_port = _valid_port(form.get("target_port", [""])[0])
+        target_host = form.get("target_host", [""])[0].strip()
+        if public_port is None or target_port is None or not _valid_target_host(target_host):
+            return self.redirect("/portfwd?msg=portfwd_invalid")
+        _, key = PORTFWD.add(protocol, public_port, target_host, target_port, label)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_enable(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.set_enabled(form.get("id", [""])[0], True)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_disable(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.set_enabled(form.get("id", [""])[0], False)
+        self.redirect(f"/portfwd?msg={key}")
+
+    def handle_portfwd_delete(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        key = PORTFWD.remove(form.get("id", [""])[0])
+        self.redirect(f"/portfwd?msg={key}")
+
+    # -- anytls node ----------------------------------------------------
+
+    def page_lucky(self, lang, query_lang):
+        data = lucky_admin()
+        if data is None:
+            return self.send_html(404, render_page('Lucky', '<div class="card">Lucky not installed</div>', lang))
+        port = data['AdminWebListenPort']
+        public = data.get('AllowInternetaccess') is True
+        address = 'this server IP' if public else 'localhost (use an SSH tunnel)'
+        status = 'running' if _run_quiet(['systemctl', 'is-active', '--quiet', LUCKY_SERVICE]) else 'stopped'
+        body = ('<div class="card"><h1>Lucky</h1><p>Use Lucky’s own admin UI for DDNS and reverse proxy settings. '
+                'This console does not modify Lucky DNS credentials, rules or listeners.</p>'
+                '<p>Admin: %s:%s (HTTP; credentials are unencrypted in transit). Status: %s.</p>'
+                '<p>Account: <code>%s</code>; Password: <code>%s</code></p></div>') % (
+                    address, port, status, html.escape(str(data.get('AdminAccount', ''))),
+                    html.escape(str(data.get('AdminPassword', ''))))
+        return self.send_html(200, render_page('Lucky', body, lang),
+                              {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
+
+    def page_frps(self, lang, query_lang):
+        node = frps_node()
+        if node is None:
+            return self.send_html(404, render_page('frps', '<div class="card">frps not installed</div>', lang))
+        status = 'running' if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else 'stopped'
+        body = ('<div class="card"><h1>frps server</h1><p>Bind: %s:%s</p>'
+                '<p>Status: %s</p><p>Token: <code>%s</code></p></div>') % (
+                    html.escape(node['address']), node['port'], status, html.escape(node['token']))
+        return self.send_html(200, render_page('frps', body, lang),
+                              {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
+
+    def page_proxy(self, lang, query_lang):
+        """Every proxy-shaped node this install has, on one page: anytls (its
+        own service/config) and any installed vmess/vless/trojan/shadowsocks
+        protocols (the proxy module's own service/config), grouped together
+        because an operator looking for "my proxy nodes" should not have to
+        know or care which of two independent backends serves which one —
+        previously two separate pages/nav entries/dashboard tiles.
+
+        Deliberately ONE top-level element in `body` (a single
+        `<div class="card wide">` with everything else nested inside as
+        `.node-addr` sub-sections), not one `.card` per protocol: `<main>` is
+        `display: flex` with no `flex-direction` override, so multiple
+        top-level `.card` siblings fed into it lay out side by side rather
+        than stacked — the visually broken page an operator reported. Only
+        one page in this codebase (this one, in an earlier version) has ever
+        emitted more than one top-level element here, which is exactly why
+        the bug was novel rather than a class of bug this page inherited.
+        """
+        t = STRINGS[lang]
+        anytls = anytls_node()
+        nodes = proxy_nodes()
+        if anytls is None and not nodes:
+            body = f"""
+            <div class="card">
+              <h1>{html.escape(t['proxy_heading'])}</h1>
+              <p class="muted">{html.escape(t['proxy_not_installed'])}</p>
+            </div>
+            """
+            return self.send_html(
+                200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+                {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"},
+            )
+
+        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
+
+        notice = ""
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        if key in ANYTLS_MESSAGE_KEYS:
+            cls = "notice" if key == "anytls_reset_done" else "error"
+            notice = (f'<p class="{cls}">'
+                      f'{html.escape(t[key].format(service=ANYTLS_SERVICE))}</p>')
+        elif key in NODE_APPLY_MESSAGE_KEYS:
+            cls = "notice" if key == "node_apply_done" else "error"
+            notice = f'<p class="{cls}">{html.escape(t[key])}</p>'
+        elif key in PROXY_MESSAGE_KEYS:
+            cls = "notice" if key == "proxy_reset_done" else "error"
+            notice = (f'<p class="{cls}">'
+                      f'{html.escape(t[key].format(service=PROXY_SERVICE))}</p>')
+
+        sections = []
+
+        if anytls is not None:
+            if anytls["running"]:
+                state = t["anytls_state_running"].format(port=anytls["port"])
+                state_class = "is-open"
+            else:
+                state = t["anytls_state_stopped"].format(
+                    port=anytls["port"], service=ANYTLS_SERVICE
+                )
+                state_class = "is-closed"
+            # anytls's own public-ip.txt: independent of the proxy module's,
+            # since each is installed (and can have its own SERVER_IP) on its
+            # own — see address_entries()'s docstring for the dedup rule.
+            entries = address_entries(t, anytls_public_address(), host)
+            blocks = []
+            for label, address in entries:
+                blocks.append(f"""
+                <div class="node-addr">
+                  <h2>[{html.escape(label)}] {html.escape(address)}</h2>
+                </div>
+                """)
+            sections.append(f"""
+            <div class="node-addr">
+              <h2>anytls</h2>
+              <form method="post" action="/anytls/reset" class="inline-form reset-inline">
+                <label class="checkline">
+                  <input type="checkbox" name="confirm" value="yes" required>
+                  <span>{html.escape(t['anytls_reset_confirm'])}</span>
+                </label>
+                <button type="submit" class="danger">{html.escape(t['anytls_reset'])}</button>
+              </form>
+              <p class="iperf-state {state_class}">{html.escape(state)}</p>
+              <dl class="kv">
+                <dt>{html.escape(t['anytls_port'])}</dt>
+                <dd>{html.escape(str(anytls['port']))}</dd>
+                <dt>{html.escape(t['anytls_password'])}</dt>
+                <dd class="secret"><code id="anytls-pw">{html.escape(anytls['password'])}</code>
+                  <button type="button" class="copybtn" data-copy="anytls-pw"
+                          data-copied="{html.escape(t['copied'])}"
+                          >{html.escape(t['copy'])}</button></dd>
+                <dt>{html.escape(t['anytls_sni'])}</dt>
+                <dd>{html.escape(anytls['sni'] or '—')}</dd>
+              </dl>
+              {self.node_credential_form('anytls', anytls['port'], t['anytls_password'])}
+              {"".join(blocks)}
+            </div>
+            """)
+
+        if nodes:
+            # One shared self-signed cert for every TLS-using protocol
+            # (vmess, vless, trojan) — see proxy/setup-proxy.sh — so the SNI
+            # is read back once from that one certificate's CN, same trick
+            # anytls uses for its own node. shadowsocks has no TLS layer, so
+            # it gets no SNI. The proxy module's own public-ip.txt is
+            # independent of anytls's — see address_entries()'s docstring.
+            sni = _cert_common_name(str(PROXY_CONFIG.parent / "cert" / "fullchain.pem"))
+            proxy_entries = address_entries(t, proxy_public_address(), host)
+            if proxy_running():
+                proxy_state = t["proxy_state_running"]
+                proxy_state_class = "is-open"
+            else:
+                proxy_state = t["proxy_state_stopped"].format(service=PROXY_SERVICE)
+                proxy_state_class = "is-closed"
+            sections.append(f"""
+            <div class="node-addr">
+              <p class="iperf-state {proxy_state_class}">{html.escape(proxy_state)}</p>
+            </div>
+            """)
+            for node in nodes:
+                proto = node["type"]
+                secret_label = (
+                    t["proxy_uuid"] if proto in ("vmess", "vless") else t["proxy_password"]
+                )
+                sni_row = ""
+                if proto != "shadowsocks":
+                    sni_row = f"""
+                    <dt>{html.escape(t['proxy_sni'])}</dt>
+                    <dd>{html.escape(sni or '—')}</dd>
+                    """
+                blocks = []
+                for label, address in proxy_entries:
+                    blocks.append(f"""
+                    <div class="node-addr">
+                      <h2>[{html.escape(label)}] {html.escape(address)}</h2>
+                    </div>
+                    """)
+                sections.append(f"""
+                <div class="node-addr">
+                  <h2>{html.escape(proto)}</h2>
+                  <form method="post" action="/proxy/reset" class="inline-form reset-inline">
+                    <input type="hidden" name="protocol" value="{html.escape(proto)}">
+                    <label class="checkline">
+                      <input type="checkbox" name="confirm" value="yes" required>
+                      <span>{html.escape(t['anytls_reset_confirm'])}</span>
+                    </label>
+                    <button type="submit" class="danger">{html.escape(t['proxy_reset'])}</button>
+                  </form>
+                  <dl class="kv">
+                    <dt>{html.escape(t['proxy_port'])}</dt>
+                    <dd>{html.escape(str(node['port']))}</dd>
+                    <dt>{html.escape(secret_label)}</dt>
+                    <dd class="secret"><code id="proxy-{proto}-secret">{html.escape(str(node['secret']))}</code>
+                      <button type="button" class="copybtn" data-copy="proxy-{proto}-secret"
+                              data-copied="{html.escape(t['copied'])}"
+                              >{html.escape(t['copy'])}</button></dd>
+                    {sni_row}
+                  </dl>
+                  {self.node_credential_form(proto, node['port'], secret_label)}
+                  {"".join(blocks)}
+                </div>
+                """)
+
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(t['proxy_heading'])}</h1>
+          {notice}
+          {"".join(sections)}
+          <p class="muted small">{html.escape(t['proxy_host_note'])}</p>
+          <p class="muted small warn">{html.escape(t['anytls_warning'])}</p>
+        </div>
+        <script src="/static/copy.js"></script>
+        """
+        self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+                       {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def node_credential_form(self, protocol, port, label):
+        token = node_csrf_token(self.get_cookie("session"), protocol)
+        return f"""
+        <form method="post" action="/proxy/apply" autocomplete="off">
+          <input type="hidden" name="protocol" value="{html.escape(protocol)}">
+          <input type="hidden" name="csrf" value="{token}">
+          <label>Port <input type="text" value="{html.escape(str(port))}" readonly></label>
+          <p class="muted small">port edit unavailable on legacy firewall rules</p>
+          <label>{html.escape(label)}
+            <input type="text" name="credential" autocomplete="off" required>
+          </label>
+          <button type="submit">Save/Apply</button>
+        </form>
+        """
+
+    def handle_node_apply(self):
+        # Reject oversized/ambiguous forms before parsing or invoking the helper.
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if (not 0 < length <= NODE_APPLY_BODY_LIMIT or
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
+                "application/x-www-form-urlencoded"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = parse_qs(self.rfile.read(length).decode("utf-8"),
+                            strict_parsing=True, keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if set(form) != {"protocol", "credential", "csrf"} or any(len(v) != 1 for v in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        protocol = form["protocol"][0]
+        session = self.get_cookie("session")
+        if protocol not in NODE_PROTOCOLS or not hmac.compare_digest(
+                form["csrf"][0], node_csrf_token(session, protocol)):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        credential = form["credential"][0]
+        if not credential or len(credential.encode("utf-8")) > 128:
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        self.redirect(f"/proxy?msg={node_apply(protocol, credential)}",
+                      {"Cache-Control": "no-store"})
+
+    def handle_anytls_reset(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        # Checked on the server, not just by the `required` attribute: this
+        # rotates live credentials and every client configured against the old
+        # ones stops working. A bare button would put that one mis-click away,
+        # and `required` is trivially bypassed by anything that is not a
+        # browser.
+        if form.get("confirm", [""])[0] != "yes":
+            return self.redirect("/proxy?msg=anytls_reset_unconfirmed")
+        self.redirect(f"/proxy?msg={anytls_reset()}")
+
+    def handle_proxy_reset(self):
+        raw = self.read_body(LOGIN_BODY_LIMIT)
+        form = parse_qs(raw.decode("utf-8", errors="replace"))
+        if form.get("confirm", [""])[0] != "yes":
+            return self.redirect("/proxy?msg=proxy_reset_unconfirmed")
+        # Validated against the known set rather than passed through
+        # verbatim: this reaches a subprocess argv, not a shell string, so
+        # injection is not the risk — a typo or forged value silently
+        # resetting nothing (or everything, via the empty-string "reset all"
+        # path) would be.
+        protocol = form.get("protocol", [""])[0]
+        if protocol and protocol not in PROXY_PROTOCOL_ORDER:
+            return self.redirect("/proxy?msg=proxy_reset_unconfirmed")
+        self.redirect(f"/proxy?msg={proxy_reset(protocol or None)}")
+
+    # -- visitor log ---------------------------------------------------
+
+    def page_changelog(self, lang, query_lang):
+        t = STRINGS[lang]
+        # Follow the UI language. If the translation is missing (it lags the
+        # English file between releases), fall back rather than show nothing —
+        # but say which file is actually on screen.
+        localized = CHANGELOG_PATHS.get(lang)
+        path = localized if localized and localized.exists() else BASE_DIR / "doc" / "LOG.md"
+        notice = ""
+        if localized and path != localized:
+            notice = f'<p class="muted small">{html.escape(t["changelog_fallback"])}</p>'
+
+        section = changelog_section(path.read_text(encoding="utf-8")) if path.exists() else None
+        if section:
+            content = notice + render_changelog(section)
+        else:
+            # Missing file or section must not render other LOG modules as release notes.
+            content = f'<p class="muted">{html.escape(t["changelog_missing"])}</p>'
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(t['changelog'])} <span class="version-inline">v{VERSION}</span></h1>
+          <div class="changelog">
+          {content}
+          </div>
+        </div>
+        """
+        self.send_html(200, render_page(t['changelog'], body, lang, active="changelog"),
+                       self.maybe_lang_cookie(query_lang))
+
+    def page_visitors(self, lang, query_lang):
+        t = STRINGS[lang]
+        rows = recent_visitors()
+
+        def render_row(r):
+            scope = r["scope"]
+            badge = ""
+            if scope in ("loopback", "private"):
+                badge = f' <span class="badge">{html.escape(t["scope_" + scope])}</span>'
+            if r["hits"]:
+                lastreq = html.escape(
+                    f'{r["last_method"]} {r["last_path"]} → {r["last_status"]}'
+                )
+            else:
+                lastreq = '<span class="muted">—</span>'
+            direction = r["direction"] or "in"
+            dir_html = (
+                f'<span class="dir dir-{direction}">'
+                f'{html.escape(t["dir_" + direction])}</span>'
+            )
+            return (
+                f'<tr data-scope="{html.escape(scope)}" data-dir="{html.escape(direction)}">'
+                f'<td>{html.escape(r["ip"])}{badge}</td>'
+                f'<td>{dir_html}</td>'
+                f'<td>{html.escape(r["first_seen"])}</td>'
+                f'<td>{html.escape(r["last_seen"])}</td>'
+                f'<td class="num">{r["hits"]}</td>'
+                f'<td class="num ports">{html.escape(r["ports"] or "—")}</td>'
+                f'<td class="lastreq">{lastreq}</td>'
+                "</tr>"
+            )
+
+        if not rows:
+            table_rows = f'<tr><td colspan="7">{html.escape(t["no_visits"])}</td></tr>'
+        else:
+            table_rows = "\n".join(render_row(r) for r in rows)
+
+        heading = t["visitors_heading"].format(n=len(rows), max=MAX_VISITOR_ROWS)
+        info = (
+            t["visitors_info"].format(sec=f"{CONN_POLL_SECONDS:g}")
+            if TRACK_CONNECTIONS
+            else t["visitors_info_http_only"]
+        )
+        body = f"""
+        <div class="card wide">
+          <h1>{html.escape(heading)}</h1>
+          <div class="filters">
+            <button type="button" class="chip active" data-filter="all">{html.escape(t['show_all'])}</button>
+            <button type="button" class="chip" data-filter="inbound">{html.escape(t['show_inbound'])}</button>
+            <button type="button" class="chip" data-filter="public">{html.escape(t['show_external'])}</button>
+          </div>
+          <div class="table-scroll">
+          <table id="visitors">
+            <thead><tr>
+              <th>{html.escape(t['col_ip'])}</th>
+              <th>{html.escape(t['col_dir'])}</th>
+              <th>{html.escape(t['col_first'])}</th>
+              <th>{html.escape(t['col_last'])}</th>
+              <th class="num">{html.escape(t['col_hits'])}</th>
+              <th class="num">{html.escape(t['col_ports'])}</th>
+              <th>{html.escape(t['col_lastreq'])}</th>
+            </tr></thead>
+            <tbody>
+            {table_rows}
+            </tbody>
+          </table>
+          </div>
+          <p class="muted small">{html.escape(info)}</p>
+        </div>
+        <script src="/static/visitors.js"></script>
+        """
+        self.send_html(200, render_page(t['visitors'], body, lang, active="visitors"),
+                       self.maybe_lang_cookie(query_lang))
+
+
+# ---------------------------------------------------------------------------
+# Public reachability page
+#
+# Two paths, two methods, no session, no query string, no request body. That
+# narrowness *is* the security boundary: a request arriving on 80 or 443
+# cannot reach a console route because no such route exists on this class.
+# Read doc/LOG.md#decisions (2026-09-12) before adding anything here.
+#
+# The stylesheet is inlined rather than served from /static/, so this listener
+# has no file-serving route at all.
+# ---------------------------------------------------------------------------
+
+PROBE_CSS = """
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; align-items: center;
+       justify-content: center; padding: 1.5rem;
+       font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       background: #f4f6f8; color: #1a1d21; }
+main { width: 100%; max-width: 34rem; background: #fff; border-radius: 14px;
+       padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+h1 { margin: 0 0 .25rem; font-size: 1.5rem; display: flex; gap: .5rem;
+     align-items: center; }
+.ok { color: #0a7d32; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem;
+     margin: 1.5rem 0 0; }
+dt { color: #5a6570; }
+dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-all; }
+.note { margin: 1.5rem 0 0; font-size: .85rem; color: #5a6570; }
+.iperf { margin: 1.25rem 0 0; padding: .75rem 1rem; border-radius: 8px;
+         background: #e7f6ec; color: #0a5d27; font-size: .9rem; }
+@media (prefers-color-scheme: dark) {
+  body { background: #15181c; color: #e6e9ec; }
+  main { background: #1e2227; box-shadow: none; }
+  dt, .note { color: #9aa4ae; }
+  .ok { color: #4ade80; }
+  .iperf { background: #16301f; color: #86efac; }
+}
+"""
+
+
+class ProbeHandler(BaseHTTPRequestHandler):
+    """The unauthenticated page on 80 and 443."""
+
+    # No version string: whoever scans this port learns that something
+    # answered, which is the entire point, and nothing more.
+    server_version = "vps-server"
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, format, *args):
+        pass  # requests go to the visitor log instead
+
+    def version_string(self):
+        # Without this the base class appends sys_version and the page that
+        # promises to disclose nothing about the host answers
+        # "Server: vps-server Python/3.10.12" to any anonymous HEAD.
+        return self.server_version
+
+    def send_response(self, code, message=None):
+        self._last_status = code
+        super().send_response(code, message)
+
+    def client_ip(self):
+        if TRUST_PROXY:
+            xff = self.headers.get("X-Forwarded-For")
+            if xff:
+                return xff.split(",")[0].strip()
+        return self.client_address[0]
+
+    def do_GET(self):
+        self._dispatch(send_body=True)
+
+    def do_HEAD(self):
+        self._dispatch(send_body=False)
+
+    def _dispatch(self, send_body):
+        self._last_status = 200
+        path = urlsplit(self.path).path
+        try:
+            if path == "/":
+                body = self._page().encode("utf-8")
+                self._send(200, body, "text/html; charset=utf-8", send_body)
+            elif path == "/favicon.ico":
+                self._send(204, b"", "image/x-icon", send_body)
+            else:
+                self._send(404, b"not found\n", "text/plain; charset=utf-8", send_body)
+        except (BrokenPipeError, ConnectionResetError):
+            self._last_status = 0  # client hung up; not a real outcome
+        finally:
+            if self._last_status:
+                # This listener is the one strangers reach, so it is the one
+                # most likely to be hitting a full disk or a busy database.
+                # Failing to record a visit is not a reason to drop the
+                # connection that was successfully served.
+                try:
+                    log_visit(self.client_ip(), self.command, path, self._last_status)
+                except Exception as exc:
+                    print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
+
+    def _send(self, status, body, content_type, send_body):
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        if send_body and body:
+            self.wfile.write(body)
+
+    def _page(self):
+        # No cookie and no ?lang= here — the page has no navigation and sets
+        # nothing. Accept-Language is all there is to go on, which is right for
+        # a stranger who was handed an IP and nothing else.
+        lang = pick_lang(None, None, self.headers.get("Accept-Language", ""))
+        t = STRINGS[lang]
+        # self.server is the listener this request actually arrived on, so the
+        # port is the real one even with several running.
+        arrived_port = self.server.server_address[1]
+        scheme = "HTTPS" if getattr(self.server, "is_tls", False) else "HTTP"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+        iperf_html = ""
+        if IPERF_ENABLED:
+            is_open, remaining = IPERF_WINDOW.state()
+            if is_open:
+                # Advertised on purpose: a tester who cannot see that the
+                # window is open has no way to know when to connect, and the
+                # window is deliberately open anyway.
+                text = t["probe_iperf"].format(
+                    port=IPERF_WINDOW.port, mins=remaining // 60, secs=remaining % 60
+                )
+                iperf_html = f'<p class="iperf">{html.escape(text)}</p>'
+
+        return f"""<!doctype html>
+<html lang="{HTML_LANG_TAGS.get(lang, lang)}"{RTL_ATTR.get(lang, "")}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(t['probe_title'])}</title>
+<link rel="icon" href="data:,">
+<style>{PROBE_CSS}</style>
+</head>
+<body>
+<main>
+<h1><span class="ok">&#10003;</span> {html.escape(t['probe_title'])}</h1>
+<p>{html.escape(t['probe_ok'])}</p>
+{iperf_html}
+<dl>
+  <dt>{html.escape(t['probe_your_ip'])}</dt><dd>{html.escape(self.client_ip())}</dd>
+  <dt>{html.escape(t['probe_arrived_on'])}</dt><dd>{scheme} :{arrived_port}</dd>
+  <dt>{html.escape(t['probe_server_time'])}</dt><dd>{now}</dd>
+</dl>
+<p class="note">{html.escape(t['probe_note'])}</p>
+</main>
+</body>
+</html>"""
+
+
+def serve_forever_in_thread(server):
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return thread
+
+
+def make_server(port, handler, tls):
+    server = ThreadingHTTPServer((HOST, port), handler)
+    server.daemon_threads = True
+    server.is_tls = tls
+    if tls:
+        cert, key = ensure_tls_files()
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=str(cert), keyfile=str(key))
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+    return server
+
+
+def start_public_listeners(servers):
+    """Bind the reachability page on both public ports. Best effort, each
+    independently: "443 refused but 80 answered" is itself a useful answer for
+    whoever is testing, so one failed bind must not take the other down — nor
+    the console, which is the only way to fix anything.
+    """
+    for port, tls in ((PUBLIC_HTTP_PORT, False), (PUBLIC_HTTPS_PORT, True)):
+        if port == CONSOLE_PORT:
+            print(_log_text('log_public_conflict', port=port), file=sys.stderr)
+            continue
+        try:
+            server = make_server(port, ProbeHandler, tls)
+        except (OSError, SystemExit) as exc:
+            print(_log_text('log_public_bind', port=port, error=exc), file=sys.stderr)
+            continue
+        servers.append(server)
+        serve_forever_in_thread(server)
+        print(_log_text('log_reachability', scheme='https' if tls else 'http', host=HOST, port=port), file=sys.stderr)
+
+
+def main():
+    servers = []
+    stop_event = threading.Event()
+
+    # Installed before any listener setup, not just around serve_forever():
+    # a signal arriving while start_public_listeners()/PORTFWD.load() are
+    # still running used to fall outside the old try/finally entirely, so
+    # cleanup never ran for whatever had already come up by then. An open
+    # window is a live child process plus a firewall rule, and systemd sends
+    # SIGTERM on stop and restart — without this the iperf3 child would
+    # outlive the service and the rule would be left behind.
+    def request_shutdown(signum, frame):
+        raise KeyboardInterrupt
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(sig, request_shutdown)
+        except ValueError:
+            pass  # not on the main thread; the tests import this module
+
+    try:
+        console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
+        servers.append(console)
+        print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
+
+        if PUBLIC_ENABLED:
+            start_public_listeners(servers)
+
+        if TRACK_CONNECTIONS:
+            if os.path.exists("/proc/net/tcp"):
+                threading.Thread(
+                    target=connection_poller, args=(stop_event,), daemon=True
+                ).start()
+                print(_log_text('log_tracking', seconds=CONN_POLL_SECONDS), file=sys.stderr)
+            else:
+                print(_log_text('log_tracking_unavailable'), file=sys.stderr)
+
+        if IPERF_ENABLED and not shutil.which("iperf3"):
+            print(_log_text('log_iperf_missing'), file=sys.stderr)
+
+        if PORTFWD_ENABLED:
+            PORTFWD.load()
+            active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
+            if active:
+                print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
+
+        console.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # A second SIGTERM arriving while this block is still running (e.g.
+        # mid-IPERF_WINDOW.close()) would otherwise raise a fresh
+        # KeyboardInterrupt into the middle of cleanup and escape before the
+        # firewall rule is withdrawn. The process is exiting either way, so
+        # further signals are simply ignored from here on.
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                signal.signal(sig, signal.SIG_IGN)
+            except ValueError:
+                pass
+        stop_event.set()
+        IPERF_WINDOW.close()
+        if PORTFWD_ENABLED:
+            PORTFWD.shutdown()
+        for s in servers:
+            # shutdown() before server_close(): the public listeners are
+            # still spinning in their own serve_forever_in_thread() loop, and
+            # closing the socket out from under that loop logged an OSError
+            # traceback on every restart. serve_forever() itself always marks
+            # its own shutdown event on the way out (even via exception), so
+            # calling shutdown() on the console server here — whose
+            # serve_forever() already returned on this thread — is a no-op,
+            # not a deadlock.
+            s.shutdown()
+            s.server_close()
+
+
+if __name__ == "__main__":
+    main()

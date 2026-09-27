@@ -1,7 +1,7 @@
 // Copy-to-clipboard for the anytls node page.
 //
 // navigator.clipboard only exists in a secure context. The console defaults to
-// plain HTTP on a LAN address (see DECISIONS.md, 2026-08-25), which is not one
+// plain HTTP on a LAN address (see vps-webserver DECISIONS.md, 2026-08-25), which is not one
 // — so on the setup this project actually ships, the modern API is undefined
 // and the deprecated execCommand path is the one that runs. Treat the
 // fallback as the primary, not as legacy tidying.

@@ -1,0 +1,9 @@
+{
+  "unsupported_list": "產物清單缺失或格式不受支援",
+  "empty_list": "產物清單為空",
+  "invalid_path_hash": "產物路徑或雜湊值無效或重複",
+  "missing_artifact": "FAIL {name}:檔案缺失或位於檢出目錄之外",
+  "hash_mismatch": "FAIL {name}:SHA-256 不符",
+  "artifact_ok": "OK   {name}: {hash}",
+  "invalid_lock": "依賴鎖定檔無效:{error}"
+}

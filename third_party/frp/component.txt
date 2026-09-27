@@ -1,0 +1,7 @@
+Component: frps server executable (no frpc)
+Version: v0.71.0 linux amd64
+Source archive: https://github.com/fatedier/frp/releases/download/v0.71.0/frp_0.71.0_linux_amd64.tar.gz
+Archive SHA256: 84f27e39f11169f7adcef8e8b70c9329de17747b1f14dad9fb95eef5682ea716
+Extracted member: frp_0.71.0_linux_amd64/frps
+Binary SHA256: b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654
+License member: frp_0.71.0_linux_amd64/LICENSE (Apache-2.0)

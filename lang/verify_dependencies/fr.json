@@ -1,0 +1,9 @@
+{
+  "unsupported_list": "liste des artefacts absente ou non prise en charge",
+  "empty_list": "liste des artefacts vide",
+  "invalid_path_hash": "chemin ou empreinte d’artefact invalide ou en double",
+  "missing_artifact": "FAIL {name} : absent ou hors du dépôt",
+  "hash_mismatch": "FAIL {name} : empreinte SHA-256 différente",
+  "artifact_ok": "OK   {name} : {hash}",
+  "invalid_lock": "Verrou des dépendances invalide : {error}"
+}
