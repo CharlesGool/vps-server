@@ -54,6 +54,7 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(rendered["inbounds"], self.anytls["inbounds"] + self.proxy["inbounds"])
         self.assertEqual({k: v for k, v in rendered.items() if k != "inbounds"}, BASE)
         self.assertEqual(len({n["id"] for n in state["nodes"]}), 5)
+        self.assertEqual([n["number"] for n in state["nodes"]], [1, 2, 3, 4, 5])
         self.assertEqual(len(state["migration_hashes"]), 2)
         self.proxy["inbounds"][0]["listen_port"] += 1
         with self.assertRaises(InvalidInventory):
@@ -62,13 +63,19 @@ class InventoryTests(unittest.TestCase):
     def test_same_type_different_tags_disabled_and_metadata(self):
         state = self.imported()
         second = copy.deepcopy(state["nodes"][0])
-        second.update(id="6c101472-c204-460d-a193-29d72fb5e590", name="second node", port=30001,
+        second.update(id="6c101472-c204-460d-a193-29d72fb5e590", number=6,
+                      name="second node", port=30001,
                       enabled=False, cap_bytes=1024, expires_at="2030-01-01T00:00:00+00:00",
                       upload_bytes=200, download_bytes=400, counter_epoch=1)
         second["inbound"]["tag"] = "anytls-second"
         second["inbound"]["listen_port"] = 30001
         state["nodes"].append(second)
+        state["next_number"] = 7
         validate_inventory(state)
+        second["number"] = 1
+        with self.assertRaises(InvalidInventory):
+            validate_inventory(state)
+        second["number"] = 6
         self.assertEqual(len(state["nodes"]), 6)
         self.assertEqual(len(render_config(state)["inbounds"]), 5)
         state["nodes"][0]["enabled"] = False

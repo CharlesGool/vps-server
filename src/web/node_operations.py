@@ -152,11 +152,13 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
     inbound["listen_port"] = port
     if protocol != "shadowsocks":
         inbound["users"][0]["name"] = tag
-    node = {"id": identifier, "name": name, "protocol": protocol, "port": port,
+    node = {"id": identifier, "number": candidate["next_number"],
+            "name": name, "protocol": protocol, "port": port,
             "inbound": inbound, "enabled": True, "cap_bytes": cap_bytes,
             "expires_at": expires_at, "upload_bytes": 0, "download_bytes": 0,
             "counter_epoch": 0}
     candidate["nodes"].append(node)
+    candidate["next_number"] += 1
     for _ in range(32):
         secret = (base64.b64encode(secrets.token_bytes(16)).decode("ascii") if protocol == "shadowsocks"
                   else _new_uuid(uuid_factory) if protocol in _UUID_PROTOCOLS

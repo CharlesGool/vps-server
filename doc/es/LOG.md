@@ -165,12 +165,12 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: v2.0.0 en `main`. Esta versión excluye el historial de la rama privada de pruebas.
-- Terminado: estructura normalizada, migración de documentos en inglés y siete traducciones, catálogos de interfaz, verificación del origen de los archivos de terceros y publicación de v2.0.0, además de la traducción de los comentarios explicativos en los ejemplos de instalación.
-- Comprobaciones: 271 pruebas superadas (8 omitidas) para v2.0.0; correctos los hashes de dependencias y la estructura de una exportación limpia; verificador documental con 0 errores y 4 avisos sobre el idioma de la navegación; control multilingüe con 0 errores tras traducir los comentarios.
-- Pendiente: aceptación en un servidor real con systemd, revisión independiente por hablantes nativos e interpretación jurídica independiente de las licencias de los componentes incluidos.
-- Publicación: la etiqueta anotada v2.0.0 apunta al commit `f9eb612`; `origin/main` del repositorio oficial contiene ese commit y este registro de traspaso. Se verificaron la GitHub Release pública, la instantánea local de la etiqueta y la copia del historial de cambios en `My Projects`.
-- Siguiente paso: validar en un servidor real con systemd y revisar la redacción nativa, incluidos los comentarios de los comandos, y las obligaciones de las licencias incluidas antes de considerar estables frps y Lucky.
+- Rama: `feat/node-controls`, basada en `56c9ed5` de la rama formal `main` de v2.0.0.
+- Completado en esta rama: numeración estable y validación de unicidad en el modelo de inventario sin conexión; página de nodos proxy con tarjetas adaptables que muestran estado, datos de conexión, direcciones y ajustes plegables; textos de interfaz en ocho idiomas.
+- Comprobaciones: pasaron 172 pruebas de la aplicación (8 omitidas), 45 pruebas de nodos y 5 de localización; pasaron la compilación de Python y `git diff --check`. El comprobador multilingüe actual señala 16 errores por títulos ausentes; esos títulos tampoco existen en `HEAD` y no se deben a los cambios de esta rama.
+- Pendiente: conectar el inventario con los servicios instalados; implementar la edición de nombre, puerto, credencial y SNI por nodo, el restablecimiento aleatorio, las estadísticas persistentes de tráfico, el inicio de un nuevo ciclo cada mes o en una fecha indicada y el límite bidireccional de 1 Mbps; completar la validación en un servidor y de la interfaz adaptable.
+- Publicación: v2.0.0 permanece en el `origin/main` formal; esta rama de funciones aún no es una versión publicada.
+- Siguiente paso: completar la configuración privilegiada de nodos y el registro de tráfico, comprobar la interfaz y los servicios integrados y después decidir sobre la publicación.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.

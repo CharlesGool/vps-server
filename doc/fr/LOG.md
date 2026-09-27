@@ -165,12 +165,12 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : v2.0.0 sur `main`. Cette version exclut l’historique de la branche d’essai privée.
-- Terminé : structure normalisée, migration des documents anglais et de sept traductions, catalogues d’interface, vérification de l’origine des fichiers tiers et publication de v2.0.0, ainsi que la traduction des commentaires explicatifs dans les exemples d’installation.
-- Vérifications : 271 tests réussis (8 ignorés) pour v2.0.0 ; empreintes des dépendances et structure d’un export propre conformes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur après la traduction des commentaires.
-- À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et interprétation juridique indépendante des licences des composants embarqués.
-- Publication : le tag annoté v2.0.0 pointe vers le commit de publication `f9eb612` ; le dépôt officiel `origin/main` contient ce commit et la présente passation. La GitHub Release publique, l’instantané local du tag et la copie de l’historique dans `My Projects` ont été vérifiés.
-- Prochaine action : valider sur un hôte réel avec systemd, puis revoir la formulation native, y compris les commentaires des commandes, et les obligations des licences embarquées avant de considérer frps et Lucky comme stables.
+- Branche : `feat/node-controls`, basée sur `56c9ed5` de la branche officielle `main` de v2.0.0.
+- Terminé sur cette branche : numérotation stable et vérification de l’unicité dans le modèle d’inventaire hors ligne ; page des nœuds proxy organisée en cartes adaptatives présentant l’état, les paramètres de connexion, les adresses et des réglages repliables ; textes de l’interface synchronisés dans huit langues.
+- Vérifications : 172 tests de l’application ont réussi (8 ignorés), ainsi que 45 tests des nœuds et 5 tests de localisation ; la compilation Python et `git diff --check` ont réussi. Le vérificateur multilingue actuel signale 16 erreurs de titres manquants ; ces titres sont également absents de `HEAD` et ne résultent pas des modifications de cette branche.
+- À faire : connecter l’inventaire aux services installés ; permettre la modification du nom, du port, des identifiants et du SNI par nœud, la réinitialisation aléatoire, les statistiques de trafic persistantes, le démarrage d’un nouveau cycle chaque mois ou à une date définie et la limitation bidirectionnelle à 1 Mbps ; terminer la validation sur hôte et de l’interface adaptative.
+- Publication : v2.0.0 reste sur la branche officielle `origin/main` ; cette branche de fonctionnalité n’est pas une version publiée.
+- Étape suivante : terminer la configuration privilégiée des nœuds et la comptabilisation du trafic, puis vérifier l’interface et les services intégrés avant de décider d’une publication.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.

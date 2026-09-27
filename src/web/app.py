@@ -2557,23 +2557,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def page_proxy(self, lang, query_lang):
-        """Every proxy-shaped node this install has, on one page: anytls (its
-        own service/config) and any installed vmess/vless/trojan/shadowsocks
-        protocols (the proxy module's own service/config), grouped together
-        because an operator looking for "my proxy nodes" should not have to
-        know or care which of two independent backends serves which one —
-        previously two separate pages/nav entries/dashboard tiles.
-
-        Deliberately ONE top-level element in `body` (a single
-        `<div class="card wide">` with everything else nested inside as
-        `.node-addr` sub-sections), not one `.card` per protocol: `<main>` is
-        `display: flex` with no `flex-direction` override, so multiple
-        top-level `.card` siblings fed into it lay out side by side rather
-        than stacked — the visually broken page an operator reported. Only
-        one page in this codebase (this one, in an earlier version) has ever
-        emitted more than one top-level element here, which is exactly why
-        the bug was novel rather than a class of bug this page inherited.
-        """
+        """Show all installed proxy protocols in a single operator view."""
         t = STRINGS[lang]
         anytls = anytls_node()
         nodes = proxy_nodes()
@@ -2616,6 +2600,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     port=anytls["port"], service=ANYTLS_SERVICE
                 )
                 state_class = "is-closed"
+            health = ("" if anytls["running"] else
+                      f'<p class="proxy-node-health warn">{html.escape(state)}</p>')
             # anytls's own public-ip.txt: independent of the proxy module's,
             # since each is installed (and can have its own SERVER_IP) on its
             # own — see address_entries()'s docstring for the dedup rule.
@@ -2623,22 +2609,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             blocks = []
             for label, address in entries:
                 blocks.append(f"""
-                <div class="node-addr">
-                  <h2>[{html.escape(label)}] {html.escape(address)}</h2>
-                </div>
+                <div class="node-address"><span>{html.escape(label)}</span>
+                  <code>{html.escape(address)}</code></div>
                 """)
             sections.append(f"""
-            <div class="node-addr">
-              <h2>anytls</h2>
-              <form method="post" action="/anytls/reset" class="inline-form reset-inline">
-                <label class="checkline">
-                  <input type="checkbox" name="confirm" value="yes" required>
-                  <span>{html.escape(t['anytls_reset_confirm'])}</span>
-                </label>
-                <button type="submit" class="danger">{html.escape(t['anytls_reset'])}</button>
-              </form>
-              <p class="iperf-state {state_class}">{html.escape(state)}</p>
-              <dl class="kv">
+            <article class="proxy-node">
+              <header class="proxy-node-header">
+                <div><span class="proxy-node-protocol">anytls</span><h2>anytls</h2></div>
+                <span class="proxy-node-status {state_class}">{html.escape(t['node_active'] if anytls['running'] else t['node_stopped'])}</span>
+              </header>
+              {health}
+              <dl class="kv proxy-node-facts">
                 <dt>{html.escape(t['anytls_port'])}</dt>
                 <dd>{html.escape(str(anytls['port']))}</dd>
                 <dt>{html.escape(t['anytls_password'])}</dt>
@@ -2649,9 +2630,19 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 <dt>{html.escape(t['anytls_sni'])}</dt>
                 <dd>{html.escape(anytls['sni'] or '—')}</dd>
               </dl>
-              {self.node_credential_form('anytls', anytls['port'], t['anytls_password'])}
-              {"".join(blocks)}
-            </div>
+              <div class="proxy-node-addresses">{"".join(blocks)}</div>
+              <details class="proxy-node-settings">
+                <summary>{html.escape(t['node_manage'])}</summary>
+                {self.node_credential_form('anytls', t['anytls_password'], t)}
+                <form method="post" action="/anytls/reset" class="proxy-node-reset">
+                  <label class="checkline">
+                    <input type="checkbox" name="confirm" value="yes" required>
+                    <span>{html.escape(t['anytls_reset_confirm'])}</span>
+                  </label>
+                  <button type="submit" class="danger">{html.escape(t['anytls_reset'])}</button>
+                </form>
+              </details>
+            </article>
             """)
 
         if nodes:
@@ -2669,11 +2660,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             else:
                 proxy_state = t["proxy_state_stopped"].format(service=PROXY_SERVICE)
                 proxy_state_class = "is-closed"
-            sections.append(f"""
-            <div class="node-addr">
-              <p class="iperf-state {proxy_state_class}">{html.escape(proxy_state)}</p>
-            </div>
-            """)
+            proxy_health = ("" if proxy_state_class == "is-open" else
+                            f'<p class="proxy-node-health warn">{html.escape(proxy_state)}</p>')
             for node in nodes:
                 proto = node["type"]
                 secret_label = (
@@ -2688,22 +2676,18 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 blocks = []
                 for label, address in proxy_entries:
                     blocks.append(f"""
-                    <div class="node-addr">
-                      <h2>[{html.escape(label)}] {html.escape(address)}</h2>
-                    </div>
+                    <div class="node-address"><span>{html.escape(label)}</span>
+                      <code>{html.escape(address)}</code></div>
                     """)
                 sections.append(f"""
-                <div class="node-addr">
-                  <h2>{html.escape(proto)}</h2>
-                  <form method="post" action="/proxy/reset" class="inline-form reset-inline">
-                    <input type="hidden" name="protocol" value="{html.escape(proto)}">
-                    <label class="checkline">
-                      <input type="checkbox" name="confirm" value="yes" required>
-                      <span>{html.escape(t['anytls_reset_confirm'])}</span>
-                    </label>
-                    <button type="submit" class="danger">{html.escape(t['proxy_reset'])}</button>
-                  </form>
-                  <dl class="kv">
+                <article class="proxy-node">
+                  <header class="proxy-node-header">
+                    <div><span class="proxy-node-protocol">{html.escape(proto)}</span>
+                      <h2>{html.escape(proto)}</h2></div>
+                    <span class="proxy-node-status {proxy_state_class}">{html.escape(t['node_active'] if proxy_state_class == 'is-open' else t['node_stopped'])}</span>
+                  </header>
+                  {proxy_health}
+                  <dl class="kv proxy-node-facts">
                     <dt>{html.escape(t['proxy_port'])}</dt>
                     <dd>{html.escape(str(node['port']))}</dd>
                     <dt>{html.escape(secret_label)}</dt>
@@ -2713,36 +2697,56 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                               >{html.escape(t['copy'])}</button></dd>
                     {sni_row}
                   </dl>
-                  {self.node_credential_form(proto, node['port'], secret_label)}
-                  {"".join(blocks)}
-                </div>
+                  <div class="proxy-node-addresses">{"".join(blocks)}</div>
+                  <details class="proxy-node-settings">
+                    <summary>{html.escape(t['node_manage'])}</summary>
+                    {self.node_credential_form(proto, secret_label, t)}
+                    <form method="post" action="/proxy/reset" class="proxy-node-reset">
+                      <input type="hidden" name="protocol" value="{html.escape(proto)}">
+                      <label class="checkline">
+                        <input type="checkbox" name="confirm" value="yes" required>
+                        <span>{html.escape(t['anytls_reset_confirm'])}</span>
+                      </label>
+                      <button type="submit" class="danger">{html.escape(t['proxy_reset'])}</button>
+                    </form>
+                  </details>
+                </article>
                 """)
 
+        running_count = int(bool(anytls and anytls['running'])) + (len(nodes) if nodes and proxy_running() else 0)
         body = f"""
-        <div class="card wide">
-          <h1>{html.escape(t['proxy_heading'])}</h1>
+        <div class="proxy-workspace">
+          <header class="proxy-overview">
+            <div><p class="proxy-eyebrow">{html.escape(t['node_overview'])}</p>
+              <h1>{html.escape(t['proxy_heading'])}</h1>
+              <p class="muted">{html.escape(t['node_overview_intro'])}</p></div>
+            <div class="proxy-summary" aria-label="{html.escape(t['node_summary'])}">
+              <div><strong>{len(sections)}</strong><span>{html.escape(t['node_total'])}</span></div>
+              <div><strong>{running_count}</strong><span>{html.escape(t['node_active'])}</span></div>
+            </div>
+          </header>
           {notice}
-          {"".join(sections)}
-          <p class="muted small">{html.escape(t['proxy_host_note'])}</p>
-          <p class="muted small warn">{html.escape(t['anytls_warning'])}</p>
+          <div class="proxy-node-grid">{"".join(sections)}</div>
+          <aside class="proxy-notes">
+            <p>{html.escape(t['proxy_host_note'])}</p>
+            <p class="warn">{html.escape(t['anytls_warning'])}</p>
+          </aside>
         </div>
         <script src="/static/copy.js"></script>
         """
         self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
-    def node_credential_form(self, protocol, port, label):
+    def node_credential_form(self, protocol, label, t):
         token = node_csrf_token(self.get_cookie("session"), protocol)
         return f"""
         <form method="post" action="/proxy/apply" autocomplete="off">
           <input type="hidden" name="protocol" value="{html.escape(protocol)}">
           <input type="hidden" name="csrf" value="{token}">
-          <label>Port <input type="text" value="{html.escape(str(port))}" readonly></label>
-          <p class="muted small">port edit unavailable on legacy firewall rules</p>
           <label>{html.escape(label)}
             <input type="text" name="credential" autocomplete="off" required>
           </label>
-          <button type="submit">Save/Apply</button>
+          <button type="submit">{html.escape(t['node_save_credential'])}</button>
         </form>
         """
 

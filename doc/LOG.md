@@ -220,12 +220,12 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `main` at v2.0.0. The private test branch history is excluded from this release.
-- Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, third-party artifact verification, the v2.0.0 release, and translation of explanatory comments in installation examples.
-- Checks: 271 unit tests passed (8 skipped) for v2.0.0; dependency hashes and clean-export structure passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors after the comment translation.
-- Remaining: real-host/systemd acceptance, independent native-language review, and independent legal interpretation of bundled licenses.
-- Publication: the annotated v2.0.0 tag points to release commit `f9eb612`; formal `origin/main` contains that commit and this handoff record. The public GitHub Release, local tag snapshot, and `My Projects` Changelog mirror were verified.
-- Next action: run real-host/systemd acceptance, then review native-language wording, including command comments, and bundled-license obligations before considering frps and Lucky stable.
+- Branch: `feat/node-controls`, based on the formal v2.0.0 `main` branch at `56c9ed5`.
+- Completed in this branch: stable node-number fields and uniqueness validation in the offline inventory model; a responsive proxy-node card layout with status, connection facts, addresses, and folded settings; matching interface strings in eight languages.
+- Checks: 172 app tests passed (8 skipped), 45 node tests passed, and 5 localization tests passed; Python compilation and `git diff --check` passed. The current multi-language checker reports 16 missing-heading errors; those headings are also absent from `HEAD` and are unrelated to this branch's changes.
+- Remaining: wire the inventory model to installed services; implement editable names, ports, credentials, and per-node SNI; random reset; persistent per-node traffic counting, monthly or scheduled cycle reset, and bidirectional 1 Mbps limiting; complete host and responsive visual acceptance.
+- Publication: the v2.0.0 release remains on formal `origin/main`; this feature branch is not a release.
+- Next action: complete the privileged node configuration and accounting path, then verify the integrated UI and service behavior before a release decision.
 
 ## Changelog
 

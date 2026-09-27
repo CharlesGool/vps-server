@@ -27,6 +27,7 @@ class InvalidInventory(ValueError):
 
 class Node(TypedDict):
     id: str
+    number: int
     name: str
     protocol: str
     port: int
@@ -41,6 +42,7 @@ class Node(TypedDict):
 
 class Inventory(TypedDict):
     version: int
+    next_number: int
     migration_namespace: str
     migration_hashes: dict[str, str]
     base_config: dict[str, Any]
@@ -147,8 +149,10 @@ def _hash(document: dict[str, Any]) -> str:
 
 def validate_inventory(inventory: Inventory) -> None:
     """Reject malformed state, duplicate IDs/ports/tags, and invalid metadata."""
-    if not isinstance(inventory, dict) or set(inventory) != {"version", "migration_namespace", "migration_hashes", "base_config", "nodes"} or type(inventory["version"]) is not int or inventory["version"] != 1:
+    if not isinstance(inventory, dict) or set(inventory) != {"version", "next_number", "migration_namespace", "migration_hashes", "base_config", "nodes"} or type(inventory["version"]) is not int or inventory["version"] != 1:
         raise InvalidInventory("unsupported inventory schema")
+    if type(inventory["next_number"]) is not int or inventory["next_number"] < 1:
+        raise InvalidInventory("invalid next node number")
     namespace = _uuid(inventory["migration_namespace"])
     hashes = inventory["migration_hashes"]
     if not isinstance(hashes, dict) or not set(hashes) <= set(MODULE_PROTOCOLS) or any(not isinstance(h, str) or not re.fullmatch(r"[0-9a-f]{64}", h) for h in hashes.values()):
@@ -160,12 +164,15 @@ def validate_inventory(inventory: Inventory) -> None:
     nodes = inventory["nodes"]
     if not isinstance(nodes, list):
         raise InvalidInventory("nodes must be a list")
-    ids, tags, ports, names = set(), set(), set(), set()
+    ids, numbers, tags, ports, names = set(), set(), set(), set(), set()
     outbound_tags = {item["tag"] for item in base["outbounds"]}
     for node in nodes:
         if not isinstance(node, dict) or set(node) != set(Node.__annotations__):
             raise InvalidInventory("invalid node fields")
         identifier = _uuid(node["id"])
+        number = node["number"]
+        if type(number) is not int or number < 1 or number in numbers:
+            raise InvalidInventory("invalid or duplicate node number")
         if not isinstance(node["name"], str) or not _NAME.fullmatch(node["name"]) or node["name"] != node["name"].strip():
             raise InvalidInventory("invalid node name")
         protocol, port, tag = _inbound(node["inbound"])
@@ -189,9 +196,12 @@ def validate_inventory(inventory: Inventory) -> None:
         if identifier in ids or tag in tags or tag in outbound_tags or port in ports or node["name"] in names:
             raise InvalidInventory("duplicate node identity, name, port or tag")
         ids.add(identifier)
+        numbers.add(number)
         tags.add(tag)
         ports.add(port)
         names.add(node["name"])
+    if numbers and inventory["next_number"] <= max(numbers):
+        raise InvalidInventory("next node number must exceed existing numbers")
 
 
 def import_legacy(anytls: bytes | str | dict[str, Any] | None,
@@ -238,11 +248,13 @@ def import_legacy(anytls: bytes | str | dict[str, Any] | None,
                     suffix += 1
                 used_names.add(name)
             nodes.append(Node(id=str(identifier),
+                              number=len(nodes) + 1,
                               name=name, protocol=protocol, port=port,
                               inbound=copy.deepcopy(inbound), enabled=True,
                               cap_bytes=None, expires_at=None, upload_bytes=0,
                               download_bytes=0, counter_epoch=0))
-    inventory = Inventory(version=1, migration_namespace=str(namespace),
+    inventory = Inventory(version=1, next_number=len(nodes) + 1,
+                          migration_namespace=str(namespace),
                           migration_hashes=hashes, base_config=copy.deepcopy(bases[0]),
                           nodes=nodes)
     validate_inventory(inventory)

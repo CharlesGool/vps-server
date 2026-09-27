@@ -1868,8 +1868,7 @@ class ProxyPageTest(unittest.TestCase):
         self.assertEqual(resp.getheader("Cache-Control"), "no-store")
         conn.close()
         self.assertEqual(page.count('action="/proxy/apply"'), 4 + int(app.anytls_node() is not None))
-        self.assertIn('port edit unavailable on legacy firewall rules', page)
-        self.assertIn('readonly', page)
+        self.assertEqual(page.count('class="proxy-node-settings"'), 4 + int(app.anytls_node() is not None))
         helper = self.dir / "node_config.py"
         helper.write_text("# test helper path\n")
         secret = "new-secret-value"
@@ -2120,14 +2119,9 @@ class ProxyPageTest(unittest.TestCase):
 
     # -- the anytls+proxy merge ---------------------------------------------
 
-    def test_anytls_and_proxy_share_one_page_in_one_card(self):
-        # The point of the merge: an operator with both modules installed
-        # sees anytls next to vmess/vless/trojan/shadowsocks on the SAME
-        # page, not two separate pages/nav entries. And the whole thing is
-        # exactly one top-level <div class="card wide">, not one per
-        # protocol — <main> is `display: flex` with no direction override,
-        # so more than one top-level card renders side by side instead of
-        # stacked, which is the layout bug an operator reported.
+    def test_anytls_and_proxy_share_one_page_in_node_grid(self):
+        # Both modules appear in one workspace, with one card per node and
+        # one navigation entry for the whole page.
         anytls_dir = Path(TEST_DATA_DIR) / "anytls-merge"
         (anytls_dir / "cert").mkdir(parents=True, exist_ok=True)
         cert = anytls_dir / "cert" / "fullchain.pem"
@@ -2154,12 +2148,9 @@ class ProxyPageTest(unittest.TestCase):
             self.assertIn("<h2>anytls</h2>", body)
             for proto in ("vmess", "vless", "trojan", "shadowsocks"):
                 self.assertIn(f"<h2>{proto}</h2>", body)
-            self.assertEqual(
-                body.count('class="card wide"'), 1,
-                "everything must nest inside one top-level card, or <main>'s "
-                "flex layout lays multiple cards out side by side instead of "
-                "stacked",
-            )
+            self.assertEqual(body.count('class="proxy-workspace"'), 1)
+            self.assertEqual(body.count('class="proxy-node"'), 5)
+            self.assertIn('class="proxy-node-grid"', body)
             # One /anytls link (in the version-tag/changelog area doesn't
             # exist), one nav entry, one dashboard tile — not two of each.
             self.assertEqual(body.count('href="/proxy"'), 1)
