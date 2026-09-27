@@ -61,7 +61,7 @@
   "iperf_port_invalid": "端口不可用，或测试窗口正在运行。",
   "iperf_opened": "窗口已开启。",
   "iperf_extended": "窗口已延长。",
-  "iperf_shut": "窗口已关闭。",
+  "iperf_shut": "测试已结束。",
   "iperf_disabled": "此次安装关闭了 iperf3 窗口（VPSSRV_IPERF_ENABLE=0）。",
   "iperf_missing": "本机没有安装 iperf3。用这条命令装：apt install iperf3",
   "iperf_port_busy": "端口 {port} 已被占用，iperf3 无法启动。",

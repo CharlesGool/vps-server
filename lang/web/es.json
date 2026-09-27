@@ -61,7 +61,7 @@
   "iperf_port_invalid": "El puerto no está disponible o la prueba está en curso.",
   "iperf_opened": "Ventana abierta.",
   "iperf_extended": "Ventana ampliada.",
-  "iperf_shut": "Ventana cerrada.",
+  "iperf_shut": "Prueba finalizada.",
   "iperf_disabled": "La ventana de iperf3 está desactivada en esta instalación (VPSSRV_IPERF_ENABLE=0).",
   "iperf_missing": "iperf3 no está instalado en este host. Instálalo con: apt install iperf3",
   "iperf_port_busy": "El puerto {port} ya está en uso, por lo que iperf3 no pudo iniciarse.",

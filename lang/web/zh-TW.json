@@ -61,7 +61,7 @@
   "iperf_port_invalid": "連接埠無法使用，或測試視窗正在執行。",
   "iperf_opened": "視窗已開啟。",
   "iperf_extended": "視窗已延長。",
-  "iperf_shut": "視窗已關閉。",
+  "iperf_shut": "測試已結束。",
   "iperf_disabled": "此次安裝關閉了 iperf3 視窗（VPSSRV_IPERF_ENABLE=0）。",
   "iperf_missing": "本機沒有安裝 iperf3。用這條命令裝：apt install iperf3",
   "iperf_port_busy": "連接埠 {port} 已被占用，iperf3 無法啟動。",

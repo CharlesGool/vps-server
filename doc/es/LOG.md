@@ -319,4 +319,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
-- (this commit) docs(log): record GitHub synchronization
+- `3d69356` docs(log): record GitHub synchronization
+- (this commit) fix(iperf): clarify finished state

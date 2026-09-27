@@ -61,7 +61,7 @@
   "iperf_port_invalid": "पोर्ट उपलब्ध नहीं है या परीक्षण चल रहा है।",
   "iperf_opened": "परीक्षण अवधि शुरू हुई।",
   "iperf_extended": "परीक्षण अवधि बढ़ाई गई।",
-  "iperf_shut": "परीक्षण अवधि बंद हुई।",
+  "iperf_shut": "परीक्षण समाप्त हुआ।",
   "iperf_disabled": "इस इंस्टॉलेशन में iperf3 परीक्षण अवधि बंद है (VPSSRV_IPERF_ENABLE=0)।",
   "iperf_missing": "इस होस्ट पर iperf3 इंस्टॉल नहीं है। इसे इंस्टॉल करें: apt install iperf3",
   "iperf_port_busy": "पोर्ट {port} पहले से उपयोग में है, इसलिए iperf3 शुरू नहीं हो सका।",

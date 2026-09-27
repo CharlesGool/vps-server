@@ -321,4 +321,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
-- (this commit) docs(log): record GitHub synchronization
+- `3d69356` docs(log): record GitHub synchronization
+- (this commit) fix(iperf): clarify finished state

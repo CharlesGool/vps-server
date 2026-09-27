@@ -61,7 +61,7 @@
   "iperf_port_invalid": "Port indisponible ou test en cours.",
   "iperf_opened": "Fenêtre ouverte.",
   "iperf_extended": "Fenêtre prolongée.",
-  "iperf_shut": "Fenêtre fermée.",
+  "iperf_shut": "Test terminé.",
   "iperf_disabled": "La fenêtre iperf3 est désactivée dans cette installation (VPSSRV_IPERF_ENABLE=0).",
   "iperf_missing": "iperf3 n’est pas installé sur cet hôte. Installez-le avec : apt install iperf3",
   "iperf_port_busy": "Le port {port} est déjà utilisé ; iperf3 n’a pas pu démarrer.",

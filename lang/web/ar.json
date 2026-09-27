@@ -61,7 +61,7 @@
   "iperf_port_invalid": "المنفذ غير متاح أو الاختبار قيد التشغيل.",
   "iperf_opened": "فُتحت النافذة.",
   "iperf_extended": "مُدّدت النافذة.",
-  "iperf_shut": "أُغلقت النافذة.",
+  "iperf_shut": "انتهى الاختبار.",
   "iperf_disabled": "نافذة iperf3 معطّلة في هذا التثبيت (VPSSRV_IPERF_ENABLE=0).",
   "iperf_missing": "iperf3 غير مثبّت على هذا المضيف. ثبّته بالأمر: apt install iperf3",
   "iperf_port_busy": "المنفذ {port} مستخدم بالفعل، لذا تعذّر بدء iperf3.",
