@@ -24,7 +24,7 @@ metadata:
 
 ## مقدمة
 
-حزمة بوحدات قابلة للاختيار لخادم VPS يعمل بنظام Debian/Ubuntu: صفحة عامة لفحص إمكانية الوصول إلى منافذ الويب، ولوحة للمشغّل لاختبارات السرعة وتسجيل الاتصالات، ونافذة iperf3 عند الطلب، وعُقد وكيل sing-box. وحدة `proxy` ذات البروتوكولات الأربعة الموصوفة هنا موجودة في الفرع غير المدمج `feat/proxy-protocols`؛ ووسم الإصدار v1.1.2 المستخدم في أوامر التثبيت أدناه **لا** يتضمنها. انظر [الحالة الراهنة وحدود القبول][local-link-001].
+حزمة بوحدات قابلة للاختيار لخادم VPS يعمل بنظام Debian/Ubuntu: صفحة عامة لفحص إمكانية الوصول إلى منافذ الويب، ولوحة للمشغّل لاختبارات السرعة وتسجيل الاتصالات، ونافذة iperf3 عند الطلب، وعُقد وكيل sing-box. يتضمن الإصدار 2.0.0 أيضًا وحدة `proxy` ذات البروتوكولات الأربعة ومثبّتَي frps وLucky التجريبيين. انظر [الحالة الراهنة وحدود القبول][local-link-001].
 
 ## الوظائف
 
@@ -36,7 +36,7 @@ metadata:
 - **تقديم وكيل anytls.** sing-box بشهادة ذاتية التوقيع، مع BBR. عند تثبيت هذه الوحدة، تعرض صفحة `/proxy` في اللوحة حالة العقدة ومدخل Clash الخاص بها ورابط `anytls://` مع زر للنسخ، فلا يلزم الرجوع إلى الطرفية لمشاركة العقدة مع عميل.
 - **تقديم وكيل vmess/vless/trojan/shadowsocks بأي مجموعة فرعية منها.** عملية sing-box إضافية تشارك وحدة anytls الملف التنفيذي المضمّن نفسه. عند تثبيتها، تحصل صفحة `/proxy` المشتركة في اللوحة على قسم لكل بروتوكول يبيّن منفذه ومعرّف UUID أو كلمة مروره ومدخل Clash ورابط المشاركة ورمز QR. ولكل بروتوكول زر إعادة ضبط خاص به، لا يغيّر بيانات اعتماد البروتوكولات الأخرى.
 
-وحدات الإصدار الموثّقة هي web وiperf3 وanytls وproxy. يتيح هذا الفرع غير المنشور أيضًا مسارات تثبيت تجريبية لـfrps وLucky. لم يُتحقق هنا من سلوكها على مضيف حقيقي أو قبولها للإصدار.
+الوحدات القابلة للاختيار هي web وiperf3 وanytls وproxy وfrps وLucky. تظل وحدتا frps وLucky تجريبيتين؛ ولم يُقبل سلوكهما على مضيف حقيقي لهذا الإصدار.
 
 **ما ليس من الأهداف:** لا ACME ولا أسماء نطاقات (الشهادة على 443 ذاتية التوقيع عمدًا)؛ ولا iperf3 دائم التشغيل؛ ولا وكيل عكسي أو حاويات. لا تكشف الصفحة العامة مطلقًا عن اسم المضيف أو النواة أو مدة التشغيل أو قائمة الخدمات أو إعدادات الوكيل. لا يحل هذا المشروع محل `vps-webserver` أو `Anytsl-Serve`؛ إذ يستمر صيانتهما بصورة مستقلة وتُضمّن شفرتهما هنا بدلًا من دمجهما فيه.
 
@@ -54,7 +54,7 @@ metadata:
 تثبيت سريع بسطر واحد (أحدث وسم إصدار، دون متغيرات إعداد):
 
 ```bash
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 خطوة بخطوة، مع الإعداد:
@@ -62,21 +62,21 @@ git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
-bash install.sh
+bash deploy/install.sh
 ```
 
-يسأل `install.sh` عن الوحدات المراد تثبيتها، ولغة الواجهة، وحماية اللوحة بكلمة مرور، والمنافذ المستخدمة. يدعم تثبيت v1.1.2 الموسوم وحدات web وiperf3 وanytls؛ أما وحدة proxy الإضافية فهي عمل جارٍ في الفرع وليست جزءًا من ذلك الوسم.
+يسأل `deploy/install.sh` عن الوحدات المراد تثبيتها، ولغة الواجهة، وحماية اللوحة بكلمة مرور، والمنافذ المستخدمة. يتضمن وسم v2.0.0 الوحدات الست كلها القابلة للاختيار؛ وتظل frps وLucky تجريبيتين.
 
-**إعادة تشغيله تُحدّث التثبيت في مكانه.** يكتشف التثبيت الموجود ويعرض الإبقاء على إعداداته، ولا يسأل إلا عن الإعدادات التي لم تكن متاحة في الإصدار المثبّت، مع عرض قيمتها الافتراضية، لذا يُعدّ ضغط Enter إجابة صالحة. تبقى كلمة مرور اللوحة والمنفذ المحفوظ والشهادات وسجل الزوار وبيانات اعتماد عقدة anytls، وكذلك منفذ وبيانات اعتماد كل بروتوكول proxy مثبّت (في هذا الفرع غير المدمج). أجب بـ`n` عن سؤال الترقية لإعادة السؤال عن الإعدادات بدلًا من ذلك.
+**إعادة تشغيله تُحدّث التثبيت في مكانه.** يكتشف التثبيت الموجود ويعرض الإبقاء على إعداداته، ولا يسأل إلا عن الإعدادات التي لم تكن متاحة في الإصدار المثبّت، مع عرض قيمتها الافتراضية، لذا يُعدّ ضغط Enter إجابة صالحة. تبقى كلمة مرور اللوحة والمنفذ المحفوظ والشهادات وسجل الزوار وبيانات اعتماد عقدة anytls، وكذلك منفذ وبيانات اعتماد كل بروتوكول proxy مثبّت. أجب بـ`n` عن سؤال الترقية لإعادة السؤال عن الإعدادات بدلًا من ذلك.
 
 ## إرشادات
 
 ### بدء سريع
 
-تضع نسخة المستودع غير المنشورة هذه تنفيذ الويب في `src/web/app.py` وتشغّل المثبّتات من `deploy/`. يوجد الملف التنفيذي المضمّن وإشعار ترخيصه في `third_party/sing-box/`، وبيانات الإصدار في `config/`. تبقى الملفات المثبّتة في التخطيط المسطح `$PREFIX/app.py` و`$PREFIX/static/` و`$PREFIX/anytls/` و`$PREFIX/proxy/` و`$PREFIX/sing-box`. هذا ليس إصدارًا جديدًا ولا تحققًا على مضيف حقيقي.
+يضع الإصدار 2.0.0 تنفيذ الويب في `src/web/app.py` ويشغّل المثبّتات من `deploy/`. توجد الملفات التنفيذية المضمّنة وإشعارات تراخيصها تحت `third_party/`، وبيانات الإصدار في `config/`. تبقى الملفات المثبّتة في تخطيط مسطح تحت `$PREFIX`؛ ولا ينقل تغيير تخطيط نسخة المستودع بيانات التشغيل. اجتازت المسارات الجديدة الاختبارات المحلية، لكن هذا الإصدار لم يُقبل بعد على مضيف حقيقي.
 
 ```bash
 bash deploy/install.sh                       # interactive: temporary browser setup wizard
@@ -96,7 +96,7 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 
 ### التحقق من عمله
 
-بعد `bash install.sh`، ينبغي أن ترى كتلة ملخّص تذكر كل وحدة مثبّتة ومنفذها. ثم:
+بعد `bash deploy/install.sh`، ينبغي أن ترى كتلة ملخّص تذكر كل وحدة مثبّتة ومنفذها. ثم:
 
 - يُظهر `systemctl status vps-server-web` الحالة `active (running)`.
 - يُظهر فتح `http://<ip>/` من **جهاز آخر** صفحة عنوانها "Reachable" تعرض عنوان IP العام الخاص بك. ويُظهر فتح `https://<ip>/` الصفحة نفسها بعد قبول تحذير الشهادة، مع HTTPS في سطر البروتوكول.
@@ -128,20 +128,24 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 الاحتفاظ بالبيانات** داخل `$PREFIX` لإعادة تثبيت لاحقة:
 
 ```bash
-KEEP_DATA=1 bash uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 لإزالة الوحدات المثبّتة **وحذف البيانات أيضًا** (بما في ذلك سجل الزوار وكلمة مرور اللوحة والمنفذ المحفوظ والشهادات داخل `$PREFIX`):
 
 ```bash
-bash uninstall.sh
+bash deploy/uninstall.sh
 ```
 
 يفكّ كلا الوضعين خدمات anytls/proxy وإعدادات وحداتهما المنفصلة إذا كانت مثبّتة. يحتفظ `KEEP_DATA=1` بـ`$PREFIX`، لا بإعدادات تلك الوحدات.
 
 ## شكر وتقدير
 
-يستخدم اختبار المتصفح [LibreSpeed](https://github.com/librespeed/speedtest)؛ ويستخدم عرض رموز QR مكتبة [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)؛ ومحرك الوكيل المضمّن هو [sing-box](https://github.com/SagerNet/sing-box). راجع [إشعارات الأطراف الثالثة][local-link-003] لجرد المكوّنات ومسارات تراخيصها الأصلية.
+يستخدم اختبار المتصفح [LibreSpeed](https://github.com/librespeed/speedtest)؛ ويستخدم عرض رموز QR مكتبة
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)؛ ومحرك الوكيل المضمّن هو
+[sing-box](https://github.com/SagerNet/sing-box). تضم الوحدات التجريبية
+[frp](https://github.com/fatedier/frp) و
+[Lucky](https://github.com/gdy666/lucky). راجع [إشعارات الأطراف الثالثة][local-link-003] لجرد المكوّنات ومسارات تراخيصها الأصلية.
 
 ## الترخيص
 

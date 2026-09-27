@@ -24,7 +24,7 @@ metadata:
 
 ## 簡介
 
-這是一套可選擇模組的 Debian/Ubuntu VPS 套件:提供檢查 Web 連接埠可達性的公開頁面,測速和連線記錄的操作者主控台,隨需開啟的 iperf3 視窗,以及 sing-box 代理節點.本文所述的四協定 `proxy` 模組位於尚未合併的 `feat/proxy-protocols` 分支;以下安裝指令指定的 v1.1.2 發行標籤**不包含**該模組.參閱[目前狀態及驗收限制][local-link-001].
+這是一套可選擇模組的 Debian/Ubuntu VPS 套件:提供檢查 Web 連接埠可達性的公開頁面,測速和連線記錄的操作者主控台,隨需開啟的 iperf3 視窗,以及 sing-box 代理節點.v2.0.0 亦包含四協定 `proxy` 模組,以及實驗性的 frps 與 Lucky 安裝程式.參閱[目前狀態及驗收限制][local-link-001].
 
 ## 功能
 
@@ -36,9 +36,7 @@ metadata:
 - **提供 anytls 代理.** sing-box 搭配自簽憑證及 BBR.安裝該模組後,主控台的 `/proxy` 頁面顯示節點是否在線,提供 Clash 條目及帶複製按鈕的 `anytls://` 連結,毋須返回終端機即可將節點交給用戶端.
 - **提供 vmess/vless/trojan/shadowsocks 代理,任選子集.** 另一個 sing-box 行程,與 anytls 共用隨附的執行檔.安裝後,共用的 `/proxy` 頁面會為各協定增加一節,顯示連接埠,UUID 或密碼,Clash 條目,分享連結及 QR code.各協定有獨立的重設按鈕,不改動其他協定的憑證.
 
-web,iperf3,anytls,proxy 四個模組均可在安裝時選擇.
-
-以上四個模組是已記錄的發行模組.目前尚未發行的簽出版本另有實驗性的 frps 及 Lucky 安裝路徑;本次文件遷移未驗證其實機行為或發行驗收.
+web,iperf3,anytls,proxy,frps 與 Lucky 六個模組均可在安裝時選擇.frps 與 Lucky 仍屬實驗性模組;本版本尚未在實機完成其行為驗收.
 
 **非目標:**不提供 ACME 或網域名稱(443 刻意使用自簽憑證);不常駐執行 iperf3;不使用反向代理或容器;公開頁面絕不揭露主機名稱,核心版本,運行時間,服務清單或代理參數.本專案不取代 `vps-webserver` 或 `Anytsl-Serve`;兩者仍獨立維護,其程式碼在此以隨附方式收錄,而非被合併取代.
 
@@ -56,7 +54,7 @@ web,iperf3,anytls,proxy 四個模組均可在安裝時選擇.
 單行快速安裝(最新發行標籤,無設定變數):
 
 ```bash
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 逐步安裝並設定:
@@ -64,21 +62,21 @@ git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
-bash install.sh
+bash deploy/install.sh
 ```
 
-`install.sh` 會詢問要安裝哪些模組,介面語言,是否以密碼保護主控台,以及使用哪些連接埠.已標記的 v1.1.2 安裝支援 web,iperf3 和 anytls;新增的 proxy 模組是分支上的工作,不屬於該標籤.
+`deploy/install.sh` 會詢問要安裝哪些模組,介面語言,是否以密碼保護主控台,以及使用哪些連接埠.v2.0.0 標籤包含六個可選模組;frps 與 Lucky 屬實驗性模組.
 
-**再次執行會就地升級.** 程式偵測現有安裝,讓你選擇保留設定,只詢問已安裝版本尚未提供的設定;每項都有預設值,直接按 Enter 即可.主控台密碼,已保存的連接埠,憑證,訪客記錄,anytls 節點憑證,以及(在此未合併分支上)各已安裝代理協定的連接埠和憑證都會保留.升級提示回答 `n` 則會重新詢問設定.
+**再次執行會就地升級.** 程式偵測現有安裝,讓你選擇保留設定,只詢問已安裝版本尚未提供的設定;每項都有預設值,直接按 Enter 即可.主控台密碼,已保存的連接埠,憑證,訪客記錄,anytls 節點憑證,以及各已安裝代理協定的連接埠和憑證都會保留.升級提示回答 `n` 則會重新詢問設定.
 
 ## 指南
 
 ### 快速開始
 
-目前未發行的簽出版本將 Web 實作放在 `src/web/app.py`,安裝與移除腳本從 `deploy/` 執行.隨附執行檔及授權聲明位於 `third_party/sing-box/`;發行中繼資料位於 `config/`.已安裝檔案仍平鋪於 `$PREFIX/app.py`,`$PREFIX/static/`,`$PREFIX/anytls/`,`$PREFIX/proxy/` 和 `$PREFIX/sing-box`.這不是新版本,亦未在真實主機驗證.
+v2.0.0 將 Web 實作放在 `src/web/app.py`,安裝程式從 `deploy/` 執行.隨附的執行檔及授權聲明位於 `third_party/`;發行中繼資料位於 `config/`.已安裝檔案仍平鋪於 `$PREFIX` 下;簽出目錄的結構調整不會遷移運行資料.新路徑已通過本地測試,但本版本尚未通過實機驗收.
 
 ```bash
 bash deploy/install.sh                       # interactive: temporary browser setup wizard
@@ -98,7 +96,7 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 
 ### 驗證運作
 
-執行 `bash install.sh` 後應看到列出各已安裝模組和連接埠的摘要.然後:
+執行 `bash deploy/install.sh` 後應看到列出各已安裝模組和連接埠的摘要.然後:
 
 - `systemctl status vps-server-web` 回報 `active (running)`.
 - 從**另一台機器**開啟 `http://<ip>/`,應看到標題為"Reachable"的頁面及自己的公開 IP.接受憑證警告後開啟 `https://<ip>/`,應看到相同頁面,協定欄位顯示 HTTPS.
@@ -130,20 +128,24 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 保留** `$PREFIX` 中供日後重新安裝使用的資料:
 
 ```bash
-KEEP_DATA=1 bash uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 若要移除模組並**一併刪除資料**(包括 `$PREFIX` 中的訪客記錄,主控台密碼,已保存連接埠和憑證):
 
 ```bash
-bash uninstall.sh
+bash deploy/uninstall.sh
 ```
 
 兩種模式都會拆除已安裝的 anytls/proxy 服務及各自的模組設定.`KEEP_DATA=1` 保留 `$PREFIX`,不保留這些模組設定.
 
 ## 致謝
 
-瀏覽器測試使用 [LibreSpeed](https://github.com/librespeed/speedtest);QR 圖碼使用 [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);隨附的代理核心為 [sing-box](https://github.com/SagerNet/sing-box).元件清單和原始授權檔路徑見[第三方聲明][local-link-003].
+瀏覽器測試使用 [LibreSpeed](https://github.com/librespeed/speedtest);QR 圖碼使用
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);隨附的代理核心為
+[sing-box](https://github.com/SagerNet/sing-box). 實驗性模組隨附
+[frp](https://github.com/fatedier/frp) 與
+[Lucky](https://github.com/gdy666/lucky). 元件清單和原始授權檔路徑見[第三方聲明][local-link-003].
 
 ## 授權條款
 

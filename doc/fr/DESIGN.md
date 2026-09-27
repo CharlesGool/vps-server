@@ -24,9 +24,9 @@ metadata:
 
 ## Objectifs de conception
 
-**Objectifs réalisés (y compris les travaux sur une branche non fusionnée ; voir les [limites de validation][local-link-001]) :**
+**Objectifs réalisés dans la version v2.0.0 (voir les [limites de validation][local-link-001]) :**
 
-Le dépôt actuel contient également des parcours d’installation expérimentaux pour frps et Lucky. Leur comportement sur un hôte réel et leur acceptation pour une version restent non vérifiés ; les objectifs ci-dessous décrivent les quatre modules documentés pour la branche de fonctionnalités précédente.
+La version 2.0.0 comprend également des parcours d’installation expérimentaux pour frps et Lucky. Leur fonctionnement n’a pas été validé sur un hôte réel ; les objectifs ci-dessous décrivent les quatre modules documentés auparavant.
 
 - Installer, sur un VPS Debian/Ubuntu neuf, un ensemble unique avec quatre modules sélectionnables
   fournissant cinq fonctionnalités (le module Web comprend la page publique et la console privée) :

@@ -24,11 +24,11 @@ metadata:
 
 ## Design Goals
 
-**Implemented goals (including work on an unmerged branch; see [acceptance limits][local-link-001]):**
+**Implemented goals in v2.0.0 (see [acceptance limits][local-link-001]):**
 
-The current checkout also contains experimental frps and Lucky installer paths.
-Their host behavior and release acceptance remain unverified; the goals below
-describe the four modules documented for the earlier feature branch.
+Version 2.0.0 also contains experimental frps and Lucky installer paths.
+Their host behavior has not been accepted on a real host; the goals below
+describe the four previously documented modules.
 
 - Install, on a fresh Debian/Ubuntu VPS, a single bundle with four selectable
   modules providing five capabilities (the web module includes the public page

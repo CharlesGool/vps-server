@@ -53,9 +53,9 @@ Las decisiones fechadas conservan tanto las alternativas descartadas como sus co
 
 ## Limitaciones y estado actual de aceptación
 
-El árbol de trabajo actual también incluye rutas experimentales de instalación para frps y Lucky, que no han recibido aceptación en un servidor real ni para una versión durante esta migración documental.
+La versión 2.0.0 incluye rutas experimentales de instalación para frps y Lucky. Su funcionamiento no se ha aceptado en un servidor real; durante este ciclo de publicación, la nueva organización del repositorio solo se ha verificado mediante pruebas automatizadas locales.
 
-La instantánea original describía `feat/proxy-protocols` sobre `feat/hardening-batch`, todavía sin integrar. No está integrada, etiquetada ni publicada. Siguen pendientes la revisión del operador y las pruebas del módulo proxy en un servidor real. Durante la revisión de las ramas hay que conciliar las correcciones de deduplicación de direcciones y de IP pública aplicadas por separado. Esta migración no afirma que la función proxy se haya verificado en un servidor real; el contenedor antiguo usó un `systemctl` simulado porque systemd no funcionaba como PID 1. Los resultados de las suites 147/147, 150/150, 153/153 y 156/156 y las verificaciones anteriores en servidores reales indicadas más abajo son históricos, no una nueva validación. El estado anterior no registraba bloqueos actuales; ello no exime de la aceptación pendiente.
+La instantánea original del 2026-09-22 describía `feat/proxy-protocols` sobre `feat/hardening-batch`, todavía sin integrar. La versión 2.0.0 incorpora el árbol actual del proyecto de ambas ramas, pero siguen pendientes las pruebas del módulo proxy por el operador en un servidor real. Las correcciones de deduplicación de direcciones y de IP pública aplicadas por separado formaron parte de la revisión de ramas. Aquí no se afirma que la función proxy se haya verificado en un servidor real; el contenedor antiguo usó un `systemctl` simulado porque systemd no funcionaba como PID 1. Los resultados de las suites 147/147, 150/150, 153/153 y 156/156 y las verificaciones anteriores en servidores reales indicadas más abajo son históricos, no una nueva validación.
 
 ### Branch record (2026-09-22 status snapshot)
 
@@ -67,7 +67,7 @@ Una solicitud posterior del operador cambió el botón de restablecimiento del p
 
 Para trabajos anteriores ya publicados, el estado registraba una comprobación del operador en un servidor real del reenvío de puertos de v1.1.0, después del entorno desechable de tres contenedores y de 119/119 pruebas unitarias. Antes de v1.0.0 registraba comprobaciones del operador en un servidor real de la página pública en ambos puertos, la consola y prueba de navegador, iperf3 alcanzando 2.8 Gbit/s en LAN y rechazando conexiones tras cerrarse la ventana, instalación/restablecimiento/desinstalación de anytls, conservación de ajustes durante la actualización y los tres idiomas de la interfaz. Son observaciones históricas, no aceptación de la rama actual. La instantánea antigua indicaba que la siguiente investigación era la medición del bloqueo SQLite, no registraba problemas bloqueantes y no delimitaba la contabilización del tráfico, el asistente de primer uso, frps, las funciones de `gdy666/lucky` ni los nodos altamente personalizables. Sus ubicaciones actuales son [Errores][local-link-001] y [Objetivos de diseño][local-link-002].
 
-## Reorganización del repositorio no publicada (sin etiqueta de versión)
+## Reorganización del repositorio en v2.0.0
 
 En este árbol de trabajo, la implementación web está en `src/web/app.py`. Los comandos de instalación y eliminación están en `deploy/install.sh` y `deploy/uninstall.sh`; el código operativo está en `deploy/systemd/`, `deploy/anytls/` y `deploy/proxy/`. El ejecutable amd64, los metadatos de versión y el aviso original están ahora en `third_party/sing-box/{sing-box,sing-box.version,LICENSE}`. Los recursos de terceros servidos directamente permanecen en `static/third_party/`; el verificador de dependencias está en `tools/verify_dependencies/`. La instalación sigue siendo plana (`$PREFIX/app.py`, `$PREFIX/static/`, `$PREFIX/anytls/`, `$PREFIX/proxy/`, `$PREFIX/sing-box`) y la configuración de los módulos sigue usando `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Los nombres de ruta anteriores en las decisiones fechadas y el trabajo completado describen el árbol histórico, no instrucciones actuales. Las comprobaciones de migración sin conexión no validan un servidor real ni systemd; sigue pendiente la aceptación del operador.
 
@@ -173,7 +173,24 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Siguiente paso: validar `standardize/project-structure` en un servidor real con systemd y completar después la revisión independiente de las traducciones y licencias antes de una versión.
 ## Historial de cambios
 
-Aquí solo se enumeran versiones etiquetadas. El trabajo de las ramas no integradas descrito antes no constituye una nueva publicación. Las siguientes entradas conservan íntegramente el historial anterior de cambios.
+Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.
+
+### v2.0.0 — 2026-09-27
+
+#### Changed
+
+- Las rutas de entrada del instalador y el desinstalador se trasladaron a `deploy/install.sh` y `deploy/uninstall.sh`; el código web, a `src/web/`; las dependencias incluidas, a `third_party/`; y los metadatos de versión, a `config/`. Los scripts que usaban las rutas anteriores del repositorio deben actualizarse; los datos de ejecución instalados permanecen en sus ubicaciones actuales.
+- Los antiguos documentos de tareas pendientes, estado, decisiones e historial de cambios se consolidaron en `DESIGN.md` y `LOG.md`; se migraron los ocho conjuntos de idiomas y los enlaces locales a la estructura documental estándar. Los textos de la interfaz están ahora en `lang/`, con nombres de archivo BCP-47.
+
+#### Added
+
+- Se incorporaron el módulo proxy de cuatro protocolos, su página compartida en la consola, los controles de restablecimiento de credenciales por protocolo y el asistente de configuración en el navegador.
+- Se incorporaron los instaladores experimentales de frps y Lucky y sus ejecutables incluidos. Los archivos de licencia originales y los hashes de los artefactos constan en el inventario de terceros.
+
+#### Verification and limits
+
+- Pruebas unitarias locales: 271 aprobadas y 8 omitidas. Se superaron las comprobaciones de hashes de dependencias, documentación y estructura multilingüe. El verificador de documentos notificó cuatro advertencias sobre las etiquetas de navegación de los documentos en inglés.
+- Siguen pendientes la aceptación de esta organización del repositorio en un servidor real con systemd, la revisión independiente de las traducciones por hablantes nativos y la revisión completa de las licencias de origen. frps y Lucky son experimentales en esta versión.
 
 ### v1.1.2 — 2026-09-21
 

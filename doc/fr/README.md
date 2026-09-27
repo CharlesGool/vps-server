@@ -24,7 +24,7 @@ metadata:
 
 ## Introduction
 
-Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de vérification de l'accessibilité des ports web, une console d'administration pour les tests de débit et la journalisation des connexions, une fenêtre iperf3 à la demande et des nœuds proxy sing-box. Le module `proxy` à quatre protocoles décrit ici existe sur la branche non fusionnée `feat/proxy-protocols` ; le tag de version v1.1.2 utilisé dans les commandes d'installation ci-dessous ne l'inclut **pas**. Voir [l'état actuel et les limites de validation][local-link-001].
+Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de vérification de l'accessibilité des ports web, une console d'administration pour les tests de débit et la journalisation des connexions, une fenêtre iperf3 à la demande et des nœuds proxy sing-box. La version 2.0.0 comprend également le module `proxy` à quatre protocoles et les installateurs expérimentaux de frps et Lucky. Voir [l'état actuel et les limites de validation][local-link-001].
 
 ## Fonctionnalités
 
@@ -36,7 +36,7 @@ Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de
 - **Fournit un proxy anytls.** sing-box avec certificat autosigné et BBR. Si ce module est installé, la page `/proxy` de la console présente l'état du nœud, son entrée Clash et son lien `anytls://` avec un bouton de copie : nul besoin de retourner au terminal pour communiquer le nœud à un client.
 - **Fournit un proxy vmess/vless/trojan/shadowsocks, dans toute combinaison.** Un processus sing-box supplémentaire partage le binaire embarqué avec anytls. Une fois installé, le module ajoute à la page `/proxy` commune une section par protocole : port, UUID ou mot de passe, entrée Clash, lien de partage et code QR. Chaque protocole dispose de son propre bouton de réinitialisation, qui laisse les autres identifiants inchangés.
 
-Les modules documentés pour la version sont web, iperf3, anytls et proxy. Ce dépôt non publié propose aussi des parcours d’installation expérimentaux pour frps et Lucky. Leur comportement sur un hôte réel et leur acceptation pour une version n’ont pas été vérifiés ici.
+Les modules sélectionnables sont web, iperf3, anytls, proxy, frps et Lucky. frps et Lucky restent expérimentaux ; leur fonctionnement n’a pas été validé sur un hôte réel pour cette version.
 
 **Hors périmètre :** ni ACME ni noms de domaine (le certificat sur 443 est volontairement autosigné) ; pas d'iperf3 permanent ; pas de proxy inverse ni de conteneurs ; la page publique ne révèle jamais le nom de l'hôte, le noyau, la durée de fonctionnement, la liste des services ou les paramètres des proxys. Ce projet ne remplace pas `vps-webserver` ou `Anytsl-Serve` : tous deux restent maintenus indépendamment et leur code est embarqué ici plutôt qu'absorbé.
 
@@ -54,7 +54,7 @@ Les modules documentés pour la version sont web, iperf3, anytls et proxy. Ce d�
 Installation rapide en une ligne (dernier tag publié, sans variables de configuration) :
 
 ```bash
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Installation pas à pas, avec configuration :
@@ -62,21 +62,21 @@ Installation pas à pas, avec configuration :
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
-bash install.sh
+bash deploy/install.sh
 ```
 
-`install.sh` demande les modules à installer, la langue de l'interface, l'activation de la protection de la console par mot de passe et les ports. La version publiée v1.1.2 prend en charge web, iperf3 et anytls ; le module proxy supplémentaire est en cours de développement sur une branche et ne figure pas dans ce tag.
+`deploy/install.sh` demande les modules à installer, la langue de l’interface, l’activation de la protection de la console par mot de passe et les ports. Le tag v2.0.0 comprend les six modules sélectionnables ; frps et Lucky sont expérimentaux.
 
-**Une nouvelle exécution met à niveau l'installation sur place.** Le script détecte l'installation existante, propose de conserver sa configuration et ne demande que les paramètres absents de la version installée, chacun avec sa valeur par défaut : appuyer sur Entrée est donc une réponse valable. Le mot de passe de la console, le port conservé, les certificats, le journal des visiteurs, les identifiants du nœud anytls et, sur cette branche non fusionnée, les ports et identifiants de chaque protocole proxy installé sont préservés. Répondez `n` à la question de mise à niveau pour redéfinir les paramètres.
+**Une nouvelle exécution met à niveau l'installation sur place.** Le script détecte l'installation existante, propose de conserver sa configuration et ne demande que les paramètres absents de la version installée, chacun avec sa valeur par défaut : appuyer sur Entrée est donc une réponse valable. Le mot de passe de la console, le port conservé, les certificats, le journal des visiteurs, les identifiants du nœud anytls ainsi que les ports et identifiants de chaque protocole proxy installé sont préservés. Répondez `n` à la question de mise à niveau pour redéfinir les paramètres.
 
 ## Conseils
 
 ### Quick start
 
-Ce dépôt non publié place l’implémentation Web dans `src/web/app.py` et exécute les installateurs depuis `deploy/`. Le binaire embarqué et sa licence sont dans `third_party/sing-box/` ; les métadonnées de version sont dans `config/`. Les fichiers installés conservent l’arborescence plate `$PREFIX/app.py`, `$PREFIX/static/`, `$PREFIX/anytls/`, `$PREFIX/proxy/` et `$PREFIX/sing-box`. Il ne s’agit ni d’une nouvelle version ni d’une validation sur un hôte réel.
+La version 2.0.0 place l’implémentation Web dans `src/web/app.py` et exécute les installateurs depuis `deploy/`. Les binaires embarqués et leurs mentions de licence se trouvent dans `third_party/` ; les métadonnées de version sont dans `config/`. Les fichiers installés conservent une arborescence plate sous `$PREFIX` ; le changement d’organisation du dépôt ne migre pas les données d’exécution. Les nouveaux chemins ont passé les tests locaux, mais cette version n’a pas été validée sur un hôte réel.
 
 ```bash
 bash deploy/install.sh                       # interactive: temporary browser setup wizard
@@ -96,7 +96,7 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 
 ### Verify it works
 
-Après `bash install.sh`, un récapitulatif doit nommer chaque module installé et son port. Ensuite :
+Après `bash deploy/install.sh`, un récapitulatif doit nommer chaque module installé et son port. Ensuite :
 
 - `systemctl status vps-server-web` indique `active (running)`.
 - Depuis **une autre machine**, `http://<ip>/` affiche une page intitulée « Reachable » et votre propre IP publique. `https://<ip>/` affiche la même page après acceptation de l'avertissement de certificat, avec HTTPS à la ligne du protocole.
@@ -128,20 +128,24 @@ Exécutez en tant que root depuis le dépôt de l'installateur, avec les valeurs
 les données** dans `$PREFIX` en vue d'une réinstallation :
 
 ```bash
-KEEP_DATA=1 bash uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 Pour retirer les modules installés **et supprimer aussi les données** (dont le journal des visiteurs, le mot de passe de la console, le port enregistré et les certificats dans `$PREFIX`) :
 
 ```bash
-bash uninstall.sh
+bash deploy/uninstall.sh
 ```
 
 Dans les deux cas, les services anytls/proxy et leurs configurations de module distinctes sont supprimés s'ils existent. `KEEP_DATA=1` conserve `$PREFIX`, mais pas ces configurations de module.
 
 ## Remerciements
 
-Le test de débit dans le navigateur utilise [LibreSpeed](https://github.com/librespeed/speedtest) ; le rendu des codes QR utilise [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) ; le moteur proxy intégré est [sing-box](https://github.com/SagerNet/sing-box). Voir les [mentions relatives aux tiers][local-link-003] pour l'inventaire et les chemins des licences originales.
+Le test de débit dans le navigateur utilise [LibreSpeed](https://github.com/librespeed/speedtest) ; le rendu des codes QR utilise
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) ; le moteur proxy intégré est
+[sing-box](https://github.com/SagerNet/sing-box). Les modules expérimentaux embarquent
+[frp](https://github.com/fatedier/frp) et
+[Lucky](https://github.com/gdy666/lucky). Voir les [mentions relatives aux tiers][local-link-003] pour l’inventaire et les chemins des licences originales.
 
 ## Licence
 

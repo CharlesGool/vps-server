@@ -53,9 +53,18 @@ The dated decisions below preserve both rejected alternatives and their costs. A
 
 ## Current state and acceptance limits
 
-The current checkout also includes experimental frps and Lucky install paths, which have not received live-host or release acceptance in this documentation migration.
+Version 2.0.0 includes experimental frps and Lucky install paths. Their
+behavior has not been accepted on a real host; the new checkout layout has
+only local automated verification in this release cycle.
 
-The source snapshot described `feat/proxy-protocols` stacked on unmerged `feat/hardening-batch`. It is not merged, tagged, or released. The operator's review and real-host test of the proxy module are still pending. Reconcile independently applied address-deduplication and public-IP fixes during branch review. No live-host verification of the proxy feature is claimed by this migration; the old container used a stub `systemctl` because systemd did not run as PID 1. The recorded 147/147, 150/150, 153/153 and 156/156 suite results and earlier real-host checks below are historical, not new validation. The prior status described no current blocker; this does not waive pending acceptance.
+The 2026-09-22 source snapshot described `feat/proxy-protocols` stacked on
+unmerged `feat/hardening-batch`. Version 2.0.0 incorporates their current
+project tree, but the operator's real-host test of the proxy module is still
+pending. The independently applied address-deduplication and public-IP fixes
+were part of the branch review. No live-host verification of the proxy feature
+is claimed here; the old container used a stub `systemctl` because systemd did
+not run as PID 1. The recorded 147/147, 150/150, 153/153 and 156/156 suite
+results and earlier real-host checks below are historical, not new validation.
 
 ### Branch record (2026-09-22 status snapshot)
 
@@ -102,7 +111,7 @@ reported no blocking issue, and did not scope the traffic accounting, first-run
 wizard, frps, `gdy666/lucky` features, or highly customizable nodes. Their
 current destinations are [Bugs][local-link-001] and [Design Goals][local-link-002].
 
-## Unreleased checkout layout migration (no release tag)
+## v2.0.0 checkout layout migration
 
 This checkout moves web implementation to `src/web/app.py`. Installation and removal commands live at
 `deploy/install.sh` and `deploy/uninstall.sh`;
@@ -219,7 +228,39 @@ These checked items are the former backlog's dated implementation and verificati
 - Next action: run real-host/systemd acceptance for `standardize/project-structure`, then complete independent translation and upstream license reviews before a release.
 ## Changelog
 
-Only tagged releases are listed here. Unmerged branch work above is not a new release. The following entries retain the complete former changelog history.
+Only tagged releases are listed here. The following entries retain the complete
+former changelog history and record the v2.0.0 release content.
+
+### v2.0.0 — 2026-09-27
+
+#### Changed
+
+- Moved installer and removal entry points to `deploy/install.sh` and
+  `deploy/uninstall.sh`, web source to `src/web/`, bundled dependencies to
+  `third_party/`, and release metadata to `config/`. Scripts that called the
+  old checkout paths need the new paths; installed runtime data stays in its
+  existing locations.
+- Consolidated the former backlog, status, decision, and changelog documents
+  into `DESIGN.md` and `LOG.md`; migrated all eight language sets and local
+  links to the standard document layout. Interface text now lives under
+  `lang/` with BCP-47 file names.
+
+#### Added
+
+- Included the four-protocol proxy module, its shared console page and
+  per-protocol credential reset controls, plus the browser setup wizard.
+- Included experimental frps and Lucky installers and their bundled
+  executables. Their original license files and artifact hashes are recorded
+  in the third-party inventory.
+
+#### Verification and limits
+
+- Local unit suite: 271 tests passed, 8 skipped. Dependency hashes,
+  document checks, and multilingual structure checks passed. The document
+  checker reported four navigation-label warnings in English documents.
+- Real-host/systemd acceptance of this checkout, independent native-language
+  review, and full upstream license review remain outstanding. frps and Lucky
+  are experimental in this version.
 
 ### v1.1.2 — 2026-09-21
 

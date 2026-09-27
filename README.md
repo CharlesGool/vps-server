@@ -26,9 +26,8 @@ metadata:
 
 A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
 reachability, an operator console for speed tests and connection logging, an
-on-demand iperf3 window, and sing-box proxy nodes. The four-protocol `proxy`
-module described here exists on the unmerged `feat/proxy-protocols` branch;
-the v1.1.2 release tag in the install commands below does **not** include it.
+on-demand iperf3 window, and sing-box proxy nodes. Version 2.0.0 also includes
+the four-protocol `proxy` module and experimental frps and Lucky installers.
 See [current state and acceptance limits][local-link-001].
 
 ## What it does
@@ -60,9 +59,9 @@ See [current state and acceptance limits][local-link-001].
   with its port, UUID or password, Clash entry, share link and QR code. Each
   protocol has its own reset button, leaving the other credentials unchanged.
 
-The documented release modules are web, iperf3, anytls, and proxy. This
-unreleased checkout also exposes experimental frps and Lucky installation
-paths. Their host behavior and release acceptance have not been verified here.
+The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
+and Lucky remain experimental; their behavior has not been accepted on a real
+host for this version.
 
 **Non-goals:** no ACME or domain names (443 is self-signed on purpose); no
 always-on iperf3; no reverse proxy or containers; the public page never reveals
@@ -87,7 +86,7 @@ maintained, and their code is vendored here rather than absorbed.
 One-line quick install (latest release tag, no configuration variables):
 
 ```bash
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Step by step, with configuration:
@@ -95,22 +94,21 @@ Step by step, with configuration:
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
-bash install.sh
+bash deploy/install.sh
 ```
 
-`install.sh` asks which modules to install, the interface language, whether to
-password-protect the console, and which ports to use. The tagged v1.1.2 install
-supports web, iperf3, and anytls; the additional proxy module is branch work,
-not part of that tag.
+`deploy/install.sh` asks which modules to install, the interface language,
+whether to password-protect the console, and which ports to use. The v2.0.0
+tag includes all six selectable modules; frps and Lucky are experimental.
 
 **Re-running it upgrades in place.** It detects an existing install, offers to
 keep its configuration, and only asks about settings the installed version did
 not have — each with its default, so pressing Enter is a valid answer. The
 console password, the persisted port, the certificates, the visitor log, the
-anytls node's credentials, and (on this unmerged branch) every installed
+anytls node's credentials, and every installed
 proxy protocol's port and credential all survive. Answer `n` to the upgrade
 question to re-ask settings instead.
 
@@ -118,7 +116,12 @@ question to re-ask settings instead.
 
 ### Quick start
 
-This unreleased checkout puts web implementation in `src/web/app.py` and runs the installers from `deploy/`. The bundled binary and license notice are under `third_party/sing-box/`; release metadata is under `config/`. Installed files remain flat at `$PREFIX/app.py`, `$PREFIX/static/`, `$PREFIX/anytls/`, `$PREFIX/proxy/`, and `$PREFIX/sing-box`. This is not a new release or a real-host validation.
+Version 2.0.0 puts web implementation in `src/web/app.py` and runs installers
+from `deploy/`. Bundled binaries and license notices are under `third_party/`;
+release metadata is under `config/`. Installed files remain flat under
+`$PREFIX`; the checkout layout change does not migrate runtime data. The
+new paths have passed local tests, but this version has not been accepted on a
+real host.
 
 ```bash
 bash deploy/install.sh                       # interactive: temporary browser setup wizard
@@ -138,7 +141,7 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 
 ### Verify it works
 
-After `bash install.sh` you should see a summary block naming each installed
+After `bash deploy/install.sh` you should see a summary block naming each installed
 module and its port. Then:
 
 - `systemctl status vps-server-web` reports `active (running)`.
@@ -183,14 +186,14 @@ the exact removal command). To remove the installed modules and units **while
 keeping data** in `$PREFIX` for a later reinstall:
 
 ```bash
-KEEP_DATA=1 bash uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 To remove the installed modules and **delete data as well** (including the
 visitor log, console password, saved port, and certificates in `$PREFIX`):
 
 ```bash
-bash uninstall.sh
+bash deploy/uninstall.sh
 ```
 
 Both modes tear down the anytls/proxy services and their separate module
@@ -198,7 +201,12 @@ configs if installed. `KEEP_DATA=1` retains `$PREFIX`, not those module configs.
 
 ## Acknowledgements
 
-The browser test uses [LibreSpeed](https://github.com/librespeed/speedtest); QR rendering uses [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator); the bundled proxy core is [sing-box](https://github.com/SagerNet/sing-box). See [third-party notices][local-link-003] for the inventory and original license paths.
+The browser test uses [LibreSpeed](https://github.com/librespeed/speedtest);
+QR rendering uses [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);
+the bundled proxy core is [sing-box](https://github.com/SagerNet/sing-box).
+The experimental modules bundle [frp](https://github.com/fatedier/frp) and
+[Lucky](https://github.com/gdy666/lucky). See [third-party notices][local-link-003]
+for the inventory and original license paths.
 
 ## License
 

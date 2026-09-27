@@ -24,9 +24,9 @@ metadata:
 
 ## Objetivos de diseño
 
-**Objetivos implementados (incluidos los trabajos de una rama aún sin integrar; consulta los [límites de aceptación][local-link-001]):**
+**Objetivos implementados en v2.0.0 (consulta los [límites de aceptación][local-link-001]):**
 
-El árbol de trabajo actual también contiene rutas de instalación experimentales para frps y Lucky. No se han verificado su comportamiento en un servidor real ni su aceptación para una versión; los objetivos siguientes describen los cuatro módulos documentados para la rama de funcionalidades anterior.
+La versión 2.0.0 también contiene rutas de instalación experimentales para frps y Lucky. Su funcionamiento no se ha aceptado en un servidor real; los objetivos siguientes describen los cuatro módulos documentados anteriormente.
 
 - Instalar en un VPS Debian/Ubuntu nuevo un único paquete con cuatro módulos seleccionables que proporcionan cinco capacidades (el módulo web incluye la página pública y la consola privada):
   1. **Página pública de accesibilidad**: una página deliberadamente mínima en TCP

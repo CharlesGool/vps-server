@@ -24,7 +24,7 @@ metadata:
 
 ## 简介
 
-这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.本文介绍的四协议 `proxy` 模块位于尚未合并的 `feat/proxy-protocols` 分支;以下安装命令所用的 v1.1.2 发布标签**不**包含该模块.参见[当前状态与验收限制][local-link-001].
+这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.v2.0.0 还包含四协议 `proxy` 模块,以及实验性的 frps 和 Lucky 安装程序.参见[当前状态与验收限制][local-link-001].
 
 ## 功能
 
@@ -36,9 +36,7 @@ metadata:
 - **提供 anytls 代理.** 使用自签名证书的 sing-box,另加 BBR.安装该模块后,控制台的 `/proxy` 页面显示节点是否在线,提供 Clash 条目和带复制按钮的 `anytls://` 链接;将节点交给客户端无需再返回终端.
 - **提供 vmess/vless/trojan/shadowsocks 代理,可选择任意子集.** 另一 sing-box 进程与 anytls 共用仓库内的二进制文件.安装后,控制台共用的 `/proxy` 页面为每种协议增加一个分区,显示端口,UUID 或密码,Clash 条目,分享链接及二维码.每种协议都有独立的重置按钮,不会更改其他协议的凭据.
 
-web,iperf3,anytls,proxy 四个模块均可在安装时选择.
-
-以上四个模块是已记录的发布模块.当前未发布的检出版本还提供实验性的 frps 和 Lucky 安装路径;此次文档迁移没有验证它们在真实主机上的行为或发布验收.
+web,iperf3,anytls,proxy,frps 和 Lucky 六个模块均可在安装时选择.frps 和 Lucky 仍属实验性模块;本版本尚未在真实主机上完成其行为验收.
 
 **非目标:** 不提供 ACME 或域名(443 刻意使用自签名证书);不提供常驻 iperf3;不提供反向代理或容器;公开页面绝不暴露主机名,内核,运行时间,服务列表或代理参数.本项目不取代 `vps-webserver` 或 `Anytsl-Serve`——二者继续独立维护,其代码在此以随附副本形式使用,而非并入项目.
 
@@ -56,7 +54,7 @@ web,iperf3,anytls,proxy 四个模块均可在安装时选择.
 一行命令快速安装(最新发布标签,无配置变量):
 
 ```bash
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash install.sh
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 分步安装并配置:
@@ -64,21 +62,21 @@ git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # Always clone a tag, not the default branch — the branch tip may be mid-work.
 # Latest release tag: git ls-remote --tags https://github.com/CharlesGool/vps-server.git
-git clone --branch v1.1.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
-bash install.sh
+bash deploy/install.sh
 ```
 
-`install.sh` 会询问安装哪些模块,界面语言,是否给控制台加密码保护,以及使用哪些端口.已标记发布的 v1.1.2 安装程序支持 web,iperf3 和 anytls;额外的 proxy 模块属于分支开发成果,不在该标签中.
+`deploy/install.sh` 会询问安装哪些模块,界面语言,是否给控制台加密码保护,以及使用哪些端口.v2.0.0 标签包含六个可选模块;frps 和 Lucky 属于实验性模块.
 
-**重新运行可就地升级.** 安装程序检测现有安装,询问是否保留配置,仅对已安装版本不知道的设置提问;每项都有默认值,直接按回车即可.控制台密码,持久化端口,证书,访客日志,anytls 节点凭据,以及(在这个未合并分支上)每种已安装代理协议的端口与凭据都会保留.在升级询问处回答 `n` 可重新填写设置.
+**重新运行可就地升级.** 安装程序检测现有安装,询问是否保留配置,仅对已安装版本不知道的设置提问;每项都有默认值,直接按回车即可.控制台密码,持久化端口,证书,访客日志,anytls 节点凭据,以及每种已安装代理协议的端口与凭据都会保留.在升级询问处回答 `n` 可重新填写设置.
 
 ## 指南
 
 ### 快速开始
 
-当前未发布的检出版本将 Web 实现放在 `src/web/app.py`,安装与卸载脚本从 `deploy/` 运行.随附的二进制文件及许可声明位于 `third_party/sing-box/`;发布元数据位于 `config/`.已安装文件仍平铺在 `$PREFIX/app.py`,`$PREFIX/static/`,`$PREFIX/anytls/`,`$PREFIX/proxy/` 和 `$PREFIX/sing-box`.这不是新版本,也未在真实主机验证.
+v2.0.0 将 Web 实现放在 `src/web/app.py`,安装程序从 `deploy/` 运行.随附的二进制文件及许可证声明位于 `third_party/`;发布元数据位于 `config/`.已安装文件仍平铺在 `$PREFIX` 下;检出目录的布局变化不会迁移运行数据.新路径通过了本地测试,但本版本尚未在真实主机上完成验收.
 
 ```bash
 bash deploy/install.sh                       # interactive: temporary browser setup wizard
@@ -98,7 +96,7 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 
 ### 验证运行
 
-运行 `bash install.sh` 后应看到列出每个已安装模块及其端口的摘要.接着:
+运行 `bash deploy/install.sh` 后应看到列出每个已安装模块及其端口的摘要.接着:
 
 - `systemctl status vps-server-web` 显示 `active (running)`.
 - 从**另一台机器**打开 `http://<ip>/`,显示标题为“Reachable”的页面及你自己的公网 IP.接受证书警告后打开 `https://<ip>/`,会看到相同页面,协议行显示 HTTPS.
@@ -130,20 +128,24 @@ iperf3 -c <ip> -p 5201 --json              # only while a window is open
 保留** `$PREFIX` 中的数据供以后重装:
 
 ```bash
-KEEP_DATA=1 bash uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 要移除模块并**删除数据**(包括 `$PREFIX` 中的访客日志,控制台密码,已保存端口及证书):
 
 ```bash
-bash uninstall.sh
+bash deploy/uninstall.sh
 ```
 
 两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置.`KEEP_DATA=1` 保留 `$PREFIX`,不保留这些模块配置.
 
 ## 致谢
 
-浏览器测速使用 [LibreSpeed](https://github.com/librespeed/speedtest);二维码渲染使用 [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);随附的代理核心为 [sing-box](https://github.com/SagerNet/sing-box).组件清单和原始许可证路径见[第三方声明][local-link-003].
+浏览器测速使用 [LibreSpeed](https://github.com/librespeed/speedtest);二维码渲染使用
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);随附的代理核心为
+[sing-box](https://github.com/SagerNet/sing-box). 实验性模块随附
+[frp](https://github.com/fatedier/frp) 和
+[Lucky](https://github.com/gdy666/lucky). 组件清单和原始许可证路径见[第三方声明][local-link-003].
 
 ## 许可证
 
