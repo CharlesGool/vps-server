@@ -165,12 +165,11 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `feat/node-management`, issue de `feat/ui-redesign`, poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
-- Terminé : la création d’un nœud accepte un identifiant de connexion saisi ou en génère un si le champ est vide ; le SNI TLS par défaut est `www.bing.com`. La page affiche les adresses des interfaces et de Tailscale sans bloc distinct d’IP publique. La réinitialisation et la suppression passent par des confirmations, et le libellé QR est plus court. La connexion adopte une présentation uniforme avec contrôle accessible de visibilité du mot de passe et retours d’erreur. iperf3 affiche séparément l’état et le port ; celui-ci peut être changé lorsque la fenêtre est fermée, après vérification des conflits, et le réglage comme le registre des ports de l’hôte sont enregistrés durablement.
-- Vérifications : 296 tests automatisés ont réussi (8 ignorés), ainsi que la compilation Python, la syntaxe JavaScript et les contrôles linguistiques et de différences. Chromium a vérifié la visibilité du mot de passe, le formulaire de création, les champs selon le protocole, la confirmation et la page iperf3 sur ordinateur et à 390 px, sans débordement horizontal.
-- Déploiement : `~/apps/vps-server` a été mis à jour sur l’hôte de test désigné ; une sauvegarde privée de la version précédente reste hors du dépôt. Après modification puis restauration du port, le réglage iperf3 et le registre de l’hôte indiquent tous deux 5201. Le SNI du nœud de test est passé de localhost à `www.bing.com` via son éditeur. Les quatre services sont actifs et activés ; HTTP/HTTPS et la console authentifiée répondent depuis le réseau local. Aucun redémarrage réel n’a été effectué.
-- Reste à faire : l’import Android Clash sur un vrai téléphone et le démarrage après un vrai redémarrage ne sont pas encore vérifiés. Prochaine étape : revoir, fusionner et publier `feat/node-management`, puis effectuer les vérifications sur téléphone et après redémarrage.
-
+- Branche : `feat/node-management`, issue de `feat/ui-redesign` et poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
+- Terminé : chaque nœud dispose de son propre interrupteur. Sa désactivation retire uniquement son écoute et conserve son UUID, sa configuration et ses totaux de trafic ; sa réactivation rétablit l’écoute. La suppression renumérote les numéros affichés et, après la suppression de tous les nœuds, le suivant porte le numéro 1. Réinitialiser au hasard se trouve à côté de Supprimer ; les deux boutons sont rouges et demandent confirmation. Les fonctions précédentes de cette branche restent présentes : identifiants saisis manuellement, SNI TLS par défaut, partage QR, connexion, affichage des adresses et modification du port iperf3.
+- Vérifications : 299 tests automatisés réussis (8 ignorés), ainsi que les contrôles de langue et de différences. Le sing-box fourni accepte une liste d’entrées vide. Sur l’hôte de test, un nœud AnyTLS temporaire a été créé, désactivé, réactivé puis supprimé ; son port TCP s’est fermé et rouvert avec l’interrupteur, sans modifier les ID, ports et configurations des nœuds existants. Chromium a vérifié la page sur ordinateur et à 390 px de largeur, sans débordement horizontal.
+- Déploiement : le code source et les copies installées dans `~/apps/vps-server` ont été mis à jour sur l’hôte de test ; les sauvegardes des anciens fichiers exécutés et de l’état des nœuds sont hors du dépôt. Les quatre services sont actifs. Le nœud temporaire a été supprimé. Aucun redémarrage réel de l’hôte n’a été effectué.
+- À faire : l’import Clash sur un vrai téléphone Android et le démarrage après un vrai redémarrage de l’hôte restent à vérifier. Étape suivante : réviser, fusionner et publier `feat/node-management`, puis réaliser les tests sur téléphone et après redémarrage.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.
@@ -320,4 +319,6 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
 - `3d69356` docs(log): record GitHub synchronization
-- (this commit) fix(iperf): clarify finished state
+- `6e461a3` fix(iperf): clarify finished state
+- `a676537` feat(nodes): add per-node switch and compact numbering
+- (this commit) docs(log): record node switch acceptance

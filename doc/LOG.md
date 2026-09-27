@@ -221,9 +221,9 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
-- Completed: new nodes accept a manual credential or generate one when blank; TLS nodes default to `www.bing.com`. The node page shows interface and Tailscale addresses without a separate public-IP block. Reset and delete use confirmation dialogs, and the QR label is shorter. The login page has a unified layout, an accessible password toggle and error feedback. iperf3 shows status and port separately; its port can be changed while closed, with collision checks, persistent state and an atomic host registry update.
-- Checks: 296 automated tests passed (8 skipped); Python compilation, JavaScript syntax, the language checker and diff checks passed. Chromium verified the login toggle, create form, protocol-specific fields, confirmation dialog and iperf3 page at desktop and 390 px widths without horizontal overflow.
-- Deployment: the designated test host was updated under `~/apps/vps-server`; the prior version has a private backup outside the repository. A live port change and restoration left the selected iperf3 port and host registry at 5201. The existing test node's SNI was changed from localhost to `www.bing.com` through its editor. Four services are active and enabled, and HTTP/HTTPS plus the authenticated console were reached from the LAN. An actual reboot has not been performed.
+- Completed: nodes have individual on/off switches. Disabling removes only that node's listener while retaining its UUID, configuration, and traffic totals; enabling restores the listener. Deleting a node compacts display numbers, and a new node starts at 1 after all nodes are deleted. Random reset sits beside Delete and both actions use red buttons and confirmation dialogs. Earlier work on manual credentials, default TLS SNI, QR sharing, login, address display, and iperf3 port editing remains in this branch.
+- Checks: 299 automated tests passed (8 skipped); the language checker and diff checks passed. The bundled sing-box accepted an empty inbound list. On the test host, a temporary AnyTLS node was created, disabled, enabled, and deleted; its TCP port closed and reopened with the switch, and existing node IDs, ports, and configurations were preserved. Chromium verified the updated node page at desktop and 390 px widths without horizontal overflow.
+- Deployment: the designated test host runs the updated source and installed runtime copies under `~/apps/vps-server`; backups of the prior runtime files and node state are outside the repository. Four services are active. The temporary acceptance node was removed. An actual reboot has not been performed.
 - Remaining: Android Clash import on a real phone and startup after a real reboot remain unverified. Next action: merge and release `feat/node-management` after review, then run the phone and reboot checks.
 
 ## Changelog
@@ -473,4 +473,6 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
 - `3d69356` docs(log): record GitHub synchronization
-- (this commit) fix(iperf): clarify finished state
+- `6e461a3` fix(iperf): clarify finished state
+- `a676537` feat(nodes): add per-node switch and compact numbering
+- (this commit) docs(log): record node switch acceptance

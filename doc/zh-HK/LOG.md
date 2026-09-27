@@ -129,11 +129,10 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 ## 交接
 
 - 分支：`feat/node-management`，基於 `feat/ui-redesign`，已推送至正式 GitHub 倉庫。未發現臨時項目規則。
-- 已完成：新增節點可手動填寫憑據，留空則隨機產生；TLS 節點預設使用 `www.bing.com`。節點頁面只顯示網卡及 Tailscale 位址，不再另列公開 IP。重設及刪除採用確認對話框，二維碼按鈕文字已縮短。登入頁面統一版面，提供可存取的密碼顯示切換及錯誤提示。iperf3 分別顯示狀態及連接埠；測試時段關閉時可改連接埠，儲存前檢查衝突，並同步持久保存設定及主機連接埠登記表。
-- 檢查：296 項自動化測試通過（8 項略過）；Python 編譯、JavaScript 語法、語言檢查及差異檢查通過。Chromium 在桌面及 390 px 闊度驗證了登入密碼切換、新增表單、按協定切換的欄位、確認對話框及 iperf3 頁面，沒有橫向溢出。
-- 部署：指定測試機的 `~/apps/vps-server` 已更新；舊版私人備份保留在倉庫外。實測更改再還原連接埠後，iperf3 設定及主機登記表均為 5201。透過編輯器把測試節點的 SNI 由 localhost 改為 `www.bing.com`。四項服務均運行並已啟用，局域網絡可存取 HTTP/HTTPS 和需登入的控制台。尚未實際重啟。
-- 剩餘：真實手機上的 Android Clash 匯入及實際重啟後的啟動仍未驗證。下一步：審查、合併及發佈 `feat/node-management`，然後完成手機與重啟檢查。
-
+- 已完成：每個節點都有獨立開關。停用時只關閉該節點的監聽，保留 UUID、設定及流量總量；啟用時恢復監聽。刪除節點後顯示編號重新排列，全部刪除後新節點從 1 開始。隨機重設放在刪除旁邊，兩者均為紅色按鈕並使用確認對話框。本分支先前完成的手動憑據、預設 TLS SNI、二維碼分享、登入、位址顯示及 iperf3 連接埠編輯仍然保留。
+- 檢查：299 項自動化測試通過（8 項略過）；語言檢查及差異檢查通過。隨附的 sing-box 接受空入站清單。測試機上新增、停用、啟用並刪除了臨時 AnyTLS 節點；TCP 連接埠隨開關關閉及恢復，原有節點的 ID、連接埠及設定未變。Chromium 驗證了桌面及 390 px 寬度的節點頁面，均沒有橫向溢出。
+- 部署：指定測試機已更新 `~/apps/vps-server` 的原始碼及已安裝的執行副本；先前執行檔案及節點狀態的備份保存在倉庫外。四項服務均在運行。臨時驗收節點已刪除。尚未實際重新啟動主機。
+- 待辦：尚未在真正的 Android 手機驗證 Clash 匯入，也未驗證主機實際重新啟動後的啟動情況。下一步：審查後合併並發佈 `feat/node-management`，再完成手機及重啟驗證。
 ## 變更記錄
 
 此處只列已加標籤的發佈版本.以下保留原更新紀錄完整歷史,並記錄 v2.0.0 的發佈內容.
@@ -283,4 +282,6 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
 - `3d69356` docs(log): record GitHub synchronization
-- (this commit) fix(iperf): clarify finished state
+- `6e461a3` fix(iperf): clarify finished state
+- `a676537` feat(nodes): add per-node switch and compact numbering
+- (this commit) docs(log): record node switch acceptance

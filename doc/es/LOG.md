@@ -165,12 +165,11 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `feat/node-management`, basada en `feat/ui-redesign`, subida al repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
-- Completado: al crear un nodo se puede introducir una credencial o dejar el campo vacío para generarla; el SNI TLS predeterminado es `www.bing.com`. La página muestra direcciones de interfaces y Tailscale sin un bloque separado de IP pública. Restablecer y eliminar usan cuadros de confirmación y el texto del botón QR es más corto. El inicio de sesión tiene un diseño uniforme, control accesible de visibilidad de contraseña y mensajes de error. iperf3 muestra estado y puerto por separado; el puerto se cambia solo con la ventana cerrada, tras comprobar conflictos, y se guardan de forma persistente tanto el ajuste como el registro de puertos del servidor.
-- Comprobaciones: pasaron 296 pruebas automatizadas (8 omitidas), la compilación de Python, la sintaxis JavaScript y las comprobaciones de idioma y diferencias. Chromium verificó el control de contraseña, el formulario de creación, los campos según el protocolo, el diálogo de confirmación y la página iperf3 en escritorio y a 390 px, sin desbordamiento horizontal.
-- Despliegue: se actualizó `~/apps/vps-server` en el servidor de pruebas designado; la copia privada anterior se conserva fuera del repositorio. Tras cambiar el puerto y restaurarlo, tanto iperf3 como el registro del servidor quedaron en 5201. Se cambió el SNI del nodo de pruebas de localhost a `www.bing.com` desde su editor. Cuatro servicios están activos y habilitados; HTTP/HTTPS y la consola autenticada respondieron desde la LAN. No se hizo un reinicio real.
-- Pendiente: siguen sin verificarse la importación de Android Clash en un teléfono real y el inicio tras un reinicio real. Siguiente paso: revisar, integrar y publicar `feat/node-management`, y luego hacer ambas comprobaciones.
-
+- Rama: `feat/node-management`, basada en `feat/ui-redesign` y subida al repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
+- Completado: cada nodo tiene su propio interruptor. Al desactivarlo se retira solo su escucha y se conservan UUID, configuración y totales de tráfico; al reactivarlo vuelve la escucha. Al borrar nodos se renumeran los números visibles y, tras borrarlos todos, un nodo nuevo empieza en 1. Restablecimiento aleatorio queda junto a Eliminar; ambos son botones rojos con diálogo de confirmación. Se mantienen las funciones anteriores de esta rama: credenciales manuales, SNI TLS predeterminado, código QR, inicio de sesión, direcciones y edición del puerto iperf3.
+- Pruebas: pasaron 299 pruebas automáticas (8 omitidas), además de las comprobaciones de idiomas y diferencias. El sing-box incluido aceptó una lista de entradas vacía. En el servidor de pruebas se creó, desactivó, reactivó y eliminó un nodo AnyTLS temporal; su puerto TCP se cerró y volvió a abrirse con el interruptor, sin alterar ID, puertos ni configuraciones de los nodos existentes. Chromium comprobó la página a tamaño de escritorio y con 390 px de ancho sin desbordamiento horizontal.
+- Despliegue: en el servidor de pruebas designado se actualizaron el código fuente y las copias instaladas en `~/apps/vps-server`; los respaldos de los archivos de ejecución anteriores y del estado de nodos están fuera del repositorio. Las cuatro unidades están activas. Se eliminó el nodo temporal. No se ha reiniciado físicamente el servidor.
+- Pendiente: falta probar la importación de Clash en un teléfono Android real y el arranque tras un reinicio real del servidor. Siguiente paso: revisar, fusionar y publicar `feat/node-management`, y después completar las pruebas del teléfono y del reinicio.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.
@@ -320,4 +319,6 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `6c1459d` docs(log): record node management delivery
 - `47b3686` feat(console): refine nodes, login and iperf3 port
 - `3d69356` docs(log): record GitHub synchronization
-- (this commit) fix(iperf): clarify finished state
+- `6e461a3` fix(iperf): clarify finished state
+- `a676537` feat(nodes): add per-node switch and compact numbering
+- (this commit) docs(log): record node switch acceptance
