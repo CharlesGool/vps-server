@@ -130,15 +130,47 @@ class NodeControlTests(unittest.TestCase):
                          "manual-anytls-secret")
         self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 2)
         first_removed = self.apply({"action": "delete", "id": self.identifier})
-        self.assertEqual([node["number"] for node in first_removed["nodes"]], [2, 3])
+        self.assertEqual([node["number"] for node in first_removed["nodes"]], [1, 2])
         second_id = created["nodes"][-1]["id"]
         cert_root = self.state.parent / "certs" / second_id
         self.assertTrue(cert_root.is_dir())
         all_removed = self.apply({"action": "delete", "id": second_id})
-        self.assertEqual([node["number"] for node in all_removed["nodes"]], [2])
+        self.assertEqual([node["number"] for node in all_removed["nodes"]], [1])
         self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
         self.assertFalse(cert_root.exists())
         self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), all_removed)
+
+    def test_toggle_removes_only_target_listener_and_preserves_identity(self):
+        original = copy.deepcopy(self.inventory["nodes"][0])
+        disabled = self.apply({"action": "toggle", "id": self.identifier, "enabled": False})
+        self.assertFalse(disabled["nodes"][0]["enabled"])
+        self.assertEqual(disabled["nodes"][0]["id"], original["id"])
+        self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
+        self.assertEqual(self.host.calls, ["check", "stop", "reconcile", "start", "close:20001"])
+        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), disabled)
+        with patch("node_control._free_port"):
+            edited = self.apply({"action": "edit", "id": self.identifier,
+                                 "name": "Paused node", "port": 30001,
+                                 "credential": "paused-node-secret"})
+        self.assertFalse(edited["nodes"][0]["enabled"])
+        self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
+        self.host.calls.clear()
+        with patch("node_control._free_port"):
+            enabled = self.apply({"action": "toggle", "id": self.identifier, "enabled": True})
+        self.assertEqual(enabled["nodes"][0]["id"], original["id"])
+        self.assertEqual(enabled["nodes"][0]["port"], 30001)
+        self.assertEqual(enabled["nodes"][0]["inbound"]["users"][0]["password"],
+                         "paused-node-secret")
+        self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 1)
+        self.assertEqual(self.host.calls, ["check", "open:30001", "stop", "reconcile", "start"])
+
+    def test_toggle_start_failure_restores_enabled_listener(self):
+        self.host.fail = "start"
+        with self.assertRaises(NodeControlError):
+            self.apply({"action": "toggle", "id": self.identifier, "enabled": False})
+        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), self.inventory)
+        self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 1)
+        self.assertIn("open:20001", self.host.calls)
 
     def test_create_new_protocol_and_rollback_on_restart_failure(self):
         original_config = self.configs["proxy"].read_bytes()

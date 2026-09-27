@@ -8,7 +8,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "web"))
 from node_inventory import InvalidInventory, import_legacy, validate_inventory
-from node_operations import (create_node, edit_node, render_effective_config,
+from node_operations import (create_node, delete_node, edit_node, render_effective_config,
                              set_enabled_by_id)
 from test_node_inventory import NAMESPACE, config, inbound
 
@@ -74,6 +74,22 @@ class OperationsTests(unittest.TestCase):
             self.create("vmess", credential="not-a-uuid")
         with self.assertRaises(InvalidInventory):
             self.create("shadowsocks", credential="plain-password")
+
+    def test_delete_compacts_display_numbers_and_empty_inventory_restarts_at_one(self):
+        remaining = copy.deepcopy(self.inventory)
+        stable_ids = [node["id"] for node in remaining["nodes"]]
+        remaining["next_number"] = 100
+        for node in remaining["nodes"]:
+            node["number"] += 10
+        for identifier in stable_ids[:-1]:
+            remaining = delete_node(remaining, identifier)
+        self.assertEqual([node["number"] for node in remaining["nodes"]], [1])
+        self.assertEqual(remaining["nodes"][0]["id"], stable_ids[-1])
+        remaining = delete_node(remaining, stable_ids[-1])
+        self.assertEqual(remaining["next_number"], 1)
+        fresh = create_node(remaining, "anytls", "First again", 30000,
+                            reserved_ports=[], prototype_inbound=self.inventory["nodes"][0]["inbound"])
+        self.assertEqual(fresh["nodes"][0]["number"], 1)
         with self.assertRaises(InvalidInventory):
             self.create("anytls", credential=self.inventory["nodes"][0]["inbound"]["users"][0]["password"])
 

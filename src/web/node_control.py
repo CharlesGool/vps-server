@@ -8,7 +8,7 @@ certificate material is written to logs or exception messages.
 
 import base64
 import copy
-from datetime import date
+from datetime import date, datetime, timezone
 import fcntl
 import ipaddress
 import json
@@ -24,7 +24,7 @@ import tempfile
 import uuid
 
 from node_inventory import InvalidInventory, validate_inventory
-from node_operations import create_node, delete_node, edit_node
+from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
 
 
@@ -302,6 +302,10 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
     elif action == "delete":
         if set(request) != {"action", "id"} or not isinstance(request["id"], str):
             raise NodeControlError("invalid delete request")
+    elif action == "toggle":
+        if (set(request) != {"action", "id", "enabled"} or
+                not isinstance(request["id"], str) or type(request["enabled"]) is not bool):
+            raise NodeControlError("invalid toggle request")
     else:
         raise NodeControlError("invalid node action")
     backend = backend or HostBackend()
@@ -344,11 +348,19 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
             affected = matches[0]
             module = "anytls" if affected["protocol"] == "anytls" else "proxy"
             config_path = Path(config_paths[module])
-            candidate = delete_node(inventory, affected["id"])
+            if action == "toggle":
+                if affected["enabled"] == request["enabled"]:
+                    raise NodeControlError("node state has changed")
+                candidate = set_enabled_by_id(inventory, affected["id"], request["enabled"],
+                                              now=datetime.now(timezone.utc))
+                if request["enabled"]:
+                    _free_port(affected["port"])
+            else:
+                candidate = delete_node(inventory, affected["id"])
         document = json.loads(config_path.read_text(encoding="utf-8"))
         proposed = copy.deepcopy(document)
         proposed["inbounds"] = [copy.deepcopy(n["inbound"]) for n in candidate["nodes"]
-                                 if (n["protocol"] == "anytls") == (module == "anytls")]
+                                 if n["enabled"] and (n["protocol"] == "anytls") == (module == "anytls")]
         original = config_path.read_bytes()
         meter_path = Path(state_path).parent / "meter.json"
         original_meter = meter_path.read_bytes() if meter_path.exists() else None
@@ -358,7 +370,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         try:
             staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode())
             backend.check(staged)
-            if action == "create":
+            if action == "create" or (action == "toggle" and request["enabled"]):
                 opened = True
                 backend.firewall(affected["port"], True, affected["protocol"])
             if active:
@@ -371,7 +383,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
             backend.reconcile(state_path=state_path, config_paths=config_paths)
             if active:
                 backend.start(SERVICES[module])
-            if action == "delete":
+            if action == "delete" or (action == "toggle" and not request["enabled"]):
                 backend.firewall(affected["port"], False, affected["protocol"])
             committed = True
             if action == "delete":
@@ -403,7 +415,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                     backend.reconcile(state_path=state_path, config_paths=config_paths)
                     if active:
                         backend.start(SERVICES[module])
-                    if action == "delete":
+                    if action == "delete" or (action == "toggle" and not request["enabled"]):
                         backend.firewall(affected["port"], True, affected["protocol"])
                     if opened:
                         backend.firewall(affected["port"], False, affected["protocol"])
@@ -510,7 +522,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
     """Apply one ID-based edit or reset with config, service and state rollback."""
     if isinstance(request, dict) and request.get("action") == "iperf-port":
         return _apply_iperf_port(request, require_root=require_root)
-    if isinstance(request, dict) and request.get("action") in ("create", "delete"):
+    if isinstance(request, dict) and request.get("action") in ("create", "delete", "toggle"):
         return _apply_structure_request(request, state_path=state_path, config_paths=config_paths,
                                         lock_path=lock_path, backend=backend, require_root=require_root)
     if require_root and os.geteuid() != 0:
@@ -556,7 +568,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
             new["inbound"]["tls"]["certificate_path"] = str(cert)
             new["inbound"]["tls"]["key_path"] = str(key)
         document = json.loads(config_path.read_text(encoding="utf-8"))
-        changed_config = new["inbound"] != old["inbound"]
+        changed_config = old["enabled"] and new["inbound"] != old["inbound"]
         staged = None
         old_bytes = config_path.read_bytes()
         opened = False
@@ -586,7 +598,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                     backend.start(SERVICES[module])
                 else:
                     backend.restart(SERVICES[module])
-            if new_port != old["port"]:
+            if old["enabled"] and new_port != old["port"]:
                 backend.firewall(old["port"], False, old["protocol"])
             committed = True
             return candidate
@@ -603,7 +615,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                     backend.reconcile(state_path=state_path, config_paths=config_paths)
                     if active:
                         (backend.start if stopped else backend.restart)(SERVICES[module])
-                    if new_port != old["port"]:
+                    if old["enabled"] and new_port != old["port"]:
                         backend.firewall(old["port"], True, old["protocol"])
                     if opened:
                         backend.firewall(new_port, False, old["protocol"])

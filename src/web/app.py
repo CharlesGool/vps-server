@@ -2162,7 +2162,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_proxy_reset()
         if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
                                          "/proxy/node/reset", "/proxy/node/create",
-                                         "/proxy/node/delete"):
+                                         "/proxy/node/delete", "/proxy/node/toggle"):
             if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.handle_node_control(path.rsplit("/", 1)[-1])
@@ -2975,11 +2975,20 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                             f'{" checked" if mode == node["reset_mode"] else ""}><span>{esc(t[label])}</span></label>'
                             for mode, label in (("none", "node_reset_none"), ("monthly", "node_reset_monthly"),
                                                 ("once", "node_reset_once")))
+            is_active = node["enabled"] and running[module]
+            status_key = "node_disabled" if not node["enabled"] else ("node_active" if is_active else "node_stopped")
+            status_class = "is-open" if is_active else "is-closed"
+            toggle_label = t["node_disable"] if node["enabled"] else t["node_enable"]
             cards.append(f'''
             <article class="proxy-node">
               <header class="proxy-node-header"><div><span class="proxy-node-protocol">#{node['number']} · {esc(protocol)}</span>
                 <h2>{esc(node['name'])}</h2></div>
-                <span class="proxy-node-status {'is-open' if running[module] else 'is-closed'}">{esc(t['node_active'] if running[module] else t['node_stopped'])}</span></header>
+                <div class="node-header-controls"><span class="proxy-node-status {status_class}">{esc(t[status_key])}</span>
+                  <form method="post" action="/proxy/node/toggle" class="node-toggle-form">
+                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                    <input type="hidden" name="enabled" value="{'no' if node['enabled'] else 'yes'}">
+                    <button type="submit" role="switch" aria-checked="{'true' if node['enabled'] else 'false'}" aria-label="{esc(toggle_label, quote=True)}" title="{esc(toggle_label, quote=True)}" class="node-toggle" ><span aria-hidden="true"></span></button>
+                  </form></div></header>
               <details class="node-inline-edit"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
                 <form method="post" action="/proxy/node/edit" autocomplete="off" class="node-inline-form">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
@@ -3013,8 +3022,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <button type="submit">{esc(t['node_save_limits'])}</button>
                   </form>
                 </details>
-                <button type="button" class="node-action" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
-                <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button>
+                <div class="node-destructive-actions"><button type="button" class="node-action node-action-danger" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
+                <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button></div>
               </div>
               <dialog class="node-confirm-dialog" id="node-reset-{identifier}" aria-labelledby="node-reset-title-{identifier}">
                 <form method="post" action="/proxy/node/reset">
@@ -3053,7 +3062,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")
         count = len(cards)
-        active_count = sum(bool(running["anytls" if n["protocol"] == "anytls" else "proxy"])
+        active_count = sum(bool(n["enabled"] and running["anytls" if n["protocol"] == "anytls" else "proxy"])
                            for n in inventory["nodes"])
         qr_scripts = ('<script src="/static/qrcode.js"></script><script src="/static/qrcode-utf8.js"></script>'
                       '<script src="/static/qrcode-render.js"></script>') if lan_host and cards else ''
@@ -3223,6 +3232,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             "limits": {"id", "csrf", "cap_gib", "expires_at", "reset_mode", "next_reset_at"},
             "reset": {"id", "csrf", "confirm"},
             "delete": {"id", "csrf", "confirm"},
+            "toggle": {"id", "csrf", "enabled"},
         }.get(action)
         if action == "edit":
             try:
@@ -3237,6 +3247,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if action in ("reset", "delete") and form["confirm"][0] != "yes":
             return self.redirect("/proxy?msg=node_settings_failed")
+        if action == "toggle" and form["enabled"][0] not in ("yes", "no"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if action == "create":
             if protocol not in NODE_PROTOCOLS:
                 return self.redirect("/proxy?msg=node_settings_failed")
@@ -3252,6 +3264,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 return self.redirect("/proxy?msg=node_settings_failed")
         else:
             request = {"action": "edit" if action == "limits" else action, "id": identifier}
+        if action == "toggle":
+            request["enabled"] = form["enabled"][0] == "yes"
         if action == "edit":
             try:
                 request["name"] = form["name"][0]

@@ -128,6 +128,13 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
 }
 .proxy-node-status.is-open { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
 .proxy-node-status.is-closed { color: var(--error-strong); background: color-mix(in srgb, var(--error) 10%, transparent); }
+.node-header-controls { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.node-toggle-form { margin: 0; }
+.node-toggle { display: inline-flex; align-items: center; width: 2.85rem; height: 1.65rem; padding: .2rem; border: 1px solid var(--card-border); border-radius: 999px; background: var(--surface-2); cursor: pointer; transition: background-color .16s ease; }
+.node-toggle[aria-checked="true"] { background: var(--success); border-color: var(--success); }
+.node-toggle span { width: 1.2rem; height: 1.2rem; border-radius: 50%; background: var(--on-accent); box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 22%, transparent); transition: transform .16s ease; }
+.node-toggle[aria-checked="true"] span { transform: translateX(1.2rem); }
+.node-toggle:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 .proxy-node-health { margin: -0.5rem 0 1rem; font-size: 0.82rem; }
 .proxy-node-facts { grid-template-columns: minmax(5rem, 28%) minmax(0, 1fr); margin-bottom: 1rem; }
 .proxy-node-facts dt { font-size: 0.84rem; }
@@ -223,7 +230,9 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
 .node-secondary form { margin-top: .8rem; }
 .node-action { padding: .45rem .75rem; border-color: var(--card-border); background: transparent; color: var(--accent-strong); font-size: .85rem; }
 .node-action:hover, .node-secondary summary:hover { background: var(--surface-2); }
-.node-action-danger { margin-inline-start: auto; color: var(--error-strong); }
+.node-destructive-actions { display: flex; gap: .5rem; margin-inline-start: auto; }
+.node-action-danger { color: var(--error-strong); }
+.node-action-danger:hover { background: color-mix(in srgb, var(--error) 10%, transparent); }
 .node-confirm-dialog { width: min(26rem, calc(100vw - 2rem)); max-width: none; margin: auto; padding: 1.4rem; border: 1px solid var(--card-border); border-radius: 14px; background: var(--card-bg); color: var(--fg); box-shadow: var(--shadow); }
 .node-confirm-dialog::backdrop { background: color-mix(in srgb, var(--fg) 52%, transparent); }
 .node-confirm-dialog form { margin: 0; }

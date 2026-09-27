@@ -143,6 +143,9 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
         raise InvalidInventory("unsupported shadowsocks method")
     # Existing TLS references are copied, never synthesized or read from disk.
     candidate = copy.deepcopy(inventory)
+    for number, existing in enumerate(sorted(candidate["nodes"], key=lambda item: item["number"]), 1):
+        existing["number"] = number
+    candidate["next_number"] = len(candidate["nodes"]) + 1
     for _ in range(32):
         identifier = _new_uuid(uuid_factory)
         tag = "node-" + identifier.replace("-", "")
@@ -190,11 +193,14 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
 
 
 def delete_node(inventory, identifier):
-    """Remove exactly one node; numbers of surviving nodes never change."""
+    """Remove one node and keep display numbers contiguous; IDs stay stable."""
     validate_inventory(inventory)
     _node(inventory, identifier)
     candidate = copy.deepcopy(inventory)
     candidate["nodes"] = [node for node in candidate["nodes"] if node["id"] != identifier]
+    for number, node in enumerate(sorted(candidate["nodes"], key=lambda item: item["number"]), 1):
+        node["number"] = number
+    candidate["next_number"] = len(candidate["nodes"]) + 1
     validate_inventory(candidate)
     return candidate
 

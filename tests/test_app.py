@@ -94,7 +94,7 @@ class ConsoleTest(unittest.TestCase):
     def test_managed_node_page_and_edit_request(self):
         identifier = "12345678-1234-4234-8234-123456789abc"
         node = {"id": identifier, "number": 7, "name": "Tokyo node",
-                "protocol": "anytls", "port": 25001,
+                "protocol": "anytls", "port": 25001, "enabled": True,
                 "inbound": {"users": [{"password": "test-secret"}],
                             "tls": {"certificate_path": "/missing/cert.pem"}},
                 "cap_bytes": 10485760, "upload_bytes": 1048576,
@@ -123,6 +123,8 @@ class ConsoleTest(unittest.TestCase):
             self.assertIn("#7", body)
             self.assertIn("1.0 MiB", body)
             self.assertIn('action="/proxy/node/edit"', body)
+            self.assertIn('action="/proxy/node/toggle"', body)
+            self.assertIn('role="switch" aria-checked="true"', body)
             self.assertNotIn('action="/anytls/reset"', body)
             self.assertNotIn(f'>{identifier}<', body)
 
@@ -154,9 +156,21 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 302)
             self.assertEqual(applied[1]["cap_bytes"], 12 * 1073741824)
 
+            toggle = urlencode({"id": identifier, "csrf": app.node_csrf_token(session, identifier),
+                                "enabled": "no"})
+            conn = self.connect()
+            conn.request("POST", "/proxy/node/toggle", body=toggle,
+                         headers={"Cookie": f"session={session}",
+                                  "Content-Type": "application/x-www-form-urlencoded"})
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 302)
+            self.assertEqual(applied[2], {"action": "toggle", "id": identifier, "enabled": False})
+
     def test_clash_subscription_is_single_node_and_revoked_on_edit(self):
         node = {"id": "12345678-1234-4234-8234-123456789abc", "number": 1,
-                "name": "Office node", "protocol": "anytls", "port": 25001,
+                "name": "Office node", "protocol": "anytls", "port": 25001, "enabled": True,
                 "inbound": {"type": "anytls", "listen_port": 25001,
                             "users": [{"password": "test-secret"}],
                             "tls": {"certificate_path": "/missing/cert.pem"}},
@@ -210,7 +224,7 @@ class ConsoleTest(unittest.TestCase):
     def test_node_create_delete_forms_use_stable_ids(self):
         identifier = "12345678-1234-4234-8234-123456789abc"
         node = {"id": identifier, "number": 3, "name": "First", "protocol": "shadowsocks",
-                "port": 24001, "inbound": {"password": "test-key"},
+                "port": 24001, "enabled": True, "inbound": {"password": "test-key"},
                 "cap_bytes": None, "upload_bytes": 0, "download_bytes": 0,
                 "expires_at": None, "reset_mode": "none", "next_reset_at": None}
         second = {**node, "id": "22345678-1234-4234-8234-123456789abc",
