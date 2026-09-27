@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Short-lived installer-only selection listener; never runs installation actions."""
 import argparse
+import base64
 import hashlib
 import hmac
 import html
@@ -76,6 +77,28 @@ def validate(form, previous, installed, previous_protocols='', lucky_defaults=('
     return (modules, protocols, policy, auth, public, port, language, lucky_port, lucky_public)
 
 
+WIZARD_CSS = """
+:root { color-scheme:light; --bg:#f5f7f6; --fg:#1d2d35; --muted:#52636b; --border:#d8e1e0; --accent:#365779; --surface:#eef3f2; }
+* { box-sizing:border-box; }body { margin:0; min-height:100vh; padding:clamp(1rem,4vw,3rem); background:var(--bg); color:var(--fg); font:16px/1.55 system-ui,-apple-system,'Segoe UI',sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:clamp(1.25rem,4vw,2.5rem); border:1px solid var(--border); border-radius:10px; background:white; box-shadow:0 10px 32px rgba(23,45,52,.06); }
+h1 { margin:0 0 .6rem; font-size:clamp(1.5rem,3vw,2rem); letter-spacing:-.03em; line-height:1.25; }h2 { margin:1.75rem 0 .75rem; padding-bottom:.45rem; border-bottom:1px solid var(--border); font-size:1.08rem; }
+p { color:var(--muted); }form { display:block; }form > br { display:none; }label { display:block; margin:.45rem 0; color:var(--fg); }label:has(input[type=checkbox]) { display:flex; align-items:center; gap:.65rem; min-height:2.6rem; padding:.45rem .65rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+input,select { display:block; width:100%; min-height:2.75rem; margin-top:.3rem; padding:.55rem .7rem; border:1px solid var(--border); border-radius:8px; background:white; color:var(--fg); font:inherit; }input[type=checkbox] { width:1rem; min-height:0; margin:0; accent-color:var(--accent); }
+button { min-height:2.75rem; margin-top:1rem; padding:.6rem 1rem; border:1px solid var(--accent); border-radius:8px; background:var(--accent); color:white; font:600 .9rem system-ui,sans-serif; cursor:pointer; }button:hover { filter:brightness(1.12); }a { color:var(--accent); }:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+@media (max-width:35rem) { main { padding:1.2rem; } }
+"""
+
+
+def wizard_document(body, language):
+    favicon = base64.b64encode((Path(__file__).resolve().parents[2] / 'static' / 'favicon.svg').read_bytes()).decode('ascii')
+    tag = LANGUAGE_TAGS.get(language, 'en')
+    direction = ' dir="rtl"' if language == 'ar' else ''
+    return (f'<!doctype html><html lang="{tag}"{direction}><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{favicon}">'
+            f'<style>{WIZARD_CSS}</style></head><body><main>{body}</main></body></html>')
+
+
 class Wizard(HTTPServer):
     allow_reuse_address = True  # TIME_WAIT is not a listener; live bind collisions still fail.
 
@@ -116,13 +139,13 @@ class Handler(BaseHTTPRequestHandler):
         pass  # No request path, token, cookie or form data in logs.
 
     def reply(self, status, body, cookie=None):
-        content = body.encode('utf-8')
+        content = wizard_document(body, self.server.defaults[2]).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(content)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'")
+        self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'self'")
         if cookie:
             self.send_header('Set-Cookie', cookie)
         self.end_headers()

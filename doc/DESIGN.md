@@ -61,7 +61,7 @@ describe the four previously documented modules.
 - [ ] 2026-09-22 Complete frps console support for tokens and connection information. The installer now offers frps on this checkout, but the console requirement remains unscoped: decide whether token information means an auth token, client config snippet, or connected-proxy list.
 - [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
 - [x] Complete live-host acceptance of the node controls: stable numbered nodes with editable names and hidden UUIDs; editable port, credential, and SNI for TLS nodes; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. The controls passed live-host tests on 2026-09-27.
-- [ ] Redesign the full Web UI for a consistent visual style in a separate project pass. This node-sharing change keeps the existing visual system.
+- [x] Redesign the full Web UI with one light, accessible design system across the console, public reachability page, and setup wizard. The 2026-09-27 implementation uses shared spacing and control styles, four persistent accent choices, bundled fonts and icons, visible focus, and responsive layouts.
 
 The shared SQLite-lock concern is a [known unresolved measurement question][local-link-002], not a mandate to change the architecture. Historical completed work and verification records are in [LOG][local-link-003].
 

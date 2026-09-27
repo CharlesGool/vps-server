@@ -199,5 +199,11 @@
   "node_cap_gib": "流量上限（GiB）",
   "node_clash_import": "匯入 Clash Meta",
   "node_clash_qr": "顯示匯入二維碼",
-  "node_cap_mib": "流量上限（MiB）"
+  "node_cap_mib": "流量上限（MiB）",
+  "nav_label": "導覽",
+  "theme_label": "外觀",
+  "theme_slate_blue": "石板藍",
+  "theme_sage": "鼠尾草綠",
+  "theme_teal": "青藍",
+  "theme_plum": "梅紫"
 }

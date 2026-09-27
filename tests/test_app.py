@@ -2729,7 +2729,7 @@ class StylesheetTest(unittest.TestCase):
         text = self.CSS.read_text()
         kept, depth, skipping = [], 0, False
         for line in text.splitlines():
-            if not skipping and (line.startswith(":root {")
+            if not skipping and (line.startswith(":root")
                                  or line.startswith("@media (prefers-color-scheme")):
                 skipping, depth = True, 0
             if skipping:
@@ -2747,7 +2747,7 @@ class StylesheetTest(unittest.TestCase):
     def test_every_token_used_is_defined(self):
         text = self.CSS.read_text()
         used = set(re.findall(r"var\((--[a-z0-9-]+)\)", text))
-        defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", text, re.M))
+        defined = set(re.findall(r"(--[a-z0-9-]+)\s*:", text))
         self.assertEqual(used - defined, set(), "undefined custom properties")
 
     def _block(self, opener):
@@ -2768,16 +2768,14 @@ class StylesheetTest(unittest.TestCase):
                 break
         return "\n".join(body)
 
-    def test_light_mode_overrides_every_colour_token(self):
-        # A token defined only in :root silently keeps its dark value on a
-        # light background. Tokens built out of other tokens legitimately
-        # carry over; flat colours must not.
+    def test_accent_themes_preserve_contrast_tokens(self):
         root = self._block(":root {")
-        light = self._block("@media (prefers-color-scheme: light)")
-        flat = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:\s*#", root, re.M))
-        overridden = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", light, re.M))
-        self.assertEqual(flat - overridden, set(),
-                         "these flat colours have no light-mode value")
+        for token in ("--bg", "--fg", "--card-bg", "--card-border", "--on-accent", "--accent"):
+            self.assertIn(token + ":", root)
+        for theme in ("sage", "teal", "plum"):
+            block = self._block(f':root[data-theme="{theme}"]')
+            self.assertIn("--accent:", block)
+            self.assertIn("--accent-strong:", block)
 
 
 if __name__ == "__main__":

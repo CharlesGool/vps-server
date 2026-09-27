@@ -1825,22 +1825,48 @@ def render_changelog(markdown):
     return "\n".join(html_parts)
 
 
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio"})
+_UI_ICON_CACHE = {}
+
+
+def ui_icon(name):
+    """Inline a bundled, trusted icon so it inherits text color."""
+    if name not in _UI_ICON_NAMES:
+        raise ValueError("unknown UI icon")
+    if name not in _UI_ICON_CACHE:
+        source = (BASE_DIR / "static" / "icons" / "lucide" / f"{name}.svg").read_text(encoding="utf-8")
+        _UI_ICON_CACHE[name] = source.replace("<svg", '<svg class="ui-icon" aria-hidden="true" focusable="false"', 1)
+    return _UI_ICON_CACHE[name]
+
+
 def render_page(title, body, lang, active=None, show_nav=True):
     t = STRINGS[lang]
     lang_switcher = render_lang_switcher(lang)
     lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
                  f'<div class="language-options">{lang_switcher}</div></details>')
+    theme_options = "".join(
+        f'<button type="button" data-theme-choice="{choice}" aria-pressed="{str(choice == "slate-blue").lower()}">'
+        f'<span class="theme-swatch theme-swatch-{choice}" aria-hidden="true"></span>{html.escape(t[key])}</button>'
+        for choice, key in (("slate-blue", "theme_slate_blue"), ("sage", "theme_sage"),
+                            ("teal", "theme_teal"), ("plum", "theme_plum"))
+    )
+    theme_menu = (f'<details class="theme-menu"><summary>{html.escape(t["theme_label"])}</summary>'
+                  f'<div class="theme-options" role="group" aria-label="{html.escape(t["theme_label"], quote=True)}">'
+                  f'{theme_options}</div></details>')
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
         def link(href, key):
             cls = ' class="active"' if active == key else ""
-            return f'<a{cls} href="{href}">{html.escape(t[key])}</a>'
+            current = ' aria-current="page"' if active == key else ""
+            icons = {"speedtest": "gauge", "iperf": "timer", "proxy": "network",
+                     "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text"}
+            return f'<a{cls}{current} href="{href}">{ui_icon(icons[key])}<span>{html.escape(t[key])}</span></a>'
 
         # No session to end when auth is off — offering "Log out" would be a
         # link to nowhere (the route itself redirects to / in that mode).
         logout_link = (
-            f'<a href="/logout">{html.escape(t["logout"])}</a>' if AUTH_ENABLED else ""
+            f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>' if AUTH_ENABLED else ""
         )
         iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
         # Only when a module is actually installed — a link to a page that
@@ -1848,13 +1874,13 @@ def render_page(title, body, lang, active=None, show_nav=True):
         # proxy module live on the same /proxy page (see page_proxy()'s
         # docstring), so one link covers either or both being installed.
         proxy_link = link('/proxy', 'proxy') if (anytls_installed() or proxy_installed()) else ""
-        lucky_link = '<a href="/lucky">Lucky</a>' if LUCKY_CONFIG.is_file() and AUTH_ENABLED else ""
-        frps_link = '<a href="/frps">frps</a>' if FRPS_CONFIG.is_file() and AUTH_ENABLED else ""
+        lucky_link = f'<a href="/lucky">{ui_icon("settings-2")}<span>Lucky</span></a>' if LUCKY_CONFIG.is_file() and AUTH_ENABLED else ""
+        frps_link = f'<a href="/frps">{ui_icon("radio")}<span>frps</span></a>' if FRPS_CONFIG.is_file() and AUTH_ENABLED else ""
         portfwd_link = link('/portfwd', 'portfwd') if PORTFWD_ENABLED else ""
         nav = f"""
-        <nav class="topnav">
+        <nav class="topnav" aria-label="{html.escape(t['nav_label'], quote=True)}">
           <div class="brandwrap">
-            <a class="brand" href="/">{html.escape(t['title'])}</a>
+            <a class="brand" href="/">{ui_icon('server')}<span>{html.escape(t['title'])}</span></a>
             {version_tag}
           </div>
           <div class="navlinks">
@@ -1867,18 +1893,19 @@ def render_page(title, body, lang, active=None, show_nav=True):
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
             {logout_link}
+            {theme_menu}
             {lang_menu}
           </div>
         </nav>
         """
     else:
         nav = f"""
-        <nav class="topnav minimal">
+        <nav class="topnav minimal" aria-label="{html.escape(t['nav_label'], quote=True)}">
           <div class="brandwrap">
-            <span class="brand">{html.escape(t['title'])}</span>
+            <a class="brand" href="/">{ui_icon('server')}<span>{html.escape(t['title'])}</span></a>
             <span class="version">{html.escape(VERSION_LABEL)}</span>
           </div>
-          <div class="navlinks">{lang_switcher}</div>
+          <div class="navlinks">{theme_menu}{lang_menu}</div>
         </nav>
         """
     return f"""<!doctype html>
@@ -1887,8 +1914,10 @@ def render_page(title, body, lang, active=None, show_nav=True):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(t['title'])}</title>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum'].indexOf(v)>=0)document.documentElement.dataset.theme=v}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/theme.js" defer></script>
 </head>
 <body>
 {nav}
@@ -1908,6 +1937,13 @@ CHANGELOG_PATHS = {
 
 STATIC_FILES = {
     "/static/style.css": ("text/css", BASE_DIR / "static" / "style.css"),
+    "/static/theme.js": ("application/javascript", BASE_DIR / "static" / "theme.js"),
+    "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
+    "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
+    "/static/fonts/inter-latin-600.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-600.woff2"),
+    "/static/fonts/inter-latin-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-700.woff2"),
+    "/static/fonts/noto-sans-sc-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "noto-sans-sc-400.woff2"),
+    "/static/fonts/noto-sans-sc-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "noto-sans-sc-700.woff2"),
     "/static/speedtest.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "librespeed" / "speedtest.js"),
     "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
     "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
@@ -2077,7 +2113,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
 
     def _route(self, method, path, parsed):
-        if path.startswith("/static/") or path == "/speedtest_worker.js":
+        if path.startswith("/static/") or path in ("/speedtest_worker.js", "/favicon.ico"):
             return self.serve_static(path)
 
         if method == "GET" and path.startswith("/clash/sub/"):
@@ -2236,7 +2272,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             is_open, _ = IPERF_WINDOW.state()
             iperf_tile = f"""
             <a class="tile" href="/iperf">
-              <span class="tile-icon">{'🟢' if is_open else '📡'}</span>
+              <span class="tile-icon">{ui_icon('activity' if is_open else 'timer')}</span>
               <span class="tile-label">{html.escape(t['iperf'])}</span>
             </a>
             """
@@ -2246,7 +2282,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if anytls_installed() or proxy_installed():
             proxy_tile = f"""
             <a class="tile" href="/proxy">
-              <span class="tile-icon">🧦</span>
+              <span class="tile-icon">{ui_icon("network")}</span>
               <span class="tile-label">{html.escape(t['proxy'])}</span>
             </a>
             """
@@ -2255,7 +2291,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
             portfwd_tile = f"""
             <a class="tile" href="/portfwd">
-              <span class="tile-icon">{'🔀' if active else '🔌'}</span>
+              <span class="tile-icon">{ui_icon('route')}</span>
               <span class="tile-label">{html.escape(t['portfwd'])}</span>
             </a>
             """
@@ -2264,14 +2300,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <h1>{html.escape(t['dashboard'])}</h1>
           <div class="tiles">
             <a class="tile" href="/speedtest">
-              <span class="tile-icon">⚡</span>
+              <span class="tile-icon">{ui_icon("gauge")}</span>
               <span class="tile-label">{html.escape(t['speedtest'])}</span>
             </a>
             {iperf_tile}
             {proxy_tile}
             {portfwd_tile}
             <a class="tile" href="/visitors">
-              <span class="tile-icon">📋</span>
+              <span class="tile-icon">{ui_icon("users-round")}</span>
               <span class="tile-label">{html.escape(t['visitors'])}</span>
             </a>
           </div>
@@ -2574,13 +2610,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 <label>{html.escape(t['portfwd_label'])}
                   <input type="text" name="label" maxlength="80">
                 </label>
-                <label>{html.escape(t['portfwd_protocol'])}
-                  <select name="protocol">
-                    <option value="tcp">TCP</option>
-                    <option value="udp">UDP</option>
-                    <option value="both">TCP+UDP</option>
-                  </select>
-                </label>
+                <fieldset class="protocol-choice">
+                  <legend>{html.escape(t['portfwd_protocol'])}</legend>
+                  <label><input type="radio" name="protocol" value="tcp" checked> TCP</label>
+                  <label><input type="radio" name="protocol" value="udp"> UDP</label>
+                  <label><input type="radio" name="protocol" value="both"> TCP+UDP</label>
+                </fieldset>
                 <label>{html.escape(t['portfwd_public_port'])}
                   <input type="number" name="public_port" min="1" max="65535" required>
                 </label>
@@ -3251,33 +3286,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 
 PROBE_CSS = """
-:root { color-scheme: light dark; }
+:root { color-scheme: light; --bg:#f5f7f6; --fg:#1d2d35; --muted:#52636b; --border:#d8e1e0; --accent:#365779; --success:#236b4d; --surface:#eef3f2; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: flex; align-items: center;
-       justify-content: center; padding: 1.5rem;
-       font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-       background: #f4f6f8; color: #1a1d21; }
-main { width: 100%; max-width: 34rem; background: #fff; border-radius: 14px;
-       padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-h1 { margin: 0 0 .25rem; font-size: 1.5rem; display: flex; gap: .5rem;
-     align-items: center; }
-.ok { color: #0a7d32; }
-dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem;
-     margin: 1.5rem 0 0; }
-dt { color: #5a6570; }
-dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-all; }
-.note { margin: 1.5rem 0 0; font-size: .85rem; color: #5a6570; }
-.iperf { margin: 1.25rem 0 0; padding: .75rem 1rem; border-radius: 8px;
-         background: #e7f6ec; color: #0a5d27; font-size: .9rem; }
-@media (prefers-color-scheme: dark) {
-  body { background: #15181c; color: #e6e9ec; }
-  main { background: #1e2227; box-shadow: none; }
-  dt, .note { color: #9aa4ae; }
-  .ok { color: #4ade80; }
-  .iperf { background: #16301f; color: #86efac; }
-}
+body { display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1rem; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+main { width: min(100%, 36rem); padding: clamp(1.5rem, 4vw, 2.5rem); border: 1px solid var(--border); border-radius: 10px; background: white; box-shadow: 0 10px 32px rgba(23,45,52,.06); }
+h1 { display: flex; align-items: center; gap: .65rem; margin: 0 0 .5rem; font-size: clamp(1.45rem, 3vw, 1.8rem); line-height: 1.25; letter-spacing: -.03em; }
+p { margin: .5rem 0; }.ok { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 7px; background: var(--surface); color: var(--success); }
+dl { display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: .6rem 1rem; margin: 1.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+dt,.note { color: var(--muted); }dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }.note { margin-top: 1.5rem; font-size: .85rem; }
+.iperf { margin: 1.25rem 0 0; padding: .75rem 1rem; border-radius: 8px; background: var(--surface); color: var(--success); font-size: .9rem; }
+@media (max-width: 30rem) { dl { grid-template-columns: 1fr; gap: .1rem; }dt:not(:first-child) { margin-top: .6rem; } }
 """
-
 
 class ProbeHandler(BaseHTTPRequestHandler):
     """The unauthenticated page on 80 and 443."""
@@ -3321,7 +3340,7 @@ class ProbeHandler(BaseHTTPRequestHandler):
                 body = self._page().encode("utf-8")
                 self._send(200, body, "text/html; charset=utf-8", send_body)
             elif path == "/favicon.ico":
-                self._send(204, b"", "image/x-icon", send_body)
+                self._send(200, (BASE_DIR / "static" / "favicon.svg").read_bytes(), "image/svg+xml", send_body)
             else:
                 self._send(404, b"not found\n", "text/plain; charset=utf-8", send_body)
         except (BrokenPipeError, ConnectionResetError):
@@ -3378,7 +3397,7 @@ class ProbeHandler(BaseHTTPRequestHandler):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(t['probe_title'])}</title>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
 <style>{PROBE_CSS}</style>
 </head>
 <body>

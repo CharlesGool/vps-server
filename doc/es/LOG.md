@@ -165,7 +165,7 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `feat/node-controls`, basada en v2.0.0 `main`; la función aún no está publicada.
+- Rama: `feat/ui-redesign`, basada en `feat/node-controls`; la interfaz está desplegada en el servidor de pruebas, pero aún no se ha publicado.
 - Completado: cinco nodos proxy con números e ID estables, nombre/puerto/credencial/TLS SNI editables, restablecimiento aleatorio, contadores, cuota, ciclos programados y límites independientes de 1 Mbps para subida y descarga. La consola revisada y ocho idiomas de interfaz muestran los controles. No se hallaron reglas temporales activas del proyecto.
 - Comprobaciones: pasaron 287 pruebas (8 omitidas), la compilación de Python, la sintaxis de Shell y la revisión del diff. El comprobador multilingüe pasó 32 documentos principales y los textos de interfaz sin errores. En el servidor de destino están activos y habilitados cinco puertos y cuatro servicios systemd; funcionaron HTTP/HTTPS por LAN y el acceso autenticado a la consola. Las conexiones reales aumentaron ambos contadores en los cinco nodos. El vencimiento y una cuota de 1 byte activaron las reglas de 1 Mbps en ambas direcciones; un ciclo vencido borró el uso y levantó el límite. Se restauraron los ajustes de prueba y se creó un respaldo inicial del estado. La inspección en navegador validó la consola en escritorio y móvil y el menú de idiomas. Una actualización en el mismo directorio conservó las identidades de los cinco nodos, sus conexiones y la contraseña de administración. Una transferencia simultánea de 4 MiB por proxy promedió 120,596 B/s de subida y 120,610 B/s de descarga, ambos por debajo de 125,000 B/s.
 - Pendiente: comprobar el inicio automático mediante un reinicio real y probar la importación en un teléfono Android. Los servicios systemd están habilitados, pero no se reinició el servidor ni se disponía de la aplicación Android para esta prueba.
@@ -175,6 +175,13 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Comprobaciones de esta actualización: pasaron 289 pruebas (8 omitidas) y la compilación de Python; el servidor real devolvió cinco perfiles completos de un solo nodo por su dirección LAN. Chromium mostró cinco códigos QR y los campos Edit sin desbordamiento horizontal en escritorio ni a 390 px de ancho. La importación en Android sigue sin verificarse.
 - Despliegue: se actualizó `~/apps/vps-server` en el servidor de prueba designado; los archivos anteriores se guardaron fuera del repositorio. No se modificó el estado persistente de nodos ni del administrador. Los servicios web, anytls y proxy siguen habilitados y activos.
 
+
+- Rediseño de la interfaz (2026-09-27): la consola, la página pública de conectividad y el asistente de instalación comparten ahora un diseño claro y sobrio. La navegación y el panel usan iconos Lucide; los cuatro colores de acento se guardan localmente. Se incluyen las fuentes Inter y Noto Sans SC y sus avisos de licencia, junto con los de los iconos. Las pruebas en escritorio y a 390 px no mostraron desbordamiento horizontal y el tema persistió tras recargar. El asistente conserva su servidor independiente y el comportamiento actual del formulario.
+- Comprobaciones de la interfaz: pasaron 289 pruebas automáticas (8 omitidas), la compilación de Python y la visualización en navegadores de escritorio y móvil. Los cinco nodos proxy del servidor real se mostraron sin desbordamiento horizontal ni errores de JavaScript en escritorio y a 390 px; la selección del tema persistió. Aún faltan la importación en Android Clash y la comprobación del arranque tras un reinicio real.
+- Despliegue de la interfaz: antes de instalar la nueva interfaz se hizo una copia de los archivos anteriores fuera del repositorio. El servicio Web sigue activo. La página pública, favicon, CSS, el script del tema, las fuentes y las rutas autenticadas de la consola devolvieron los estados HTTP esperados. No se cambió el estado persistente de nodos ni administrador.
+- Siguiente paso: revisar `feat/ui-redesign` para su integración y publicación, y comprobar la importación en Android y el arranque tras reiniciar cuando sea posible. No se encontraron reglas temporales del proyecto.
+- Seguimiento de la interfaz (2026-09-27): el selector de protocolo del reenvío de puertos se sustituyó por tres opciones de radio acordes con la consola. Se conservan el campo `protocol` y el valor TCP predeterminado. Pasaron la compilación de Python, cuatro pruebas HTTP del reenvío y `git diff --check`. Quedan la revisión visual en escritorio y móvil y el despliegue de esta rama. No se encontraron reglas temporales del proyecto.
+- Bloqueo de validación en este árbol de trabajo: la comprobación multilingüe presenta 28 errores mientras siguen en curso otros cambios de documentación. Este cambio de interfaz no se envió a la rama remota ni se desplegó.
 
 ## Historial de cambios
 
@@ -319,4 +326,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `d31e40f` docs(log): synchronize commit history
 - `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
 - `da5f84f` docs(log): record measured node acceptance
-- (this commit) feat(proxy): add Clash Meta import and GiB node controls
+- `b74b412` feat(proxy): add Clash Meta import and GiB node controls
+- (this commit) feat(web): unify console and setup interface design

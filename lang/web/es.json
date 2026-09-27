@@ -199,5 +199,11 @@
   "node_cap_gib": "Límite de tráfico (GiB)",
   "node_clash_import": "Importar a Clash Meta",
   "node_clash_qr": "Mostrar código QR de importación",
-  "node_cap_mib": "Límite de tráfico (MiB)"
+  "node_cap_mib": "Límite de tráfico (MiB)",
+  "nav_label": "Navegación",
+  "theme_label": "Apariencia",
+  "theme_slate_blue": "Azul pizarra",
+  "theme_sage": "Verde salvia",
+  "theme_teal": "Verde azulado",
+  "theme_plum": "Ciruela"
 }

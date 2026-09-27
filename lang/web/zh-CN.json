@@ -199,5 +199,11 @@
   "node_cap_gib": "流量上限（GiB）",
   "node_clash_import": "导入 Clash Meta",
   "node_clash_qr": "显示导入二维码",
-  "node_cap_mib": "流量上限（MiB）"
+  "node_cap_mib": "流量上限（MiB）",
+  "nav_label": "导航",
+  "theme_label": "外观",
+  "theme_slate_blue": "石板蓝",
+  "theme_sage": "鼠尾草绿",
+  "theme_teal": "青蓝",
+  "theme_plum": "梅紫"
 }

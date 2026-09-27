@@ -199,5 +199,11 @@
   "node_cap_gib": "حد البيانات (GiB)",
   "node_clash_import": "استيراد إلى Clash Meta",
   "node_clash_qr": "عرض رمز QR للاستيراد",
-  "node_cap_mib": "حد البيانات (MiB)"
+  "node_cap_mib": "حد البيانات (MiB)",
+  "nav_label": "التنقل",
+  "theme_label": "المظهر",
+  "theme_slate_blue": "أزرق أردوازي",
+  "theme_sage": "أخضر مريمي",
+  "theme_teal": "أزرق مخضر",
+  "theme_plum": "برقوقي"
 }

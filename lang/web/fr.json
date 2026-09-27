@@ -199,5 +199,11 @@
   "node_cap_gib": "Plafond de trafic (Gio)",
   "node_clash_import": "Importer dans Clash Meta",
   "node_clash_qr": "Afficher le code QR d’importation",
-  "node_cap_mib": "Plafond de trafic (Mio)"
+  "node_cap_mib": "Plafond de trafic (Mio)",
+  "nav_label": "Navigation",
+  "theme_label": "Apparence",
+  "theme_slate_blue": "Bleu ardoise",
+  "theme_sage": "Vert sauge",
+  "theme_teal": "Bleu sarcelle",
+  "theme_plum": "Prune"
 }

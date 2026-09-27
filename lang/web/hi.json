@@ -199,5 +199,11 @@
   "node_cap_gib": "ट्रैफ़िक सीमा (GiB)",
   "node_clash_import": "Clash Meta में आयात करें",
   "node_clash_qr": "आयात QR कोड दिखाएँ",
-  "node_cap_mib": "ट्रैफ़िक सीमा (MiB)"
+  "node_cap_mib": "ट्रैफ़िक सीमा (MiB)",
+  "nav_label": "नेविगेशन",
+  "theme_label": "रूप-रंग",
+  "theme_slate_blue": "स्लेट नीला",
+  "theme_sage": "सेज हरा",
+  "theme_teal": "टील",
+  "theme_plum": "प्लम"
 }

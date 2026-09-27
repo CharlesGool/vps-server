@@ -35,6 +35,9 @@ metadata:
 | sing-box | `v1.13.14`;修訂版 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;執行檔 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更新版本,另有上游名稱條件(依聲明所載) | 由 anytls 和 proxy 共用的隨附執行檔 | [上游聲明][local-link-002];[GPL 完整文本][local-link-003] | 保留對應原始碼連結及上游名稱/關聯條件 | 2026-09-27:壓縮檔,執行檔,授權檔及標籤修訂版相符 |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依上游授權 | 隨附的瀏覽器引擎 | [原始 LGPL 文本][local-link-006]及[GPL 文本][local-link-007] | 保留授權文本並確保上游原始碼可取得 | 2026-09-27:兩個標籤檔案及授權檔相符 |
 | qrcode-generator | `js2.0.4`;修訂版 `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT,依上游授權 | 隨附的用戶端 QR 程式庫 | [原始 MIT 文本][local-link-008] | 保留必要的版權與授權聲明 | 2026-09-27:兩個標籤檔案及授權檔相符 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/fontsource/tree/main/packages/inter) | SIL OFL 1.1 | 隨附的拉丁介面字型,400/600/700 字重 | [license](../../static/licenses/OFL-Inter.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/fontsource/tree/main/packages/noto-sans-sc) | SIL OFL 1.1 | 隨附的 CJK 介面字型,400/700 字重 | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 隨附的介面 SVG 圖示 | [license](../../static/licenses/Lucide-ISC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
 | iperf3 | 發行版套件;未鎖定版本 | [ESnet/iperf](https://github.com/esnet/iperf) | 先前記錄為 BSD-3-Clause | 作為獨立的作業系統程式呼叫;此處不重新散布 | 未記錄版權;原始授權由作業系統套件提供 | 若日後隨附或重新散布,重新評估 | 未記錄;散布前重新驗證 |
 
 既有專案記錄將本專案標為 GPL-3.0([LICENSE][local-link-009]),理由是重新散布採用 GPL 的 sing-box 執行檔;[決策][local-link-010]保留其理由及否決的替代方案.先前記錄稱 `vps-webserver` 上游為 Apache-2.0,在此以 GPL-3.0 重新散布.本清單記錄了為 v2.0.0 核驗的檔案與條款;不提供獨立法律意見.
