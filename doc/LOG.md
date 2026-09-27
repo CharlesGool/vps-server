@@ -215,9 +215,8 @@ These checked items are the former backlog's dated implementation and verificati
 - Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, and third-party notices for frps and Lucky.
 - Checks: 271 unit tests passed (8 skipped); dependency hashes passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors.
 - Remaining: real-host/systemd acceptance, independent native-language review, and full upstream and release-license verification.
-- Blocker: local Git HTTPS credentials and SSH authentication are unavailable. A dry-run push to `origin` failed before upload, so the public work branch is not synchronized.
-- Next action: configure local GitHub Git authentication, push `standardize/project-structure` to the formal repository, and verify the remote ref.
-
+- Publication: the formal `origin` work branch is published and its remote tree matches the reviewed local tree. No local blocker remains for this branch.
+- Next action: run real-host/systemd acceptance for `standardize/project-structure`, then complete independent translation and upstream license reviews before a release.
 ## Changelog
 
 Only tagged releases are listed here. Unmerged branch work above is not a new release. The following entries retain the complete former changelog history.

@@ -169,9 +169,8 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Terminado: estructura normalizada, documentación en inglés y siete traducciones, catálogos de interfaz y avisos de frps y Lucky.
 - Comprobaciones: 271 pruebas superadas (8 omitidas); hashes de dependencias correctos; verificador documental con 0 errores y 4 avisos sobre el idioma de la navegación; control multilingüe con 0 errores.
 - Pendiente: aceptación en un servidor real con systemd, revisión independiente por hablantes nativos y verificación completa de procedencia y licencias antes de una versión.
-- Bloqueo: faltan credenciales Git HTTPS y autenticación SSH locales. Un envío de prueba a `origin` falló antes de cargar archivos; la rama pública aún no está sincronizada.
-- Siguiente paso: configurar la autenticación local de GitHub para Git, enviar `standardize/project-structure` al repositorio oficial y verificar la referencia remota.
-
+- Publicación: la rama de trabajo del repositorio oficial `origin` está publicada y su árbol remoto coincide con el árbol local revisado. No queda ningún bloqueo local para esta rama.
+- Siguiente paso: validar `standardize/project-structure` en un servidor real con systemd y completar después la revisión independiente de las traducciones y licencias antes de una versión.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. El trabajo de las ramas no integradas descrito antes no constituye una nueva publicación. Las siguientes entradas conservan íntegramente el historial anterior de cambios.

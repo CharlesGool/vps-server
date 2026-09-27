@@ -169,9 +169,8 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 - Terminé : structure normalisée, documents anglais et sept traductions, catalogues d’interface et mentions pour frps et Lucky.
 - Vérifications : 271 tests réussis (8 ignorés) ; empreintes des dépendances correctes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur.
 - À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et vérification complète des provenances et licences avant une version.
-- Blocage : aucun identifiant Git HTTPS ni accès SSH local n’est disponible. L’essai d’envoi vers `origin` a échoué avant le transfert ; la branche publique n’est pas synchronisée.
-- Prochaine action : configurer l’authentification GitHub pour Git, envoyer `standardize/project-structure` vers le dépôt officiel et vérifier la référence distante.
-
+- Publication : la branche de travail du dépôt officiel `origin` est publiée et son arborescence distante correspond à l’arborescence locale vérifiée. Aucun blocage local ne subsiste pour cette branche.
+- Prochaine action : valider `standardize/project-structure` sur un hôte réel avec systemd, puis achever les relectures indépendantes des traductions et licences avant une version.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les travaux ci-dessus sur les branches non fusionnées ne constituent pas une nouvelle version. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements.
