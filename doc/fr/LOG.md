@@ -167,7 +167,7 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 - Branche : `feat/node-controls`, basée sur `56c9ed5` de la branche officielle `main` de v2.0.0.
 - Terminé localement : numéros et ID persistants ; modification du nom, du port, de l’identifiant et du SNI de chaque nœud TLS ; changement aléatoire du port et de l’identifiant ; compteurs de trafic par nœud ; remise à zéro mensuelle ou à une date définie ; limite indépendante de 1 Mbps dans chaque sens. Les cartes de la console et les textes d’interface dans huit langues montrent désormais les réglages et le trafic. L’installateur crée un service de mesure et le désinstallateur retire ses règles et son unité dédiées.
-- Vérifications : 285 tests ont réussi (8 ignorés), dont le parcours HTTP des nœuds gérés ; 58 tests des nœuds et 5 tests de localisation ont aussi réussi. La compilation Python, la syntaxe Shell et `git diff --check` ont réussi. Le vérificateur multilingue signale 23 erreurs préexistantes de titres et de structure ; la validation sur hôte réel reste à faire.
+- Vérifications : 285 tests ont réussi (8 ignorés), dont le parcours HTTP des nœuds gérés ; 58 tests des nœuds et 5 tests de localisation ont aussi réussi. La compilation Python, la syntaxe Shell et `git diff --check` ont réussi. Après rétablissement des titres requis et alignement de la structure, le vérificateur multilingue passe les 32 documents principaux et les catalogues d’interface avec 0 erreur ; la validation sur hôte réel reste à faire.
 - À faire : vérifier nftables et l’ordre des services sur un hôte réel ; mesurer les débits réels dans les deux sens, les compteurs, la remise à zéro du cycle, la conservation lors d’une mise à niveau, la mise en page de la console et le démarrage au boot. L’authentification SSH par mot de passe a été refusée sur l’hôte cible ; aucun fichier ni service du serveur n’a été modifié.
 - Publication : v2.0.0 reste sur la branche officielle `origin/main` ; cette branche de fonctionnalité n’est pas une version publiée.
 - Étape suivante : obtenir un accès SSH valide, inspecter et sauvegarder le répertoire d’application demandé, puis déployer de façon contrôlée et valider sur l’hôte avant toute décision de publication.
@@ -234,7 +234,8 @@ Seules les versions taguées sont listées ici. Les entrées suivantes conserven
 
 #### Fixed
 
-- La page du journal des changements affichait comme de simples paragraphes le commentaire du mainteneur en bas du fichier CHANGELOG — celui précisant quels titres restent en anglais —, y compris les délimiteurs `<!--` et `-->` échappés, dans les trois langues. Le moteur de rendu ne traitait pas du tout les commentaires. Seul l'affichage était touché ; rien d'autre n'était affecté.
+- La page du journal des changements affichait comme de simples paragraphes le commentaire du mainteneur en bas du fichier CHANGELOG — celui précisant quels titres restent en anglais —, y compris les délimiteurs
+  `<!--` et `-->` échappés, dans les trois langues. Le moteur de rendu ne traitait pas du tout les commentaires. Seul l'affichage était touché ; rien d'autre n'était affecté.
 
 ### v1.0.0 — 2026-09-12
 
@@ -257,3 +258,7 @@ Première version. Elle réunit deux projets existants — une console de test d
 - TLS sur 443 utilise un certificat autosigné : ni domaine ni ACME. L'avertissement du navigateur prouve néanmoins que le port répond, ce qui est précisément la question à laquelle cette page sert à répondre.
 - `mean_rtt` dans la sortie JSON d'iperf3 provient de `TCP_INFO` du noyau : un client Linux indique donc le temps aller-retour, tandis qu'un client incapable de le lire — iperf3 sous Cygwin sous Windows, par exemple — n'indique que le débit. Le mode UDP (`-u`) fournit partout la gigue et la perte de paquets.
 - Le module anytls fonctionne uniquement sur x86-64. Les modules web et iperf3 sont indépendants de l'architecture.
+
+## Historique des commits
+
+L’historique Git consigne chaque commit ; ce journal résume les versions, les décisions et la passation actuelle.

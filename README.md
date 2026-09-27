@@ -178,6 +178,10 @@ ones:
 
 Full reference: [Configuration reference][local-link-002].
 
+## Upgrade
+
+To upgrade, use a current checkout and rerun the installer with the same installation directory and module choices. Keep a backup of persistent data until the upgraded services and console have been verified.
+
 ## Uninstall
 
 Run as root, from the installer checkout, with the same `PREFIX` and

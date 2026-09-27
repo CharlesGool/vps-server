@@ -167,7 +167,7 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 - Rama: `feat/node-controls`, basada en `56c9ed5` de la rama formal `main` de v2.0.0.
 - Completado localmente: números e ID persistentes; edición de nombre, puerto, credencial y SNI de cada nodo TLS; cambio aleatorio de puerto y credencial; contadores de tráfico por nodo; reinicio mensual o en una fecha indicada; y límite independiente de 1 Mbps para subida y bajada. Las tarjetas de la consola y los textos de interfaz en ocho idiomas muestran ahora los ajustes y el tráfico. El instalador crea el servicio de medición y el desinstalador elimina sus reglas y unidad propias.
-- Comprobaciones: pasaron 285 pruebas (8 omitidas), incluido el flujo HTTP de nodos administrados; también pasaron 58 pruebas de nodos y 5 de localización. Pasaron la compilación de Python, la sintaxis de Shell y `git diff --check`. El comprobador multilingüe señala 23 errores previos de títulos y estructura; falta la validación en un servidor real.
+- Comprobaciones: pasaron 285 pruebas (8 omitidas), incluido el flujo HTTP de nodos administrados; también pasaron 58 pruebas de nodos y 5 de localización. Pasaron la compilación de Python, la sintaxis de Shell y `git diff --check`. Tras restaurar los títulos exigidos y alinear la estructura, el comprobador multilingüe pasa los 32 documentos principales y los catálogos de interfaz con 0 errores; falta la validación en un servidor real.
 - Pendiente: validar nftables y el orden de los servicios en un servidor real; comprobar la velocidad real en ambas direcciones, los contadores, el reinicio del ciclo, la conservación en actualizaciones, el diseño de la consola y el inicio al arrancar. Se rechazó la autenticación SSH con contraseña en el servidor de destino; no se cambiaron archivos ni servicios.
 - Publicación: v2.0.0 permanece en el `origin/main` formal; esta rama de funciones aún no es una versión publicada.
 - Siguiente paso: obtener acceso SSH válido, inspeccionar y respaldar el directorio de la aplicación solicitado, y luego desplegar de forma controlada y completar la validación real antes de decidir una publicación.
@@ -234,7 +234,8 @@ Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan 
 
 #### Fixed
 
-- La página de cambios mostraba como párrafos normales en los tres idiomas el comentario del responsable al final del archivo CHANGELOG (que indica qué encabezados permanecen en inglés), incluidos los `<!--` y `-->` escapados. El procesador no contemplaba los comentarios. Solo afectaba a la visualización.
+- La página de cambios mostraba como párrafos normales en los tres idiomas el comentario del responsable al final del archivo CHANGELOG (que indica qué encabezados permanecen en inglés), incluidos los
+  `<!--` y `-->` escapados. El procesador no contemplaba los comentarios. Solo afectaba a la visualización.
 
 ### v1.0.0 — 2026-09-12
 
@@ -257,3 +258,7 @@ Primera publicación. Combina dos proyectos existentes —una consola de pruebas
 - TLS en 443 utiliza un certificado autofirmado: sin dominio ni ACME. La advertencia del navegador también demuestra que el puerto responde, que es la pregunta para la que existe la página.
 - `mean_rtt` en la salida JSON de iperf3 procede de `TCP_INFO` del núcleo: un cliente Linux muestra el tiempo de ida y vuelta; uno que no puede leerlo (por ejemplo, iperf3 en Cygwin bajo Windows) solo muestra el caudal. El modo UDP (`-u`) muestra la fluctuación y pérdida en todas las plataformas.
 - El módulo anytls solo admite x86-64. Los módulos web e iperf3 no dependen de la arquitectura.
+
+## Historial de commits
+
+El historial de Git registra cada commit; este documento resume las versiones, las decisiones y el traspaso actual.

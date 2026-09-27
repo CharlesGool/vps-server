@@ -122,6 +122,10 @@ Cada variable tiene un valor predeterminado funcional; `.env` es opcional. Las m
 
 Referencia completa: [Referencia de configuración][local-link-002].
 
+## Actualización
+
+Para actualizar, use un árbol de trabajo actual y vuelva a ejecutar el instalador con el mismo directorio de instalación y los mismos módulos. Conserve una copia de los datos persistentes hasta comprobar los servicios y la consola actualizados.
+
 ## Desinstalación
 
 Ejecuta como root desde el directorio del instalador, con los mismos valores `PREFIX` y `SERVICE_NAME` usados al instalar (el resumen del instalador muestra el comando exacto de desinstalación). Para eliminar los módulos y unidades instalados **conservando

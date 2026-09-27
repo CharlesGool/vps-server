@@ -122,6 +122,10 @@ Chaque variable a une valeur par défaut fonctionnelle ; `.env` est facultatif. 
 
 Référence complète : [référence de configuration][local-link-002].
 
+## Mise à niveau
+
+Pour mettre à niveau, utilisez une copie de travail récente et relancez l’installateur avec le même répertoire d’installation et les mêmes modules. Conservez une sauvegarde des données persistantes jusqu’à la vérification des services et de la console mis à niveau.
+
 ## Désinstallation
 
 Exécutez en tant que root depuis le dépôt de l'installateur, avec les valeurs `PREFIX` et `SERVICE_NAME` utilisées lors de l'installation (le récapitulatif de l'installateur affiche la commande exacte de désinstallation). Pour retirer les modules et unités installés **en conservant
