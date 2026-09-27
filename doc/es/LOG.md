@@ -165,7 +165,7 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `feat/node-management`, basada en `feat/ui-redesign`, preparada para el repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
+- Rama: `feat/node-management`, basada en `feat/ui-redesign`, subida al repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
 - Completado: al crear un nodo se puede introducir una credencial o dejar el campo vacío para generarla; el SNI TLS predeterminado es `www.bing.com`. La página muestra direcciones de interfaces y Tailscale sin un bloque separado de IP pública. Restablecer y eliminar usan cuadros de confirmación y el texto del botón QR es más corto. El inicio de sesión tiene un diseño uniforme, control accesible de visibilidad de contraseña y mensajes de error. iperf3 muestra estado y puerto por separado; el puerto se cambia solo con la ventana cerrada, tras comprobar conflictos, y se guardan de forma persistente tanto el ajuste como el registro de puertos del servidor.
 - Comprobaciones: pasaron 296 pruebas automatizadas (8 omitidas), la compilación de Python, la sintaxis JavaScript y las comprobaciones de idioma y diferencias. Chromium verificó el control de contraseña, el formulario de creación, los campos según el protocolo, el diálogo de confirmación y la página iperf3 en escritorio y a 390 px, sin desbordamiento horizontal.
 - Despliegue: se actualizó `~/apps/vps-server` en el servidor de pruebas designado; la copia privada anterior se conserva fuera del repositorio. Tras cambiar el puerto y restaurarlo, tanto iperf3 como el registro del servidor quedaron en 5201. Se cambió el SNI del nodo de pruebas de localhost a `www.bing.com` desde su editor. Cuatro servicios están activos y habilitados; HTTP/HTTPS y la consola autenticada respondieron desde la LAN. No se hizo un reinicio real.
@@ -318,4 +318,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
-- (this commit) feat(console): refine nodes, login and iperf3 port
+- `47b3686` feat(console): refine nodes, login and iperf3 port
+- (this commit) docs(log): record GitHub synchronization

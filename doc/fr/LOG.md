@@ -165,7 +165,7 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `feat/node-management`, issue de `feat/ui-redesign`, prête pour le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
+- Branche : `feat/node-management`, issue de `feat/ui-redesign`, poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
 - Terminé : la création d’un nœud accepte un identifiant de connexion saisi ou en génère un si le champ est vide ; le SNI TLS par défaut est `www.bing.com`. La page affiche les adresses des interfaces et de Tailscale sans bloc distinct d’IP publique. La réinitialisation et la suppression passent par des confirmations, et le libellé QR est plus court. La connexion adopte une présentation uniforme avec contrôle accessible de visibilité du mot de passe et retours d’erreur. iperf3 affiche séparément l’état et le port ; celui-ci peut être changé lorsque la fenêtre est fermée, après vérification des conflits, et le réglage comme le registre des ports de l’hôte sont enregistrés durablement.
 - Vérifications : 296 tests automatisés ont réussi (8 ignorés), ainsi que la compilation Python, la syntaxe JavaScript et les contrôles linguistiques et de différences. Chromium a vérifié la visibilité du mot de passe, le formulaire de création, les champs selon le protocole, la confirmation et la page iperf3 sur ordinateur et à 390 px, sans débordement horizontal.
 - Déploiement : `~/apps/vps-server` a été mis à jour sur l’hôte de test désigné ; une sauvegarde privée de la version précédente reste hors du dépôt. Après modification puis restauration du port, le réglage iperf3 et le registre de l’hôte indiquent tous deux 5201. Le SNI du nœud de test est passé de localhost à `www.bing.com` via son éditeur. Les quatre services sont actifs et activés ; HTTP/HTTPS et la console authentifiée répondent depuis le réseau local. Aucun redémarrage réel n’a été effectué.
@@ -318,4 +318,5 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
-- (this commit) feat(console): refine nodes, login and iperf3 port
+- `47b3686` feat(console): refine nodes, login and iperf3 port
+- (this commit) docs(log): record GitHub synchronization

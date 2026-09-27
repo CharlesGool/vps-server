@@ -165,7 +165,7 @@ metadata:
 
 ## تسليم العمل
 
-- الفرع: `feat/node-management` مبني على `feat/ui-redesign` وجاهز للدفع إلى مستودع GitHub الرسمي. لم تُعثر قواعد مؤقتة للمشروع.
+- الفرع: `feat/node-management` مبني على `feat/ui-redesign` وقد دُفع إلى مستودع GitHub الرسمي. لم تُعثر قواعد مؤقتة للمشروع.
 - المكتمل: يمكن إدخال بيانات اعتماد العقدة الجديدة يدويًا أو ترك الحقل فارغًا لتوليدها عشوائيًا؛ قيمة SNI الافتراضية لعقد TLS هي `www.bing.com`. تعرض صفحة العقد عناوين الواجهات وTailscale من دون كتلة مستقلة لعنوان IP العام. تستخدم عمليتا إعادة الضبط والحذف مربعي تأكيد، ونص زر QR أقصر. أصبح تخطيط تسجيل الدخول موحدًا مع زر متاح لإظهار كلمة المرور ورسائل خطأ. يعرض iperf3 الحالة والمنفذ على حدة؛ ويمكن تغيير المنفذ عند إغلاق النافذة بعد فحص التعارض، مع حفظ الإعداد وسجل منافذ المضيف بصورة دائمة ومتسقة.
 - الفحوص: نجح 296 اختبارًا آليًا (تُخطي 8)، وكذلك تجميع Python وفحص صياغة JavaScript وفحوص اللغة والفروق. تحقق Chromium من تبديل ظهور كلمة المرور ونموذج الإنشاء والحقول بحسب البروتوكول ومربع التأكيد وصفحة iperf3 على سطح المكتب وعرض 390 px بلا تجاوز أفقي.
 - النشر: حُدث `~/apps/vps-server` على مضيف الاختبار المحدد؛ حُفظت نسخة خاصة من الإصدار السابق خارج المستودع. بعد تغيير المنفذ وإعادته، أصبح إعداد iperf3 وسجل المضيف كلاهما على 5201. غُير SNI لعقدة الاختبار من localhost إلى `www.bing.com` عبر المحرر. الخدمات الأربع نشطة وممكّنة، ويمكن الوصول إلى HTTP/HTTPS واللوحة المحمية من الشبكة المحلية. لم تُجرَ إعادة تشغيل فعلية.
@@ -318,4 +318,5 @@ metadata:
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
-- (this commit) feat(console): refine nodes, login and iperf3 port
+- `47b3686` feat(console): refine nodes, login and iperf3 port
+- (this commit) docs(log): record GitHub synchronization

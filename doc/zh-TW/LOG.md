@@ -167,7 +167,7 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 
 ## 交接
 
-- 分支：`feat/node-management`，基於 `feat/ui-redesign`，準備推送到正式 GitHub 儲存庫。未發現臨時專案規則。
+- 分支：`feat/node-management`，基於 `feat/ui-redesign`，已推送至正式 GitHub 儲存庫。未發現臨時專案規則。
 - 已完成：新增節點可手動填寫憑據，留空則隨機產生；TLS 節點預設使用 `www.bing.com`。節點頁面只顯示網卡與 Tailscale 位址，不再另列公開 IP。重設與刪除使用確認對話框，QR 碼按鈕文字已縮短。登入頁面統一版面，提供可存取的密碼顯示切換與錯誤提示。iperf3 分別顯示狀態及連接埠；測試視窗關閉時可修改連接埠，儲存前檢查衝突，並同步持久保存設定及主機連接埠登記表。
 - 檢查：296 項自動化測試通過（8 項略過）；Python 編譯、JavaScript 語法、語言檢查及差異檢查通過。Chromium 在桌面及 390 px 寬度驗證了登入密碼切換、新增表單、依協定切換的欄位、確認對話框和 iperf3 頁面，皆無橫向溢出。
 - 部署：指定測試主機上的 `~/apps/vps-server` 已更新；舊版的私人備份保留於儲存庫外。實測變更並還原連接埠後，iperf3 設定與主機登記表均為 5201。透過編輯器將測試節點的 SNI 從 localhost 改為 `www.bing.com`。四項服務均在運行且已啟用，區域網路可存取 HTTP/HTTPS 與需登入的主控台。尚未實際重新啟動主機。
@@ -320,4 +320,5 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
-- (this commit) feat(console): refine nodes, login and iperf3 port
+- `47b3686` feat(console): refine nodes, login and iperf3 port
+- (this commit) docs(log): record GitHub synchronization

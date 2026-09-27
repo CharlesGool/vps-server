@@ -220,7 +220,7 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `feat/node-management`, based on `feat/ui-redesign`, prepared for the formal GitHub repository. No temporary project rules were found.
+- Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
 - Completed: new nodes accept a manual credential or generate one when blank; TLS nodes default to `www.bing.com`. The node page shows interface and Tailscale addresses without a separate public-IP block. Reset and delete use confirmation dialogs, and the QR label is shorter. The login page has a unified layout, an accessible password toggle and error feedback. iperf3 shows status and port separately; its port can be changed while closed, with collision checks, persistent state and an atomic host registry update.
 - Checks: 296 automated tests passed (8 skipped); Python compilation, JavaScript syntax, the language checker and diff checks passed. Chromium verified the login toggle, create form, protocol-specific fields, confirmation dialog and iperf3 page at desktop and 390 px widths without horizontal overflow.
 - Deployment: the designated test host was updated under `~/apps/vps-server`; the prior version has a private backup outside the repository. A live port change and restoration left the selected iperf3 port and host registry at 5201. The existing test node's SNI was changed from localhost to `www.bing.com` through its editor. Four services are active and enabled, and HTTP/HTTPS plus the authenticated console were reached from the LAN. An actual reboot has not been performed.
@@ -471,4 +471,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `773eedf` feat(web): unify console and setup interface design
 - `9a615ab` feat(nodes): support multiple nodes and in-place editing
 - `6c1459d` docs(log): record node management delivery
-- (this commit) feat(console): refine nodes, login and iperf3 port
+- `47b3686` feat(console): refine nodes, login and iperf3 port
+- (this commit) docs(log): record GitHub synchronization
