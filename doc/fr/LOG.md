@@ -263,4 +263,54 @@ Première version. Elle réunit deux projets existants — une console de test d
 
 ## Historique des commits
 
-L’historique Git consigne chaque commit ; ce journal résume les versions, les décisions et la passation actuelle.
+Ces entrées conservent les sujets des commits Git dans l’ordre chronologique. La dernière entrée correspond à ce commit de documentation.
+
+- `b3cc391` docs: add documentation skeleton and agreed design
+- `63f1680` feat(web): vendor the web module and add the public page and iperf3 window
+- `c0def78` feat(anytls): vendor the anytls module and record third-party licences
+- `dc70d9b` feat(install): turn the installer into a module menu
+- `fcf7878` fix(install): print a teardown command that actually works
+- `6022737` docs: record that the iperf3 window works under systemd sandboxing
+- `790b7c6` fix(anytls): install the sing-box binary that was there all along
+- `f0862d0` feat(console): add an anytls node page, and stop the iperf buttons competing
+- `aa01a30` feat(console): show the anytls port, password and every usable address
+- `901cc0c` fix(ui): make the copy button quiet, and every colour survive light mode
+- `5c6e65a` feat(anytls): let the console rotate the node's port and password
+- `27e2c9d` docs(anytls): keep the upstream tag as the file's last line
+- `03bb980` feat(install): carry an existing install's settings across an upgrade
+- `33d8488` fix(anytls): run the reset outside this service's sandbox
+- `00bf933` fix(anytls): stop a raw iptables line leaking into the install summary
+- `c8330ba` fix: eleven defects from a full audit
+- `0be4851` docs(backlog): tick the anytls vendoring item, done since c0def78
+- `a9d6b1d` fix(ui): align the iperf form, and let the layout survive a narrow screen
+- `3843ccb` docs: correct two stale backlog ticks and the mean_rtt claim
+- `cc0cf4d` docs: record three more verifications, and what is left
+- `8e2ea5e` chore(release): v1.0.0
+- `40a4bc3` fix(changelog): stop rendering the maintainer comment to readers
+- `bbc7bd1` chore(release): v1.0.1
+- `98d3bf7` chore(release): v1.0.2
+- `aceecfd` chore(release): v1.0.3
+- `e723745` chore(release): v1.0.4
+- `4983c10` refactor(docs): migrate docs to doc/ + doc/<lang>/ layout
+- `a468514` docs(i18n): scaffold five extended-language placeholders, fix README Install
+- `42ffe49` docs(i18n): sync README Install one-liner to zh_cn/zh_tw translations
+- `0bbb682` feat(portfwd): console-managed iptables port forwarding
+- `2b3caee` docs(backlog): record web-based first-run setup page idea
+- `14608c6` chore(release): v1.1.0
+- `eace062` chore(release): v1.1.1
+- `9e09d8a` fix(install): stop install.sh silently dying mid-upgrade
+- `5451526` refactor(project): publish standardized project tree
+- `f300ab7` docs(log): record GitHub synchronization
+- `53c390c` chore(release): prepare v2.0.0 content
+- `f9eb612` docs(release): verify bundled artifact provenance
+- `5868549` docs(log): record v2.0.0 publication handoff
+- `56c9ed5` docs(readme): translate installation example comments
+- `51e89bc` feat(nodes): scaffold numbering and refresh proxy workspace
+- `ed58969` feat(nodes): add managed controls and traffic policing
+- `d0d6ae7` docs: restore required multilingual sections
+- `84b9599` fix(web): show development revision in checkout
+- `e986c51` fix(install): create flat entry during in-place install
+- `eaceed8` fix(install): stage modules during in-place install
+- `5ff2a6b` fix(web): condense mobile navigation
+- `2477fcc` docs: record node deployment handoff
+- (this commit) docs(log): synchronize commit history
