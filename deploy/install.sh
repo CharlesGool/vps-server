@@ -811,6 +811,15 @@ copy_selected_files() {
   prefix_abs="$(cd "$PREFIX" && pwd)"
   if [ "$SRC_DIR" = "$prefix_abs" ]; then
     if has_module web; then msg inplace_skip; fi
+    # Module setup and uninstall paths use PREFIX/<module> even when the
+    # checkout itself is PREFIX. Keep deploy/<module> as tracked source.
+    local module
+    for module in anytls proxy frps lucky; do
+      has_module "$module" || continue
+      [ -d "$SRC_DIR/deploy/$module" ] || continue
+      mkdir -p "$PREFIX/$module"
+      cp -a "$SRC_DIR/deploy/$module/." "$PREFIX/$module/"
+    done
   else
     local copy_items item source
     copy_items="lang"

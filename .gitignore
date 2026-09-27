@@ -45,6 +45,10 @@ target/
 /node_*.py
 /sing-box
 /vendor/
+/anytls/
+/proxy/
+/frps/
+/lucky/
 dist/*
 !dist/.gitkeep
 private/*

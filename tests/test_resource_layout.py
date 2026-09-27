@@ -81,6 +81,8 @@ class ResourceLayoutTest(unittest.TestCase):
             (inplace / "third_party/sing-box/sing-box").write_bytes(b"binary fixture")
             (inplace / "deploy/anytls").mkdir(parents=True)
             (inplace / "deploy/anytls/sentinel").write_text("keep")
+            (inplace / "deploy/proxy").mkdir(parents=True)
+            (inplace / "deploy/proxy/sentinel").write_text("proxy source")
             (inplace / "app.py").write_text("keep")
             (inplace / "src/web").mkdir(parents=True)
             (inplace / "src/web/app.py").write_text("new app")
@@ -92,6 +94,10 @@ class ResourceLayoutTest(unittest.TestCase):
                     }, check=True)
                     self.assertEqual((inplace / "sing-box").read_bytes(), b"binary fixture")
                     self.assertEqual((inplace / "deploy/anytls/sentinel").read_text(), "keep")
+                    if "anytls" in modules:
+                        self.assertEqual((inplace / "anytls/sentinel").read_text(), "keep")
+                    if "proxy" in modules:
+                        self.assertEqual((inplace / "proxy/sentinel").read_text(), "proxy source")
                     if "web" in modules:
                         self.assertEqual((inplace / "app.py").read_text(), "new app")
                         self.assertEqual((inplace / "node_config.py").read_text(), "new helper")
