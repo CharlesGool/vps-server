@@ -561,7 +561,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn = self.connect()
         conn.request("GET", "/login")
         body = conn.getresponse().read().decode()
-        self.assertIn(f"v{app.VERSION}", body)
+        self.assertIn(app.VERSION_LABEL, body)
         conn.close()
 
     def require_log_files(self, *paths):
@@ -616,7 +616,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         resp = conn.getresponse()
         self.assertEqual(resp.status, 200)
         body = resp.read().decode()
-        self.assertIn(f"v{app.VERSION}", body)
+        self.assertIn(app.VERSION_LABEL, body)
         self.assertIn("<h2>", body, "changelog headings were not rendered")
         conn.close()
 

@@ -76,12 +76,22 @@ def _read_version():
     reports that — the console just keeps claiming the previous version to
     whoever is looking at it three deploys later.
 
-    install.sh writes this file: from `git describe --tags --exact-match`
-    when it is installing from a git checkout, from `dev-<short sha>` when
-    that checkout is not sitting on a tag, and from the copy committed at
-    release time when there is no git at all (a tarball). A build that cannot
+    An in-place Git checkout reports its exact release tag or dev-<short sha>.
+    A flat deployment reads the version stamped by install.sh, or the
+    committed release copy when Git metadata is absent. A build that cannot
     establish what it is says so rather than guessing.
     """
+    if (BASE_DIR / ".git").exists():
+        tag = subprocess.run(["git", "-C", str(BASE_DIR), "describe", "--tags",
+                              "--exact-match", "HEAD"], capture_output=True,
+                             text=True, timeout=5, check=False)
+        if tag.returncode == 0 and tag.stdout.strip():
+            return tag.stdout.strip().removeprefix("v")
+        revision = subprocess.run(["git", "-C", str(BASE_DIR), "rev-parse",
+                                   "--short=7", "HEAD"], capture_output=True,
+                                  text=True, timeout=5, check=False)
+        if revision.returncode == 0 and re.fullmatch(r"[0-9a-f]{7,}", revision.stdout.strip()):
+            return "dev-" + revision.stdout.strip()
     try:
         version_file = BASE_DIR / "config" / "VERSION"
         if not version_file.is_file():
@@ -93,6 +103,7 @@ def _read_version():
 
 
 VERSION = _read_version()
+VERSION_LABEL = VERSION if VERSION.startswith("dev-") else f"v{VERSION}"
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -1762,7 +1773,7 @@ def render_changelog(markdown):
 def render_page(title, body, lang, active=None, show_nav=True):
     t = STRINGS[lang]
     lang_switcher = render_lang_switcher(lang)
-    version_tag = f'<a class="version" href="/changelog">v{VERSION}</a>'
+    version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
         def link(href, key):
@@ -1808,7 +1819,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
         <nav class="topnav minimal">
           <div class="brandwrap">
             <span class="brand">{html.escape(t['title'])}</span>
-            <span class="version">v{VERSION}</span>
+            <span class="version">{html.escape(VERSION_LABEL)}</span>
           </div>
           <div class="navlinks">{lang_switcher}</div>
         </nav>
@@ -3034,7 +3045,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             content = f'<p class="muted">{html.escape(t["changelog_missing"])}</p>'
         body = f"""
         <div class="card wide">
-          <h1>{html.escape(t['changelog'])} <span class="version-inline">v{VERSION}</span></h1>
+          <h1>{html.escape(t['changelog'])} <span class="version-inline">{html.escape(VERSION_LABEL)}</span></h1>
           <div class="changelog">
           {content}
           </div>

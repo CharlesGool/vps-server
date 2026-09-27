@@ -21,7 +21,9 @@ class AppEntryTest(unittest.TestCase):
             check = '''from src.web import app
 import pathlib
 assert app.BASE_DIR == pathlib.Path.cwd()
-assert app.VERSION == pathlib.Path("config/VERSION").read_text().strip()
+import subprocess
+sha = subprocess.check_output(["git", "rev-parse", "--short=7", "HEAD"], text=True).strip()
+assert app.VERSION == "dev-" + sha
 old = app._read_proc_net
 app._read_proc_net = lambda path: []
 assert app.observed_connections() == {}
