@@ -85,7 +85,7 @@
   "anytls_reset_failed": "重置失败。节点可能已停止，查看：journalctl -u {service} -e",
   "anytls_reset_timeout": "重置没有在限定时间内完成。重试之前先确认节点状态：systemctl status {service}",
   "anytls_reset_missing": "应用目录下找不到 anytls/setup-anytls.sh，无法执行重置。",
-  "proxy": "proxy",
+  "proxy": "代理节点",
   "proxy_heading": "代理节点",
   "node_overview": "概览",
   "node_overview_intro": "在一处查看连接信息并管理节点设置。",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "石板蓝",
   "theme_sage": "鼠尾草绿",
   "theme_teal": "青蓝",
-  "theme_plum": "梅紫"
+  "theme_plum": "梅紫",
+  "node_cancel": "取消",
+  "node_limit_manage": "流量与周期",
+  "node_save_limits": "保存限制",
+  "node_create": "新建节点",
+  "node_delete": "删除节点",
+  "node_delete_confirm": "删除此节点并使分享链接失效？",
+  "node_created": "节点已创建。",
+  "node_deleted": "节点已删除。",
+  "node_protocol": "协议",
+  "node_random_port": "留空则随机",
+  "node_sni_optional": "TLS 节点留空时使用 localhost",
+  "node_empty": "暂无节点。"
 }

@@ -30,7 +30,7 @@ class FakeHost:
 
     def check(self, path):
         self._call("check")
-        assert json.loads(Path(path).read_text())["inbounds"]
+        assert isinstance(json.loads(Path(path).read_text())["inbounds"], list)
 
     def restart(self, service):
         self._call("restart")
@@ -119,6 +119,37 @@ class NodeControlTests(unittest.TestCase):
         # inbound, so an external protocol change is rejected before editing.
         with self.assertRaisesRegex(ValueError, "differs"):
             self.apply({"action": "edit", "id": self.identifier, "sni": "example.com"})
+
+    def test_create_duplicate_and_delete_last_listener(self):
+        with patch("node_control._free_port"):
+            created = self.apply({"action": "create", "protocol": "anytls",
+                                  "name": "Second node", "port": 30001, "sni": "example.org"})
+        self.assertEqual([node["number"] for node in created["nodes"]], [1, 2, 3])
+        self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 2)
+        first_removed = self.apply({"action": "delete", "id": self.identifier})
+        self.assertEqual([node["number"] for node in first_removed["nodes"]], [2, 3])
+        second_id = created["nodes"][-1]["id"]
+        cert_root = self.state.parent / "certs" / second_id
+        self.assertTrue(cert_root.is_dir())
+        all_removed = self.apply({"action": "delete", "id": second_id})
+        self.assertEqual([node["number"] for node in all_removed["nodes"]], [2])
+        self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
+        self.assertFalse(cert_root.exists())
+        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), all_removed)
+
+    def test_create_new_protocol_and_rollback_on_restart_failure(self):
+        original_config = self.configs["proxy"].read_bytes()
+        original_state = copy.deepcopy(self.inventory)
+        self.host.fail = "start"
+        with patch("node_control._free_port"), self.assertRaises(NodeControlError):
+            self.apply({"action": "create", "protocol": "shadowsocks",
+                        "name": "New shadowsocks", "port": 30002})
+        self.assertEqual(self.configs["proxy"].read_bytes(), original_config)
+        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), original_state)
+        with patch("node_control._free_port"):
+            created = self.apply({"action": "create", "protocol": "shadowsocks",
+                                  "name": "New shadowsocks", "port": 30002})
+        self.assertEqual(created["nodes"][-1]["protocol"], "shadowsocks")
 
 
 if __name__ == "__main__":

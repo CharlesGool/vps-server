@@ -84,7 +84,8 @@ class ConsoleTest(unittest.TestCase):
         identifier = "12345678-1234-4234-8234-123456789abc"
         node = {"id": identifier, "number": 7, "name": "Tokyo node",
                 "protocol": "anytls", "port": 25001,
-                "inbound": {"tls": {"certificate_path": "/missing/cert.pem"}},
+                "inbound": {"users": [{"password": "test-secret"}],
+                            "tls": {"certificate_path": "/missing/cert.pem"}},
                 "cap_bytes": 10485760, "upload_bytes": 1048576,
                 "download_bytes": 2097152, "expires_at": None,
                 "reset_mode": "monthly", "next_reset_at": "2030-02-01T00:00:00+00:00"}
@@ -112,12 +113,11 @@ class ConsoleTest(unittest.TestCase):
             self.assertIn("1.0 MiB", body)
             self.assertIn('action="/proxy/node/edit"', body)
             self.assertNotIn('action="/anytls/reset"', body)
-            self.assertNotIn(identifier, body)
+            self.assertNotIn(f'>{identifier}<', body)
 
-            form = urlencode({"protocol": "anytls", "csrf": app.node_csrf_token(session, "anytls"),
+            form = urlencode({"id": identifier, "csrf": app.node_csrf_token(session, identifier),
                               "name": "New name", "port": "25002", "credential": "",
-                              "sni": "example.org", "cap_gib": "12", "expires_at": "",
-                              "reset_mode": "monthly", "next_reset_at": ""})
+                              "sni": "example.org"})
             conn = self.connect()
             conn.request("POST", "/proxy/node/edit", body=form,
                          headers={"Cookie": f"session={session}",
@@ -128,7 +128,20 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 302)
             self.assertEqual(len(applied), 1)
             self.assertEqual(applied[0]["id"], identifier)
-            self.assertEqual(applied[0]["cap_bytes"], 12 * 1073741824)
+            self.assertEqual(applied[0]["name"], "New name")
+
+            limits = urlencode({"id": identifier, "csrf": app.node_csrf_token(session, identifier),
+                                "cap_gib": "12", "expires_at": "", "reset_mode": "monthly",
+                                "next_reset_at": ""})
+            conn = self.connect()
+            conn.request("POST", "/proxy/node/limits", body=limits,
+                         headers={"Cookie": f"session={session}",
+                                  "Content-Type": "application/x-www-form-urlencoded"})
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 302)
+            self.assertEqual(applied[1]["cap_bytes"], 12 * 1073741824)
 
     def test_clash_subscription_is_single_node_and_revoked_on_edit(self):
         node = {"id": "12345678-1234-4234-8234-123456789abc", "number": 1,
@@ -140,7 +153,7 @@ class ConsoleTest(unittest.TestCase):
                 "expires_at": None, "reset_mode": "none", "next_reset_at": None}
         state_file = Path(TEST_DATA_DIR) / "clash-node-state.json"
         state_file.write_text("{}")
-        path = f"/clash/sub/anytls/{app.clash_share_token(node)}"
+        path = f"/clash/sub/{node['id']}/{app.clash_share_token(node)}"
         with patch.object(app, "read_inventory", return_value={"nodes": [node]}), \
              patch.object(app, "NODE_STATE_PATH", state_file), \
              patch.object(app, "anytls_node", return_value={"running": True, "port": 25001,
@@ -161,7 +174,7 @@ class ConsoleTest(unittest.TestCase):
             link = html.unescape(re.search(r'class="node-import" href="([^"]+)', page).group(1))
             self.assertEqual(urlsplit(link).scheme, "clash")
             self.assertIn(path, unquote(link))
-            self.assertNotIn(node["id"], page)
+            self.assertNotIn(f'>{node["id"]}<', page)
             conn = self.connect()
             conn.request("GET", path)
             response = conn.getresponse()
@@ -182,6 +195,56 @@ class ConsoleTest(unittest.TestCase):
             response.read()
             conn.close()
             self.assertEqual(response.status, 404)
+
+    def test_node_create_delete_forms_use_stable_ids(self):
+        identifier = "12345678-1234-4234-8234-123456789abc"
+        node = {"id": identifier, "number": 3, "name": "First", "protocol": "shadowsocks",
+                "port": 24001, "inbound": {"password": "test-key"},
+                "cap_bytes": None, "upload_bytes": 0, "download_bytes": 0,
+                "expires_at": None, "reset_mode": "none", "next_reset_at": None}
+        second = {**node, "id": "22345678-1234-4234-8234-123456789abc",
+                  "number": 4, "name": "Second", "port": 24002}
+        state_file = Path(TEST_DATA_DIR) / "multi-node-state.json"
+        state_file.write_text("{}")
+        config_file = Path(TEST_DATA_DIR) / "multi-proxy.json"
+        config_file.write_text("{}")
+        applied = []
+        session = self.login()
+        with patch.object(app, "read_inventory", return_value={"nodes": [node, second]}), \
+             patch.object(app, "NODE_STATE_PATH", state_file), \
+             patch.object(app, "PROXY_CONFIG", config_file), \
+             patch.object(app, "anytls_node", return_value=None), \
+             patch.object(app, "proxy_running", return_value=True), \
+             patch.object(app, "address_entries", return_value=[]), \
+             patch.object(app, "node_control_apply", side_effect=lambda request: applied.append(request) or True):
+            conn = self.connect()
+            conn.request("GET", "/proxy", headers={"Cookie": f"session={session}"})
+            response = conn.getresponse()
+            page = response.read().decode()
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertIn("First", page)
+            self.assertIn("Second", page)
+            self.assertIn('action="/proxy/node/create"', page)
+            self.assertEqual(page.count('action="/proxy/node/delete"'), 2)
+            for path, form in (
+                ("/proxy/node/create", {"protocol": "shadowsocks", "name": "Third",
+                                         "port": "", "sni": "",
+                                         "csrf": app.node_csrf_token(session, "create")}),
+                ("/proxy/node/delete", {"id": second["id"], "confirm": "yes",
+                                         "csrf": app.node_csrf_token(session, second["id"])}),
+            ):
+                conn = self.connect()
+                conn.request("POST", path, body=urlencode(form),
+                             headers={"Cookie": f"session={session}",
+                                      "Content-Type": "application/x-www-form-urlencoded"})
+                response = conn.getresponse()
+                response.read()
+                conn.close()
+                self.assertEqual(response.status, 302)
+        self.assertEqual(applied[0], {"action": "create", "protocol": "shadowsocks",
+                                      "name": "Third", "port": None})
+        self.assertEqual(applied[1], {"action": "delete", "id": second["id"]})
 
     def test_clash_profile_escapes_custom_password(self):
         password = 'quote" and\nline'

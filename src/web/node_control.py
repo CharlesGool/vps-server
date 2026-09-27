@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Privileged, locked edits of the five installed proxy inbounds.
+"""Privileged, locked changes to installed proxy inbounds.
 
 Requests arrive on stdin, never argv. The web process launches this helper in
 a transient systemd unit, outside its read-only /etc sandbox. No secret or
@@ -22,8 +22,8 @@ import sys
 import tempfile
 import uuid
 
-from node_inventory import InvalidInventory
-from node_operations import edit_node
+from node_inventory import InvalidInventory, validate_inventory
+from node_operations import create_node, delete_node, edit_node
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
 
 
@@ -246,9 +246,176 @@ def _candidate_document(document, old, new):
     return result
 
 
+def _default_inbound(protocol, port):
+    """An installer-compatible seed when this protocol has no remaining node."""
+    inbound = {"type": protocol, "tag": "new-node-seed", "listen": "::",
+               "listen_port": port}
+    if protocol == "shadowsocks":
+        inbound.update(method="2022-blake3-aes-128-gcm",
+                       password=base64.b64encode(b"temporary-key-16").decode())
+        return inbound
+    user = {"name": "new-node-seed"}
+    if protocol in ("vmess", "vless"):
+        user["uuid"] = str(uuid.uuid4())
+        if protocol == "vmess":
+            user["alterId"] = 0
+    else:
+        user["password"] = "temporary-secret"
+    inbound["users"] = [user]
+    inbound["tls"] = {"enabled": True, "certificate_path": "/tmp/new-node-cert",
+                      "key_path": "/tmp/new-node-key"}
+    return inbound
+
+
+def _random_free_port(inventory, reserved):
+    for _ in range(100):
+        port = 20000 + secrets.randbelow(40000)
+        if port not in reserved | {node["port"] for node in inventory["nodes"]}:
+            try:
+                _free_port(port)
+                return port
+            except NodeControlError:
+                continue
+    raise NodeControlError("no random port available")
+
+
+def _apply_structure_request(request, *, state_path, config_paths, lock_path,
+                             backend, require_root):
+    if require_root and os.geteuid() != 0:
+        raise PermissionError("node control requires root")
+    action = request.get("action") if isinstance(request, dict) else None
+    if action == "create":
+        if set(request) not in ({"action", "protocol", "name", "port"},
+                                {"action", "protocol", "name", "port", "sni"}):
+            raise NodeControlError("invalid create request")
+        protocol = request["protocol"]
+        if protocol not in PROTOCOLS or (protocol == "shadowsocks") == ("sni" in request):
+            raise NodeControlError("invalid create protocol or SNI")
+    elif action == "delete":
+        if set(request) != {"action", "id"} or not isinstance(request["id"], str):
+            raise NodeControlError("invalid delete request")
+    else:
+        raise NodeControlError("invalid node action")
+    backend = backend or HostBackend()
+    Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        inventory = read_inventory(state_path=state_path, config_paths=config_paths)
+        if inventory is None:
+            inventory = initialize_inventory(state_path=state_path, config_paths=config_paths)
+        reserved = _reserved_ports()
+        certificate_dir = None
+        if action == "create":
+            module = "anytls" if protocol == "anytls" else "proxy"
+            config_path = Path(config_paths[module])
+            if not config_path.is_file():
+                raise NodeControlError("node module is not installed")
+            port = request["port"]
+            if port is None:
+                port = _random_free_port(inventory, reserved)
+            elif type(port) is not int or not 1 <= port <= 65535 or port in reserved | {n["port"] for n in inventory["nodes"]}:
+                raise NodeControlError("invalid or reserved node port")
+            else:
+                _free_port(port)
+            template = None if any(n["protocol"] == protocol for n in inventory["nodes"]) else _default_inbound(protocol, port)
+            candidate = create_node(inventory, protocol, request["name"], port,
+                                    reserved_ports=reserved, prototype_inbound=template)
+            new = candidate["nodes"][-1]
+            if protocol != "shadowsocks":
+                sni = _sni(request["sni"])
+                cert, key, certificate_dir = _certificate(Path(state_path).parent, new["id"], sni)
+                new["inbound"]["tls"]["certificate_path"] = str(cert)
+                new["inbound"]["tls"]["key_path"] = str(key)
+                validate_inventory(candidate)
+            affected = new
+        else:
+            matches = [n for n in inventory["nodes"] if n["id"] == request["id"]]
+            if len(matches) != 1:
+                raise NodeControlError("node ID not found")
+            affected = matches[0]
+            module = "anytls" if affected["protocol"] == "anytls" else "proxy"
+            config_path = Path(config_paths[module])
+            candidate = delete_node(inventory, affected["id"])
+        document = json.loads(config_path.read_text(encoding="utf-8"))
+        proposed = copy.deepcopy(document)
+        proposed["inbounds"] = [copy.deepcopy(n["inbound"]) for n in candidate["nodes"]
+                                 if (n["protocol"] == "anytls") == (module == "anytls")]
+        original = config_path.read_bytes()
+        meter_path = Path(state_path).parent / "meter.json"
+        original_meter = meter_path.read_bytes() if meter_path.exists() else None
+        staged = None
+        opened = swapped = stopped = state_written = committed = False
+        active = backend.active(SERVICES[module])
+        try:
+            staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode())
+            backend.check(staged)
+            if action == "create":
+                opened = True
+                backend.firewall(affected["port"], True, affected["protocol"])
+            if active:
+                backend.stop(SERVICES[module])
+                stopped = True
+            _replace(staged, config_path)
+            swapped = True
+            write_inventory(candidate, state_path=state_path)
+            state_written = True
+            backend.reconcile(state_path=state_path, config_paths=config_paths)
+            if active:
+                backend.start(SERVICES[module])
+            if action == "delete":
+                backend.firewall(affected["port"], False, affected["protocol"])
+            committed = True
+            if action == "delete":
+                # Only certificates made for this ID live here. A legacy
+                # shared certificate sits in its module directory and stays.
+                cert_root = Path(state_path).parent / "certs" / affected["id"]
+                if not any(str((node["inbound"].get("tls") or {}).get("certificate_path", ""))
+                           .startswith(str(cert_root) + os.sep) for node in candidate["nodes"]):
+                    shutil.rmtree(cert_root, ignore_errors=True)
+            return candidate
+        except BaseException as exc:
+            if swapped or stopped or state_written:
+                try:
+                    if swapped:
+                        restore = _stage(config_path, original)
+                        try:
+                            _replace(restore, config_path)
+                        finally:
+                            restore.unlink(missing_ok=True)
+                    write_inventory(inventory, state_path=state_path)
+                    if original_meter is None:
+                        meter_path.unlink(missing_ok=True)
+                    else:
+                        restore_meter = _stage(meter_path, original_meter)
+                        try:
+                            _replace(restore_meter, meter_path)
+                        finally:
+                            restore_meter.unlink(missing_ok=True)
+                    backend.reconcile(state_path=state_path, config_paths=config_paths)
+                    if active:
+                        backend.start(SERVICES[module])
+                    if action == "delete":
+                        backend.firewall(affected["port"], True, affected["protocol"])
+                    if opened:
+                        backend.firewall(affected["port"], False, affected["protocol"])
+                except BaseException as recovery_error:
+                    raise DegradedNodeControl("node rollback failed") from recovery_error
+            elif opened:
+                backend.firewall(affected["port"], False, affected["protocol"])
+            raise NodeControlError("node change failed; previous configuration restored") from exc
+        finally:
+            if staged is not None:
+                staged.unlink(missing_ok=True)
+            if certificate_dir is not None and not committed:
+                shutil.rmtree(certificate_dir, ignore_errors=True)
+
+
 def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                   lock_path=LOCK_PATH, backend=None, require_root=True):
     """Apply one ID-based edit or reset with config, service and state rollback."""
+    if isinstance(request, dict) and request.get("action") in ("create", "delete"):
+        return _apply_structure_request(request, state_path=state_path, config_paths=config_paths,
+                                        lock_path=lock_path, backend=backend, require_root=require_root)
     if require_root and os.geteuid() != 0:
         raise PermissionError("node control requires root")
     if not isinstance(request, dict) or set(request) - {"action", "id", *EDIT_FIELDS} or \
@@ -272,16 +439,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         config_path = Path(config_paths[module])
         changes = {key: value for key, value in request.items() if key in EDIT_FIELDS - {"sni"}}
         if request["action"] == "reset":
-            for _ in range(100):
-                port = 20000 + secrets.randbelow(40000)
-                try:
-                    if port not in reserved | {node["port"] for node in inventory["nodes"]}:
-                        _free_port(port)
-                        break
-                except NodeControlError:
-                    pass
-            else:
-                raise NodeControlError("no random port available")
+            port = _random_free_port(inventory, reserved)
             changes = {"port": port, "credential": _random_credential(old["protocol"])}
         if not changes and "sni" not in request:
             raise NodeControlError("no changes requested")

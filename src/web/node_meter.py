@@ -44,7 +44,7 @@ def _zero_samples(inventory, epoch):
             for node in inventory["nodes"]}
 
 
-def parse_counters(document, inventory, epoch):
+def parse_counters(document, inventory, epoch, *, new_ids=frozenset()):
     """Decode all four named byte counters for every node, or fail closed."""
     if not isinstance(document, dict) or not isinstance(document.get("nftables"), list):
         raise InvalidInventory("invalid nftables counter JSON")
@@ -61,6 +61,11 @@ def parse_counters(document, inventory, epoch):
         found[name] = amount
     snapshots = _zero_samples(inventory, epoch)
     for node in inventory["nodes"]:
+        names = [_name(node["id"], family, direction)
+                 for family in ("ipv4", "ipv6") for direction in ("upload", "download")]
+        if node["id"] in new_ids and not any(name in found for name in names):
+            snapshots.pop(node["id"])
+            continue
         for family in ("ipv4", "ipv6"):
             for direction in ("upload", "download"):
                 name = _name(node["id"], family, direction)
@@ -186,9 +191,18 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
             epoch = metadata["epoch"]
             ledger = metadata["ledger"]
             old_fingerprint = metadata["fingerprint"]
+            current_ids = {node["id"] for node in inventory["nodes"]}
+            new_ids = current_ids - set(ledger["nodes"])
+            ledger["nodes"] = {identifier: entry for identifier, entry in ledger["nodes"].items()
+                               if identifier in current_ids}
             if exists:
-                snapshots = parse_counters(backend.counters(), inventory, epoch)
+                snapshots = parse_counters(backend.counters(), inventory, epoch, new_ids=new_ids)
                 inventory, ledger = update_accounting(inventory, ledger, snapshots)
+                # node_control stops the service before a new listener is
+                # installed, so its first meter baseline has a known zero.
+                zero = _zero_samples(inventory, epoch)
+                for identifier in new_ids:
+                    ledger["nodes"][identifier] = {"samples": zero[identifier], "suspect": False}
             else:
                 # After reboot or an external table deletion, an unobserved
                 # interval may have lost bytes. Keep lifetime lower bounds and

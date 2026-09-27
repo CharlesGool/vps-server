@@ -85,7 +85,7 @@
   "anytls_reset_failed": "The reset failed. The node may be stopped; check: journalctl -u {service} -e",
   "anytls_reset_timeout": "The reset did not finish in time. Check the node's state before retrying: systemctl status {service}",
   "anytls_reset_missing": "anytls/setup-anytls.sh was not found next to the app, so the reset could not run.",
-  "proxy": "proxy",
+  "proxy": "Proxy nodes",
   "proxy_heading": "Proxy nodes",
   "node_overview": "Overview",
   "node_overview_intro": "Manage connection details and node settings in one place.",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "Slate blue",
   "theme_sage": "Sage",
   "theme_teal": "Teal",
-  "theme_plum": "Plum"
+  "theme_plum": "Plum",
+  "node_cancel": "Cancel",
+  "node_limit_manage": "Limits and cycle",
+  "node_save_limits": "Save limits",
+  "node_create": "Create node",
+  "node_delete": "Delete node",
+  "node_delete_confirm": "Delete this node and revoke its share link?",
+  "node_created": "Node created.",
+  "node_deleted": "Node deleted.",
+  "node_protocol": "Protocol",
+  "node_random_port": "Random if blank",
+  "node_sni_optional": "Defaults to localhost for TLS nodes",
+  "node_empty": "No nodes yet."
 }

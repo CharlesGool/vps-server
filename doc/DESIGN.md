@@ -116,7 +116,7 @@ The web service, anytls service, and optional proxy service run as separate proc
                        └─────────────────────────────────┘
 ```
 
-The diagram shows the web and anytls units; the optional `vps-server-proxy.service` runs up to four independent inbounds in a third process, sharing the vendored sing-box binary but not either unit's state. Each module can be selected separately; see [The proxy module][local-link-005].
+The diagram shows the web and anytls units; the optional `vps-server-proxy.service` runs multiple independent inbounds in a third process, sharing the vendored sing-box binary but not either unit's state. Each module can be selected separately; see [The proxy module][local-link-005].
 
 ### Why the public page and the console are separate listeners
 
@@ -228,10 +228,10 @@ pass `sing-box check`, and — confirmed by actually running it, not just
 validating the config — all four bind their ports and accept connections
 simultaneously in one `sing-box run` process. No second backend was added.
 
-Unlike anytls, this is **one systemd unit (`vps-server-proxy.service`) with up
-to four simultaneous inbounds in one `config.json`**, not four clones of the
-anytls shape. Reasons: one unit to monitor instead of four, one shared
-self-signed certificate instead of three (shadowsocks needs none), and it is
+Unlike anytls, this is **one systemd unit (`vps-server-proxy.service`) with
+multiple simultaneous inbounds in one `config.json`**, not four clones of the
+anytls shape. Reasons: one unit to monitor instead of four, one certificate at initial install
+and separate certificates for new TLS nodes (shadowsocks needs none), and it is
 the shape a later per-node traffic-accounting feature would want anyway — one
 process whose `inbounds` array is already the node list. `deploy/proxy/setup-proxy.sh`
 is first-party to vps-server, not vendored from anywhere, since none of these
@@ -260,7 +260,19 @@ one). Preserving credentials across an upgrade works the same way as anytls's
 and credential back out of `config.json`, plus the protocol *set* itself, so
 `VPSSRV_MODULES=proxy` on a re-run does not silently drop or add a protocol.
 
-The console's `/proxy` page renders one section per installed protocol —
+The installer initially creates one inbound per selected protocol. The managed
+console can then create multiple numbered nodes for any installed protocol,
+delete individual nodes, and leave a module installed with zero listeners.
+Node IDs remain stable and hidden in the visible UI; every form and Clash
+subscription targets the ID, so repeated protocols stay independent. A node's
+connection editor replaces its visible facts in the same card; traffic caps,
+expiry and reset cycles have a separate form. Adding or deleting a node
+changes the sing-box config, inventory, firewall and nft accounting under one
+lock, with rollback on failure. Newly created TLS nodes get their own
+self-signed certificate. The console uses `font-display: optional` for its
+bundled fonts to avoid a late font swap after first paint.
+
+The console's `/proxy` page renders one section per installed node —
 port, UUID or password (whichever the protocol uses), the shared SNI (read
 back from the certificate CN, same trick as anytls), and a Clash entry plus
 share link (`vmess://`, `vless://`, `trojan://`, `ss://`) per detected
@@ -448,7 +460,7 @@ The installer may perform an optional outbound lookup; failure only warns.
 | `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
-| `/etc/vps-server-proxy/` | installer | sing-box `config.json` (up to 4 inbounds) and its own self-signed cert |
+| `/etc/vps-server-proxy/` | installer | sing-box `config.json` (multiple inbounds) and its initial self-signed cert; new node certs live under `/etc/vps-server-nodes/certs/` |
 
 ### Configuration reference
 

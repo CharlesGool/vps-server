@@ -85,7 +85,7 @@
   "anytls_reset_failed": "La réinitialisation a échoué. Le nœud est peut-être arrêté ; vérifiez : journalctl -u {service} -e",
   "anytls_reset_timeout": "La réinitialisation n’a pas abouti à temps. Vérifiez l’état du nœud avant de réessayer : systemctl status {service}",
   "anytls_reset_missing": "anytls/setup-anytls.sh est introuvable à côté de l’application ; la réinitialisation n’a pas pu être exécutée.",
-  "proxy": "proxy",
+  "proxy": "Nœuds proxy",
   "proxy_heading": "Nœuds proxy",
   "node_overview": "Vue d’ensemble",
   "node_overview_intro": "Consultez les connexions et gérez les paramètres des nœuds au même endroit.",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "Bleu ardoise",
   "theme_sage": "Vert sauge",
   "theme_teal": "Bleu sarcelle",
-  "theme_plum": "Prune"
+  "theme_plum": "Prune",
+  "node_cancel": "Annuler",
+  "node_limit_manage": "Limites et cycle",
+  "node_save_limits": "Enregistrer les limites",
+  "node_create": "Créer un nœud",
+  "node_delete": "Supprimer le nœud",
+  "node_delete_confirm": "Supprimer ce nœud et révoquer son lien de partage ?",
+  "node_created": "Nœud créé.",
+  "node_deleted": "Nœud supprimé.",
+  "node_protocol": "Protocole",
+  "node_random_port": "Aléatoire si vide",
+  "node_sni_optional": "localhost par défaut pour les nœuds TLS",
+  "node_empty": "Aucun nœud pour le moment."
 }

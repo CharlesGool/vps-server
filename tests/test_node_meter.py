@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "web"))
 from node_meter import LIMIT_BYTES_PER_SECOND, TABLE, parse_counters, render_rules, tick
+from node_operations import create_node, delete_node
 from node_state import initialize_inventory, read_inventory, write_inventory
 from test_node_inventory import config, inbound
 
@@ -111,6 +112,31 @@ class MeterTests(unittest.TestCase):
         self.assertEqual(len(self.backend.batches), 2)
         self.assertIn(f"rate over {LIMIT_BYTES_PER_SECOND - 1000} bytes/second",
                       self.backend.batches[-1])
+
+    def test_added_and_deleted_nodes_reconcile_without_losing_survivor_usage(self):
+        self.sample()
+        original = self.inventory["nodes"][0]
+        stem = original["id"].replace("-", "")
+        self.backend.values[f"c_{stem}_ipv4_upload"] = 120
+        added = create_node(self.inventory, "anytls", "Second", 30001,
+                            reserved_ports=set())
+        new_id = added["nodes"][-1]["id"]
+        self.configs["anytls"].write_text(json.dumps(config(
+            [node["inbound"] for node in added["nodes"] if node["protocol"] == "anytls"])))
+        write_inventory(added, state_path=self.state)
+        policy = self.sample()
+        self.assertFalse(policy[new_id]["suspect"])
+        current = read_inventory(state_path=self.state, config_paths=self.configs)
+        self.assertEqual(current["nodes"][0]["total_upload_bytes"], 120)
+        removed = delete_node(current, new_id)
+        self.configs["anytls"].write_text(json.dumps(config(
+            [node["inbound"] for node in removed["nodes"] if node["protocol"] == "anytls"])))
+        write_inventory(removed, state_path=self.state)
+        self.sample()
+        ledger = json.loads(self.meter.read_text())["ledger"]["nodes"]
+        self.assertNotIn(new_id, ledger)
+        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs)
+                         ["nodes"][0]["total_upload_bytes"], 120)
 
 
 if __name__ == "__main__":

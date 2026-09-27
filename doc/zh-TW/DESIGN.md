@@ -103,7 +103,7 @@ web,anytls 及可選的 proxy 服務以獨立行程執行;web 服務也會建立
                        └─────────────────────────────────┘
 ```
 
-圖示顯示 web 和 anytls unit;可選的 `vps-server-proxy.service` 在第三個行程中執行最多四個獨立入站,共用隨附的 sing-box 執行檔,但不共用任何 unit 的狀態.各模組均可獨立選擇;見[代理模組][local-link-005].
+圖示顯示 web 和 anytls unit;可選的 `vps-server-proxy.service` 在第三個行程中執行多個獨立入站,共用隨附的 sing-box 執行檔,但不共用任何 unit 的狀態.各模組均可獨立選擇;見[代理模組][local-link-005].
 
 ### 公開頁面與主控台為何使用不同監聽器
 
@@ -196,13 +196,15 @@ SNI 完全沒有存在 sing-box 的設定裡——`setup-anytls.sh` 只把它烤
 原先待辦清單詢問隨附的 sing-box 是否支援 anytls 之外的協定,或是否需要第二個後端.答案是支援:`vmess`,`vless`,`trojan` 和 `shadowsocks`(2022-blake3-aes-128-gcm)各自通過 `sing-box check`,而且實際執行(不只是驗證設定)確認四者可在單一 `sing-box run` 行程中同時監聽連接埠並接受連線.沒有加入第二個後端.
 
 與 anytls 不同,此模組是**一個 systemd unit(`vps-server-proxy.service`)及一份 `config.json`,
-最多四個同時運作的入站**,而非四份 anytls 模組副本.如此只需監控一個 unit,共用一張自簽憑證(shadowsocks 無需憑證),且單一行程中的 `inbounds` 清單適合日後逐節點流量統計.`deploy/proxy/setup-proxy.sh` 是本專案自行編寫的,不是從 Anytsl-Serve 隨附的程式碼.
+多個同時運作的入站**,而非四份 anytls 模組副本.如此只需監控一個 unit,初次安裝時共用一張自簽憑證，後續新增 TLS 節點各有憑證(shadowsocks 無需憑證),且單一行程中的 `inbounds` 清單適合日後逐節點流量統計.`deploy/proxy/setup-proxy.sh` 是本專案自行編寫的,不是從 Anytsl-Serve 隨附的程式碼.
 
 它與 anytls **共用隨附的 sing-box 執行檔**(`/usr/local/bin/sing-box-vps-server`),不用重複收錄約 57 MB 的執行檔.兩個模組的 `uninstall()` 刪除該檔前,都會檢查*另一個*模組的設定是否仍存在;隨附的 anytls `setup-anytls.sh` 因而新增本機修改,記錄於 `deploy/anytls/.upstream-version`.
 
 `PROXY_PROTOCOLS`(逗號分隔,預設全選)會驗證後存入全域陣列,而不透過 `$(...)` 指令替換輸出:早期版本在 `read -ra x <<< "$(fn)"` 呼叫的函式內驗證,子 shell 的 `exit 1` 只終止子 shell,主腳本卻繼續使用空協定清單,啟動零個入站的服務;類似[決策][local-link-006]記載的 `prompt_new_settings()` 錯誤.各協定連接埠分別來自低於 60000,寬度 5000 的範圍;舊設計從 60000 開始取寬度 10000 的範圍,會使 sing-box 的 `uint16 listen_port` 溢出 65535.這是在五次全新安裝中發現,而不是第一次就發現.與 anytls 的 `preserve_anytls()` 類似,`preserve_proxy()` 會從 `config.json` 讀回每個已安裝協定的連接埠,憑證及*協定集合*,避免重跑 `VPSSRV_MODULES=proxy` 時悄悄增減協定.
 
-主控台 `/proxy` 頁面依已安裝協定顯示一節:連接埠,UUID 或密碼,從憑證 CN 讀回的共用 SNI,以及每個偵測到位址的 Clash 條目與分享連結(`vmess://`,`vless://`,`trojan://`,`ss://`).**每個協定都有自己的重設按鈕**:一個 vmess UUID 洩漏不應迫使所有 trojan/vless/shadowsocks 用戶端也重新設定.`setup-proxy.sh reset <protocol>` 只輪替指定協定的連接埠與憑證;`load_installed_vars()` 會先從磁碟讀回*其他*協定的現有值,確保不變.無參數的 `reset` 仍會輪替所有已安裝協定,但只供終端機/腳本使用,主控台不提供.兩種重設都透過沙盒外的 `systemd-run` 執行,與 `anytls_reset()` 一樣,以避開 `ProtectSystem=strict` 限制.共用 unit 的代價是:重設單一協定仍需重新啟動整個服務,其他協定的*連線*也會短暫中斷,儘管憑證不變.
+主控台 `/proxy` 頁面依已安裝節點顯示一節:連接埠,UUID 或密碼,從各自憑證讀回的 SNI,以及每個偵測到位址的 Clash 條目與分享連結(`vmess://`,`vless://`,`trojan://`,`ss://`).**每個協定都有自己的重設按鈕**:一個 vmess UUID 洩漏不應迫使所有 trojan/vless/shadowsocks 用戶端也重新設定.`setup-proxy.sh reset <protocol>` 只輪替指定協定的連接埠與憑證;`load_installed_vars()` 會先從磁碟讀回*其他*協定的現有值,確保不變.無參數的 `reset` 仍會輪替所有已安裝協定,但只供終端機/腳本使用,主控台不提供.兩種重設都透過沙盒外的 `systemd-run` 執行,與 `anytls_reset()` 一樣,以避開 `ProtectSystem=strict` 限制.共用 unit 的代價是:重設單一協定仍需重新啟動整個服務,其他協定的*連線*也會短暫中斷,儘管憑證不變.
+
+安裝程式起初為每種選定協定建立一個入站。之後，受管理的主控台可為任何已安裝協定建立多個編號節點、個別刪除節點，也容許模組保留但沒有監聽器。節點 ID 保持穩定，並在可見介面中隱藏；每張表單與 Clash 訂閱都以 ID 指定節點，使相同協定的節點互不混淆。連線編輯欄位在卡片原本資訊的位置展開；流量上限、到期時間和重設週期使用另一張表單。新增或刪除節點時，在同一把鎖下更新 sing-box 設定、節點清單、防火牆和 nft 計量狀態，失敗時回復。新建的 TLS 節點各自取得自簽憑證。主控台的內建字型使用 `font-display: optional`，避免首次呈現後才切換字型。
 
 `PortForwardManager.reserved_ports()` 將所有已安裝代理協定的連接埠視為保留埠,與既有的 anytls 及主控台連接埠相同,不允許轉發規則占用.
 
@@ -339,7 +341,7 @@ Tailscale 或區域網路才能連到的裝置——這是一台有公開 IP 的
 | `$VPSSRV_DATA_DIR` | 安裝程式,預設 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json` |
 | `$VPSSRV_CERT_DIR` | 安裝程式,預設 `$PREFIX/certs` | 443 使用的自簽憑證及金鑰 |
 | `/etc/vps-server-anytls/` | 安裝程式 | sing-box `config.json` 及其自簽憑證 |
-| `/etc/vps-server-proxy/` | 安裝程式 | sing-box `config.json`(最多四個入站)及其自簽憑證 |
+| `/etc/vps-server-proxy/` | 安裝程式 | sing-box `config.json`(多個入站)及初始自簽憑證；新節點憑證位於 `/etc/vps-server-nodes/certs/` |
 
 ### 設定參考
 

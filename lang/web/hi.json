@@ -85,7 +85,7 @@
   "anytls_reset_failed": "रीसेट विफल रहा। नोड बंद हो सकता है; जाँचें: journalctl -u {service} -e",
   "anytls_reset_timeout": "रीसेट समय पर पूरा नहीं हुआ। दोबारा कोशिश से पहले नोड की स्थिति जाँचें: systemctl status {service}",
   "anytls_reset_missing": "ऐप के पास anytls/setup-anytls.sh नहीं मिला, इसलिए रीसेट नहीं चल सका।",
-  "proxy": "प्रॉक्सी",
+  "proxy": "प्रॉक्सी नोड",
   "proxy_heading": "प्रॉक्सी नोड",
   "node_overview": "अवलोकन",
   "node_overview_intro": "कनेक्शन विवरण देखें और नोड सेटिंग एक ही जगह प्रबंधित करें।",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "स्लेट नीला",
   "theme_sage": "सेज हरा",
   "theme_teal": "टील",
-  "theme_plum": "प्लम"
+  "theme_plum": "प्लम",
+  "node_cancel": "रद्द करें",
+  "node_limit_manage": "सीमा और चक्र",
+  "node_save_limits": "सीमाएँ सहेजें",
+  "node_create": "नोड बनाएँ",
+  "node_delete": "नोड हटाएँ",
+  "node_delete_confirm": "इस नोड को हटाएँ और इसका साझा लिंक अमान्य करें?",
+  "node_created": "नोड बनाया गया।",
+  "node_deleted": "नोड हटा दिया गया।",
+  "node_protocol": "प्रोटोकॉल",
+  "node_random_port": "खाली छोड़ने पर यादृच्छिक",
+  "node_sni_optional": "TLS नोड के लिए खाली छोड़ने पर localhost",
+  "node_empty": "अभी कोई नोड नहीं है।"
 }

@@ -105,7 +105,7 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
                        └─────────────────────────────────┘
 ```
 
-图中显示 web 和 anytls unit;可选的 `vps-server-proxy.service` 在第三个进程中运行最多四种独立入站,共用随附的 sing-box 二进制文件,但不共用其他 unit 的状态.每个模块可分别选择;参见[proxy 模块][local-link-005].
+图中显示 web 和 anytls unit;可选的 `vps-server-proxy.service` 在第三个进程中运行多个独立入站,共用随附的 sing-box 二进制文件,但不共用其他 unit 的状态.每个模块可分别选择;参见[proxy 模块][local-link-005].
 
 ### 为什么公开页面和控制台是两个独立的监听器
 
@@ -197,13 +197,15 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 旧需求曾询问随附的 sing-box 二进制文件能否支持 anytls 以外的协议,还是需要使用第二套后端.答案是前者:`vmess`,`vless`,`trojan`,`shadowsocks`(2022-blake3-aes-128-gcm)都通过 `sing-box check`;实际运行验证(并非仅检查配置)表明,四者可以在同一个 `sing-box run` 进程中同时绑定端口并接受连接.因此没有引入第二套后端.
 
 与 anytls 不同,这里是**一个 systemd unit(`vps-server-proxy.service`)和一份 `config.json` 中
-最多四个同时运行的入站**,而不是复制四份 anytls 的结构.理由:只需监控一个 unit,只需一份共用自签名证书(shadowsocks 不需要证书),也符合未来按节点统计流量的需求——进程的 `inbounds` 数组已经是节点列表.`deploy/proxy/setup-proxy.sh` 是 vps-server 的自有代码,不是随附的上游副本;这四种协议均非源于 Anytsl-Serve.
+多个同时运行的入站**,而不是复制四份 anytls 的结构.理由:只需监控一个 unit,初次安装时共用一份自签名证书，后续新建 TLS 节点各有证书(shadowsocks 不需要证书),也符合未来按节点统计流量的需求——进程的 `inbounds` 数组已经是节点列表.`deploy/proxy/setup-proxy.sh` 是 vps-server 的自有代码,不是随附的上游副本;这四种协议均非源于 Anytsl-Serve.
 
 该模块**与 anytls 共用随附的 sing-box 二进制文件**(`/usr/local/bin/sing-box-vps-server`),避免再携带约 57 MB 的副本.两模块各自的 `uninstall()` 都会在删除文件前检查*另一模块*的配置是否还存在.为此,anytls 随附的 `setup-anytls.sh` 增加了一项有记录的本地改动(见 `deploy/anytls/.upstream-version`):二进制文件不再仅由 anytls 自己持有.
 
 `PROXY_PROTOCOLS`(逗号分隔,默认全部四种)会验证后存入全局数组,而不是通过 `$(...)` 命令替换输出.早期版本使用 `read -ra x <<< "$(fn)"` 调用验证函数:替换子 shell 中的 `exit 1` 只结束该子 shell,主脚本却带着空协议列表继续运行,启动零入站服务.属于与[决策][local-link-006]中的 `prompt_new_settings()` 相同类别的错误.每种协议的端口都从 60000 以下彼此独立,宽度 5000 的区间选择,而非从 60000 起宽度 10000 的区间:后一方案在抽到高位端口时会超出 sing-box 的 `uint16 listen_port` 上限 65535;五次重复的全新安装发现了该问题,首次安装未发现.升级时保留凭据的方式与 anytls 的 `preserve_anytls()` 相同:`preserve_proxy()` 从 `config.json` 中读回每种已装协议的端口,凭据和*协议集合*;重新运行时设置 `VPSSRV_MODULES=proxy` 不会暗中增删协议.
 
-控制台 `/proxy` 页面为每种已装协议显示一个分区,包括端口,UUID 或密码,共用 SNI(同 anytls 一样从证书 CN 读回),以及每个已检测到地址的 Clash 条目和分享链接(`vmess://`,`vless://`,`trojan://`,`ss://`).**每种协议都有自己的重置按钮**,而非统一的“全部重置”:操作员指出,泄露一个 vmess UUID 不应迫使所有 trojan/vless/shadowsocks 客户端重新配置.`setup-proxy.sh reset <protocol>` 只轮换指定协议的端口和凭据;`load_installed_vars()` 会先从磁盘读回*其他*协议的现有值,保持它们不变.无参数的 `reset` 仍轮换所有已安装协议,但仅供终端/脚本使用,控制台不提供该操作.两种形式都通过沙箱外的 `systemd-run` 执行,与 `anytls_reset()` 相同,因为同样受 `ProtectSystem=strict` 限制.共用 systemd 服务确有代价:重置一种协议仍会重启整个服务,其他协议的*连接*短暂中断,但其凭据不变.
+控制台 `/proxy` 页面为每个已装节点显示一个分区,包括端口,UUID 或密码,逐节点 SNI(从各自证书读取),以及每个已检测到地址的 Clash 条目和分享链接(`vmess://`,`vless://`,`trojan://`,`ss://`).**每种协议都有自己的重置按钮**,而非统一的“全部重置”:操作员指出,泄露一个 vmess UUID 不应迫使所有 trojan/vless/shadowsocks 客户端重新配置.`setup-proxy.sh reset <protocol>` 只轮换指定协议的端口和凭据;`load_installed_vars()` 会先从磁盘读回*其他*协议的现有值,保持它们不变.无参数的 `reset` 仍轮换所有已安装协议,但仅供终端/脚本使用,控制台不提供该操作.两种形式都通过沙箱外的 `systemd-run` 执行,与 `anytls_reset()` 相同,因为同样受 `ProtectSystem=strict` 限制.共用 systemd 服务确有代价:重置一种协议仍会重启整个服务,其他协议的*连接*短暂中断,但其凭据不变.
+
+安装程序最初为每种选定协议创建一个入站。之后，受管控制台可以为任何已安装协议创建多个编号节点、逐个删除节点，也允许模块保留但没有监听器。节点 ID 稳定，在可见界面中隐藏；所有表单和 Clash 订阅均按 ID 定位，使同协议的节点彼此独立。连接编辑框在卡片原有信息的位置展开；流量上限、到期时间和重置周期使用另一张表单。新增或删除节点时，在同一把锁下更新 sing-box 配置、节点清单、防火墙和 nft 计量状态，失败时回滚。新建的 TLS 节点拥有独立的自签名证书。控制台的自带字体使用 `font-display: optional`，避免首次显示后再换字体。
 
 `PortForwardManager.reserved_ports()` 将所有已安装代理协议的端口,与 anytls 节点及控制台的端口一样视为保留端口;端口转发规则不能指向代理协议占用的端口.
 
@@ -337,7 +339,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `$VPSSRV_DATA_DIR` | 安装程序,默认 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json` |
 | `$VPSSRV_CERT_DIR` | 安装程序,默认 `$PREFIX/certs` | 443 用的自签名证书和密钥 |
 | `/etc/vps-server-anytls/` | 安装程序 | sing-box 的 `config.json` 及其自身的自签名证书 |
-| `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(最多四个入站)及其自身的自签名证书 |
+| `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(多个入站)及初始自签名证书；新节点证书位于 `/etc/vps-server-nodes/certs/` |
 
 ### 配置参考
 

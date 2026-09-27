@@ -1361,7 +1361,8 @@ ANYTLS_MESSAGE_KEYS = frozenset({
 })
 
 NODE_APPLY_MESSAGE_KEYS = frozenset({"node_apply_done", "node_apply_failed",
-                                     "node_settings_done", "node_settings_failed", "node_reset_done"})
+                                     "node_settings_done", "node_settings_failed", "node_reset_done",
+                                     "node_created", "node_deleted"})
 
 PROXY_MESSAGE_KEYS = frozenset({
     "proxy_reset_done", "proxy_reset_unconfirmed", "proxy_reset_failed",
@@ -2166,10 +2167,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.page_proxy(lang, query_lang)
         if method == "POST" and path == "/proxy/reset":
             return self.handle_proxy_reset()
-        if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/reset"):
+        if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
+                                         "/proxy/node/reset", "/proxy/node/create",
+                                         "/proxy/node/delete"):
             if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-            return self.handle_node_control(path.endswith("/reset"))
+            return self.handle_node_control(path.rsplit("/", 1)[-1])
         if method == "POST" and path == "/proxy/apply":
             if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
@@ -2344,8 +2347,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         i18n = {k: t[k] for k in ("run_test", "running", "download", "upload",
                                   "latency", "jitter", "waiting", "warmup",
                                   "measuring", "done", "idle")}
-        info = t["test_info"].format(sec=TEST_SECONDS, warm=int(WARMUP_SECONDS),
-                                     pings=PING_SAMPLES)
         body = f"""
         <div class="card">
           <h1>{html.escape(t['speedtest'])}</h1>
@@ -2381,7 +2382,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </div>
           </div>
           <button id="run">{html.escape(t['run_test'])}</button>
-          <p class="muted small">{html.escape(info)}</p>
         </div>
         <script id="speedtest-config" type="application/json">{json.dumps(config)}</script>
         <script id="speedtest-i18n" type="application/json">{json.dumps(i18n)}</script>
@@ -2541,7 +2541,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </div>
           <p class="muted">{html.escape(t['iperf_howto'])}</p>
           {commands}
-          <p class="muted small">{html.escape(t['iperf_info'])}</p>
         </div>
         <script src="/static/copy.js"></script>
         {countdown_script}
@@ -2637,7 +2636,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <p class="muted">{html.escape(t['portfwd_intro'])}</p>
           {rules_html}
           {add_form}
-          <p class="muted small">{html.escape(t['portfwd_howto'])}</p>
         </div>
         """
         self.send_html(200, render_page(t['portfwd_heading'], body, lang, active="portfwd"),
@@ -2718,6 +2716,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             managed = {node["protocol"]: node for node in inventory["nodes"]} if inventory else {}
             meter = _read_json(NODE_METER_PATH) or {}
             meter_nodes = meter.get("ledger", {}).get("nodes", {})
+            if inventory is not None:
+                return self.page_managed_nodes(lang, query_lang, inventory, meter_nodes)
         except (OSError, ValueError, TypeError, AttributeError):
             managed, meter_nodes = {}, {}
         legacy_controls = not NODE_STATE_PATH.exists()
@@ -2900,12 +2900,137 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
+    def page_managed_nodes(self, lang, query_lang, inventory, meter_nodes):
+        """Render each installed inbound by stable ID, including duplicates."""
+        t = STRINGS[lang]
+        esc = html.escape
+        session = self.get_cookie("session")
+        host = (self.headers.get("Host") or "").split(":")[0]
+        lan_host = clash_lan_host(host) if AUTH_ENABLED else None
+        key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        notice = (f'<p class="{"error" if key == "node_settings_failed" else "notice"}">'
+                  f'{esc(t[key])}</p>') if key in NODE_APPLY_MESSAGE_KEYS else ""
+        cards = []
+        running = {"anytls": bool(anytls_node() and anytls_node()["running"]),
+                   "proxy": proxy_running()}
+        address_map = {"anytls": address_entries(t, anytls_public_address(), host),
+                       "proxy": address_entries(t, proxy_public_address(), host)}
+        for node in sorted(inventory["nodes"], key=lambda item: item["number"]):
+            protocol = node["protocol"]
+            module = "anytls" if protocol == "anytls" else "proxy"
+            identifier = node["id"]
+            token = node_csrf_token(session, identifier)
+            inbound = node["inbound"]
+            credential = (inbound["password"] if protocol == "shadowsocks" else
+                          inbound["users"][0]["uuid" if protocol in ("vmess", "vless") else "password"])
+            sni = _cert_common_name(inbound["tls"]["certificate_path"]) if protocol != "shadowsocks" else ""
+            secret_id = "node-secret-" + identifier
+            sni_fact = (f'<dt>{esc(t["proxy_sni"])}</dt><dd>{esc(sni or "—")}</dd>'
+                        if protocol != "shadowsocks" else
+                        f'<dt>{esc(t["proxy_sni"])}</dt><dd>{esc(t["node_not_applicable"])}</dd>')
+            sni_input = (f'<label>{esc(t["proxy_sni"])}<input name="sni" value="{esc(sni, quote=True)}" required></label>'
+                         if protocol != "shadowsocks" else "")
+            addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span><code>{esc(value)}</code></div>'
+                                for label, value in address_map[module])
+            cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1073741824)
+            expiry = node["expires_at"][:16] if node["expires_at"] else ""
+            next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
+            modes = "".join(f'<label class="node-radio"><input type="radio" name="reset_mode" value="{mode}"'
+                            f'{" checked" if mode == node["reset_mode"] else ""}><span>{esc(t[label])}</span></label>'
+                            for mode, label in (("none", "node_reset_none"), ("monthly", "node_reset_monthly"),
+                                                ("once", "node_reset_once")))
+            cards.append(f'''
+            <article class="proxy-node">
+              <header class="proxy-node-header"><div><span class="proxy-node-protocol">#{node['number']} · {esc(protocol)}</span>
+                <h2>{esc(node['name'])}</h2></div>
+                <span class="proxy-node-status {'is-open' if running[module] else 'is-closed'}">{esc(t['node_active'] if running[module] else t['node_stopped'])}</span></header>
+              <details class="node-inline-edit"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
+                <form method="post" action="/proxy/node/edit" autocomplete="off" class="node-inline-form">
+                  <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                  <div class="node-form-grid">
+                    <label>{esc(t['node_name'])}<input name="name" maxlength="64" value="{esc(node['name'], quote=True)}" required></label>
+                    <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{node['port']}" required></label>
+                    <label>{esc(t['node_credential'])}<input name="credential" value="" placeholder="{esc(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
+                    {sni_input}
+                  </div><button type="submit">{esc(t['node_save_settings'])}</button>
+                </form>
+              </details>
+              <dl class="kv proxy-node-facts">
+                <dt>{esc(t['node_name'])}</dt><dd>{esc(node['name'])}</dd>
+                <dt>{esc(t['proxy_port'])}</dt><dd>{node['port']}</dd>
+                <dt>{esc(t['node_credential'])}</dt><dd class="secret"><code id="{secret_id}">{esc(credential)}</code>
+                  <button type="button" class="copybtn" data-copy="{secret_id}" data-copied="{esc(t['copied'])}">{esc(t['copy'])}</button></dd>
+                {sni_fact}
+              </dl>
+              <div class="proxy-node-addresses">{addresses}</div>
+              {self.node_metrics(node, meter_nodes, t)}
+              {self.node_clash_share(node, lan_host, t)}
+              <div class="node-secondary">
+                <details><summary>{esc(t['node_limit_manage'])}</summary>
+                  <form method="post" action="/proxy/node/limits">
+                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                    <div class="node-form-grid">
+                      <label>{esc(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+                      <label>{esc(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
+                    </div><fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_schedule'])}</legend>{modes}</fieldset>
+                    <label>{esc(t['node_reset_time_utc'])}<input type="datetime-local" name="next_reset_at" value="{next_reset}"></label>
+                    <button type="submit">{esc(t['node_save_limits'])}</button>
+                  </form>
+                </details>
+                <details><summary>{esc(t['node_random_reset'])}</summary>
+                  <form method="post" action="/proxy/node/reset">
+                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                    <label class="checkline"><input type="checkbox" name="confirm" value="yes" required><span>{esc(t['node_random_confirm'])}</span></label>
+                    <button type="submit" class="danger">{esc(t['node_random_reset'])}</button>
+                  </form>
+                </details>
+                <details><summary>{esc(t['node_delete'])}</summary>
+                  <form method="post" action="/proxy/node/delete">
+                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                    <label class="checkline"><input type="checkbox" name="confirm" value="yes" required><span>{esc(t['node_delete_confirm'])}</span></label>
+                    <button type="submit" class="danger">{esc(t['node_delete'])}</button>
+                  </form>
+                </details>
+              </div>
+            </article>''')
+        protocols = (["anytls"] if ANYTLS_CONFIG.is_file() else []) + \
+                    (["vmess", "vless", "trojan", "shadowsocks"] if PROXY_CONFIG.is_file() else [])
+        protocol_choices = "".join(f'<label class="node-radio"><input type="radio" name="protocol" value="{value}"'
+                                   f'{" checked" if index == 0 else ""}><span>{esc(value)}</span></label>'
+                                   for index, value in enumerate(protocols))
+        create = (f'''<details class="node-create"><summary>{esc(t['node_create'])}</summary>
+          <form method="post" action="/proxy/node/create">
+            <input type="hidden" name="csrf" value="{node_csrf_token(session, 'create')}">
+            <fieldset class="node-reset-cycle"><legend>{esc(t['node_protocol'])}</legend>{protocol_choices}</fieldset>
+            <div class="node-form-grid">
+              <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
+              <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
+              <label>{esc(t['proxy_sni'])}<input name="sni" value="" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
+            </div><button type="submit">{esc(t['node_create'])}</button>
+          </form></details>''' if protocols else "")
+        count = len(cards)
+        active_count = sum(bool(running["anytls" if n["protocol"] == "anytls" else "proxy"])
+                           for n in inventory["nodes"])
+        qr_scripts = ('<script src="/static/qrcode.js"></script><script src="/static/qrcode-utf8.js"></script>'
+                      '<script src="/static/qrcode-render.js"></script>') if lan_host and cards else ''
+        empty_state = ''.join(cards) if cards else f'<p class="muted">{esc(t["node_empty"])}</p>'
+        body = f'''<div class="proxy-workspace"><header class="proxy-overview">
+          <div><p class="proxy-eyebrow">{esc(t['node_overview'])}</p><h1>{esc(t['proxy_heading'])}</h1></div>
+          <div class="proxy-summary" aria-label="{esc(t['node_summary'])}">
+            <div><strong>{count}</strong><span>{esc(t['node_total'])}</span></div>
+            <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div></header>
+          {notice}{create}<div class="proxy-node-grid">{empty_state}</div></div>
+          <script src="/static/copy.js"></script>
+          {qr_scripts}'''
+        return self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
     def node_clash_share(self, node, lan_host, t):
         if node is None or lan_host is None:
             return ""
         scheme = "https" if CONSOLE_TLS else "http"
         url = (f"{scheme}://{lan_host}:{CONSOLE_PORT}/clash/sub/"
-               f"{node['protocol']}/{clash_share_token(node)}")
+               f"{node['id']}/{clash_share_token(node)}")
         deep_link = "clash://install-config?url=" + quote(url, safe="")
         escaped_link = html.escape(deep_link, quote=True)
         return f'''<div class="node-share">
@@ -2919,7 +3044,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         parts = path.split("/")
         peer = ipaddress.ip_address(self.client_address[0])
         if (not AUTH_ENABLED or len(parts) != 5 or parts[:3] != ["", "clash", "sub"] or
-                parts[3] not in NODE_PROTOCOLS or
                 not re.fullmatch(r"[0-9a-f]{64}", parts[4]) or
                 not (is_lan_address(str(peer)) or peer.is_loopback)):
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -2927,8 +3051,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             inventory = read_inventory(state_path=NODE_STATE_PATH,
                                        config_paths={"anytls": ANYTLS_CONFIG,
                                                      "proxy": PROXY_CONFIG})
-            node = next(node for node in inventory["nodes"]
-                        if node["protocol"] == parts[3])
+            matches = [node for node in inventory["nodes"] if node["id"] == parts[3]]
+            if not matches and parts[3] in NODE_PROTOCOLS:
+                # Previously issued links named the protocol. Preserve the
+                # oldest matching node until its token changes or it is removed.
+                matches = sorted((node for node in inventory["nodes"]
+                                  if node["protocol"] == parts[3]), key=lambda node: node["number"])
+            node = matches[0]
             if not hmac.compare_digest(parts[4], clash_share_token(node)):
                 raise ValueError("stale link")
             host = clash_lan_host("")
@@ -3019,7 +3148,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         </form>
         """
 
-    def handle_node_control(self, reset):
+    def handle_node_control(self, action):
         """Validate the browser request, then identify the node only on server."""
         try:
             length = int(self.headers.get("Content-Length", ""))
@@ -3036,34 +3165,64 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if any(len(values) != 1 for values in form.values()):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        protocol = form.get("protocol", [""])[0]
         session = self.get_cookie("session")
-        if protocol not in NODE_PROTOCOLS or not hmac.compare_digest(
-                form.get("csrf", [""])[0], node_csrf_token(session, protocol)):
+        identifier = form.get("id", [""])[0]
+        protocol = form.get("protocol", [""])[0]
+        csrf_subject = "create" if action == "create" else identifier
+        if not hmac.compare_digest(form.get("csrf", [""])[0],
+                                   node_csrf_token(session, csrf_subject)):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        expected = ({"protocol", "csrf", "confirm"} if reset else
-                    {"protocol", "csrf", "name", "port", "credential", "cap_gib",
-                     "expires_at", "reset_mode", "next_reset_at"} |
-                    ({"sni"} if protocol != "shadowsocks" else set()))
+        expected = {
+            "create": {"protocol", "csrf", "name", "port", "sni"},
+            "edit": {"id", "csrf", "name", "port", "credential"},
+            "limits": {"id", "csrf", "cap_gib", "expires_at", "reset_mode", "next_reset_at"},
+            "reset": {"id", "csrf", "confirm"},
+            "delete": {"id", "csrf", "confirm"},
+        }.get(action)
+        if action == "edit":
+            try:
+                inventory = read_inventory(state_path=NODE_STATE_PATH,
+                                           config_paths={"anytls": ANYTLS_CONFIG, "proxy": PROXY_CONFIG})
+                node = next(node for node in inventory["nodes"] if node["id"] == identifier)
+            except (OSError, ValueError, TypeError, StopIteration):
+                return self.redirect("/proxy?msg=node_settings_failed")
+            if node["protocol"] != "shadowsocks":
+                expected = expected | {"sni"}
         if set(form) != expected:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        if reset and form["confirm"][0] != "yes":
+        if action in ("reset", "delete") and form["confirm"][0] != "yes":
             return self.redirect("/proxy?msg=node_settings_failed")
-        try:
-            inventory = read_inventory(state_path=NODE_STATE_PATH,
-                                       config_paths={"anytls": ANYTLS_CONFIG,
-                                                     "proxy": PROXY_CONFIG})
-            node = next(node for node in inventory["nodes"] if node["protocol"] == protocol)
-        except (OSError, ValueError, TypeError, StopIteration):
-            return self.redirect("/proxy?msg=node_settings_failed")
-        request = {"action": "reset" if reset else "edit", "id": node["id"]}
-        if not reset:
+        if action == "create":
+            if protocol not in NODE_PROTOCOLS:
+                return self.redirect("/proxy?msg=node_settings_failed")
+            try:
+                port = int(form["port"][0]) if form["port"][0] else None
+                request = {"action": "create", "protocol": protocol,
+                           "name": form["name"][0], "port": port}
+                if protocol != "shadowsocks":
+                    request["sni"] = form["sni"][0].strip() or "localhost"
+                elif form["sni"][0].strip():
+                    raise ValueError("SNI not applicable")
+            except ValueError:
+                return self.redirect("/proxy?msg=node_settings_failed")
+        else:
+            request = {"action": "edit" if action == "limits" else action, "id": identifier}
+        if action == "edit":
             try:
                 request["name"] = form["name"][0]
                 request["port"] = int(form["port"][0])
                 credential = form["credential"][0]
                 if credential:
                     request["credential"] = credential
+                if node["protocol"] != "shadowsocks":
+                    sni = form["sni"][0]
+                    current = _cert_common_name(node["inbound"]["tls"]["certificate_path"])
+                    if sni != current:
+                        request["sni"] = sni
+            except (ValueError, KeyError):
+                return self.redirect("/proxy?msg=node_settings_failed")
+        elif action == "limits":
+            try:
                 cap = form["cap_gib"][0].strip()
                 if cap:
                     amount = Decimal(cap)
@@ -3096,15 +3255,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                         raise ValueError("reset must be future")
                 else:
                     request["next_reset_at"] = None
-                if protocol != "shadowsocks":
-                    sni = form["sni"][0]
-                    current = _cert_common_name(node["inbound"]["tls"]["certificate_path"])
-                    if sni != current:
-                        request["sni"] = sni
             except (ValueError, InvalidOperation, OverflowError, KeyError):
                 return self.redirect("/proxy?msg=node_settings_failed")
         success = node_control_apply(request)
-        key = ("node_reset_done" if reset else "node_settings_done") if success else "node_settings_failed"
+        key = ({"reset": "node_reset_done", "create": "node_created", "delete": "node_deleted"}
+               .get(action, "node_settings_done")) if success else "node_settings_failed"
         return self.redirect(f"/proxy?msg={key}", {"Cache-Control": "no-store"})
 
     def handle_node_apply(self):
@@ -3236,11 +3391,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             table_rows = "\n".join(render_row(r) for r in rows)
 
         heading = t["visitors_heading"].format(n=len(rows), max=MAX_VISITOR_ROWS)
-        info = (
-            t["visitors_info"].format(sec=f"{CONN_POLL_SECONDS:g}")
-            if TRACK_CONNECTIONS
-            else t["visitors_info_http_only"]
-        )
         body = f"""
         <div class="card wide">
           <h1>{html.escape(heading)}</h1>
@@ -3265,7 +3415,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </tbody>
           </table>
           </div>
-          <p class="muted small">{html.escape(info)}</p>
         </div>
         <script src="/static/visitors.js"></script>
         """

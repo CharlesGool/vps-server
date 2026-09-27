@@ -85,7 +85,7 @@
   "anytls_reset_failed": "فشلت إعادة التعيين. قد تكون العقدة متوقفة؛ تحقّق بالأمر: journalctl -u {service} -e",
   "anytls_reset_timeout": "لم تكتمل إعادة التعيين في الوقت المحدد. تحقّق من حالة العقدة قبل إعادة المحاولة: systemctl status {service}",
   "anytls_reset_missing": "لم يُعثر على anytls/setup-anytls.sh بجوار التطبيق، لذا تعذّر تنفيذ إعادة التعيين.",
-  "proxy": "proxy",
+  "proxy": "عقد البروكسي",
   "proxy_heading": "عُقد الوكيل",
   "node_overview": "نظرة عامة",
   "node_overview_intro": "اعرض تفاصيل الاتصال وأدر إعدادات العقد في مكان واحد.",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "أزرق أردوازي",
   "theme_sage": "أخضر مريمي",
   "theme_teal": "أزرق مخضر",
-  "theme_plum": "برقوقي"
+  "theme_plum": "برقوقي",
+  "node_cancel": "إلغاء",
+  "node_limit_manage": "الحدود والدورة",
+  "node_save_limits": "حفظ الحدود",
+  "node_create": "إنشاء عقدة",
+  "node_delete": "حذف العقدة",
+  "node_delete_confirm": "حذف هذه العقدة وإبطال رابط مشاركتها؟",
+  "node_created": "تم إنشاء العقدة.",
+  "node_deleted": "تم حذف العقدة.",
+  "node_protocol": "البروتوكول",
+  "node_random_port": "عشوائي إذا تُرك فارغًا",
+  "node_sni_optional": "القيمة الافتراضية localhost لعقد TLS",
+  "node_empty": "لا توجد عقد بعد."
 }

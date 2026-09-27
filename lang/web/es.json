@@ -85,7 +85,7 @@
   "anytls_reset_failed": "Error al restablecer. Es posible que el nodo esté detenido; comprueba: journalctl -u {service} -e",
   "anytls_reset_timeout": "El restablecimiento no terminó a tiempo. Comprueba el estado del nodo antes de reintentarlo: systemctl status {service}",
   "anytls_reset_missing": "No se encontró anytls/setup-anytls.sh junto a la aplicación, por lo que no se pudo restablecer.",
-  "proxy": "proxy",
+  "proxy": "Nodos proxy",
   "proxy_heading": "Nodos proxy",
   "node_overview": "Resumen",
   "node_overview_intro": "Consulta la conexión y administra los ajustes de los nodos en un solo lugar.",
@@ -205,5 +205,17 @@
   "theme_slate_blue": "Azul pizarra",
   "theme_sage": "Verde salvia",
   "theme_teal": "Verde azulado",
-  "theme_plum": "Ciruela"
+  "theme_plum": "Ciruela",
+  "node_cancel": "Cancelar",
+  "node_limit_manage": "Límites y ciclo",
+  "node_save_limits": "Guardar límites",
+  "node_create": "Crear nodo",
+  "node_delete": "Eliminar nodo",
+  "node_delete_confirm": "¿Eliminar este nodo e invalidar su enlace compartido?",
+  "node_created": "Nodo creado.",
+  "node_deleted": "Nodo eliminado.",
+  "node_protocol": "Protocolo",
+  "node_random_port": "Aleatorio si se deja vacío",
+  "node_sni_optional": "localhost por defecto para nodos TLS",
+  "node_empty": "Aún no hay nodos."
 }

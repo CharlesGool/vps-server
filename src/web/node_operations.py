@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 import secrets
 import uuid
 
-from node_inventory import InvalidInventory, PROTOCOLS, render_config, validate_inventory
+from node_inventory import InvalidInventory, PROTOCOLS, _inbound, render_config, validate_inventory
 
 
 _EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "expires_at",
@@ -116,6 +116,7 @@ def _new_uuid(factory):
 
 
 def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id=None,
+                prototype_inbound=None,
                 cap_bytes=None, expires_at=None, reset_mode="none", next_reset_at=None,
                 uuid_factory=uuid.uuid4):
     """Copy one same-protocol inbound, replacing its identity and secret."""
@@ -131,6 +132,11 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
             raise InvalidInventory("prototype protocol differs")
     elif templates:
         prototype = templates[0]
+    elif prototype_inbound is not None:
+        actual, _, _ = _inbound(prototype_inbound)
+        if actual != protocol:
+            raise InvalidInventory("prototype protocol differs")
+        prototype = {"inbound": prototype_inbound}
     else:
         raise InvalidInventory("same-protocol prototype required")
     if protocol == "shadowsocks" and prototype["inbound"]["method"] != "2022-blake3-aes-128-gcm":
@@ -173,6 +179,16 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
             break
     else:
         raise InvalidInventory("cannot generate unique credential")
+    validate_inventory(candidate)
+    return candidate
+
+
+def delete_node(inventory, identifier):
+    """Remove exactly one node; numbers of surviving nodes never change."""
+    validate_inventory(inventory)
+    _node(inventory, identifier)
+    candidate = copy.deepcopy(inventory)
+    candidate["nodes"] = [node for node in candidate["nodes"] if node["id"] != identifier]
     validate_inventory(candidate)
     return candidate
 

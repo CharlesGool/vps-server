@@ -46,9 +46,8 @@ def _assert_matches(inventory, installed):
         actual = [] if document is None else document.get("inbounds") if isinstance(document, dict) else None
         if actual != expected:
             raise InvalidInventory("installed node configuration differs from inventory")
-    if any(node["protocol"] == "anytls" for node in inventory["nodes"]) != \
-            (installed["anytls"] is not None):
-        raise InvalidInventory("installed anytls module differs from inventory")
+    # A module may remain installed with zero listeners after its last node
+    # is deleted. Its empty inbounds list still has to match the inventory.
 
 
 def read_inventory(*, state_path=STATE_PATH, config_paths=CONFIG_PATHS,

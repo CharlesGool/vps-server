@@ -54,8 +54,10 @@ See [current state and acceptance limits][local-link-001].
   code when a private LAN address is available.
 - **Serves vmess/vless/trojan/shadowsocks proxies, any subset.** One more
   sing-box process shares the vendored binary with anytls. Each installed
-  protocol has its own numbered node, traffic cap in GiB, edit and random-reset
-  controls, and the same LAN-only Clash Meta import option. The import URL
+  protocol starts with a numbered node. The console can create more nodes of
+  any installed protocol and delete individual nodes. Each node has a traffic
+  cap in GiB, separate connection and limit editors, and random-reset controls,
+  plus the same LAN-only Clash Meta import option. The import URL
   contains an opaque token and changes after the node's connection settings
   or name changes. The public ports do not serve proxy configurations.
 
