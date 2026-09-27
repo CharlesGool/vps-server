@@ -1773,6 +1773,8 @@ def render_changelog(markdown):
 def render_page(title, body, lang, active=None, show_nav=True):
     t = STRINGS[lang]
     lang_switcher = render_lang_switcher(lang)
+    lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
+                 f'<div class="language-options">{lang_switcher}</div></details>')
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
@@ -1810,7 +1812,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
             {logout_link}
-            {lang_switcher}
+            {lang_menu}
           </div>
         </nav>
         """

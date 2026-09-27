@@ -119,6 +119,36 @@ body {
 .navlinks a:hover { color: var(--fg); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .navlinks a.active { color: var(--fg); background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .navlinks a.lang { border: 1px solid var(--card-border); }
+.language-menu { position: relative; }
+.language-menu summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--muted);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.language-menu summary::-webkit-details-marker { display: none; }
+.language-menu summary::after { content: "⌄"; margin-inline-start: 0.4rem; }
+.language-menu[open] summary { color: var(--fg); background: var(--surface-2); }
+.language-options {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 0.45rem);
+  width: max-content;
+  min-width: 10rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+.language-options a { display: block; }
 
 /* --- layout --- */
 main {
@@ -581,6 +611,9 @@ dl.kv dd.secret code {
    breaks: a label like "SNI (read back from the certificate CN)" takes the
    auto column wide enough to squeeze the value it is labelling. */
 @media (max-width: 34rem) {
+  .topnav:not(.minimal) { position: static; flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 0.75rem; }
+  .topnav:not(.minimal) .navlinks { gap: 0.2rem; }
+  .topnav:not(.minimal) .navlinks > a { padding: 0.3rem 0.5rem; }
   main { padding: 1.25rem 0.75rem 2rem; }
   .card { padding: 1.25rem; }
   dl.kv { grid-template-columns: 1fr; gap: 0.15rem; }
