@@ -220,12 +220,12 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `standardize/project-structure`, based on `origin/main`. One local snapshot commit contains the reviewed project tree; the private test branch history is excluded.
+- Branch: `standardize/project-structure`, based on `origin/main`. The reviewed project tree and v2.0.0 release content are on this branch; the private test branch history is excluded.
 - Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, and third-party notices for frps and Lucky.
 - Checks: 271 unit tests passed (8 skipped); dependency hashes passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors.
-- Remaining: real-host/systemd acceptance, independent native-language review, and full upstream and release-license verification.
-- Publication: the formal `origin` work branch is published and its remote tree matches the reviewed local tree. No local blocker remains for this branch.
-- Next action: run real-host/systemd acceptance for `standardize/project-structure`, then complete independent translation and upstream license reviews before a release.
+- Remaining: real-host/systemd acceptance, independent native-language review, and independent legal interpretation of bundled licenses.
+- Publication: the standardized tree is published on formal `origin`; the v2.0.0 release changes are being finalized for `main`.
+- Next action: finish release checks, update `main`, publish the v2.0.0 tag and GitHub Release, then export a snapshot and sync the changelog.
 ## Changelog
 
 Only tagged releases are listed here. The following entries retain the complete
@@ -258,9 +258,12 @@ former changelog history and record the v2.0.0 release content.
 - Local unit suite: 271 tests passed, 8 skipped. Dependency hashes,
   document checks, and multilingual structure checks passed. The document
   checker reported four navigation-label warnings in English documents.
-- Real-host/systemd acceptance of this checkout, independent native-language
-  review, and full upstream license review remain outstanding. frps and Lucky
-  are experimental in this version.
+- Repository copies of all seven bundled artifacts matched the corresponding
+  upstream release files on 2026-09-27; the original license files for the
+  bundled executables matched those release archives. Independent legal
+  interpretation was not obtained.
+- Real-host/systemd acceptance and independent native-language review remain
+  outstanding. frps and Lucky are experimental in this version.
 
 ### v1.1.2 — 2026-09-21
 

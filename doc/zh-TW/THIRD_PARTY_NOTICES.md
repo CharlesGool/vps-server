@@ -26,18 +26,18 @@ metadata:
 
 ## 第三方聲明
 
-下表列出本文既有記錄中的元件及原始碼相關主張.[dependencies.lock.json][local-link-001] 記錄了七項隨附的第三方可散布產物在本機計算的 SHA-256;從儲存庫根目錄執行 `python3 tools/verify_dependencies/verify_dependencies.py`,可離線比對工作目錄中的位元組.這項檢查無法確認上游身分,原始授權條款或發行合規性.本文不主張曾在新的日期完成上游授權或散布審查.散布前須依實際發行產物核實所記版本,原始授權文本,版權,適用的原始碼提供義務,以及任何分離分析.此表不代表發行已獲核准.
+下表列出隨附元件及由作業系統提供的元件.[dependencies.lock.json][local-link-001] 記錄了七項隨附產物在簽出目錄中的 SHA-256;從儲存庫根目錄執行 `python3 tools/verify_dependencies/verify_dependencies.py`,可離線比對其位元組.2026-09-27,儲存庫中的全部七個檔案均與所記上游發行壓縮檔成員或標籤檔案逐位元組相同.隨附授權檔亦與下文核驗的上游檔案相同.這些檢查確認產物身分,不構成法律意見,也無法建立完全可重現的系統相依套件集合.
 
 | 元件/資源 | 版本/雜湊 | 來源 | 記錄的授權 | 用途 | 出處標示/原始授權路徑 | 待審查的發行義務 | 驗證日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per bundled license | 隨附的 frps 可執行檔 | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | 保留隨附的 Apache-2.0 授權並檢查發佈時的 NOTICE 義務 | Repository artifact hash verified; upstream identity pending |
-| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per bundled license | 隨附的 Lucky 可執行檔 | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | 保留隨附的 MIT 版權與授權聲明 | Repository artifact hash verified; upstream identity pending |
-| sing-box | `v1.13.14`;修訂版 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;執行檔 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更新版本,另有上游名稱條件(依聲明所載) | 由 anytls 和 proxy 共用的隨附執行檔 | [上游聲明][local-link-002];[GPL 完整文本][local-link-003] | 對應原始碼及名稱條件;審查[已記錄的原始碼連結][local-link-004]及[決策][local-link-005] | 未記錄;散布前重新驗證 |
-| LibreSpeed | 先前記錄為 `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | 先前記錄為 LGPL-3.0 | 隨附的瀏覽器引擎 | 此處未記錄版權;[原始 LGPL 文本][local-link-006]及[GPL 文本][local-link-007] | 審查程式庫組合及原始碼可取得性 | 未記錄;散布前重新驗證 |
-| qrcode-generator | `js2.0.4`;修訂版 `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | 先前記錄為 MIT | 隨附的用戶端 QR 程式庫 | [原始 MIT 文本][local-link-008] | 保留必要的版權與授權聲明 | 未記錄;散布前重新驗證 |
+| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0,依上游授權 | 隨附的 frps 可執行檔 | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | 保留隨附的 Apache-2.0 授權;官方二進位壓縮檔內沒有 NOTICE 檔案 | 2026-09-27:壓縮檔,執行檔及授權檔相符 |
+| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT,依上游授權 | 隨附的 Lucky 可執行檔 | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | 保留隨附的 MIT 版權與授權聲明 | 2026-09-27:壓縮檔,執行檔及授權檔相符 |
+| sing-box | `v1.13.14`;修訂版 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;執行檔 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更新版本,另有上游名稱條件(依聲明所載) | 由 anytls 和 proxy 共用的隨附執行檔 | [上游聲明][local-link-002];[GPL 完整文本][local-link-003] | 保留對應原始碼連結及上游名稱/關聯條件 | 2026-09-27:壓縮檔,執行檔,授權檔及標籤修訂版相符 |
+| LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依上游授權 | 隨附的瀏覽器引擎 | [原始 LGPL 文本][local-link-006]及[GPL 文本][local-link-007] | 保留授權文本並確保上游原始碼可取得 | 2026-09-27:兩個標籤檔案及授權檔相符 |
+| qrcode-generator | `js2.0.4`;修訂版 `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT,依上游授權 | 隨附的用戶端 QR 程式庫 | [原始 MIT 文本][local-link-008] | 保留必要的版權與授權聲明 | 2026-09-27:兩個標籤檔案及授權檔相符 |
 | iperf3 | 發行版套件;未鎖定版本 | [ESnet/iperf](https://github.com/esnet/iperf) | 先前記錄為 BSD-3-Clause | 作為獨立的作業系統程式呼叫;此處不重新散布 | 未記錄版權;原始授權由作業系統套件提供 | 若日後隨附或重新散布,重新評估 | 未記錄;散布前重新驗證 |
 
-既有專案記錄將本專案標為 GPL-3.0([LICENSE][local-link-009]),理由是重新散布採用 GPL 的 sing-box 執行檔;[決策][local-link-010]保留其理由及否決的替代方案.先前記錄稱 `vps-webserver` 上游為 Apache-2.0,在此以 GPL-3.0 重新散布.這些是歷史專案主張,不是新的法律認定;發行前仍須審查義務與相容性.
+既有專案記錄將本專案標為 GPL-3.0([LICENSE][local-link-009]),理由是重新散布採用 GPL 的 sing-box 執行檔;[決策][local-link-010]保留其理由及否決的替代方案.先前記錄稱 `vps-webserver` 上游為 Apache-2.0,在此以 GPL-3.0 重新散布.本清單記錄了為 v2.0.0 核驗的檔案與條款;不提供獨立法律意見.
 
 沒有第三方 Python 套件.`src/web/app.py` 使用標準函式庫,因此沒有 Python 套件鎖定檔.上述隨附產物鎖定檔不鎖定由作業系統提供的 Python,iperf3 或其他系統套件:其版本和安全更新由目標 Debian/Ubuntu 發行版的套件渠道管理.安裝程式不選擇精確的套件版本或儲存庫快照;完整可重現的系統相依套件集合仍未解決(見[重建需求][local-link-011]).
 
@@ -45,7 +45,7 @@ metadata:
 
 ## sing-box
 
-本儲存庫以 `third_party/sing-box/sing-box` 路徑重新散布 sing-box 執行檔.先前專案記錄曾主張其上游發行身分,本次本機雜湊稽核並未獨立重新查證.安裝路徑為 `/usr/local/bin/sing-box-vps-server`.
+本儲存庫以 `third_party/sing-box/sing-box` 路徑重新散布 sing-box 執行檔.2026-09-27,其位元組及隨附的上游授權檔與官方 v1.13.14 發行壓縮檔相符.安裝路徑為 `/usr/local/bin/sing-box-vps-server`.
 
 - 元件:`sing-box`
 - 上游專案:https://github.com/SagerNet/sing-box
@@ -56,11 +56,11 @@ metadata:
 - 儲存庫執行檔 SHA-256:`68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
 - 授權:GNU GPL 第 3 版或其後續版本,另加上游的名稱/關聯條件;見 [`third_party/sing-box/LICENSE`][local-link-012]
 
-先前專案記錄稱已與上游 Release 壓縮檔逐位元組比對.本次稽核只驗證儲存庫執行檔的 SHA-256;是否等同發行產物仍需獨立比對上游.
+下載的發行壓縮檔 SHA-256 為 `f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697`.儲存庫內的執行檔及授權檔與解壓後的對應檔案逐位元組相同.
 
 ### 對應原始碼
 
-先前專案記錄為所聲稱的發行版本列出下列對應原始碼連結;本次稽核未核實其內容是否對應儲存庫執行檔.重新散布前須確認對應關係和原始碼提供義務:
+2026-09-27,v1.13.14 標籤指向原始碼修訂版 `25a600db24f7680ad9806ce5427bd0ab8afe1114`.以下上游原始碼連結與隨附的執行檔一同提供:
 
 - 標籤原始碼樹:https://github.com/SagerNet/sing-box/tree/v1.13.14
 - 精確原始碼修訂版:https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114
@@ -76,23 +76,23 @@ metadata:
 
 ## LibreSpeed
 
-瀏覽器測速使用隨附的 LibreSpeed 用戶端引擎.本次稽核並未獨立驗證所記版本及其與上游的等同性.
+瀏覽器測速使用隨附的 LibreSpeed 用戶端引擎.2026-09-27,兩個隨附的 JavaScript 檔案及授權檔與上游 v6.2.1 標籤檔案逐位元組相同.
 
 - 元件:LibreSpeed 用戶端引擎 — `static/third_party/librespeed/speedtest.js`,`static/third_party/librespeed/speedtest_worker.js`
 - 上游專案:https://github.com/librespeed/speedtest
 - 版本:`v6.2.1`
 - 授權:GNU LGPL 第 3 版;完整文本見 [`static/licenses/LGPL-3.0.txt`][local-link-013]
-- 先前專案記錄:兩個檔案曾被描述為與上游發行版逐位元組相同;本次稽核只核實本機工作目錄中的雜湊.尚未記錄精確的上游原始碼修訂版.
+- 驗證:兩個檔案及原始授權檔與 v6.2.1 標籤相符;本清單沒有記錄精確的標籤提交.
 
 `static/speedtest-ui.js` 是本專案自行編寫的銜接程式碼,不屬於 LibreSpeed.`src/web/app.py` 的伺服器端端點(`/speedtest/garbage`,`/speedtest/empty`,`/speedtest/getip`)重新實作 LibreSpeed 文件中的用戶端/伺服器協定;屬原創程式碼,並非衍生自上游 PHP 後端.
 
-先前記錄評估過 LGPL-3.0 與此 GPL-3.0 作品的組合;散布前須確認發行義務.
+LGPL-3.0 完整文本已隨附,並提供上游原始碼連結;本清單不提供關於組合使用的獨立法律意見.
 
 ---
 
 ## qrcode-generator
 
-主控台的 `/proxy` 頁面使用此隨附的用戶端程式庫,將各 anytls 位址的分享連結顯示成可掃描的 QR 圖碼.本次稽核並未獨立驗證所記版本及其與上游的等同性.
+主控台的 `/proxy` 頁面使用此隨附的用戶端程式庫,將分享連結顯示成可掃描的 QR 圖碼.2026-09-27,兩個隨附的 JavaScript 檔案及原始授權檔與上游 js2.0.4 標籤檔案逐位元組相同.
 
 - 元件:`static/third_party/qrcode/qrcode.js`,`static/third_party/qrcode/qrcode-utf8.js`
 - 上游專案:https://github.com/kazuhikoarase/qrcode-generator
@@ -100,11 +100,11 @@ metadata:
 - 版本:`js2.0.4`
 - 原始碼修訂版:`83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
 - 授權:MIT;完整文本見 [`static/licenses/MIT.txt`][local-link-014]
-- 先前專案記錄:兩個檔案曾被描述為與上游 `js/dist/qrcode.js` 和 `js/dist/qrcode_UTF8.js` 逐位元組相同;本次稽核只核實本機工作目錄中的雜湊.
+- 驗證:兩個檔案與上游 `js/dist/qrcode.js` 和 `js/dist/qrcode_UTF8.js` 相符;原始 MIT 授權檔亦相符.
 
 `static/qrcode-render.js` 是本專案自行編寫的銜接程式碼(尋找 `[data-qr-text]` 元素並填入繪製的 SVG),不屬於隨附程式庫.
 
-先前記錄評估過 MIT 與此 GPL-3.0 作品的組合;散布前須確認聲明義務.
+MIT 版權及授權聲明與用戶端程式庫一同隨附.
 
 ---
 

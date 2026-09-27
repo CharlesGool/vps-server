@@ -149,7 +149,7 @@ La prueba del navegador usa [LibreSpeed](https://github.com/librespeed/speedtest
 
 ## Licencia
 
-Licencia del proyecto: GPL-3.0 (SPDX: `GPL-3.0-only`); lee la [LICENSE][local-link-004] completa. Los fundamentos históricos de la combinación están en [Decisiones][local-link-005]. Los componentes de terceros registrados, rutas de licencias originales, enlaces al código fuente y asuntos pendientes para revisar antes de una versión están en [THIRD_PARTY_NOTICES.md][local-link-006]. Esta migración de documentación no constituye una nueva revisión jurídica.
+Licencia del proyecto: GPL-3.0 (SPDX: `GPL-3.0-only`); lee la [LICENSE][local-link-004] completa. Los fundamentos históricos de la combinación están en [Decisiones][local-link-005]. Los componentes incluidos, sus licencias originales, las fuentes verificadas de los artefactos y los límites pendientes de revisión jurídica están en [THIRD_PARTY_NOTICES.md][local-link-006].
 
 Este proyecto no está afiliado a sing-box/SagerNet ni a LibreSpeed y no cuenta con su respaldo.
 

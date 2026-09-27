@@ -149,7 +149,7 @@ Le test de débit dans le navigateur utilise [LibreSpeed](https://github.com/lib
 
 ## Licence
 
-Licence du projet : GPL-3.0 (SPDX : `GPL-3.0-only`) ; lire le texte intégral dans [LICENSE][local-link-004]. La justification historique de cette combinaison se trouve dans les [Décisions][local-link-005]. Les composants tiers consignés, les chemins des licences originales, les liens vers les sources et les lacunes de vérification avant publication figurent dans [THIRD_PARTY_NOTICES.md][local-link-006]. Cette migration documentaire ne constitue pas une nouvelle analyse juridique.
+Licence du projet : GPL-3.0 (SPDX : `GPL-3.0-only`) ; lire le texte intégral dans [LICENSE][local-link-004]. La justification historique de cette combinaison se trouve dans les [Décisions][local-link-005]. Les composants embarqués, leurs licences originales, les sources vérifiées des artefacts et les limites restantes de l’examen juridique figurent dans [THIRD_PARTY_NOTICES.md][local-link-006].
 
 Ce projet n'est ni affilié à sing-box/SagerNet ou LibreSpeed, ni approuvé par eux.
 

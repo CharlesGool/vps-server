@@ -360,7 +360,7 @@ La base des visiteurs et `portfwd.json` (règles de transfert activées) subsist
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-Ces chemins concernent uniquement le dépôt : l’installation conserve `$PREFIX/app.py`, `$PREFIX/sing-box` et `$PREFIX/static/`. Les URL HTTP des ressources restent inchangées. `app.py`, `install.sh` et `uninstall.sh` restent des points d’entrée à la racine.
+Ces chemins concernent uniquement le dépôt : l’installation conserve `$PREFIX/app.py`, `$PREFIX/sing-box` et `$PREFIX/static/`. Les URL HTTP des ressources restent inchangées. Dans le dépôt, l’installateur et le désinstallateur sont `deploy/install.sh` et `deploy/uninstall.sh` ; le point d’entrée Web installé reste `$PREFIX/app.py`.
 
 Seul `repo/` est suivi par Git ; `snapshots/` est séparé et privé. Commencer par le [README][local-link-013], consulter le [LOG][local-link-014] pour les vérifications historiques et l'historique des versions, et les [avis relatifs aux tiers][local-link-015] pour les ressources amont. La documentation ne transforme ni un instantané ni un hôte où le projet est installé en copie reproductible du dépôt source.
 

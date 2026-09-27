@@ -341,7 +341,7 @@ anytls मॉड्यूल जानबूझकर `Anytsl-Serve` के च�
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-ये केवल रिपॉज़िटरी के पथ हैं: इंस्टॉलेशन में `$PREFIX/app.py`, `$PREFIX/sing-box` और `$PREFIX/static/` यथावत रहते हैं। संसाधनों के HTTP URL नहीं बदलते। रूट के `app.py`, `install.sh` और `uninstall.sh` प्रवेश बिंदु बने रहते हैं।
+ये केवल रिपॉज़िटरी के पथ हैं: इंस्टॉलेशन में `$PREFIX/app.py`, `$PREFIX/sing-box` और `$PREFIX/static/` यथावत रहते हैं। संसाधनों के HTTP URL नहीं बदलते। चेकआउट में इंस्टॉलर `deploy/install.sh` और अनइंस्टॉलर `deploy/uninstall.sh` हैं; स्थापित वेब प्रवेश-बिंदु `$PREFIX/app.py` ही है।
 
 Git केवल `repo/` ट्रैक करता है; `snapshots/` अलग और निजी है। [README][local-link-013] से शुरू करें, ऐतिहासिक सत्यापन और रिलीज़ इतिहास के लिए [LOG][local-link-014] तथा मूल स्रोत संसाधनों के लिए [तृतीय-पक्ष सूचनाएँ][local-link-015] देखें। दस्तावेज़ीकरण स्नैपशॉट या स्थापित होस्ट को पुनरुत्पाद्य स्रोत चेकआउट नहीं बना देता।
 

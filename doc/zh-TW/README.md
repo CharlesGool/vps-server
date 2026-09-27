@@ -149,7 +149,7 @@ bash deploy/uninstall.sh
 
 ## 授權條款
 
-專案授權為 GPL-3.0(SPDX:`GPL-3.0-only`);請閱讀完整的 [LICENSE][local-link-004].歷史上的組合理由見[決策][local-link-005].第三方元件,原始授權檔路徑,原始碼連結及發行審查缺口見 [THIRD_PARTY_NOTICES.md][local-link-006].這次文件遷移不構成新的法律審查.
+專案授權為 GPL-3.0(SPDX:`GPL-3.0-only`);請閱讀完整的 [LICENSE][local-link-004].歷史上的組合理由見[決策][local-link-005].隨附元件,其原始授權,已驗證的產物來源及尚待處理的法律審查限制見 [THIRD_PARTY_NOTICES.md][local-link-006].
 
 本專案與 sing-box/SagerNet 或 LibreSpeed 無隸屬關係,也未獲其背書.
 

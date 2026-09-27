@@ -344,7 +344,7 @@ La base de datos de visitantes y `portfwd.json` (reglas de reenvío habilitadas)
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-Estas rutas corresponden solo al repositorio: la instalación sigue usando `$PREFIX/app.py`, `$PREFIX/sing-box` y `$PREFIX/static/`. Las URL HTTP de los recursos no cambian. `app.py`, `install.sh` y `uninstall.sh` siguen siendo puntos de entrada en la raíz.
+Estas rutas corresponden solo al repositorio: la instalación sigue usando `$PREFIX/app.py`, `$PREFIX/sing-box` y `$PREFIX/static/`. Las URL HTTP de los recursos no cambian. En el repositorio, el instalador y el desinstalador son `deploy/install.sh` y `deploy/uninstall.sh`; el punto de entrada web instalado sigue siendo `$PREFIX/app.py`.
 
 Solo `repo/` está bajo control de Git; `snapshots/` está separado y es privado. Empieza por [README][local-link-013], consulta [LOG][local-link-014] para verificaciones históricas e historial de versiones, y los [avisos de terceros][local-link-015] para conocer los archivos de origen. La documentación no convierte una instantánea ni un servidor instalado en un árbol de código reproducible.
 

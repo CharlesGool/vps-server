@@ -447,7 +447,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-这些仅是仓库检出路径;部署仍使用 `$PREFIX/app.py`,`$PREFIX/sing-box` 和 `$PREFIX/static/`,资源的 HTTP URL 不变.仓库根目录没有 `app.py`,`install.sh`,`uninstall.sh` 入口;安装与卸载脚本位于 deploy/.
+这些仅为检出目录路径:安装后,应用程序,代理可执行文件及浏览器资源仍分别位于 `$PREFIX/app.py`,`$PREFIX/sing-box` 和 `$PREFIX/static/`,资源的 HTTP URL 不变.在检出目录中,安装与卸载脚本为 `deploy/install.sh` 和 `deploy/uninstall.sh`;已安装的 Web 入口仍为 `$PREFIX/app.py`.
 
 只有 `repo/` 由 Git 跟踪;`snapshots/` 独立且私有.由[README][local-link-013] 入门,使用 [LOG][local-link-014] 查阅历史验证和发布记录,并参考[第三方声明][local-link-015]了解上游构件.文档不会使快照或已安装主机变成可复现的源码检出.
 

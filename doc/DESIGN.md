@@ -571,8 +571,9 @@ and does not survive restart.
 
 These are checkout paths only: installation still places the application,
 proxy executable, and browser assets under `$PREFIX/app.py`, `$PREFIX/sing-box`,
-and `$PREFIX/static/`. Existing HTTP asset URLs are unchanged. The root-level
-`app.py`, `install.sh`, and `uninstall.sh` remain entry points.
+and `$PREFIX/static/`. Existing HTTP asset URLs are unchanged. In the checkout,
+the installer and uninstaller are `deploy/install.sh` and `deploy/uninstall.sh`;
+the installed web entry point remains `$PREFIX/app.py`.
 
 Only `repo/` is tracked by Git; `snapshots/` is separate and private. Start at
 [README][local-link-013], use [LOG][local-link-014] for historical verification and

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "coverage": "Only the seven third-party bundled distributable artifacts listed below. SHA-256 values were computed from this checkout; versions and source revisions are inherited project records, not independently verified against upstream releases.",
+  "coverage": "Only the seven third-party bundled distributable artifacts listed below. SHA-256 values were computed from this checkout and matched against their recorded upstream release files on 2026-09-27; this is artifact identity verification, not a legal conclusion or a system package lock.",
   "artifacts": [
     {
       "component": "Lucky",

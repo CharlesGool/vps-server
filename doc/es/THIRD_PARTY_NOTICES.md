@@ -26,18 +26,18 @@ Este documento registra componentes de terceros incluidos y suministrados por el
 
 ## Avisos de terceros
 
-La tabla inventaría los componentes y declaraciones sobre su origen que ya constaban aquí. Los siete archivos de terceros incluidos tienen valores SHA-256 calculados localmente en [dependencies.lock.json][local-link-001]; ejecuta `python3 tools/verify_dependencies/verify_dependencies.py` desde la raíz del repositorio para comparar sin conexión los bytes del árbol de trabajo. Esa comprobación no acredita la identidad de origen, las condiciones de las licencias originales ni el cumplimiento de los requisitos de distribución. No se afirma ninguna fecha de una nueva revisión de licencias originales o distribución. Antes de distribuir, comprueba las versiones registradas de los artefactos, textos originales de licencias, avisos de copyright, obligaciones aplicables de facilitar el código fuente y cualquier análisis de separación frente a los artefactos que se distribuirán. Esta tabla no supone una aprobación de publicación.
+La tabla inventaría los componentes incluidos y los proporcionados por el sistema operativo. Los siete artefactos incluidos tienen valores SHA-256 del repositorio en [dependencies.lock.json][local-link-001]; ejecuta `python3 tools/verify_dependencies/verify_dependencies.py` desde la raíz del repositorio para compararlos sin conexión. El 2026-09-27, los siete archivos del repositorio coincidían byte a byte con los miembros correspondientes de los archivos de publicación o con los archivos de las etiquetas originales. Los archivos de licencia incluidos también coincidían con los archivos originales comprobados más abajo. Estas verificaciones establecen la identidad de los artefactos, pero no constituyen una opinión jurídica ni un cierre completamente reproducible de las dependencias del sistema.
 
 | Componente / recurso | Versión / hash | Fuente | Licencia registrada | Uso | Atribución / ruta de licencia original | Obligaciones a revisar antes de publicar | Verificado el |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per bundled license | Ejecutable frps incluido | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Conservar la licencia Apache-2.0 incluida y revisar las obligaciones NOTICE antes de distribuir | Repository artifact hash verified; upstream identity pending |
-| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per bundled license | Ejecutable Lucky incluido | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | Conservar los avisos de copyright y la licencia MIT incluidos | Repository artifact hash verified; upstream identity pending |
-| sing-box | `v1.13.14`; revisión `25a600db24f7680ad9806ce5427bd0ab8afe1114`; SHA-256 del binario `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL versión 3 o posterior, más la condición de denominación original (según el aviso) | Ejecutable incluido, compartido por anytls y proxy | [aviso original][local-link-002]; [texto íntegro de GPL][local-link-003] | Código fuente correspondiente y condición de denominación; revisar los [enlaces registrados al código fuente][local-link-004] y [Decisiones][local-link-005] | No consta; volver a comprobar antes de distribuir |
-| LibreSpeed | `v6.2.1`, según registros anteriores | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0, según registros anteriores | Motor de navegador incluido | no registrado aquí; [texto LGPL original][local-link-006] y [texto GPL][local-link-007] | Revisar la combinación de bibliotecas y disponibilidad del código fuente | No consta; volver a comprobar antes de distribuir |
-| qrcode-generator | `js2.0.4`; revisión `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT, según registros anteriores | Biblioteca QR del cliente incluida | [texto MIT original][local-link-008] | Conservar los avisos de atribución y licencia exigidos | No consta; volver a comprobar antes de distribuir |
+| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, según la licencia original | Ejecutable frps incluido | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Conservar la licencia Apache-2.0 incluida; el archivo binario oficial no contenía un archivo NOTICE | 2026-09-27: coinciden el archivo de publicación, el binario y la licencia |
+| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, según la licencia original | Ejecutable Lucky incluido | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | Conservar los avisos de copyright y la licencia MIT incluidos | 2026-09-27: coinciden el archivo de publicación, el binario y la licencia |
+| sing-box | `v1.13.14`; revisión `25a600db24f7680ad9806ce5427bd0ab8afe1114`; SHA-256 del binario `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL versión 3 o posterior, más la condición de denominación original (según el aviso) | Ejecutable incluido, compartido por anytls y proxy | [aviso original][local-link-002]; [texto íntegro de GPL][local-link-003] | Conservar los enlaces al código fuente correspondiente y la condición original de nombre y asociación | 2026-09-27: coinciden el archivo de publicación, el binario, la licencia y la revisión de la etiqueta |
+| LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0, según la licencia original | Motor de navegador incluido | [texto LGPL original][local-link-006] y [texto GPL][local-link-007] | Conservar el texto de la licencia y facilitar el código fuente original | 2026-09-27: coinciden los dos archivos de la etiqueta y la licencia |
+| qrcode-generator | `js2.0.4`; revisión `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT, según la licencia original | Biblioteca QR del cliente incluida | [texto MIT original][local-link-008] | Conservar los avisos de atribución y licencia exigidos | 2026-09-27: coinciden los dos archivos de la etiqueta y la licencia |
 | iperf3 | Paquete de la distribución; versión sin fijar | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause, según registros anteriores | Invocado como programa independiente instalado desde el SO; no se redistribuye aquí | No registrado; el paquete del SO aporta la licencia original | Volver a evaluar si se incluye o redistribuye más adelante | No consta; volver a comprobar antes de distribuir |
 
-El registro existente identifica GPL-3.0 como licencia de este proyecto ([LICENSE][local-link-009]) y señala como motivo la redistribución de un ejecutable sing-box bajo GPL; [Decisiones][local-link-010] conserva el razonamiento y las alternativas descartadas. El registro anterior describe `vps-webserver` como Apache-2.0 en origen y redistribuido aquí bajo GPL-3.0. Son afirmaciones históricas del proyecto, no una nueva conclusión jurídica; revisa obligaciones y compatibilidad antes de publicar.
+El registro existente identifica GPL-3.0 como licencia de este proyecto ([LICENSE][local-link-009]) y señala como motivo la redistribución de un ejecutable sing-box bajo GPL; [Decisiones][local-link-010] conserva el razonamiento y las alternativas descartadas. El registro anterior describe `vps-webserver` como Apache-2.0 en origen y redistribuido aquí bajo GPL-3.0. Este inventario registra los archivos y condiciones comprobados para v2.0.0; no constituye una opinión jurídica independiente.
 
 No hay paquetes de Python de terceros. `src/web/app.py` usa la biblioteca estándar, por lo que no hay un archivo de bloqueo de paquetes Python. El bloqueo de artefactos incluidos anterior no fija Python, iperf3 ni otros paquetes del sistema proporcionados por el SO: sus versiones y actualizaciones de seguridad dependen de los canales de paquetes de la distribución Debian/Ubuntu de destino. El instalador no selecciona versiones exactas ni una instantánea del repositorio; la resolución completamente reproducible de dependencias del sistema sigue pendiente (consulta [Requisitos de reproducción][local-link-011]).
 
@@ -45,7 +45,7 @@ No hay paquetes de Python de terceros. `src/web/app.py` usa la biblioteca están
 
 ## sing-box
 
-Este repositorio redistribuye un ejecutable sing-box como `third_party/sing-box/sing-box` en el repositorio. Su identidad como versión de origen se declaró en registros anteriores, pero no se volvió a comprobar independientemente en esta auditoría local de hashes. Se instala como `/usr/local/bin/sing-box-vps-server`.
+Este repositorio redistribuye un ejecutable sing-box como `third_party/sing-box/sing-box` en el repositorio. El 2026-09-27, sus bytes y la licencia original incluida coincidían con el archivo oficial de publicación v1.13.14. Se instala como `/usr/local/bin/sing-box-vps-server`.
 
 - Componente: `sing-box`
 - Proyecto original: https://github.com/SagerNet/sing-box
@@ -56,11 +56,11 @@ Este repositorio redistribuye un ejecutable sing-box como `third_party/sing-box/
 - SHA-256 del binario del repositorio: `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
 - Licencia: GNU GPL versión 3 o cualquier versión posterior, además de la condición original sobre nombre/asociación; consulta [`third_party/sing-box/LICENSE`][local-link-012]
 
-El registro anterior comunica una comparación byte a byte con el archivo de publicación original. Esta auditoría solo comprobó el SHA-256 del binario del repositorio; la equivalencia con la publicación aún requiere una comparación independiente con el origen.
+El SHA-256 del archivo de publicación descargado fue `f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697`. El binario y la licencia del repositorio coincidían byte a byte con los miembros extraídos de ese archivo.
 
 ### Código fuente correspondiente
 
-El registro anterior identifica los siguientes enlaces al código fuente correspondiente de la versión declarada; esta auditoría no comprobó su contenido frente al binario del repositorio. Confirma la correspondencia y las obligaciones de facilitar el código fuente antes de redistribuir:
+El 2026-09-27, la etiqueta v1.13.14 apuntaba a la revisión de código fuente `25a600db24f7680ad9806ce5427bd0ab8afe1114`. Los siguientes enlaces al código fuente original acompañan al ejecutable incluido:
 
 - Árbol de código etiquetado: https://github.com/SagerNet/sing-box/tree/v1.13.14
 - Revisión exacta del código: https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114
@@ -76,23 +76,23 @@ Este proyecto es independiente y no está afiliado a los autores de sing-box o S
 
 ## LibreSpeed
 
-La prueba de velocidad del navegador usa un motor cliente LibreSpeed incluido en el repositorio. La versión registrada y su equivalencia con el origen no se comprobaron independientemente en esta auditoría.
+La prueba de velocidad del navegador usa un motor cliente LibreSpeed incluido en el repositorio. El 2026-09-27, sus dos archivos JavaScript incluidos y su licencia coincidían byte a byte con los archivos de la etiqueta original v6.2.1.
 
 - Componente: motor cliente LibreSpeed — `static/third_party/librespeed/speedtest.js`, `static/third_party/librespeed/speedtest_worker.js`
 - Proyecto original: https://github.com/librespeed/speedtest
 - Versión: `v6.2.1`
 - Licencia: GNU LGPL versión 3; texto íntegro en [`static/licenses/LGPL-3.0.txt`][local-link-013]
-- Registro anterior: se describía que ambos archivos eran idénticos byte a byte a la publicación original; esta auditoría solo comprobó hashes del árbol local. No se registra la revisión exacta del código fuente original.
+- Verificación: ambos archivos y la licencia original coincidían con la etiqueta v6.2.1; este inventario no registra el commit exacto de la etiqueta.
 
 `static/speedtest-ui.js` es código de integración propio de este proyecto y no forma parte de LibreSpeed. Los endpoints del servidor en `src/web/app.py` (`/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip`) vuelven a implementar el contrato cliente/servidor documentado de LibreSpeed; son código original y no derivan del backend PHP original.
 
-El registro anterior evaluó la combinación LGPL-3.0 con este trabajo GPL-3.0; confirma las obligaciones antes de distribuir.
+El texto LGPL-3.0 está incluido y se enlaza al código fuente original; este inventario no constituye una opinión jurídica independiente sobre la combinación.
 
 ---
 
 ## qrcode-generator
 
-La página `/proxy` de la consola muestra como código QR escaneable el enlace de cada dirección anytls mediante esta biblioteca cliente incluida. La versión registrada y su equivalencia con el origen no se comprobaron independientemente en esta auditoría.
+La página `/proxy` de la consola muestra los enlaces para compartir como códigos QR escaneables mediante esta biblioteca cliente incluida. El 2026-09-27, sus dos archivos JavaScript incluidos y la licencia original coincidían byte a byte con los archivos de la etiqueta original js2.0.4.
 
 - Componente: `static/third_party/qrcode/qrcode.js`, `static/third_party/qrcode/qrcode-utf8.js`
 - Proyecto original: https://github.com/kazuhikoarase/qrcode-generator
@@ -100,11 +100,11 @@ La página `/proxy` de la consola muestra como código QR escaneable el enlace d
 - Versión: `js2.0.4`
 - Revisión del código fuente: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
 - Licencia: MIT; texto íntegro en [`static/licenses/MIT.txt`][local-link-014]
-- Registro anterior: se describía que ambos archivos eran idénticos byte a byte a los originales `js/dist/qrcode.js` y `js/dist/qrcode_UTF8.js`; esta auditoría solo comprobó hashes del árbol local.
+- Verificación: ambos archivos coincidían con los originales `js/dist/qrcode.js` y `js/dist/qrcode_UTF8.js`; también coincidía la licencia MIT original.
 
 `static/qrcode-render.js` es código de integración propio de este proyecto (busca elementos `[data-qr-text]` y los rellena con el SVG generado), no forma parte de la biblioteca incluida.
 
-El registro anterior evaluó la combinación MIT con este trabajo GPL-3.0; confirma las obligaciones relativas a avisos antes de distribuir.
+El aviso de copyright y la licencia MIT están incluidos con la biblioteca cliente.
 
 ---
 

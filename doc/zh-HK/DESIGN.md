@@ -341,7 +341,7 @@ anytls 模組刻意保留 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-這些只是儲存庫檢出路徑;部署仍使用 `$PREFIX/app.py`,`$PREFIX/sing-box` 及 `$PREFIX/static/`,資源的 HTTP URL 不變.儲存庫根目錄沒有 `app.py`,`install.sh`,`uninstall.sh` 入口;安裝與移除腳本位於 deploy/.
+這些只屬檢出目錄路徑:安裝後,應用程式,代理執行檔及瀏覽器資源仍分別位於 `$PREFIX/app.py`,`$PREFIX/sing-box` 及 `$PREFIX/static/`,資源的 HTTP URL 不變.在檢出目錄中,安裝及移除腳本為 `deploy/install.sh` 和 `deploy/uninstall.sh`;已安裝的 Web 入口仍為 `$PREFIX/app.py`.
 
 只有 `repo/` 由 Git 追蹤;`snapshots/` 獨立且屬私人資料.從 [README][local-link-013] 開始;歷史驗證及版本歷史見 [LOG][local-link-014];上游檔案見[第三方聲明][local-link-015].文件不會把快照或已安裝主機變成可重現的原始碼 checkout.
 

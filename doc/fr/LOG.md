@@ -165,12 +165,12 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `standardize/project-structure`, basée sur `origin/main`. Un commit local contient l’arborescence vérifiée ; l’historique de la branche d’essai privée en est exclu.
+- Branche : `standardize/project-structure`, basée sur `origin/main`. L’arborescence vérifiée et le contenu de la version v2.0.0 se trouvent sur cette branche ; l’historique de la branche d’essai privée en est exclu.
 - Terminé : structure normalisée, documents anglais et sept traductions, catalogues d’interface et mentions pour frps et Lucky.
 - Vérifications : 271 tests réussis (8 ignorés) ; empreintes des dépendances correctes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur.
-- À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et vérification complète des provenances et licences avant une version.
-- Publication : la branche de travail du dépôt officiel `origin` est publiée et son arborescence distante correspond à l’arborescence locale vérifiée. Aucun blocage local ne subsiste pour cette branche.
-- Prochaine action : valider `standardize/project-structure` sur un hôte réel avec systemd, puis achever les relectures indépendantes des traductions et licences avant une version.
+- À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et interprétation juridique indépendante des licences des composants embarqués.
+- Publication : l’arborescence normalisée est publiée sur le dépôt officiel `origin` ; les modifications de la version v2.0.0 destinées à `main` sont en cours de finalisation.
+- Prochaine action : terminer les vérifications de publication, mettre à jour `main`, publier le tag v2.0.0 et la version GitHub, puis exporter un instantané et synchroniser l’historique des modifications.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.
@@ -190,7 +190,8 @@ Seules les versions taguées sont listées ici. Les entrées suivantes conserven
 #### Verification and limits
 
 - Suite de tests unitaires locale : 271 tests réussis, 8 ignorés. Les vérifications des empreintes des dépendances, de la documentation et de la structure multilingue ont réussi. Le vérificateur de documents a signalé quatre avertissements concernant les libellés de navigation des documents en anglais.
-- La validation de cette organisation du dépôt sur un hôte réel avec systemd, la relecture indépendante des traductions par des locuteurs natifs et l’examen complet des licences en amont restent en attente. frps et Lucky sont expérimentaux dans cette version.
+- Le 2026-09-27, les copies des sept artefacts embarqués dans le dépôt correspondaient aux fichiers des versions amont concernées ; les fichiers de licence originaux des exécutables embarqués correspondaient à ceux de ces archives. Aucune interprétation juridique indépendante n’a été obtenue.
+- La validation de cette organisation du dépôt sur un hôte réel avec systemd et la relecture indépendante des traductions par des locuteurs natifs restent en attente. frps et Lucky sont expérimentaux dans cette version.
 
 ### v1.1.2 — 2026-09-21
 

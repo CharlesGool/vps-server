@@ -165,12 +165,12 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `standardize/project-structure`, basada en `origin/main`. Un commit local contiene el árbol revisado; no incluye el historial de la rama privada de pruebas.
+- Rama: `standardize/project-structure`, basada en `origin/main`. El árbol revisado y el contenido de la versión v2.0.0 están en esta rama; no incluye el historial de la rama privada de pruebas.
 - Terminado: estructura normalizada, documentación en inglés y siete traducciones, catálogos de interfaz y avisos de frps y Lucky.
 - Comprobaciones: 271 pruebas superadas (8 omitidas); hashes de dependencias correctos; verificador documental con 0 errores y 4 avisos sobre el idioma de la navegación; control multilingüe con 0 errores.
-- Pendiente: aceptación en un servidor real con systemd, revisión independiente por hablantes nativos y verificación completa de procedencia y licencias antes de una versión.
-- Publicación: la rama de trabajo del repositorio oficial `origin` está publicada y su árbol remoto coincide con el árbol local revisado. No queda ningún bloqueo local para esta rama.
-- Siguiente paso: validar `standardize/project-structure` en un servidor real con systemd y completar después la revisión independiente de las traducciones y licencias antes de una versión.
+- Pendiente: aceptación en un servidor real con systemd, revisión independiente por hablantes nativos e interpretación jurídica independiente de las licencias de los componentes incluidos.
+- Publicación: el árbol normalizado está publicado en el repositorio oficial `origin`; se están ultimando los cambios de la versión v2.0.0 para `main`.
+- Siguiente paso: terminar las comprobaciones de publicación, actualizar `main`, publicar la etiqueta v2.0.0 y la versión de GitHub, exportar una instantánea y sincronizar el historial de cambios.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.
@@ -190,7 +190,8 @@ Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan 
 #### Verification and limits
 
 - Pruebas unitarias locales: 271 aprobadas y 8 omitidas. Se superaron las comprobaciones de hashes de dependencias, documentación y estructura multilingüe. El verificador de documentos notificó cuatro advertencias sobre las etiquetas de navegación de los documentos en inglés.
-- Siguen pendientes la aceptación de esta organización del repositorio en un servidor real con systemd, la revisión independiente de las traducciones por hablantes nativos y la revisión completa de las licencias de origen. frps y Lucky son experimentales en esta versión.
+- El 2026-09-27, las copias de los siete artefactos incluidos en el repositorio coincidían con los archivos de las publicaciones originales correspondientes; los archivos de licencia originales de los ejecutables incluidos coincidían con los de esas publicaciones. No se obtuvo una interpretación jurídica independiente.
+- Siguen pendientes la aceptación de esta organización del repositorio en un servidor real con systemd y la revisión independiente de las traducciones por hablantes nativos. frps y Lucky son experimentales en esta versión.
 
 ### v1.1.2 — 2026-09-21
 

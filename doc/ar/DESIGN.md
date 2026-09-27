@@ -343,7 +343,7 @@ metadata:
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-هذه مسارات ملفات المستودع فقط؛ تبقى مواقع النشر `$PREFIX/app.py` و`$PREFIX/sing-box` و`$PREFIX/static/` كما هي، وكذلك عناوين HTTP للأصول. وتبقى `app.py` و`install.sh` و`uninstall.sh` في جذر المستودع نقاط دخول.
+هذه مسارات ملفات المستودع فقط؛ تبقى مواقع النشر `$PREFIX/app.py` و`$PREFIX/sing-box` و`$PREFIX/static/` كما هي، وكذلك عناوين HTTP للأصول. في نسخة المستودع، المثبّت هو `deploy/install.sh` وأداة الإزالة هي `deploy/uninstall.sh`؛ وتبقى نقطة دخول الويب المثبّتة `$PREFIX/app.py`.
 
 لا يتتبع Git إلا `repo/`؛ أما `snapshots/` فهي منفصلة وخاصة. ابدأ من [README][local-link-013]، واستعن بـ[LOG][local-link-014] للتحقق التاريخي وسجل الإصدارات، وراجع [إشعارات الأطراف الثالثة][local-link-015] لمعرفة الموارد الأصلية. لا تجعل الوثائق من لقطة أو مضيف مثبّت نسخة مصدر قابلة لإعادة الإنتاج.
 

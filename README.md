@@ -210,7 +210,7 @@ for the inventory and original license paths.
 
 ## License
 
-Project license: GPL-3.0 (SPDX: `GPL-3.0-only`); read the full [LICENSE][local-link-004]. The historical combination rationale is in [Decisions][local-link-005]. Recorded third-party components, original license paths, source links, and release-review gaps are in [THIRD_PARTY_NOTICES.md][local-link-006]. This documentation migration is not a new legal review.
+Project license: GPL-3.0 (SPDX: `GPL-3.0-only`); read the full [LICENSE][local-link-004]. The historical combination rationale is in [Decisions][local-link-005]. Bundled components, their original licenses, verified artifact sources, and remaining legal-review limits are in [THIRD_PARTY_NOTICES.md][local-link-006].
 
 This project is not affiliated with or endorsed by sing-box/SagerNet or
 LibreSpeed.
