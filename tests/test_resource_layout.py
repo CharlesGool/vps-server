@@ -82,6 +82,9 @@ class ResourceLayoutTest(unittest.TestCase):
             (inplace / "deploy/anytls").mkdir(parents=True)
             (inplace / "deploy/anytls/sentinel").write_text("keep")
             (inplace / "app.py").write_text("keep")
+            (inplace / "src/web").mkdir(parents=True)
+            (inplace / "src/web/app.py").write_text("new app")
+            (inplace / "src/web/node_config.py").write_text("new helper")
             for modules in ("anytls", "web proxy"):
                 with self.subTest(inplace=modules):
                     subprocess.run(["bash", "-e", "-c", stage], env={
@@ -89,7 +92,11 @@ class ResourceLayoutTest(unittest.TestCase):
                     }, check=True)
                     self.assertEqual((inplace / "sing-box").read_bytes(), b"binary fixture")
                     self.assertEqual((inplace / "deploy/anytls/sentinel").read_text(), "keep")
-                    self.assertEqual((inplace / "app.py").read_text(), "keep")
+                    if "web" in modules:
+                        self.assertEqual((inplace / "app.py").read_text(), "new app")
+                        self.assertEqual((inplace / "node_config.py").read_text(), "new helper")
+                    else:
+                        self.assertEqual((inplace / "app.py").read_text(), "keep")
 
     def test_installer_resolves_checkout_root_from_deploy_directory(self):
         source = (ROOT / "deploy/install.sh").read_text()

@@ -829,11 +829,14 @@ copy_selected_files() {
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
-    # Installed services retain the flat app.py layout. The checkout's
-    # source implementation lives in src/web/app.py.
+  if has_module web; then
+    # The flat entry point is needed even when PREFIX is the source checkout.
+    # Refreshing it on an in-place upgrade changes only an ignored runtime
+    # copy, not the tracked implementation under src/web/.
     cp "$SRC_DIR/src/web/app.py" "$PREFIX/app.py"
     cp "$SRC_DIR/src/web/node_config.py" "$PREFIX/node_config.py"
+  fi
+  if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
     # Documentation required by /changelog and third-party notices.
     local doc_items="doc/LOG.md doc/THIRD_PARTY_NOTICES.md
                      doc/zh-CN/LOG.md doc/zh-TW/LOG.md doc/zh-HK/LOG.md

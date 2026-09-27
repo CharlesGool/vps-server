@@ -41,6 +41,10 @@ venv/
 target/
 
 # Build output
+/app.py
+/node_*.py
+/sing-box
+/vendor/
 dist/*
 !dist/.gitkeep
 private/*
@@ -54,6 +58,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# NOTE: the vendored `sing-box` binary is intentionally NOT ignored. Shipping it
-# is what lets `install.sh` work without outbound network access; see
-# DECISIONS.md, 2026-09-12.
+# The vendored binary remains tracked under third_party/. The ignored root
+# copies above are created only by an in-place installation.
