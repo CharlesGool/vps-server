@@ -27,7 +27,9 @@ from node_state import CONFIG_PATHS, STATE_PATH, _read_json, read_inventory, wri
 TABLE = "vps_server_nodes"
 METER_PATH = STATE_PATH.parent / "meter.json"
 LOCK_PATH = Path("/etc/vps-server-node.lock")
-LIMIT_BYTES_PER_SECOND = 125000  # 1 megabit/s = 125000 bytes/s.
+# Leave room for the token bucket's startup burst and TCP pacing. On the
+# deployment host, 125000 admitted about 1.03 Mbps over a 4 MiB transfer.
+LIMIT_BYTES_PER_SECOND = 120000
 
 
 def _name(identifier, family, direction):
@@ -69,7 +71,7 @@ def parse_counters(document, inventory, epoch):
 
 
 def _policy_key(inventory, policy):
-    inputs = [(node["id"], node["port"], node["cap_bytes"],
+    inputs = [(LIMIT_BYTES_PER_SECOND, node["id"], node["port"], node["cap_bytes"],
                policy[node["id"]]["active"], policy[node["id"]]["expired"],
                policy[node["id"]]["capped"], policy[node["id"]]["suspect"])
               for node in inventory["nodes"]]

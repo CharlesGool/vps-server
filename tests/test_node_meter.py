@@ -7,6 +7,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "web"))
 from node_meter import LIMIT_BYTES_PER_SECOND, TABLE, parse_counters, render_rules, tick
@@ -101,6 +102,15 @@ class MeterTests(unittest.TestCase):
         self.backend.values.pop(next(iter(self.backend.values)))
         with self.assertRaisesRegex(ValueError, "missing node counter"):
             self.sample()
+
+    def test_rate_change_reinstalls_rules_for_existing_nodes(self):
+        self.sample()
+        self.assertEqual(len(self.backend.batches), 1)
+        with patch("node_meter.LIMIT_BYTES_PER_SECOND", LIMIT_BYTES_PER_SECOND - 1000):
+            self.sample()
+        self.assertEqual(len(self.backend.batches), 2)
+        self.assertIn(f"rate over {LIMIT_BYTES_PER_SECOND - 1000} bytes/second",
+                      self.backend.batches[-1])
 
 
 if __name__ == "__main__":
