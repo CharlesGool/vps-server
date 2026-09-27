@@ -220,12 +220,13 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Branch: `standardize/project-structure`, based on `origin/main`. The reviewed project tree and v2.0.0 release content are on this branch; the private test branch history is excluded.
-- Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, and third-party notices for frps and Lucky.
-- Checks: 271 unit tests passed (8 skipped); dependency hashes passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors.
+- Branch: `main` at v2.0.0. The private test branch history is excluded from this release.
+- Completed: standard project layout, migrated English and seven translated document sets, localized interface catalogs, third-party artifact verification, and the v2.0.0 release.
+- Checks: 271 unit tests passed (8 skipped); dependency hashes and clean-export structure passed; document checker found 0 errors and 4 navigation-label warnings; multilingual checker passed with 0 errors.
 - Remaining: real-host/systemd acceptance, independent native-language review, and independent legal interpretation of bundled licenses.
-- Publication: the standardized tree is published on formal `origin`; the v2.0.0 release changes are being finalized for `main`.
-- Next action: finish release checks, update `main`, publish the v2.0.0 tag and GitHub Release, then export a snapshot and sync the changelog.
+- Publication: the annotated v2.0.0 tag points to release commit `f9eb612`; formal `origin/main` contains that commit and this handoff record. The public GitHub Release, local tag snapshot, and `My Projects` Changelog mirror were verified.
+- Next action: run real-host/systemd acceptance, then review native-language wording and bundled-license obligations before considering frps and Lucky stable.
+
 ## Changelog
 
 Only tagged releases are listed here. The following entries retain the complete

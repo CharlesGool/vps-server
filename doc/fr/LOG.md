@@ -165,12 +165,12 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 
 ## Passation
 
-- Branche : `standardize/project-structure`, basée sur `origin/main`. L’arborescence vérifiée et le contenu de la version v2.0.0 se trouvent sur cette branche ; l’historique de la branche d’essai privée en est exclu.
-- Terminé : structure normalisée, documents anglais et sept traductions, catalogues d’interface et mentions pour frps et Lucky.
-- Vérifications : 271 tests réussis (8 ignorés) ; empreintes des dépendances correctes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur.
+- Branche : v2.0.0 sur `main`. Cette version exclut l’historique de la branche d’essai privée.
+- Terminé : structure normalisée, migration des documents anglais et de sept traductions, catalogues d’interface, vérification de l’origine des fichiers tiers et publication de v2.0.0.
+- Vérifications : 271 tests réussis (8 ignorés) ; empreintes des dépendances et structure d’un export propre conformes ; contrôle documentaire avec 0 erreur et 4 avertissements sur la langue de la navigation ; contrôle multilingue avec 0 erreur.
 - À faire : validation sur un hôte réel avec systemd, relecture indépendante par des locuteurs natifs et interprétation juridique indépendante des licences des composants embarqués.
-- Publication : l’arborescence normalisée est publiée sur le dépôt officiel `origin` ; les modifications de la version v2.0.0 destinées à `main` sont en cours de finalisation.
-- Prochaine action : terminer les vérifications de publication, mettre à jour `main`, publier le tag v2.0.0 et la version GitHub, puis exporter un instantané et synchroniser l’historique des modifications.
+- Publication : le tag annoté v2.0.0 pointe vers le commit de publication `f9eb612` ; le dépôt officiel `origin/main` contient ce commit et la présente passation. La GitHub Release publique, l’instantané local du tag et la copie de l’historique dans `My Projects` ont été vérifiés.
+- Prochaine action : valider sur un hôte réel avec systemd, puis revoir la formulation native et les obligations des licences embarquées avant de considérer frps et Lucky comme stables.
 ## Historique des modifications
 
 Seules les versions taguées sont listées ici. Les entrées suivantes conservent l'intégralité de l'ancien historique des changements et consignent le contenu de la version v2.0.0.

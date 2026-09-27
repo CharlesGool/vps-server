@@ -165,12 +165,12 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 
 ## Traspaso
 
-- Rama: `standardize/project-structure`, basada en `origin/main`. El árbol revisado y el contenido de la versión v2.0.0 están en esta rama; no incluye el historial de la rama privada de pruebas.
-- Terminado: estructura normalizada, documentación en inglés y siete traducciones, catálogos de interfaz y avisos de frps y Lucky.
-- Comprobaciones: 271 pruebas superadas (8 omitidas); hashes de dependencias correctos; verificador documental con 0 errores y 4 avisos sobre el idioma de la navegación; control multilingüe con 0 errores.
+- Rama: v2.0.0 en `main`. Esta versión excluye el historial de la rama privada de pruebas.
+- Terminado: estructura normalizada, migración de documentos en inglés y siete traducciones, catálogos de interfaz, verificación del origen de los archivos de terceros y publicación de v2.0.0.
+- Comprobaciones: 271 pruebas superadas (8 omitidas); correctos los hashes de dependencias y la estructura de una exportación limpia; verificador documental con 0 errores y 4 avisos sobre el idioma de la navegación; control multilingüe con 0 errores.
 - Pendiente: aceptación en un servidor real con systemd, revisión independiente por hablantes nativos e interpretación jurídica independiente de las licencias de los componentes incluidos.
-- Publicación: el árbol normalizado está publicado en el repositorio oficial `origin`; se están ultimando los cambios de la versión v2.0.0 para `main`.
-- Siguiente paso: terminar las comprobaciones de publicación, actualizar `main`, publicar la etiqueta v2.0.0 y la versión de GitHub, exportar una instantánea y sincronizar el historial de cambios.
+- Publicación: la etiqueta anotada v2.0.0 apunta al commit `f9eb612`; `origin/main` del repositorio oficial contiene ese commit y este registro de traspaso. Se verificaron la GitHub Release pública, la instantánea local de la etiqueta y la copia del historial de cambios en `My Projects`.
+- Siguiente paso: validar en un servidor real con systemd y revisar la redacción nativa y las obligaciones de las licencias incluidas antes de considerar estables frps y Lucky.
 ## Historial de cambios
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.
