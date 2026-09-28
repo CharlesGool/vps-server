@@ -66,6 +66,8 @@ describe the four previously documented modules.
 - [x] Complete live-host acceptance of the node controls: display numbers stay contiguous after deletion and restart at 1 when all nodes are removed, while hidden UUIDs preserve identity; names, ports, credentials, and TLS SNI are editable; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. Each node can be disabled without deleting its configuration or traffic record and re-enabled on the same port. The controls passed live-host tests on 2026-09-27.
 - [x] Redesign the full Web UI with one accessible design system across the console, public reachability page, and setup wizard. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
 
+The console login page uses the same project brand and home link as the rest of the interface. Its card footer links the running version to Changelog and offers language selection before authentication. Theme controls remain in ordinary Settings. Every editable password field starts masked and has its own accessible Show/Hide control; changing visibility preserves the value and focus and never submits the form.
+
 The shared SQLite-lock concern is a [known unresolved measurement question][local-link-002], not a mandate to change the architecture. Historical completed work and verification records are in [LOG][local-link-003].
 
 **Non-goals**

@@ -1911,6 +1911,24 @@ def render_lang_switcher(lang, suffix=""):
     return "\n".join(parts)
 
 
+def render_password_field(t, ident, label, name, attributes="", hint=""):
+    """Render one independently revealable, initially masked input."""
+    field_id = html.escape(ident, quote=True)
+    field_label = html.escape(label)
+    show = html.escape(t["login_show_password"])
+    hide = html.escape(t["login_hide_password"])
+    accessible_show = html.escape(f'{t["login_show_password"]} {label}', quote=True)
+    accessible_hide = html.escape(f'{t["login_hide_password"]} {label}', quote=True)
+    return (f'<label class="password-label" for="{field_id}">{field_label}</label>'
+            f'<div class="password-field">'
+            f'<input id="{field_id}" type="password" name="{html.escape(name, quote=True)}" {attributes}>'
+            f'<button type="button" class="password-toggle" aria-controls="{field_id}" '
+            f'aria-pressed="false" aria-label="{accessible_show}" '
+            f'data-show-label="{show}" data-hide-label="{hide}" '
+            f'data-show-accessible="{accessible_show}" data-hide-accessible="{accessible_hide}">'
+            f'{show}</button></div>{hint}')
+
+
 def _inline_md(text):
     """Escape first, then re-introduce only `code` and **bold**.
 
@@ -2071,6 +2089,9 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
           </div>
         </nav>
         """
+    elif bare:
+        nav = (f'<header class="app-login-header"><a class="app-login-brand" href="/">'
+               f'{ui_icon("server")}<span>{html.escape(t["title"])}</span></a></header>')
     elif not bare:
         lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
                      f'<div class="language-options">{render_lang_switcher(lang)}</div></details>')
@@ -2094,10 +2115,11 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
 <script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/theme.js" defer></script>
+<script src="/static/password-fields.js" defer></script>
 </head>
 <body{' class="login-page"' if bare else ''}>
 {nav}
-<main>
+<main{' class="app-login-main"' if bare else ''}>
 {body}
 </main>
 </body>
@@ -2114,6 +2136,7 @@ CHANGELOG_PATHS = {
 STATIC_FILES = {
     "/static/style.css": ("text/css", BASE_DIR / "static" / "style.css"),
     "/static/theme.js": ("application/javascript", BASE_DIR / "static" / "theme.js"),
+    "/static/password-fields.js": ("application/javascript", BASE_DIR / "static" / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
     "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
@@ -2127,7 +2150,6 @@ STATIC_FILES = {
     "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
     "/static/private-values.js": ("application/javascript", BASE_DIR / "static" / "private-values.js"),
     "/static/node-controls.js": ("application/javascript", BASE_DIR / "static" / "node-controls.js"),
-    "/static/login.js": ("application/javascript", BASE_DIR / "static" / "login.js"),
     "/static/qrcode.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode.js"),
     "/static/qrcode-utf8.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode-utf8.js"),
     "/static/qrcode-render.js": ("application/javascript", BASE_DIR / "static" / "qrcode-render.js"),
@@ -2454,33 +2476,31 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                    if parse_qs(urlsplit(self.path).query).get("changed") == ["1"] else "")
         ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
                      f'<button type="submit">{html.escape(t["login_ip_access"])}</button></form>')
+        password_field = render_password_field(
+            t, "login-password", t["password"], "password",
+            f'autocomplete="current-password" autofocus required{invalid}')
+        language_menu = (
+            f'<div class="login-language-field app-login-language">'
+            f'<details class="language-menu login-language-menu"><summary '
+            f'aria-label="{html.escape(t["login_language"], quote=True)}: {html.escape(LANG_NAMES[lang], quote=True)}">'
+            f'{html.escape(LANG_NAMES[lang])}</summary>'
+            f'<div class="language-options">{render_lang_switcher(lang, "&next=" + next_page if next_page else "")}</div>'
+            f'</details></div>')
         body = f"""
         <div class="login-shell">
-          <div class="login-panel">
-            <a class="login-brand" href="/">{ui_icon('lock-keyhole')}<span>vps-server</span></a>
+          <div class="login-panel app-login-card">
+            <span class="login-mark" aria-hidden="true">{ui_icon('lock-keyhole')}</span>
             <h1>{html.escape(t['login_heading'])}</h1>
             <p class="login-intro">{html.escape(t['login_intro'])}</p>
             {changed}{notice}{error_html}
-            <div class="login-language-field">
-              <span id="login-language-label">{html.escape(t['login_language'])}</span>
-              <details class="language-menu login-language-menu"><summary aria-labelledby="login-language-label">{html.escape(LANG_NAMES[lang])}</summary>
-                <div class="language-options">{render_lang_switcher(lang, '&next=' + next_page if next_page else '')}</div></details>
-            </div>
-            <form method="post" action="/login" class="login-form"
-                  data-show-label="{html.escape(t['login_show_password'], quote=True)}"
-                  data-hide-label="{html.escape(t['login_hide_password'], quote=True)}">
+            <form method="post" action="/login" class="login-form">
               {next_input}
-              <label for="login-password">{html.escape(t['password'])}</label>
-              <div class="login-password-field">
-                <input id="login-password" type="password" name="password" autocomplete="current-password" autofocus required{invalid}>
-                <button type="button" class="login-visibility" aria-controls="login-password" aria-pressed="false">{html.escape(t['login_show_password'])}</button>
-              </div>
+              {password_field}
               <button type="submit" class="login-submit">{html.escape(t['login'])}</button>
             </form>
             {ip_button}
-            <div class="login-footer"><span class="login-version">{html.escape(VERSION_LABEL)}</span>{render_theme_menu(lang)}</div>
+            <div class="login-footer app-login-footer"><a class="login-version app-login-version" href="/changelog">{html.escape(VERSION_LABEL)}</a>{language_menu}</div>
           </div>
-          <script src="/static/login.js"></script>
         </div>
         """
         headers = self.maybe_lang_cookie(query_lang)
@@ -2528,14 +2548,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def page_security_verify(self, lang, error=None, status=200):
         t = STRINGS[lang]
         token = self.get_cookie("session")
+        password_field = render_password_field(
+            t, "security-password", t["password"], "password",
+            'autocomplete="current-password" required autofocus')
         body = f'''<div class="access-workspace access-verify-workspace"><section class="card access-card">
           <h1>{html.escape(t['access_verify_heading'])}</h1>
           <p>{html.escape(t['access_verify_note'])}</p>
           {f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ''}
           <form class="access-verify-form" method="post" action="/settings/verify" autocomplete="off">
             <input type="hidden" name="csrf" value="{access_csrf_token(token, 'verify')}">
-            <label for="security-password">{html.escape(t['password'])}</label>
-            <input id="security-password" type="password" name="password" autocomplete="current-password" required autofocus>
+            {password_field}
             <button type="submit">{html.escape(t['access_verify_button'])}</button>
           </form></section></div>'''
         return self.send_html(status,
@@ -2643,6 +2665,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             f'{esc(t["access_remove"])}</button></form></li>' for address in addresses)
         if not rows:
             rows = f'<li class="muted">{esc(t["access_ip_empty"])}</li>'
+        new_password_field = render_password_field(
+            t, "access-new-password", t["access_new_password"], "new",
+            'autocomplete="new-password" minlength="12" maxlength="128" required')
+        confirm_password_field = render_password_field(
+            t, "access-confirm-password", t["access_confirm_password"], "confirm",
+            'autocomplete="new-password" minlength="12" maxlength="128" required')
         body = f'''<div class="access-workspace">
           <a class="preferences-back" href="/settings">{esc(t['settings'])}</a>
           <h1 class="access-page-title">{esc(t['access_heading'])}</h1>{feedback}
@@ -2670,8 +2698,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <section class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
               <input type="hidden" name="csrf" value="{access_csrf_token(token, 'password')}">
-              <label>{esc(t['access_new_password'])}<input type="password" name="new" autocomplete="new-password" minlength="12" maxlength="128" required></label>
-              <label>{esc(t['access_confirm_password'])}<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+              {new_password_field}
+              {confirm_password_field}
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
           </section><script src="/static/access-settings.js" defer></script></div>'''
@@ -3468,7 +3496,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   <div class="node-form-grid">
                     <label>{esc(t['node_name'])}<input name="name" maxlength="64" value="{esc(node['name'], quote=True)}" required></label>
                     <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_keep_port'], quote=True)}"></label>
-                    <label>{esc(t['node_credential'])}<input type="password" name="credential" value="" placeholder="{esc(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
+                    <div class="node-form-field">{render_password_field(t, 'node-credential-' + identifier, t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_keep_credential'], quote=True) + '" autocomplete="new-password"')}</div>
                     {sni_input}
                   </div><button type="submit">{esc(t['node_save_settings'])}</button>
                 </form>
@@ -3539,7 +3567,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div class="node-form-grid">
               <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
               <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
-              <label>{esc(t['node_credential'])}<input type="password" name="credential" value="" placeholder="{esc(t['node_credential_random'], quote=True)}" autocomplete="new-password"><small class="node-field-hint" data-credential-hint>{esc(t['node_credential_password_hint'])}</small></label>
+              <div class="node-form-field">{render_password_field(t, 'node-create-credential', t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_credential_random'], quote=True) + '" autocomplete="new-password"', '<small class="node-field-hint" data-credential-hint>' + esc(t['node_credential_password_hint']) + '</small>')}</div>
               <label data-sni-field>{esc(t['proxy_sni'])}<input name="sni" value="www.bing.com" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")
@@ -3751,7 +3779,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <div class="node-form-grid">
             <label>{html.escape(t['node_name'])}<input name="name" maxlength="64" value="{html.escape(node['name'], quote=True)}" required></label>
             <label>{html.escape(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{port}" required></label>
-            <label>{html.escape(t['node_credential'])}<input name="credential" value="" placeholder="{html.escape(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
+            <div class="node-form-field">{render_password_field(t, 'legacy-credential-' + protocol, t['node_credential'], 'credential', 'value="" placeholder="' + html.escape(t['node_keep_credential'], quote=True) + '" autocomplete="new-password"')}</div>
             {sni_field}
             <label>{html.escape(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{html.escape(t['node_unlimited'], quote=True)}"></label>
             <label>{html.escape(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
@@ -3773,9 +3801,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         <form method="post" action="/proxy/apply" autocomplete="off">
           <input type="hidden" name="protocol" value="{html.escape(protocol)}">
           <input type="hidden" name="csrf" value="{token}">
-          <label>{html.escape(label)}
-            <input type="password" name="credential" autocomplete="off" required>
-          </label>
+          {render_password_field(t, 'legacy-reset-' + protocol, label, 'credential', 'autocomplete="off" required')}
           <button type="submit">{html.escape(t['node_save_credential'])}</button>
         </form>
         """
