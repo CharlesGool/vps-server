@@ -41,9 +41,11 @@ See [current state and acceptance limits][local-link-001].
   port runs up/download tests using the LibreSpeed engine. It accepts an admin
   password or an explicitly allowed private LAN IP. The login page always shows
   the IP access button; an unlisted visitor is guided to password login and
-  access settings. Only a
-  password-authenticated admin can change the password or IP list; public IPs
-  cannot be added.
+  access settings. Security Settings requires a recent administrator-password
+  verification before showing its IP list or accepting changes. The allowlist
+  accepts individual private IPv4 and unique-local IPv6 addresses, with a
+  separate switch to disable IP access without deleting entries. Password
+  changes invalidate existing sessions.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
   when the window expires. Its status and port are shown separately; the port

@@ -135,9 +135,13 @@ client-supplied forwarding header, and is disabled when `VPSSRV_TRUST_PROXY=1`
 because that mode has no configured trusted-proxy boundary. IP admission opens
 ordinary console pages after the visitor chooses IP access on the login page.
 The resulting session is bound to the connection peer and the allowlist is
-rechecked on every request. Changing the password or IP list requires a password
-session. A gateway that maps several devices to one allowed private IP gives
-all those devices the same access.
+rechecked on every request. Security Settings requires administrator-password
+verification recorded for the session and expires after ten minutes. An IP-only
+session completes that challenge and receives a new password-authenticated
+session; changing the password invalidates all existing sessions. The allowlist
+accepts only individual RFC 1918 IPv4 or unique-local IPv6 addresses and has a
+separate enable switch. A gateway that maps several devices to one allowed
+private IP gives all those devices the same access.
 
 The public page accepts `GET` and `HEAD` on exactly two paths (`/` and
 `/favicon.ico`) and answers everything else with 404. It reads no query string,

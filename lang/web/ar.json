@@ -28,7 +28,7 @@
   "access_change_password": "تغيير كلمة المرور",
   "access_ip_added": "أُضيف عنوان IP.",
   "access_ip_removed": "أُزيل عنوان IP.",
-  "access_ip_invalid": "أدخل عنوان IP خاصًا واحدًا للشبكة المحلية.",
+  "access_ip_invalid": "أدخل عنوان IPv4 خاصًا أو عنوان IPv6 محليًا فريدًا واحدًا.",
   "access_ip_error": "تعذّر حفظ قائمة IP.",
   "access_password_invalid": "يجب تطابق الكلمتين وأن تتكون الكلمة الجديدة من 12 إلى 128 حرفًا.",
   "access_current_wrong": "كلمة المرور الحالية غير صحيحة.",
@@ -299,5 +299,13 @@
   "frps_status": "الحالة",
   "frps_token": "الرمز",
   "private_value_failed": "تعذّر تحميل القيمة.",
-  "private_copy_failed": "تعذّر النسخ."
+  "private_copy_failed": "تعذّر النسخ.",
+  "access_verify_heading": "التحقق من كلمة مرور المسؤول",
+  "access_verify_note": "أدخل كلمة مرور المسؤول لفتح إعدادات الأمان. يستمر الإذن لمدة 10 دقائق.",
+  "access_verify_button": "تحقق ومتابعة",
+  "access_ip_switch": "الوصول عبر IP دون كلمة مرور",
+  "access_ip_enable": "تفعيل",
+  "access_ip_disable": "تعطيل",
+  "access_ip_enabled": "تم تفعيل الوصول عبر IP.",
+  "access_ip_disabled": "تم تعطيل الوصول عبر IP."
 }

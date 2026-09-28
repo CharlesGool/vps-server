@@ -59,7 +59,18 @@ class IpAllowlistTest(unittest.TestCase):
             self.assertFalse(allowlist.contains("100.101.102.104"))
             self.assertEqual(app.IpAllowlist(allowlist.path).list_addresses(),
                              ["192.168.1.2", "fd12::1"])
+            allowlist.set_enabled(False)
+            self.assertFalse(allowlist.contains("192.168.1.2"))
+            self.assertFalse(app.IpAllowlist(allowlist.path).is_enabled())
             self.assertEqual(allowlist.path.stat().st_mode & 0o777, 0o600)
+
+    def test_old_allowlist_keeps_private_entries_and_drops_unsafe_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "login-access.json"
+            path.write_text('{"allowed_ips":["10.2.3.4"]}')
+            self.assertTrue(app.IpAllowlist(path).contains("10.2.3.4"))
+            path.write_text('{"allowed_ips":["10.2.3.4","8.8.8.8"]}')
+            self.assertFalse(app.IpAllowlist(path).contains("8.8.8.8"))
 
     def test_damaged_list_fails_closed_without_breaking_password_login(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -175,7 +186,9 @@ class ConsoleTest(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn("Specified IP password-free access", page)
                 self.assertIn('action="/settings/ip/add"', page)
-                self.assertIn('placeholder="192.168.1.10"', page)
+                self.assertIn('placeholder="192.168.1.10 / fd12::1"', page)
+                self.assertIn('action="/settings/ip/toggle"', page)
+                self.assertNotIn('name="current"', page)
                 csrf = app.access_csrf_token(session, "ip-add")
                 self.assertEqual(request("POST", "/settings/ip/add",
                                          {"csrf": csrf, "ip": "8.8.8.8"}, session)[:2],
@@ -185,22 +198,70 @@ class ConsoleTest(unittest.TestCase):
                                          {"csrf": csrf, "ip": "192.168.7.21"}, session)[:2],
                                  (302, "/settings?msg=access_ip_added"))
                 self.assertEqual(allowlist.list_addresses(), ["192.168.7.21"])
+                self.assertEqual(request("POST", "/settings/ip/add",
+                                         {"csrf": csrf, "ip": "fd12::1"}, session)[:2],
+                                 (302, "/settings?msg=access_ip_added"))
+                toggle = app.access_csrf_token(session, "ip-toggle")
+                self.assertEqual(request("POST", "/settings/ip/toggle",
+                                         {"csrf": toggle, "enabled": "0"}, session)[:2],
+                                 (302, "/settings?msg=access_ip_disabled"))
+                self.assertFalse(allowlist.contains("192.168.7.21"))
+                self.assertFalse(app.IpAllowlist(allowlist.path).is_enabled())
+                self.assertEqual(request("POST", "/settings/ip/toggle",
+                                         {"csrf": toggle, "enabled": "1"}, session)[:2],
+                                 (302, "/settings?msg=access_ip_enabled"))
+                self.assertTrue(allowlist.contains("fd12::1"))
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
                 self.assertIn('class="access-remove"', page)
                 self.assertEqual(request("POST", "/settings/password",
                                          {"csrf": app.access_csrf_token(session, "password"),
-                                          "current": "wrong", "new": "new-password-1234",
-                                          "confirm": "new-password-1234"}, session)[:2],
-                                 (302, "/settings?msg=access_current_wrong"))
-                self.assertEqual(app.ADMIN_PASSWORD, self.password)
-                self.assertEqual(request("POST", "/settings/password",
-                                         {"csrf": app.access_csrf_token(session, "password"),
-                                          "current": self.password, "new": "new-password-1234",
+                                          "new": "new-password-1234",
                                           "confirm": "new-password-1234"}, session)[:2],
                                  (302, "/login?changed=1"))
                 self.assertEqual(password_file.read_text().strip(), "new-password-1234")
                 self.assertFalse(app.session_valid(session))
+
+    def test_security_permission_expires_and_password_challenge_rotates_session(self):
+        session = self.login()
+        try:
+            with app._sessions_lock:
+                app._security_sessions[session] = time.time() - 1
+            conn = self.connect()
+            conn.request("GET", "/settings", headers={"Cookie": f"session={session}"})
+            response = conn.getresponse()
+            self.assertEqual((response.status, response.getheader("Location")),
+                             (302, "/settings/verify"))
+            response.read()
+            conn.close()
+
+            def post(path, fields):
+                connection = self.connect()
+                connection.request("POST", path, body=urlencode(fields), headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Cookie": f"session={session}"})
+                response = connection.getresponse()
+                result = response.status, response.getheader("Location"), response.getheader("Set-Cookie")
+                response.read()
+                connection.close()
+                return result
+
+            self.assertEqual(post("/settings/ip/add", {"csrf": app.access_csrf_token(session, "ip-add"),
+                                                          "ip": "10.2.3.4"})[0], 403)
+            csrf = app.access_csrf_token(session, "verify")
+            self.assertEqual(post("/settings/verify", {"csrf": csrf, "password": "wrong"})[0], 401)
+            status, location, cookie = post("/settings/verify", {"csrf": csrf,
+                                                                   "password": self.password})
+            self.assertEqual((status, location), (302, "/settings"))
+            jar = SimpleCookie()
+            jar.load(cookie)
+            new_session = jar["session"].value
+            self.assertNotEqual(session, new_session)
+            self.assertFalse(app.session_valid(session))
+            self.assertTrue(app.security_settings_valid(new_session))
+            app.destroy_session(new_session)
+        finally:
+            app.destroy_session(session)
 
     def test_ip_admission_uses_peer_not_forwarded_header_and_cannot_edit_access(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -246,8 +307,16 @@ class ConsoleTest(unittest.TestCase):
                     conn.request("GET", "/settings", headers={"Cookie": f"session={ip_token}"})
                     response = conn.getresponse()
                     self.assertEqual((response.status, response.getheader("Location")),
-                                     (302, "/login?next=settings"))
+                                     (302, "/settings/verify"))
                     response.read()
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("GET", "/settings/verify", headers={"Cookie": f"session={ip_token}"})
+                    response = conn.getresponse()
+                    challenge = response.read().decode()
+                    self.assertEqual(response.status, 200)
+                    self.assertIn('action="/settings/verify"', challenge)
+                    self.assertNotIn('action="/settings/ip/add"', challenge)
                     conn.close()
                     conn = self.connect()
                     conn.request("POST", "/settings/ip/add", body="ip=10.0.0.2&csrf=no",

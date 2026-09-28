@@ -28,7 +28,7 @@
   "access_change_password": "पासवर्ड बदलें",
   "access_ip_added": "IP जोड़ा गया।",
   "access_ip_removed": "IP हटाया गया।",
-  "access_ip_invalid": "एक निजी LAN IP पता दर्ज करें।",
+  "access_ip_invalid": "एक निजी IPv4 या यूनिक-लोकल IPv6 पता डालें।",
   "access_ip_error": "IP सूची सहेजी नहीं जा सकी।",
   "access_password_invalid": "दोनों पासवर्ड समान हों और नया पासवर्ड 12–128 अक्षरों का हो।",
   "access_current_wrong": "वर्तमान पासवर्ड गलत है।",
@@ -299,5 +299,13 @@
   "frps_status": "स्थिति",
   "frps_token": "टोकन",
   "private_value_failed": "मान लोड नहीं हो सका।",
-  "private_copy_failed": "कॉपी नहीं हो सका।"
+  "private_copy_failed": "कॉपी नहीं हो सका।",
+  "access_verify_heading": "व्यवस्थापक पासवर्ड सत्यापित करें",
+  "access_verify_note": "सुरक्षा सेटिंग खोलने के लिए व्यवस्थापक पासवर्ड डालें। यह अनुमति 10 मिनट तक मान्य रहती है।",
+  "access_verify_button": "सत्यापित कर आगे बढ़ें",
+  "access_ip_switch": "बिना पासवर्ड IP पहुँच",
+  "access_ip_enable": "चालू करें",
+  "access_ip_disable": "बंद करें",
+  "access_ip_enabled": "IP पहुँच चालू की गई।",
+  "access_ip_disabled": "IP पहुँच बंद की गई।"
 }

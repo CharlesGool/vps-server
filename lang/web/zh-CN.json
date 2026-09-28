@@ -28,7 +28,7 @@
   "access_change_password": "修改密码",
   "access_ip_added": "IP 已添加。",
   "access_ip_removed": "IP 已移除。",
-  "access_ip_invalid": "请输入单个内网 IP 地址。",
+  "access_ip_invalid": "请输入单个内网 IPv4 或唯一本地 IPv6 地址。",
   "access_ip_error": "无法保存 IP 列表。",
   "access_password_invalid": "两次密码须一致，且新密码须为 12–128 个字符。",
   "access_current_wrong": "当前密码不正确。",
@@ -299,5 +299,13 @@
   "frps_status": "状态",
   "frps_token": "令牌",
   "private_value_failed": "无法读取该值.",
-  "private_copy_failed": "复制失败."
+  "private_copy_failed": "复制失败.",
+  "access_verify_heading": "验证管理员密码",
+  "access_verify_note": "输入管理员密码后才能打开安全设置。验证有效期为 10 分钟。",
+  "access_verify_button": "验证并继续",
+  "access_ip_switch": "IP 免密登录",
+  "access_ip_enable": "启用",
+  "access_ip_disable": "停用",
+  "access_ip_enabled": "已启用 IP 免密登录。",
+  "access_ip_disabled": "已停用 IP 免密登录。"
 }

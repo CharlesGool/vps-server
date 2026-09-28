@@ -28,7 +28,7 @@
   "access_change_password": "Cambiar contraseña",
   "access_ip_added": "IP añadida.",
   "access_ip_removed": "IP eliminada.",
-  "access_ip_invalid": "Introduce una sola IP privada de LAN.",
+  "access_ip_invalid": "Introduce una dirección IPv4 privada o IPv6 local única.",
   "access_ip_error": "No se pudo guardar la lista de IP.",
   "access_password_invalid": "Las contraseñas deben coincidir y la nueva debe tener entre 12 y 128 caracteres.",
   "access_current_wrong": "La contraseña actual es incorrecta.",
@@ -299,5 +299,13 @@
   "frps_status": "Estado",
   "frps_token": "Token",
   "private_value_failed": "No se pudo cargar el valor.",
-  "private_copy_failed": "No se pudo copiar."
+  "private_copy_failed": "No se pudo copiar.",
+  "access_verify_heading": "Verificar contraseña de administrador",
+  "access_verify_note": "Introduce la contraseña de administrador para abrir los ajustes de seguridad. La autorización dura 10 minutos.",
+  "access_verify_button": "Verificar y continuar",
+  "access_ip_switch": "Acceso por IP sin contraseña",
+  "access_ip_enable": "Activar",
+  "access_ip_disable": "Desactivar",
+  "access_ip_enabled": "Acceso por IP activado.",
+  "access_ip_disabled": "Acceso por IP desactivado."
 }

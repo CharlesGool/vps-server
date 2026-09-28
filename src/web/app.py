@@ -238,6 +238,7 @@ DB_FILE = DATA_DIR / "visitors.db"
 PORTFWD_STATE_FILE = DATA_DIR / "portfwd.json"
 
 SESSION_TTL_SECONDS = 12 * 3600
+SECURITY_PERMISSION_SECONDS = 10 * 60
 MAX_VISITOR_ROWS = 1000
 DOWNLOAD_CHUNK = 1024 * 1024  # 1 MiB fill buffer, repeated to build the response
 LOGIN_BODY_LIMIT = 4096
@@ -301,16 +302,20 @@ class IpAllowlist:
         self.path = Path(path)
         self.lock = threading.RLock()
         self.addresses = set()
+        self.enabled = True
         self.load_error = False
         if self.path.exists():
             try:
                 document = json.loads(self.path.read_text(encoding="utf-8"))
-                if (not isinstance(document, dict) or set(document) != {"allowed_ips"} or
+                if (not isinstance(document, dict) or
+                        set(document) not in ({"allowed_ips"}, {"allowed_ips", "enabled"}) or
+                        not isinstance(document.get("enabled", True), bool) or
                         not isinstance(document["allowed_ips"], list) or
                         any(normalized_private_ip(item) != item for item in document["allowed_ips"]) or
                         len(document["allowed_ips"]) != len(set(document["allowed_ips"]))):
                     raise ValueError("invalid IP allowlist")
                 self.addresses = set(document["allowed_ips"])
+                self.enabled = document.get("enabled", True)
             except (OSError, ValueError, TypeError):
                 self.load_error = True
 
@@ -320,7 +325,20 @@ class IpAllowlist:
         except ValueError:
             return False
         with self.lock:
-            return canonical in self.addresses
+            return self.enabled and canonical in self.addresses
+
+    def is_enabled(self):
+        with self.lock:
+            return self.enabled
+
+    def set_enabled(self, enabled):
+        if not isinstance(enabled, bool):
+            raise ValueError("invalid IP access setting")
+        with self.lock:
+            _atomic_private_text(self.path, json.dumps({"allowed_ips": sorted(self.addresses),
+                                                       "enabled": enabled}) + "\n")
+            self.enabled = enabled
+            self.load_error = False
 
     def list_addresses(self):
         with self.lock:
@@ -340,7 +358,8 @@ class IpAllowlist:
                     raise ValueError("IP address is not listed")
                 candidate.remove(canonical)
             if candidate != self.addresses:
-                _atomic_private_text(self.path, json.dumps({"allowed_ips": sorted(candidate)}) + "\n")
+                _atomic_private_text(self.path, json.dumps({"allowed_ips": sorted(candidate),
+                                                           "enabled": self.enabled}) + "\n")
                 self.addresses = candidate
                 self.load_error = False
         return canonical
@@ -1506,13 +1525,16 @@ def pick_lang(cookie_lang, query_lang, accept_language):
 
 _sessions = {}
 _ip_sessions = {}
+_security_sessions = {}
 _sessions_lock = threading.Lock()
 
 
-def create_session():
+def create_session(*, security_verified=False):
     token = secrets.token_urlsafe(32)
     with _sessions_lock:
         _sessions[token] = time.time() + SESSION_TTL_SECONDS
+        if security_verified:
+            _security_sessions[token] = time.time() + SECURITY_PERMISSION_SECONDS
     return token
 
 
@@ -1525,6 +1547,18 @@ def session_valid(token):
             return False
         if expiry < time.time():
             del _sessions[token]
+            _security_sessions.pop(token, None)
+            return False
+        return True
+
+
+def security_settings_valid(token):
+    if not session_valid(token):
+        return False
+    with _sessions_lock:
+        expiry = _security_sessions.get(token, 0)
+        if expiry <= time.time():
+            _security_sessions.pop(token, None)
             return False
         return True
 
@@ -1554,6 +1588,7 @@ def destroy_session(token):
     with _sessions_lock:
         _sessions.pop(token, None)
         _ip_sessions.pop(token, None)
+        _security_sessions.pop(token, None)
 
 
 def access_csrf_token(session, action):
@@ -1564,20 +1599,18 @@ def access_csrf_token(session, action):
 _password_lock = threading.Lock()
 
 
-def change_admin_password(current, replacement):
+def change_admin_password(replacement):
     global ADMIN_PASSWORD
     if not isinstance(replacement, str) or not 12 <= len(replacement) <= 128 or \
             replacement != replacement.strip() or any(ord(char) < 32 for char in replacement):
         raise ValueError("invalid new password")
     with _password_lock:
-        if not hmac.compare_digest(current, ADMIN_PASSWORD):
-            return False
         _atomic_private_text(PASSWORD_FILE, replacement + "\n")
         ADMIN_PASSWORD = replacement
         with _sessions_lock:
             _sessions.clear()
             _ip_sessions.clear()
-        return True
+            _security_sessions.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -2037,7 +2070,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
             {portfwd_link}
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
-            {link('/settings', 'settings') if AUTH_ENABLED and password_authenticated else ''}
+            {link('/settings', 'settings') if AUTH_ENABLED and (password_authenticated or ip_authenticated) else ''}
             {logout_link}
             {theme_menu}
             {lang_menu}
@@ -2300,16 +2333,20 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_logout()
 
         if not self.is_authenticated():
-            return self.redirect("/login?next=settings" if path == "/settings" else "/login")
+            return self.redirect("/login?next=settings" if path.startswith("/settings") else "/login")
 
-        if path == "/settings" and not self.is_password_authenticated():
-            return self.redirect("/login?next=settings")
+        if path == "/settings/verify" and method == "GET":
+            return self.page_security_verify(lang)
+        if path == "/settings/verify" and method == "POST":
+            return self.handle_security_verify(lang)
+        if path.startswith("/settings") and not security_settings_valid(self.get_cookie("session")):
+            if method == "GET":
+                return self.redirect("/settings/verify", {"Cache-Control": "no-store"})
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         if method == "GET" and path == "/settings":
             return self.page_settings(lang, query_lang, parsed)
-        if method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove",
+        if method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle",
                                          "/settings/password"):
-            if not self.is_password_authenticated():
-                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.handle_settings_post(path)
 
         if method == "GET" and path == "/":
@@ -2459,7 +2496,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         next_page = form.get("next", [""])[0]
         if hmac.compare_digest(submitted, ADMIN_PASSWORD):
             LOGIN_LIMITER.record_success(ip)
-            token = create_session()
+            previous = self.get_cookie("session")
+            if previous:
+                destroy_session(previous)
+            token = create_session(security_verified=True)
             cookie = (
                 f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
                 f"Max-Age={SESSION_TTL_SECONDS}"
@@ -2479,6 +2519,57 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   f"Max-Age={SESSION_TTL_SECONDS}")
         return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
+    def page_security_verify(self, lang, error=None, status=200):
+        t = STRINGS[lang]
+        token = self.get_cookie("session")
+        body = f'''<div class="access-workspace"><section class="card access-card">
+          <h1>{html.escape(t['access_verify_heading'])}</h1>
+          <p>{html.escape(t['access_verify_note'])}</p>
+          {f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ''}
+          <form method="post" action="/settings/verify" autocomplete="off">
+            <input type="hidden" name="csrf" value="{access_csrf_token(token, 'verify')}">
+            <label for="security-password">{html.escape(t['password'])}</label>
+            <input id="security-password" type="password" name="password" autocomplete="current-password" required autofocus>
+            <button type="submit">{html.escape(t['access_verify_button'])}</button>
+          </form></section></div>'''
+        return self.send_html(status,
+                              self.render_page(t['access_verify_heading'], body, lang, active="settings"),
+                              {"Cache-Control": "no-store"})
+
+    def handle_security_verify(self, lang):
+        token = self.get_cookie("session")
+        if not self.is_authenticated():
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+            if not 0 < length <= LOGIN_BODY_LIMIT:
+                raise ValueError
+            form = parse_qs(self.rfile.read(length).decode("utf-8"),
+                            keep_blank_values=True, strict_parsing=True)
+            if set(form) != {"csrf", "password"} or any(len(values) != 1 for values in form.values()):
+                raise ValueError
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not hmac.compare_digest(form["csrf"][0], access_csrf_token(token, "verify")):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        ip = self.client_address[0]
+        allowed, retry_after = LOGIN_LIMITER.check(ip)
+        if not allowed:
+            return self.page_security_verify(lang,
+                                             error=STRINGS[lang]["login_locked"].format(seconds=retry_after),
+                                             status=429)
+        if not hmac.compare_digest(form["password"][0], ADMIN_PASSWORD):
+            LOGIN_LIMITER.record_failure(ip)
+            return self.page_security_verify(lang, error=STRINGS[lang]["wrong_password"], status=401)
+        LOGIN_LIMITER.record_success(ip)
+        destroy_session(token)
+        new_token = create_session(security_verified=True)
+        cookie = (f"session={new_token}; Path=/; HttpOnly; SameSite=Strict; "
+                  f"Max-Age={SESSION_TTL_SECONDS}")
+        return self.redirect("/settings", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
+
     def handle_logout(self):
         token = self.get_cookie("session")
         if token:
@@ -2493,8 +2584,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         addresses = IP_ALLOWLIST.list_addresses()
         message = parse_qs(parsed.query).get("msg", [""])[0]
         allowed_messages = {"access_ip_added", "access_ip_removed", "access_ip_invalid",
-                            "access_ip_error", "access_password_invalid", "access_current_wrong"}
-        feedback = (f'<p class="{"notice" if message in ("access_ip_added", "access_ip_removed") else "error"}" role="status">'
+                            "access_ip_error", "access_password_invalid", "access_ip_enabled", "access_ip_disabled"}
+        feedback = (f'<p class="{"notice" if message in ("access_ip_added", "access_ip_removed", "access_ip_enabled", "access_ip_disabled") else "error"}" role="status">'
                     f'{esc(t[message])}</p>') if message in allowed_messages else ""
         load_warning = f'<p class="error" role="alert">{esc(t["access_load_error"])}</p>' if IP_ALLOWLIST.load_error else ""
         rows = "".join(
@@ -2512,11 +2603,18 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <h2>{esc(t['access_ips'])}</h2></div>{ui_icon('lock-keyhole')}</header>
             <div class="access-card-body"><p>{esc(t['access_ip_note'])}</p>
               <p>{esc(t['access_ip_shared_note'])}</p>{load_warning}
+            <form method="post" action="/settings/ip/toggle" class="access-toggle-form">
+              <input type="hidden" name="csrf" value="{access_csrf_token(token, 'ip-toggle')}">
+              <input type="hidden" name="enabled" value="{'0' if IP_ALLOWLIST.is_enabled() else '1'}">
+              <span>{esc(t['access_ip_switch'])}</span>
+              <button type="submit" aria-label="{esc(t['access_ip_disable'] if IP_ALLOWLIST.is_enabled() else t['access_ip_enable'], quote=True)}"
+                aria-pressed="{'true' if IP_ALLOWLIST.is_enabled() else 'false'}">{esc(t['access_ip_disable'] if IP_ALLOWLIST.is_enabled() else t['access_ip_enable'])}</button>
+            </form>
             <ul class="access-ip-list">{rows}</ul>
             <form method="post" action="/settings/ip/add" class="access-ip-form">
               <input type="hidden" name="csrf" value="{access_csrf_token(token, 'ip-add')}">
               <label class="sr-only" for="access-new-ip">{esc(t['access_ip_address'])}</label>
-              <input id="access-new-ip" name="ip" placeholder="192.168.1.10" required spellcheck="false" autocomplete="off">
+              <input id="access-new-ip" name="ip" placeholder="192.168.1.10 / fd12::1" required spellcheck="false" autocomplete="off">
               <button type="submit">{esc(t['access_add'])}</button>
             </form>
             </div>
@@ -2524,7 +2622,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <section class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
               <input type="hidden" name="csrf" value="{access_csrf_token(token, 'password')}">
-              <label>{esc(t['access_current_password'])}<input type="password" name="current" autocomplete="current-password" required></label>
               <label>{esc(t['access_new_password'])}<input type="password" name="new" autocomplete="new-password" minlength="12" maxlength="128" required></label>
               <label>{esc(t['access_confirm_password'])}<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label>
               <button type="submit">{esc(t['access_change_password'])}</button>
@@ -2550,8 +2647,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if any(len(values) != 1 for values in form.values()):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         action = {"/settings/ip/add": "ip-add", "/settings/ip/remove": "ip-remove",
+                  "/settings/ip/toggle": "ip-toggle",
                   "/settings/password": "password"}[path]
-        expected = {"csrf", "current", "new", "confirm"} if action == "password" else {"csrf", "ip"}
+        expected = ({"csrf", "new", "confirm"} if action == "password" else
+                    {"csrf", "enabled"} if action == "ip-toggle" else {"csrf", "ip"})
         if set(form) != expected:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if not hmac.compare_digest(form["csrf"][0],
@@ -2562,13 +2661,21 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 key = "access_password_invalid"
             else:
                 try:
-                    changed = change_admin_password(form["current"][0], form["new"][0])
-                    key = "" if changed else "access_current_wrong"
+                    change_admin_password(form["new"][0])
+                    key = ""
                 except (OSError, ValueError):
                     key = "access_password_invalid"
             if not key:
                 cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
                 return self.redirect("/login?changed=1", {"Set-Cookie": cookie})
+        elif action == "ip-toggle":
+            if form["enabled"][0] not in ("0", "1"):
+                return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+            try:
+                IP_ALLOWLIST.set_enabled(form["enabled"][0] == "1")
+                key = "access_ip_enabled" if IP_ALLOWLIST.is_enabled() else "access_ip_disabled"
+            except OSError:
+                key = "access_ip_error"
         else:
             try:
                 IP_ALLOWLIST.change(form["ip"][0], add=action == "ip-add")
@@ -2626,6 +2733,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="tile-icon">{ui_icon("users-round")}</span>
               <span class="tile-label">{html.escape(t['visitors'])}</span>
             </a>
+            <a class="tile" href="/changelog">
+              <span class="tile-icon">{ui_icon("scroll-text")}</span>
+              <span class="tile-label">{html.escape(t['changelog'])}</span>
+            </a>
+            {f'<a class="tile" href="/settings"><span class="tile-icon">{ui_icon("settings-2")}</span><span class="tile-label">{html.escape(t["settings"])}</span></a>' if AUTH_ENABLED else ''}
           </div>
         </div>
         """

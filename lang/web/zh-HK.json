@@ -28,7 +28,7 @@
   "access_change_password": "更改密碼",
   "access_ip_added": "已新增 IP。",
   "access_ip_removed": "已移除 IP。",
-  "access_ip_invalid": "請輸入單一私人區域網絡 IP 位址。",
+  "access_ip_invalid": "請輸入單一私人 IPv4 或唯一本地 IPv6 位址。",
   "access_ip_error": "無法儲存 IP 清單。",
   "access_password_invalid": "兩次密碼必須相同，新密碼須為 12–128 個字元。",
   "access_current_wrong": "目前密碼不正確。",
@@ -299,5 +299,13 @@
   "frps_status": "狀態",
   "frps_token": "權杖",
   "private_value_failed": "無法讀取此數值.",
-  "private_copy_failed": "複製失敗."
+  "private_copy_failed": "複製失敗.",
+  "access_verify_heading": "驗證管理員密碼",
+  "access_verify_note": "輸入管理員密碼後才能開啟安全設定。驗證有效期為 10 分鐘。",
+  "access_verify_button": "驗證並繼續",
+  "access_ip_switch": "IP 免密登入",
+  "access_ip_enable": "啟用",
+  "access_ip_disable": "停用",
+  "access_ip_enabled": "已啟用 IP 免密登入。",
+  "access_ip_disabled": "已停用 IP 免密登入。"
 }

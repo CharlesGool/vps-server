@@ -28,7 +28,7 @@
   "access_change_password": "Changer le mot de passe",
   "access_ip_added": "IP ajoutée.",
   "access_ip_removed": "IP retirée.",
-  "access_ip_invalid": "Saisissez une seule IP privée du réseau local.",
+  "access_ip_invalid": "Saisissez une adresse IPv4 privée ou IPv6 locale unique.",
   "access_ip_error": "Impossible d’enregistrer la liste des IP.",
   "access_password_invalid": "Les mots de passe doivent correspondre et le nouveau doit compter de 12 à 128 caractères.",
   "access_current_wrong": "Le mot de passe actuel est incorrect.",
@@ -299,5 +299,13 @@
   "frps_status": "État",
   "frps_token": "Jeton",
   "private_value_failed": "Impossible de charger la valeur.",
-  "private_copy_failed": "Copie impossible."
+  "private_copy_failed": "Copie impossible.",
+  "access_verify_heading": "Vérifier le mot de passe administrateur",
+  "access_verify_note": "Saisissez le mot de passe administrateur pour ouvrir les paramètres de sécurité. Cette autorisation dure 10 minutes.",
+  "access_verify_button": "Vérifier et continuer",
+  "access_ip_switch": "Accès par IP sans mot de passe",
+  "access_ip_enable": "Activer",
+  "access_ip_disable": "Désactiver",
+  "access_ip_enabled": "Accès par IP activé.",
+  "access_ip_disabled": "Accès par IP désactivé."
 }

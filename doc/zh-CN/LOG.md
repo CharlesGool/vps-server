@@ -174,7 +174,9 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - 本轮规范对齐(2026-09-28):受管及旧版代理页面,Lucky,frps,iperf3 和端口转发页面在首次显示时遮蔽已保存的凭据与已配置端口.操作员点击显示,复制,导入或二维码后,已鉴权请求才获取对应值;隐藏,收起二维码或离开页面会清除已显示内容.节点编辑器的新端口留空时保留原端口.Lucky 和 frps 页面文字已接入全部八种界面语言.中文文档标点已按当前格式规范调整,代码示例未改动. 安装版本现优先读取部署时的 `VERSION` 标记,再读取随附的 `config/VERSION` 发行版本.
 - 本轮检查:309 项自动化测试通过(8 项跳过);文档格式和多语言检查零错误;Python 编译及差异空白检查通过.干净的受版本控制文件导出通过项目结构检查;当前检出目录因 Limitations 已记录的忽略运行文件和缓存而未通过结构检查.Chromium 在本地夹具确认默认遮蔽,显示/隐藏,二维码生成和清除.测试机上验证了局域网登录,遮蔽的节点页面,授权显示凭据,静态脚本交付,四项运行中的服务以及已配置的 Web 监听端口.Chromium 还确认显示后离开再返回会恢复遮蔽.浏览器拒绝读取剪贴板,因此本轮没有核对剪贴板实际内容.
 - 本轮部署:更新了指定测试机的标准应用目录,并先在仓库外备份旧版应用文件.仅重启 Web 服务;systemd 开机启用状态仍在.未重启主机,也未进行真实策略流量传输. 并已标记部署的开发修订版本.
-- 待办:真实 Android 手机上的 Clash 导入,各新策略下的真实流量,以及主机重启后的启动仍待验证.下一步:完成这些检查后审核并合并本分支,再确定发布版本.
+- 本轮安全对齐:安全设置须经管理员密码验证,权限固定 10 分钟.验证成功换发会话;仅 IP 免密的会话未经验证不得读取名单或修改设置.权限有效期间修改密码只填写新密码和确认,修改后旧会话全部失效.私有 IPv4 与唯一本地 IPv6 名单共用独立启用开关;每次免密访问都重新检查名单和开关.Clash 导入按钮默认可见,仪表盘增设更新日志和设置入口.
+- 本轮安全对齐检查:自动化测试,文档,浏览器和测试机的最终验证待完成.
+- 待办:真实 Android 手机上的 Clash 导入,各新策略下的真实流量,以及主机重启后的启动仍待验证.下一步:在测试机验证此次安全更新,再完成其余验收,审核并合并本分支.
 ## 变更日志
 
 此处仅列已打标签的发布版本.以下条目保留原变更日志的完整历史,并记录 v2.0.0 的发布内容.
@@ -333,4 +335,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `b0a9c6c` feat(web): copy Clash links and fit up to six node columns
 - `d07b40a` fix(web): mask configured values and align project documents
 - `7065e18` fix(web): honor installed version stamp
-- (this commit) fix(web): prioritize deployed stamp over stale git metadata
+- `b870053` fix(web): prioritize deployed stamp over stale git metadata
+- (this commit) feat(auth): align security settings and dashboard access
