@@ -365,8 +365,10 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
 .node-stats strong { margin-top: .1rem; font-size: .9rem; font-variant-numeric: tabular-nums; }
 .node-limit { grid-column: auto; color: var(--success); font-size: .75rem; font-weight: 700; white-space: nowrap; }
 .managed-node .node-share { margin: 0; padding: .75rem 1.25rem; align-items: center; }
-.managed-node .node-secondary { display: flex; margin: 0; padding: .8rem 1.25rem; }
-.managed-node .node-destructive-actions { justify-content: flex-end; }
+.managed-node .node-secondary { display: flex; flex-wrap: nowrap; margin: 0; padding: .8rem 1.25rem; gap: .35rem; }
+.managed-node .node-secondary .node-action { min-height: 2.75rem; padding: .4rem .55rem; font-size: .75rem; }
+.managed-node .node-access-open { flex: 0 1 auto; min-width: 0; }
+.managed-node .node-destructive-actions { flex: none; flex-wrap: nowrap; justify-content: flex-end; gap: .35rem; }
 .node-duration { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; margin: 0 0 1rem; }
 .node-duration > label { min-width: 6rem; flex: 0 0 6rem; }
 .node-duration > fieldset { flex: 1; min-width: 0; margin: 0; }
@@ -381,6 +383,7 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
   .managed-node .node-fact-secret { grid-column: 1 / -1; }
   .managed-node .node-destructive-actions { margin-inline-start: 0; }
 }
+@media (max-width: 22rem) { .managed-node .node-secondary { flex-wrap: wrap; } }
 @container (max-width: 22rem) {
   .managed-node .proxy-node-facts { grid-template-columns: minmax(0, 1fr); }
   .managed-node .node-fact-secret { grid-column: 1; }
