@@ -2014,7 +2014,9 @@ def render_theme_menu(lang):
         f'<button type="button" data-theme-choice="{choice}" aria-pressed="{str(choice == "slate-blue").lower()}">'
         f'<span class="theme-swatch theme-swatch-{choice}" aria-hidden="true"></span>{html.escape(t[key])}</button>'
         for choice, key in (("slate-blue", "theme_slate_blue"), ("sage", "theme_sage"),
-                            ("teal", "theme_teal"), ("plum", "theme_plum"))
+                            ("teal", "theme_teal"), ("plum", "theme_plum"),
+                            ("ocean", "theme_ocean"), ("olive", "theme_olive"),
+                            ("terracotta", "theme_terracotta"), ("indigo", "theme_indigo"))
     )
     return (f'<details class="theme-menu"><summary>{html.escape(t["theme_label"])}</summary>'
             f'<div class="theme-options" role="group" aria-label="{html.escape(t["theme_label"], quote=True)}">'
@@ -2089,7 +2091,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(t['title'])}</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.ico">
-<script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum'].indexOf(v)>=0)document.documentElement.dataset.theme=v}}catch(e){{}}</script>
+<script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/theme.js" defer></script>
 </head>
@@ -2590,7 +2592,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             f'<span class="theme-swatch theme-swatch-{choice}" aria-hidden="true"></span>'
             f'{esc(t[key])}</button>'
             for choice, key in (("slate-blue", "theme_slate_blue"), ("sage", "theme_sage"),
-                                ("teal", "theme_teal"), ("plum", "theme_plum")))
+                                ("teal", "theme_teal"), ("plum", "theme_plum"),
+                                ("ocean", "theme_ocean"), ("olive", "theme_olive"),
+                                ("terracotta", "theme_terracotta"), ("indigo", "theme_indigo")))
+        modes = "".join(
+            f'<button type="button" class="preferences-choice" data-mode-choice="{mode}" '
+            f'aria-pressed="{str(mode == "light").lower()}">{esc(t[key])}</button>'
+            for mode, key in (("light", "appearance_light"), ("dark", "appearance_dark")))
         languages = "".join(
             f'<a class="preferences-choice" href="/settings?lang={code}"'
             + (' aria-current="true"' if code == lang else '')
@@ -2603,7 +2611,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>
             </a>
             <section class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
-              <div class="preferences-choices" role="group" aria-label="{esc(t['theme_label'], quote=True)}">{themes}</div>
+              <div class="preferences-mode"><h3>{esc(t['appearance_mode'])}</h3>
+                <div class="preferences-choices" role="group" aria-label="{esc(t['appearance_mode'], quote=True)}">{modes}</div></div>
+              <h3 class="preferences-group-title">{esc(t['theme_color'])}</h3>
+              <div class="preferences-choices" role="group" aria-label="{esc(t['theme_color'], quote=True)}">{themes}</div>
             </section>
             <section class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
