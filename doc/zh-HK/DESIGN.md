@@ -31,7 +31,7 @@ v2.0.0 亦包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過�
 - 在全新 Debian/Ubuntu VPS 安裝一套工具,以四個可選模組提供五項功能(web 模組包括公開頁面與私人控制台):
   1. **公開連通性頁面** — 在 TCP
      **80 和 443** 提供刻意保持簡潔,毋須驗證的頁面;任何人只要取得 IP,便可用瀏覽器確認所在位置能否連到主機的網頁連接埠.
-  2. **私人控制台** — 使用密碼保護,持久保存的隨機高位連接埠上的儀表板,提供瀏覽器上下載速度測試和近期觀察到的入站連線紀錄.
+  2. **私人控制台** — 在持久保存的隨機高位連接埠上的儀表板，提供瀏覽器上載／下載速度測試及近期入站連線紀錄。可使用管理員密碼，或已明確列入名單的私人區域網絡 IP 存取。
   3. **按需開啟 iperf3 時段** — 頻寬/延遲測試端點,
      **預設關閉**;操作員從控制台開啟限時時段,到期自行關閉.
   4. **anytls 代理** — sing-box `anytls` 入站連線,使用自簽憑證和 BBR.
@@ -129,6 +129,8 @@ web,anytls 和可選 proxy 服務分別以獨立程序運行;web 服務另外啟
 兩點尤其重要:**節點密碼會以明文顯示在控制台區塊**,只有因為該頁屬登入後的 `ConsoleHandler` 才可接受;`ProbeHandler` 沒有該路由,並有測試確認公開監聽器對 `/anytls` 回傳 404,內容不含密碼.
 **伺服器位址取自請求的
 `Host` 標頭**而非查詢:能連到控制台的位址也能連到節點;繪製頁面時對外查詢 IP 違反不向外發送請求的規則;如需其他位址,可在複製後自行編輯.
+
+只有以密碼登入的管理員可在設定中加入單一私人區域網絡 IP。公網 IP 及網段會被拒絕。免密判斷直接使用連線對端位址，不信任用戶端提供的轉送標頭；啟用 `VPSSRV_TRUST_PROXY=1` 時，由於未設定可信代理邊界，IP 免密會停用。IP 免密可進入一般控制台頁面；修改密碼或 IP 名單仍須密碼登入。若閘道把多部裝置映射至同一個已允許的私人 IP，它們都可存取。
 
 SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑證的 CN,故控制台從憑證讀回,而非維護可能分歧的第二份資料.
 
@@ -244,7 +246,7 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 | 路徑 | 提供者 | 用途 |
 |---|---|---|
 | `$PREFIX` | 安裝程式,預設 `/opt/vps-server` | 程式碼,靜態檔案,持久保存的連接埠檔案 |
-| `$VPSSRV_DATA_DIR` | 安裝程式,預設 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json` |
+| `$VPSSRV_DATA_DIR` | 安裝程式,預設 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json`, `login-access.json` (私人 IP 免密名單) |
 | `$VPSSRV_CERT_DIR` | 安裝程式,預設 `$PREFIX/certs` | 443 的自簽憑證及私鑰 |
 | `/etc/vps-server-anytls/` | 安裝程式 | sing-box `config.json` 及其自簽憑證 |
 | `/etc/vps-server-proxy/` | 安裝程式 | sing-box `config.json`(多個入站)及初始自簽憑證；新節點憑證位於 `/etc/vps-server-nodes/certs/` |
@@ -265,7 +267,8 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 | `VPSSRV_CONSOLE_PORT_FILE` | 記錄產生的控制台連接埠的位置 | `$PREFIX/console_port.txt` | 否 |
 | `VPSSRV_CONSOLE_TLS` | 透過 HTTPS 提供控制台 | `0` | 否 |
 | `VPSSRV_AUTH` | 控制台必須登入 | `1` | 否 |
-| `VPSSRV_PASSWORD_FILE` | 可由操作員編輯的明文控制台密碼 | `$PREFIX/admin_password.txt` | 否 |
+| `VPSSRV_PASSWORD_FILE` | 明文控制台密碼；在設定中修改時須驗證目前密碼 | `$PREFIX/admin_password.txt` | 否 |
+| `VPSSRV_IP_ALLOWLIST_FILE` | 私人 IP 免密名單的可選路徑 | `$VPSSRV_DATA_DIR/login-access.json` | 否 |
 | `VPSSRV_CERT_DIR` | 自簽憑證位置 | `$PREFIX/certs` | 否 |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | 改用操作員提供的憑證 | — | 否 |
 | `VPSSRV_IPERF_PORT` | iperf3 時段監聽的連接埠 | `5201` | 否 |
@@ -307,7 +310,7 @@ anytls 模組刻意保留 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
 
 ## 資料設計
 
-訪客資料庫與 `portfwd.json`(已啟用的轉發規則)保存在 `$VPSSRV_DATA_DIR`.控制台密碼,選定連接埠,web 憑證及 `.install-state` 位於 `$PREFIX`;sing-box 模組設定與憑證位於 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.見[路徑及掛載][local-link-012].iperf3 截止時間只存記憶體,重啟後不保留.
+訪客資料庫與 `portfwd.json` 及 `login-access.json`(已啟用的轉發規則)保存在 `$VPSSRV_DATA_DIR`.控制台密碼,選定連接埠,web 憑證及 `.install-state` 位於 `$PREFIX`;sing-box 模組設定與憑證位於 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.見[路徑及掛載][local-link-012].iperf3 截止時間只存記憶體,重啟後不保留.
 
 ### 資料模型與檔案配置
 

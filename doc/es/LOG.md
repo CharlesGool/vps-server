@@ -166,9 +166,9 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 ## Traspaso
 
 - Rama: `feat/node-management`, basada en `feat/ui-redesign` y subida al repositorio oficial de GitHub. No se encontraron reglas temporales del proyecto.
-- Completado: cada nodo tiene su propio interruptor. Al desactivarlo se retira solo su escucha y se conservan UUID, configuración y totales de tráfico; al reactivarlo vuelve la escucha. Al borrar nodos se renumeran los números visibles y, tras borrarlos todos, un nodo nuevo empieza en 1. Restablecimiento aleatorio queda junto a Eliminar; ambos son botones rojos con diálogo de confirmación. Se mantienen las funciones anteriores de esta rama: credenciales manuales, SNI TLS predeterminado, código QR, inicio de sesión, direcciones y edición del puerto iperf3.
-- Pruebas: pasaron 299 pruebas automáticas (8 omitidas), además de las comprobaciones de idiomas y diferencias. El sing-box incluido aceptó una lista de entradas vacía. En el servidor de pruebas se creó, desactivó, reactivó y eliminó un nodo AnyTLS temporal; su puerto TCP se cerró y volvió a abrirse con el interruptor, sin alterar ID, puertos ni configuraciones de los nodos existentes. Chromium comprobó la página a tamaño de escritorio y con 390 px de ancho sin desbordamiento horizontal.
-- Despliegue: en el servidor de pruebas designado se actualizaron el código fuente y las copias instaladas en `~/apps/vps-server`; los respaldos de los archivos de ejecución anteriores y del estado de nodos están fuera del repositorio. Las cuatro unidades están activas. Se eliminó el nodo temporal. No se ha reiniciado físicamente el servidor.
+- Completado: La consola admite inicio de sesión con contraseña y acceso sin contraseña desde IP privadas de LAN incluidas expresamente en la lista. Un administrador autenticado con contraseña puede añadir o quitar direcciones individuales en Ajustes y cambiar la contraseña tras introducir la actual. Las IP públicas, los rangos, las direcciones de bucle local y las cabeceras de reenvío falsificadas no dan acceso; una visita admitida solo por IP tampoco puede cambiar los ajustes de acceso. Se conserva el trabajo anterior de nodos e interfaz.
+- Pruebas: Se superaron 303 pruebas automatizadas (8 omitidas) y las comprobaciones de idiomas y diferencias. Las pruebas HTTP cubren el acceso por IP, el rechazo de IP públicas, el cambio de contraseña y el bloqueo de Ajustes para una visita admitida solo por IP. Chromium comprobó el inicio de sesión y los ajustes en anchos de escritorio y móvil. Se añadió y retiró una IP LAN temporal en el host de prueba; la lista quedó vacía.
+- Despliegue: El host de prueba ejecuta esta rama desde `~/apps/vps-server`; los archivos anteriores y el estado persistente de acceso se respaldaron fuera del repositorio. Los cuatro servicios están activos y habilitados al arrancar. La lista se conserva en el directorio de datos de la aplicación. No se ha reiniciado realmente el host.
 - Pendiente: falta probar la importación de Clash en un teléfono Android real y el arranque tras un reinicio real del servidor. Siguiente paso: revisar, fusionar y publicar `feat/node-management`, y después completar las pruebas del teléfono y del reinicio.
 ## Historial de cambios
 
@@ -321,4 +321,5 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `3d69356` docs(log): record GitHub synchronization
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
-- (this commit) docs(log): record node switch acceptance
+- `ab02c17` docs(log): record node switch acceptance
+- (this commit) feat(auth): add private-IP access and admin settings

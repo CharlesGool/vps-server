@@ -221,9 +221,9 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
-- Completed: nodes have individual on/off switches. Disabling removes only that node's listener while retaining its UUID, configuration, and traffic totals; enabling restores the listener. Deleting a node compacts display numbers, and a new node starts at 1 after all nodes are deleted. Random reset sits beside Delete and both actions use red buttons and confirmation dialogs. Earlier work on manual credentials, default TLS SNI, QR sharing, login, address display, and iperf3 port editing remains in this branch.
-- Checks: 299 automated tests passed (8 skipped); the language checker and diff checks passed. The bundled sing-box accepted an empty inbound list. On the test host, a temporary AnyTLS node was created, disabled, enabled, and deleted; its TCP port closed and reopened with the switch, and existing node IDs, ports, and configurations were preserved. Chromium verified the updated node page at desktop and 390 px widths without horizontal overflow.
-- Deployment: the designated test host runs the updated source and installed runtime copies under `~/apps/vps-server`; backups of the prior runtime files and node state are outside the repository. Four services are active. The temporary acceptance node was removed. An actual reboot has not been performed.
+- Completed: the console accepts password login and password-free access from explicitly listed private LAN IPs. Settings shows the list and lets a password-authenticated admin add or remove individual addresses and change the password after entering the current one. Public IPs, shared-address space, network ranges, loopback addresses, and spoofed forwarding headers cannot grant password-free access. IP admission does not authorize access-setting changes. Earlier node-management and UI work remains in this branch.
+- Checks: 303 automated tests passed (8 skipped); the language and diff checkers passed. HTTP tests covered IP admission, public-IP rejection, password changes, and blocked access to Settings from an IP-only visit. Chromium checked the login and settings flows at desktop and phone widths. The test host accepted a temporary LAN allowlist entry, then removed it; no entry remains.
+- Deployment: the designated test host runs this branch under `~/apps/vps-server`; the old runtime files and persistent access state were backed up outside the repository. Four services are active and enabled. The allowlist persists in the app data directory. An actual host reboot has not been performed.
 - Remaining: Android Clash import on a real phone and startup after a real reboot remain unverified. Next action: merge and release `feat/node-management` after review, then run the phone and reboot checks.
 
 ## Changelog
@@ -475,4 +475,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `3d69356` docs(log): record GitHub synchronization
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
-- (this commit) docs(log): record node switch acceptance
+- `ab02c17` docs(log): record node switch acceptance
+- (this commit) feat(auth): add private-IP access and admin settings

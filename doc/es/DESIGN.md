@@ -31,7 +31,7 @@ La versión 2.0.0 también contiene rutas de instalación experimentales para fr
 - Instalar en un VPS Debian/Ubuntu nuevo un único paquete con cuatro módulos seleccionables que proporcionan cinco capacidades (el módulo web incluye la página pública y la consola privada):
   1. **Página pública de accesibilidad**: una página deliberadamente mínima en TCP
      **80 y 443**, sin autenticación, para que cualquiera que reciba solo la IP pueda comprobar en un navegador si los puertos web de este servidor son accesibles desde donde esté.
-  2. **Consola privada**: un panel protegido con contraseña en un puerto alto aleatorio y persistente que permite medir la velocidad de subida y bajada desde el navegador y consultar un registro de conexiones entrantes observadas recientemente.
+  2. **Consola privada**: panel en un puerto alto aleatorio y persistente con pruebas de subida y bajada desde el navegador y registro de conexiones entrantes recientes. Admite la contraseña de administrador o una IP privada de LAN añadida expresamente.
   3. **Ventana iperf3 bajo demanda**: punto de prueba de ancho de banda y latencia
      **desactivado de forma predeterminada**; el operador abre desde la consola una ventana de duración limitada que se cierra automáticamente al vencer.
   4. **Proxy anytls**: una entrada `anytls` de sing-box con certificado autofirmado y BBR.
@@ -129,6 +129,8 @@ Además se ejecuta **fuera del aislamiento de este servicio**, como unidad trans
 Dos detalles son esenciales. **La contraseña del nodo aparece en texto claro en esa sección de la consola**, lo que solo es aceptable porque la página reside en `ConsoleHandler`, detrás del inicio de sesión; `ProbeHandler` no tiene esa ruta, y una prueba verifica que la escucha pública responde 404 a `/anytls` y nunca incluye la contraseña. Y
 **la dirección del servidor procede de
 la cabecera `Host` de la petición**, no de una consulta: la dirección que alcanzó la consola puede alcanzar el nodo; consultar la IP externa al mostrar la página contradice la prohibición de solicitudes salientes, y quien necesite otra dirección puede editar la línea una vez copiada.
+
+Solo un administrador autenticado con contraseña puede añadir en Ajustes una IP individual de LAN privada. Se rechazan las IP públicas y los rangos de red. El acceso por IP usa la dirección del extremo real de la conexión, nunca una cabecera de reenvío proporcionada por el cliente; con `VPSSRV_TRUST_PROXY=1` queda desactivado porque no hay un límite configurado para proxies de confianza. Permite entrar en páginas normales de la consola, pero cambiar la contraseña o la lista de IP requiere una sesión con contraseña. Si una pasarela presenta varios dispositivos con una misma IP privada autorizada, todos podrán acceder.
 
 El SNI ni siquiera se almacena en la configuración de sing-box: `setup-anytls.sh` solo lo incorpora al CN del certificado autofirmado. La consola lo vuelve a leer del certificado, en lugar de conservar una segunda copia susceptible de divergir.
 
@@ -247,7 +249,7 @@ Sin claves de API. El servicio web no consulta la IP pública fuera de la máqui
 | Ruta | Proporcionada por | Propósito |
 |---|---|---|
 | `$PREFIX` | instalador; por defecto `/opt/vps-server` | Código, recursos estáticos y archivos de puertos persistentes |
-| `$VPSSRV_DATA_DIR` | instalador; por defecto `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
+| `$VPSSRV_DATA_DIR` | instalador; por defecto `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, `login-access.json` (lista de IP privadas autorizadas) |
 | `$VPSSRV_CERT_DIR` | instalador; por defecto `$PREFIX/certs` | Certificado autofirmado y clave para 443 |
 | `/etc/vps-server-anytls/` | instalador | `config.json` de sing-box y su certificado autofirmado |
 | `/etc/vps-server-proxy/` | instalador | `config.json` de sing-box (varias entradas) y su certificado autofirmado inicial; los certificados de nuevos nodos están en `/etc/vps-server-nodes/certs/` |
@@ -268,7 +270,8 @@ Todas las variables usan el prefijo `VPSSRV_`. No es una cuestión estética: `v
 | `VPSSRV_CONSOLE_PORT_FILE` | Archivo donde se conserva el puerto generado de la consola | `$PREFIX/console_port.txt` | no |
 | `VPSSRV_CONSOLE_TLS` | Servir la consola mediante HTTPS | `0` | no |
 | `VPSSRV_AUTH` | Exigir inicio de sesión en la consola | `1` | no |
-| `VPSSRV_PASSWORD_FILE` | Contraseña en texto claro de la consola, editable por el operador | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_PASSWORD_FILE` | Contraseña en texto claro de la consola; Ajustes verifica la contraseña actual antes de cambiarla | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_IP_ALLOWLIST_FILE` | Ruta opcional de la lista de IP privadas | `$VPSSRV_DATA_DIR/login-access.json` | no |
 | `VPSSRV_CERT_DIR` | Ubicación del certificado autofirmado | `$PREFIX/certs` | no |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | Usar un certificado facilitado por el operador | — | no |
 | `VPSSRV_IPERF_PORT` | Puerto de escucha de la ventana iperf3 | `5201` | no |
@@ -310,7 +313,7 @@ El módulo anytls conserva deliberadamente los nombres de variables de `Anytsl-S
 
 ## Data Design
 
-La base de datos de visitantes y `portfwd.json` (reglas de reenvío habilitadas) permanecen en `$VPSSRV_DATA_DIR`. La contraseña de la consola, el puerto elegido, los certificados web y `.install-state` residen en `$PREFIX`; las configuraciones de los módulos sing-box y sus certificados residen en `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Consulta [Rutas y montajes][local-link-012]. El plazo de iperf3 permanece en memoria y no sobrevive a un reinicio.
+La base de datos de visitantes y `portfwd.json` y `login-access.json` (reglas de reenvío habilitadas) permanecen en `$VPSSRV_DATA_DIR`. La contraseña de la consola, el puerto elegido, los certificados web y `.install-state` residen en `$PREFIX`; las configuraciones de los módulos sing-box y sus certificados residen en `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Consulta [Rutas y montajes][local-link-012]. El plazo de iperf3 permanece en memoria y no sobrevive a un reinicio.
 
 ### Data model / file layout
 

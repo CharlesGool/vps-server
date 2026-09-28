@@ -34,8 +34,7 @@ v2.0.0 也包含实验性的 frps 和 Lucky 安装路径.它们尚未在真实�
      **80 和 443**
      端口上提供服务的页面,让任何只拿到这个 IP 的人都能在浏览器里确认
      这台主机的 Web 端口从他所在的位置是否可达.
-  2. **私有控制台** —— 一个有密码保护的仪表盘,运行在一个持久化的随机高位端口上,
-     提供基于浏览器的上传/下载测速功能,以及最近观测到的入站连接日志.
+  2. **私有控制台** —— 一个运行在持久化随机高位端口的仪表盘，提供浏览器上传/下载测速和近期入站连接日志。可使用管理员密码，或明确加入名单的私有局域网 IP 访问。
   3. **按需开启的 iperf3 窗口** —— 一个带宽/延迟测试端点,
      **默认关闭**;
      操作员从控制台开启一个限时窗口,窗口到期后自动关闭.
@@ -187,6 +186,8 @@ anytls 节点在升级过程中之所以能被保留,是因为安装程序会把
 什么地址连到了控制台,同一个地址也能连到节点;在渲染时做一次出站 IP 查询会与
 "不发出站请求"这条规则相矛盾,而任何需要不同地址的人都可以在复制之后自己改一下
 那一行.
+
+只有使用密码登录的管理员能在设置中加入单个私有局域网 IP。公网 IP 和网段会被拒绝。免密判断直接使用连接对端地址，不相信客户端提供的转发请求头；启用 `VPSSRV_TRUST_PROXY=1` 时，由于未配置可信代理边界，IP 免密会停用。IP 免密可访问普通控制台页面，修改密码或 IP 名单仍须密码登录。同一网关若将多台设备映射到同一个获准的私有 IP，这些设备都会获得访问权。
 
 SNI 根本没有存在 sing-box 的配置里——`setup-anytls.sh` 只把它烘焙进了自签名证书的
 CN 字段——所以控制台是从证书里把它读回来的,而不是另外保留一份可能会漂移的
@@ -340,7 +341,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | 路径 | 由谁提供 | 用途 |
 |---|---|---|
 | `$PREFIX` | 安装程序,默认 `/opt/vps-server` | 代码,静态资源,持久化端口文件 |
-| `$VPSSRV_DATA_DIR` | 安装程序,默认 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json` |
+| `$VPSSRV_DATA_DIR` | 安装程序,默认 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json`, `login-access.json` (私有 IP 免密名单) |
 | `$VPSSRV_CERT_DIR` | 安装程序,默认 `$PREFIX/certs` | 443 用的自签名证书和密钥 |
 | `/etc/vps-server-anytls/` | 安装程序 | sing-box 的 `config.json` 及其自身的自签名证书 |
 | `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(多个入站)及初始自签名证书；新节点证书位于 `/etc/vps-server-nodes/certs/` |
@@ -363,7 +364,8 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `VPSSRV_CONSOLE_PORT_FILE` | 生成的控制台端口记在哪里 | `$PREFIX/console_port.txt` | 否 |
 | `VPSSRV_CONSOLE_TLS` | 控制台是否走 HTTPS | `0` | 否 |
 | `VPSSRV_AUTH` | 控制台是否要求登录 | `1` | 否 |
-| `VPSSRV_PASSWORD_FILE` | 明文的控制台密码,操作员可编辑 | `$PREFIX/admin_password.txt` | 否 |
+| `VPSSRV_PASSWORD_FILE` | 明文控制台密码；在设置中修改时必须验证当前密码 | `$PREFIX/admin_password.txt` | 否 |
+| `VPSSRV_IP_ALLOWLIST_FILE` | 私有 IP 免密名单的可选路径 | `$VPSSRV_DATA_DIR/login-access.json` | 否 |
 | `VPSSRV_CERT_DIR` | 自签名证书的位置 | `$PREFIX/certs` | 否 |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | 改用操作员自备的证书 | — | 否 |
 | `VPSSRV_IPERF_PORT` | iperf3 窗口监听的端口 | `5201` | 否 |
@@ -413,7 +415,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
 
 ## 数据设计
 
-访客数据库与 `portfwd.json`(已启用的转发规则)持久保存在 `$VPSSRV_DATA_DIR`.控制台密码,选定端口,Web 证书和 `.install-state` 位于 `$PREFIX`;sing-box 模块的配置及证书分别位于 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
+访客数据库与 `portfwd.json` 及 `login-access.json`(已启用的转发规则)持久保存在 `$VPSSRV_DATA_DIR`.控制台密码,选定端口,Web 证书和 `.install-state` 位于 `$PREFIX`;sing-box 模块的配置及证书分别位于 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
 
 ### 数据模型与文件布局
 

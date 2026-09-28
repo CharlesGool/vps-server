@@ -37,8 +37,11 @@ See [current state and acceptance limits][local-link-001].
   ports are reachable from where they are. It reports their source IP, the
   server clock, and which port and protocol they arrived on — and nothing else
   about the host.
-- **Measures throughput from a browser.** A password-protected console on a
-  persisted random high port runs up/download tests using the LibreSpeed engine.
+- **Measures throughput from a browser.** A console on a persisted random high
+  port runs up/download tests using the LibreSpeed engine. It accepts an admin
+  password or an explicitly allowed private LAN IP. Only a
+  password-authenticated admin can change the password or IP list; public IPs
+  cannot be added.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
   when the window expires. Its status and port are shown separately; the port

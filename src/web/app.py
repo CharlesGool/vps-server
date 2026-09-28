@@ -34,6 +34,7 @@ import sqlite3
 import ssl
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -193,6 +194,8 @@ CONN_POLL_SECONDS = float(os.environ.get("VPSSRV_CONN_POLL_SECONDS", "5"))
 # The admin password lives next to the app by default so it is easy to find
 # and edit when deploying on another machine (VPSSRV_PASSWORD_FILE overrides).
 PASSWORD_FILE = Path(os.environ.get("VPSSRV_PASSWORD_FILE", str(BASE_DIR / "admin_password.txt")))
+IP_ALLOWLIST_FILE = Path(os.environ.get("VPSSRV_IP_ALLOWLIST_FILE") or
+                         str(DATA_DIR / "login-access.json"))
 # Login can be turned off at install time (see install.sh) for setups relying
 # on the random port alone. The password file is still generated either way
 # so flipping this back on later doesn't require a restart-time prompt.
@@ -248,6 +251,95 @@ def ensure_admin_password():
     _write_secret_file(PASSWORD_FILE, password)
     print(_log_text('log_admin_password', path=PASSWORD_FILE), file=sys.stderr)
     return password
+
+
+def normalized_ip(value):
+    """One canonical host address, never a CIDR, zone ID, or forwarded chain."""
+    if not isinstance(value, str) or value != value.strip() or "%" in value:
+        raise ValueError("invalid IP address")
+    address = ipaddress.ip_address(value)
+    return str(address.ipv4_mapped or address) if isinstance(address, ipaddress.IPv6Address) else str(address)
+
+
+_PRIVATE_LOGIN_NETWORKS = tuple(ipaddress.ip_network(value) for value in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"))
+
+
+def normalized_private_ip(value):
+    canonical = normalized_ip(value)
+    if not any(ipaddress.ip_address(canonical) in network for network in _PRIVATE_LOGIN_NETWORKS):
+        raise ValueError("public or non-LAN IP address")
+    return canonical
+
+
+def _atomic_private_text(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=".access-", dir=path.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            output.write(value)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(name, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+class IpAllowlist:
+    def __init__(self, path):
+        self.path = Path(path)
+        self.lock = threading.RLock()
+        self.addresses = set()
+        self.load_error = False
+        if self.path.exists():
+            try:
+                document = json.loads(self.path.read_text(encoding="utf-8"))
+                if (not isinstance(document, dict) or set(document) != {"allowed_ips"} or
+                        not isinstance(document["allowed_ips"], list) or
+                        any(normalized_private_ip(item) != item for item in document["allowed_ips"]) or
+                        len(document["allowed_ips"]) != len(set(document["allowed_ips"]))):
+                    raise ValueError("invalid IP allowlist")
+                self.addresses = set(document["allowed_ips"])
+            except (OSError, ValueError, TypeError):
+                self.load_error = True
+
+    def contains(self, address):
+        try:
+            canonical = normalized_private_ip(address)
+        except ValueError:
+            return False
+        with self.lock:
+            return canonical in self.addresses
+
+    def list_addresses(self):
+        with self.lock:
+            return sorted(self.addresses, key=lambda value: (ipaddress.ip_address(value).version,
+                                                               int(ipaddress.ip_address(value))))
+
+    def change(self, address, *, add):
+        canonical = normalized_private_ip(address)
+        with self.lock:
+            candidate = set(self.addresses)
+            if add:
+                if len(candidate) >= 64 and canonical not in candidate:
+                    raise ValueError("IP allowlist is full")
+                candidate.add(canonical)
+            else:
+                if canonical not in candidate:
+                    raise ValueError("IP address is not listed")
+                candidate.remove(canonical)
+            if candidate != self.addresses:
+                _atomic_private_text(self.path, json.dumps({"allowed_ips": sorted(candidate)}) + "\n")
+                self.addresses = candidate
+                self.load_error = False
+        return canonical
 
 
 def ensure_console_port():
@@ -325,6 +417,7 @@ def ensure_tls_files():
 
 
 ADMIN_PASSWORD = ensure_admin_password()
+IP_ALLOWLIST = IpAllowlist(IP_ALLOWLIST_FILE)
 CONSOLE_PORT = ensure_console_port()
 SESSION_SECRET = ensure_session_secret()
 FILL_BUFFER = os.urandom(DOWNLOAD_CHUNK)
@@ -1436,6 +1529,29 @@ def destroy_session(token):
         _sessions.pop(token, None)
 
 
+def access_csrf_token(session, action):
+    return hmac.new(SESSION_SECRET.encode(),
+                    f"access:{session}:{action}".encode(), "sha256").hexdigest()
+
+
+_password_lock = threading.Lock()
+
+
+def change_admin_password(current, replacement):
+    global ADMIN_PASSWORD
+    if not isinstance(replacement, str) or not 12 <= len(replacement) <= 128 or \
+            replacement != replacement.strip() or any(ord(char) < 32 for char in replacement):
+        raise ValueError("invalid new password")
+    with _password_lock:
+        if not hmac.compare_digest(current, ADMIN_PASSWORD):
+            return False
+        _atomic_private_text(PASSWORD_FILE, replacement + "\n")
+        ADMIN_PASSWORD = replacement
+        with _sessions_lock:
+            _sessions.clear()
+        return True
+
+
 # ---------------------------------------------------------------------------
 # Login rate limiting — per source IP, in memory, reset by a restart just
 # like sessions are. A lockout is cleared by a successful login or by
@@ -1831,7 +1947,7 @@ def ui_icon(name):
     return _UI_ICON_CACHE[name]
 
 
-def render_page(title, body, lang, active=None, show_nav=True):
+def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False):
     t = STRINGS[lang]
     lang_switcher = render_lang_switcher(lang)
     lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
@@ -1852,14 +1968,16 @@ def render_page(title, body, lang, active=None, show_nav=True):
             cls = ' class="active"' if active == key else ""
             current = ' aria-current="page"' if active == key else ""
             icons = {"speedtest": "gauge", "iperf": "timer", "proxy": "network",
-                     "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text"}
+                     "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text",
+                     "settings": "settings-2"}
             return f'<a{cls}{current} href="{href}">{ui_icon(icons[key])}<span>{html.escape(t[key])}</span></a>'
 
         # No session to end when auth is off — offering "Log out" would be a
         # link to nowhere (the route itself redirects to / in that mode).
-        logout_link = (
-            f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>' if AUTH_ENABLED else ""
-        )
+        logout_link = (f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
+                       if AUTH_ENABLED and password_authenticated else
+                       f'<a href="/login?next=settings">{ui_icon("settings-2")}<span>{html.escape(t["admin_sign_in"])}</span></a>'
+                       if AUTH_ENABLED else "")
         iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
         # Only when a module is actually installed — a link to a page that
         # can only say "not installed" is worse than no link. anytls and the
@@ -1884,6 +2002,7 @@ def render_page(title, body, lang, active=None, show_nav=True):
             {portfwd_link}
             {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
+            {link('/settings', 'settings') if AUTH_ENABLED and password_authenticated else ''}
             {logout_link}
             {theme_menu}
             {lang_menu}
@@ -2008,7 +2127,20 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def is_authenticated(self):
         if not AUTH_ENABLED:
             return True
-        return session_valid(self.get_cookie("session"))
+        if session_valid(self.get_cookie("session")):
+            return True
+        # TRUST_PROXY has no configured trusted-peer list, so the real visitor
+        # cannot be proven when a reverse proxy is in use.
+        if TRUST_PROXY:
+            return False
+        return IP_ALLOWLIST.contains(self.client_address[0])
+
+    def is_password_authenticated(self):
+        return AUTH_ENABLED and session_valid(self.get_cookie("session"))
+
+    def render_page(self, title, body, lang, active=None, show_nav=True):
+        return render_page(title, body, lang, active, show_nav,
+                           password_authenticated=self.is_password_authenticated())
 
     def client_ip(self):
         if TRUST_PROXY:
@@ -2120,16 +2252,29 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         # both dead ends, so send those paths back to the dashboard.
         if path in ("/login", "/logout") and not AUTH_ENABLED:
             return self.redirect("/")
+        if path.startswith("/settings") and not AUTH_ENABLED:
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
 
         if method == "GET" and path == "/login":
-            return self.page_login(lang, query_lang)
+            next_page = parse_qs(parsed.query).get("next", [""])[0]
+            return self.page_login(lang, query_lang, next_page=next_page)
         if method == "POST" and path == "/login":
             return self.handle_login(lang)
         if method == "GET" and path == "/logout":
             return self.handle_logout()
 
         if not self.is_authenticated():
-            return self.redirect("/login")
+            return self.redirect("/login?next=settings" if path == "/settings" else "/login")
+
+        if path == "/settings" and not self.is_password_authenticated():
+            return self.redirect("/login?next=settings")
+        if method == "GET" and path == "/settings":
+            return self.page_settings(lang, query_lang, parsed)
+        if method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove",
+                                         "/settings/password"):
+            if not self.is_password_authenticated():
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.handle_settings_post(path)
 
         if method == "GET" and path == "/":
             return self.page_dashboard(lang, query_lang)
@@ -2155,7 +2300,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "GET" and path == "/frps" and AUTH_ENABLED:
             return self.page_frps(lang, query_lang)
         if method == "GET" and path == "/proxy":
-            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+            if not AUTH_ENABLED:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.page_proxy(lang, query_lang)
         if method == "POST" and path == "/proxy/reset":
@@ -2163,11 +2308,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
                                          "/proxy/node/reset", "/proxy/node/create",
                                          "/proxy/node/delete", "/proxy/node/toggle"):
-            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+            if not AUTH_ENABLED:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.handle_node_control(path.rsplit("/", 1)[-1])
         if method == "POST" and path == "/proxy/apply":
-            if not AUTH_ENABLED or not session_valid(self.get_cookie("session")):
+            if not AUTH_ENABLED:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.handle_node_apply()
         if method == "GET" and path == "/iperf":
@@ -2193,7 +2338,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "GET" and path == "/changelog":
             return self.page_changelog(lang, query_lang)
 
-        self.send_html(404, render_page(STRINGS[lang]["not_found"],
+        self.send_html(404, self.render_page(STRINGS[lang]["not_found"],
                                         f'<div class="card"><p>{STRINGS[lang]["not_found"]}</p></div>',
                                         lang, show_nav=self.is_authenticated()))
 
@@ -2214,19 +2359,25 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
     # -- auth ------------------------------------------------------------
 
-    def page_login(self, lang, query_lang, status=200, error=None):
+    def page_login(self, lang, query_lang, status=200, error=None, next_page=""):
         t = STRINGS[lang]
         error_html = f'<p class="error" id="login-error" role="alert">{html.escape(error)}</p>' if error else ""
         invalid = ' aria-invalid="true" aria-describedby="login-error"' if error else ""
+        next_page = "settings" if next_page == "settings" else ""
+        next_input = '<input type="hidden" name="next" value="settings">' if next_page else ""
+        notice = f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>' if next_page else ""
+        changed = ('<p class="notice" role="status">' + html.escape(t["password_changed"]) + '</p>'
+                   if parse_qs(urlsplit(self.path).query).get("changed") == ["1"] else "")
         body = f"""
         <div class="login-shell">
           <div class="login-panel">
             <div class="login-brand">{ui_icon('server')}<span>vps-server</span></div>
             <h1>{html.escape(t['login_heading'])}</h1>
-            {error_html}
+            {changed}{notice}{error_html}
             <form method="post" action="/login" class="login-form"
                   data-show-label="{html.escape(t['login_show_password'], quote=True)}"
                   data-hide-label="{html.escape(t['login_hide_password'], quote=True)}">
+              {next_input}
               <label for="login-password">{html.escape(t['password'])}</label>
               <div class="login-password-field">
                 <input id="login-password" type="password" name="password" autocomplete="current-password" autofocus required{invalid}>
@@ -2239,11 +2390,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         </div>
         """
         headers = self.maybe_lang_cookie(query_lang)
-        self.send_html(status, render_page(t['login'], body, lang, show_nav=False), headers)
+        self.send_html(status, self.render_page(t['login'], body, lang, show_nav=False), headers)
 
     def handle_login(self, lang):
         raw = self.read_body(LOGIN_BODY_LIMIT)
-        ip = self.client_ip()
+        ip = self.client_address[0]
         allowed, retry_after = LOGIN_LIMITER.check(ip)
         if not allowed:
             return self.page_login(
@@ -2252,6 +2403,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             )
         form = parse_qs(raw.decode("utf-8", errors="replace"))
         submitted = form.get("password", [""])[0]
+        next_page = form.get("next", [""])[0]
         if hmac.compare_digest(submitted, ADMIN_PASSWORD):
             LOGIN_LIMITER.record_success(ip)
             token = create_session()
@@ -2259,9 +2411,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
                 f"Max-Age={SESSION_TTL_SECONDS}"
             )
-            return self.redirect("/", {"Set-Cookie": cookie})
+            return self.redirect("/settings" if next_page == "settings" else "/",
+                                 {"Set-Cookie": cookie})
         LOGIN_LIMITER.record_failure(ip)
-        self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"])
+        self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"],
+                        next_page=next_page)
 
     def handle_logout(self):
         token = self.get_cookie("session")
@@ -2269,6 +2423,97 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             destroy_session(token)
         cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
         self.redirect("/login", {"Set-Cookie": cookie})
+
+    def page_settings(self, lang, query_lang, parsed):
+        t = STRINGS[lang]
+        esc = html.escape
+        token = self.get_cookie("session")
+        current_ip = normalized_ip(self.client_address[0])
+        addresses = IP_ALLOWLIST.list_addresses()
+        message = parse_qs(parsed.query).get("msg", [""])[0]
+        allowed_messages = {"access_ip_added", "access_ip_removed", "access_ip_invalid",
+                            "access_ip_error", "access_password_invalid", "access_current_wrong"}
+        feedback = (f'<p class="{"notice" if message in ("access_ip_added", "access_ip_removed") else "error"}" role="status">'
+                    f'{esc(t[message])}</p>') if message in allowed_messages else ""
+        load_warning = f'<p class="error" role="alert">{esc(t["access_load_error"])}</p>' if IP_ALLOWLIST.load_error else ""
+        rows = "".join(
+            f'<li><code>{esc(address)}</code><form method="post" action="/settings/ip/remove">'
+            f'<input type="hidden" name="ip" value="{esc(address, quote=True)}">'
+            f'<input type="hidden" name="csrf" value="{access_csrf_token(token, "ip-remove")}">'
+            f'<button type="submit" class="node-action node-action-danger" aria-label="{esc(t["access_remove_ip"].format(ip=address), quote=True)}">'
+            f'{esc(t["access_remove"])}</button></form></li>' for address in addresses)
+        if not rows:
+            rows = f'<li class="muted">{esc(t["access_ip_empty"])}</li>'
+        body = f'''<div class="access-workspace">
+          <header class="proxy-overview"><div><p class="proxy-eyebrow">{esc(t['settings'])}</p>
+            <h1>{esc(t['access_heading'])}</h1></div></header>{feedback}
+          <section class="card access-card"><h2>{esc(t['access_ips'])}</h2>
+            <p class="muted">{esc(t['access_ip_note'])}</p>{load_warning}
+            <ul class="access-ip-list">{rows}</ul>
+            <form method="post" action="/settings/ip/add" class="access-ip-form">
+              <input type="hidden" name="csrf" value="{access_csrf_token(token, 'ip-add')}">
+              <label for="access-new-ip">{esc(t['access_ip_address'])}
+                <input id="access-new-ip" name="ip" value="{esc(current_ip, quote=True)}" required spellcheck="false" autocomplete="off"></label>
+              <button type="submit">{esc(t['access_add'])}</button>
+            </form>
+          </section>
+          <section class="card access-card"><h2>{esc(t['access_password'])}</h2>
+            <form method="post" action="/settings/password" autocomplete="off">
+              <input type="hidden" name="csrf" value="{access_csrf_token(token, 'password')}">
+              <label>{esc(t['access_current_password'])}<input type="password" name="current" autocomplete="current-password" required></label>
+              <label>{esc(t['access_new_password'])}<input type="password" name="new" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+              <label>{esc(t['access_confirm_password'])}<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+              <button type="submit">{esc(t['access_change_password'])}</button>
+            </form>
+          </section></div>'''
+        return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def handle_settings_post(self, path):
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if (not 0 < length <= 4096 or
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
+                "application/x-www-form-urlencoded"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True,
+                            keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if any(len(values) != 1 for values in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        action = {"/settings/ip/add": "ip-add", "/settings/ip/remove": "ip-remove",
+                  "/settings/password": "password"}[path]
+        expected = {"csrf", "current", "new", "confirm"} if action == "password" else {"csrf", "ip"}
+        if set(form) != expected:
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not hmac.compare_digest(form["csrf"][0],
+                                   access_csrf_token(self.get_cookie("session"), action)):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        if action == "password":
+            if form["new"][0] != form["confirm"][0]:
+                key = "access_password_invalid"
+            else:
+                try:
+                    changed = change_admin_password(form["current"][0], form["new"][0])
+                    key = "" if changed else "access_current_wrong"
+                except (OSError, ValueError):
+                    key = "access_password_invalid"
+            if not key:
+                cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
+                return self.redirect("/login?changed=1", {"Set-Cookie": cookie})
+        else:
+            try:
+                IP_ALLOWLIST.change(form["ip"][0], add=action == "ip-add")
+                key = "access_ip_added" if action == "ip-add" else "access_ip_removed"
+            except ValueError:
+                key = "access_ip_invalid"
+            except OSError:
+                key = "access_ip_error"
+        return self.redirect(f"/settings?msg={key}", {"Cache-Control": "no-store"})
 
     # -- dashboard ---------------------------------------------------------
 
@@ -2320,7 +2565,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </div>
         </div>
         """
-        self.send_html(200, render_page(t['dashboard'], body, lang, active=None),
+        self.send_html(200, self.render_page(t['dashboard'], body, lang, active=None),
                        self.maybe_lang_cookie(query_lang))
 
     # -- speed test ----------------------------------------------------
@@ -2392,7 +2637,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         <script src="/static/speedtest.js"></script>
         <script src="/static/speedtest-ui.js"></script>
         """
-        self.send_html(200, render_page(t['speedtest'], body, lang, active="speedtest"),
+        self.send_html(200, self.render_page(t['speedtest'], body, lang, active="speedtest"),
                        self.maybe_lang_cookie(query_lang))
 
     # These three implement LibreSpeed's own client/server contract exactly
@@ -2557,7 +2802,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         <script src="/static/copy.js"></script>
         {countdown_script}
         """
-        self.send_html(200, render_page(t['iperf_heading'], body, lang, active="iperf"),
+        self.send_html(200, self.render_page(t['iperf_heading'], body, lang, active="iperf"),
                        self.maybe_lang_cookie(query_lang))
 
     def handle_iperf_open(self):
@@ -2678,7 +2923,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {add_form}
         </div>
         """
-        self.send_html(200, render_page(t['portfwd_heading'], body, lang, active="portfwd"),
+        self.send_html(200, self.render_page(t['portfwd_heading'], body, lang, active="portfwd"),
                        self.maybe_lang_cookie(query_lang))
 
     def handle_portfwd_add(self):
@@ -2719,7 +2964,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def page_lucky(self, lang, query_lang):
         data = lucky_admin()
         if data is None:
-            return self.send_html(404, render_page('Lucky', '<div class="card">Lucky not installed</div>', lang))
+            return self.send_html(404, self.render_page('Lucky', '<div class="card">Lucky not installed</div>', lang))
         port = data['AdminWebListenPort']
         public = data.get('AllowInternetaccess') is True
         address = 'this server IP' if public else 'localhost (use an SSH tunnel)'
@@ -2730,18 +2975,18 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 '<p>Account: <code>%s</code>; Password: <code>%s</code></p></div>') % (
                     address, port, status, html.escape(str(data.get('AdminAccount', ''))),
                     html.escape(str(data.get('AdminPassword', ''))))
-        return self.send_html(200, render_page('Lucky', body, lang),
+        return self.send_html(200, self.render_page('Lucky', body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def page_frps(self, lang, query_lang):
         node = frps_node()
         if node is None:
-            return self.send_html(404, render_page('frps', '<div class="card">frps not installed</div>', lang))
+            return self.send_html(404, self.render_page('frps', '<div class="card">frps not installed</div>', lang))
         status = 'running' if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else 'stopped'
         body = ('<div class="card"><h1>frps server</h1><p>Bind: %s:%s</p>'
                 '<p>Status: %s</p><p>Token: <code>%s</code></p></div>') % (
                     html.escape(node['address']), node['port'], status, html.escape(node['token']))
-        return self.send_html(200, render_page('frps', body, lang),
+        return self.send_html(200, self.render_page('frps', body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def page_proxy(self, lang, query_lang):
@@ -2769,7 +3014,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </div>
             """
             return self.send_html(
-                200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+                200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                 {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"},
             )
 
@@ -2934,7 +3179,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         <script src="/static/qrcode-utf8.js"></script>
         <script src="/static/qrcode-render.js"></script>''' if lan_host and managed else ''}
         """
-        self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+        self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def page_managed_nodes(self, lang, query_lang, inventory, meter_nodes):
@@ -3076,7 +3321,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <script src="/static/copy.js"></script>
           <script src="/static/node-controls.js"></script>
           {qr_scripts}'''
-        return self.send_html(200, render_page(t['proxy_heading'], body, lang, active="proxy"),
+        return self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def node_clash_share(self, node, lan_host, t):
@@ -3409,7 +3654,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </div>
         </div>
         """
-        self.send_html(200, render_page(t['changelog'], body, lang, active="changelog"),
+        self.send_html(200, self.render_page(t['changelog'], body, lang, active="changelog"),
                        self.maybe_lang_cookie(query_lang))
 
     def page_visitors(self, lang, query_lang):
@@ -3477,7 +3722,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         </div>
         <script src="/static/visitors.js"></script>
         """
-        self.send_html(200, render_page(t['visitors'], body, lang, active="visitors"),
+        self.send_html(200, self.render_page(t['visitors'], body, lang, active="visitors"),
                        self.maybe_lang_cookie(query_lang))
 
 

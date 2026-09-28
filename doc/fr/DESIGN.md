@@ -33,9 +33,7 @@ La version 2.0.0 comprend également des parcours d’installation expérimentau
   1. **Page publique d'accessibilité** — une page volontairement minimale servie sur les ports TCP
      **80 et 443**, sans authentification, permettant à quiconque ne connaissant que l'adresse IP
      de vérifier dans son navigateur si les ports Web de cet hôte sont accessibles depuis son emplacement.
-  2. **Console privée** — un tableau de bord protégé par mot de passe, sur un port élevé aléatoire
-     conservé sur disque, permettant de tester les débits montant et descendant dans le navigateur
-     et de consulter les connexions entrantes récemment observées.
+  2. **Console privée** — tableau de bord sur un port élevé aléatoire et persistant, proposant des tests montants et descendants depuis le navigateur et le journal des connexions entrantes récentes. Il accepte le mot de passe administrateur ou une IP privée du réseau local explicitement autorisée.
   3. **Fenêtre iperf3 à la demande** — un point de test de bande passante et de latence
      **désactivé par défaut** ; l'opérateur ouvre depuis la console une fenêtre de durée limitée,
      qui se referme automatiquement à l'échéance.
@@ -148,6 +146,8 @@ Elle s'exécute aussi **hors du bac à sable de ce service**, dans une unité te
 Deux détails sont essentiels. **Le mot de passe du nœud apparaît en clair dans cette section de la console**, ce qui n'est acceptable que parce que la page relève de `ConsoleHandler`, derrière l'authentification ; `ProbeHandler` n'a pas de route vers elle et un test vérifie que l'écouteur public renvoie 404 pour `/anytls` et ne contient jamais ce mot de passe.
 **L'adresse du serveur vient de l'en-tête `Host`
 de la requête**, et non d'une recherche : l'adresse ayant permis d'atteindre la console permet aussi d'atteindre le nœud ; une recherche d'IP sortante au moment de l'affichage contredirait la règle interdisant les requêtes sortantes, et quiconque a besoin d'une autre adresse peut modifier la ligne après l'avoir copiée.
+
+Seul un administrateur connecté par mot de passe peut ajouter dans les réglages une IP individuelle du réseau local privé. Les IP publiques et les plages réseau sont refusées. L’accès par IP utilise l’adresse réelle du pair de connexion, jamais un en-tête de transfert fourni par le client ; il est désactivé avec `VPSSRV_TRUST_PROXY=1`, faute de limite de proxy de confiance configurée. Il ouvre les pages ordinaires de la console, mais modifier le mot de passe ou la liste des IP exige une session par mot de passe. Si une passerelle représente plusieurs appareils par une seule IP privée autorisée, ils auront tous accès.
 
 Le SNI n'est pas stocké dans la configuration sing-box : `setup-anytls.sh` ne l'inscrit que dans le CN du certificat autosigné. La console le relit donc dans le certificat plutôt que de conserver une deuxième copie susceptible de diverger.
 
@@ -263,7 +263,7 @@ Aucune clé API. Le service Web ne recherche pas l'IP publique par requête sort
 | Chemin | Fourni par | Rôle |
 |---|---|---|
 | `$PREFIX` | installateur, valeur par défaut `/opt/vps-server` | Code, ressources statiques, fichiers de ports conservés |
-| `$VPSSRV_DATA_DIR` | installateur, valeur par défaut `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
+| `$VPSSRV_DATA_DIR` | installateur, valeur par défaut `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, `login-access.json` (liste des IP privées autorisées) |
 | `$VPSSRV_CERT_DIR` | installateur, valeur par défaut `$PREFIX/certs` | Certificat autosigné et clé pour 443 |
 | `/etc/vps-server-anytls/` | installateur | `config.json` de sing-box et son propre certificat autosigné |
 | `/etc/vps-server-proxy/` | installateur | `config.json` de sing-box (plusieurs entrées) et son certificat autosigné initial ; les certificats des nouveaux nœuds sont dans `/etc/vps-server-nodes/certs/` |
@@ -284,7 +284,8 @@ Toutes les variables utilisent le préfixe `VPSSRV_`. Ce n'est pas une question 
 | `VPSSRV_CONSOLE_PORT_FILE` | Fichier conservant le port généré de la console | `$PREFIX/console_port.txt` | non |
 | `VPSSRV_CONSOLE_TLS` | Servir la console en HTTPS | `0` | non |
 | `VPSSRV_AUTH` | Exiger l'authentification à la console | `1` | non |
-| `VPSSRV_PASSWORD_FILE` | Mot de passe de la console en clair, modifiable par l'opérateur | `$PREFIX/admin_password.txt` | non |
+| `VPSSRV_PASSWORD_FILE` | Mot de passe de la console en clair ; les réglages vérifient le mot de passe actuel avant de le changer | `$PREFIX/admin_password.txt` | non |
+| `VPSSRV_IP_ALLOWLIST_FILE` | Chemin facultatif de la liste des IP privées | `$VPSSRV_DATA_DIR/login-access.json` | non |
 | `VPSSRV_CERT_DIR` | Emplacement du certificat autosigné | `$PREFIX/certs` | non |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | Utiliser à la place un certificat fourni par l'opérateur | — | non |
 | `VPSSRV_IPERF_PORT` | Port d'écoute de la fenêtre iperf3 | `5201` | non |
@@ -326,7 +327,7 @@ Le module anytls conserve volontairement les noms de variables d'`Anytsl-Serve` 
 
 ## Conception des données
 
-La base des visiteurs et `portfwd.json` (règles de transfert activées) subsistent dans `$VPSSRV_DATA_DIR`. Le mot de passe de la console, le port choisi, les certificats Web et `.install-state` résident dans `$PREFIX` ; les configurations des modules sing-box et leurs certificats se trouvent dans `/etc/vps-server-anytls/` et `/etc/vps-server-proxy/`. Voir [Chemins et montages][local-link-012]. L'échéance iperf3 demeure en mémoire et ne survit pas à un redémarrage.
+La base des visiteurs et `portfwd.json` et `login-access.json` (règles de transfert activées) subsistent dans `$VPSSRV_DATA_DIR`. Le mot de passe de la console, le port choisi, les certificats Web et `.install-state` résident dans `$PREFIX` ; les configurations des modules sing-box et leurs certificats se trouvent dans `/etc/vps-server-anytls/` et `/etc/vps-server-proxy/`. Voir [Chemins et montages][local-link-012]. L'échéance iperf3 demeure en mémoire et ne survit pas à un redémarrage.
 
 ### Modèle de données et arborescence des fichiers
 

@@ -166,9 +166,9 @@ Ces éléments terminés constituent le registre daté de mise en œuvre et de v
 ## Passation
 
 - Branche : `feat/node-management`, issue de `feat/ui-redesign` et poussée vers le dépôt GitHub officiel. Aucune règle temporaire du projet n’a été trouvée.
-- Terminé : chaque nœud dispose de son propre interrupteur. Sa désactivation retire uniquement son écoute et conserve son UUID, sa configuration et ses totaux de trafic ; sa réactivation rétablit l’écoute. La suppression renumérote les numéros affichés et, après la suppression de tous les nœuds, le suivant porte le numéro 1. Réinitialiser au hasard se trouve à côté de Supprimer ; les deux boutons sont rouges et demandent confirmation. Les fonctions précédentes de cette branche restent présentes : identifiants saisis manuellement, SNI TLS par défaut, partage QR, connexion, affichage des adresses et modification du port iperf3.
-- Vérifications : 299 tests automatisés réussis (8 ignorés), ainsi que les contrôles de langue et de différences. Le sing-box fourni accepte une liste d’entrées vide. Sur l’hôte de test, un nœud AnyTLS temporaire a été créé, désactivé, réactivé puis supprimé ; son port TCP s’est fermé et rouvert avec l’interrupteur, sans modifier les ID, ports et configurations des nœuds existants. Chromium a vérifié la page sur ordinateur et à 390 px de largeur, sans débordement horizontal.
-- Déploiement : le code source et les copies installées dans `~/apps/vps-server` ont été mis à jour sur l’hôte de test ; les sauvegardes des anciens fichiers exécutés et de l’état des nœuds sont hors du dépôt. Les quatre services sont actifs. Le nœud temporaire a été supprimé. Aucun redémarrage réel de l’hôte n’a été effectué.
+- Terminé : La console accepte le mot de passe ou un accès sans mot de passe depuis les IP privées du réseau local explicitement autorisées. Un administrateur connecté par mot de passe peut ajouter ou retirer des adresses individuelles dans les réglages et changer le mot de passe après avoir saisi l’actuel. Les IP publiques, les plages réseau, les adresses de bouclage et les en-têtes de transfert falsifiés ne donnent pas accès ; une visite admise par IP seule ne peut pas modifier les réglages d’accès. Les travaux précédents sur les nœuds et l’interface restent dans cette branche.
+- Vérifications : 303 tests automatisés réussis (8 ignorés), ainsi que les contrôles des langues et des différences. Les tests HTTP couvrent l’accès par IP, le rejet des IP publiques, le changement de mot de passe et le blocage des réglages pour une visite admise par IP seule. Chromium a vérifié la connexion et les réglages en largeur ordinateur et téléphone. Une IP locale temporaire a été ajoutée puis retirée sur l’hôte de test ; la liste est vide.
+- Déploiement : L’hôte de test exécute cette branche depuis `~/apps/vps-server` ; les anciens fichiers exécutés et l’état d’accès persistant ont été sauvegardés hors du dépôt. Les quatre services sont actifs et activés au démarrage. La liste est conservée dans le répertoire de données de l’application. Aucun redémarrage réel de l’hôte n’a été effectué.
 - À faire : l’import Clash sur un vrai téléphone Android et le démarrage après un vrai redémarrage de l’hôte restent à vérifier. Étape suivante : réviser, fusionner et publier `feat/node-management`, puis réaliser les tests sur téléphone et après redémarrage.
 ## Historique des modifications
 
@@ -321,4 +321,5 @@ Ces entrées conservent les sujets des commits Git dans l’ordre chronologique.
 - `3d69356` docs(log): record GitHub synchronization
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
-- (this commit) docs(log): record node switch acceptance
+- `ab02c17` docs(log): record node switch acceptance
+- (this commit) feat(auth): add private-IP access and admin settings

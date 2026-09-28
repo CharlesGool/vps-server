@@ -45,6 +45,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.web import app  # noqa: E402  (import must follow env setup above)
 
 
+class IpAllowlistTest(unittest.TestCase):
+    def test_only_private_hosts_can_be_saved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            allowlist = app.IpAllowlist(Path(directory) / "login-access.json")
+            for address in ("8.8.8.8", "127.0.0.1", "169.254.2.3", "100.101.102.104",
+                            "10.0.0.0/8", "192.168.1.2, 8.8.8.8", "fe80::1"):
+                with self.subTest(address=address), self.assertRaises(ValueError):
+                    allowlist.change(address, add=True)
+            self.assertEqual(allowlist.change("192.168.1.2", add=True), "192.168.1.2")
+            allowlist.change("fd12::1", add=True)
+            self.assertTrue(allowlist.contains("192.168.1.2"))
+            self.assertFalse(allowlist.contains("100.101.102.104"))
+            self.assertEqual(app.IpAllowlist(allowlist.path).list_addresses(),
+                             ["192.168.1.2", "fd12::1"])
+            self.assertEqual(allowlist.path.stat().st_mode & 0o777, 0o600)
+
+    def test_damaged_list_fails_closed_without_breaking_password_login(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "login-access.json"
+            path.write_text('{"allowed_ips":["8.8.8.8"]}')
+            allowlist = app.IpAllowlist(path)
+            self.assertTrue(allowlist.load_error)
+            self.assertFalse(allowlist.contains("8.8.8.8"))
+            allowlist.change("10.1.2.3", add=True)
+            self.assertFalse(allowlist.load_error)
+            self.assertEqual(app.IpAllowlist(path).list_addresses(), ["10.1.2.3"])
+
+
 class ConsoleTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -90,6 +118,96 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn('autocomplete="current-password"', body)
         self.assertIn('class="login-visibility"', body)
         self.assertIn('/static/login.js', body)
+
+    def test_access_settings_reject_public_ips_and_require_password_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            allowlist = app.IpAllowlist(Path(directory) / "login-access.json")
+            password_file = Path(directory) / "password.txt"
+            with patch.object(app, "IP_ALLOWLIST", allowlist), \
+                 patch.object(app, "PASSWORD_FILE", password_file), \
+                 patch.object(app, "ADMIN_PASSWORD", self.password):
+                def request(method, path, form=None, session=None, headers=None):
+                    connection = self.connect()
+                    all_headers = dict(headers or {})
+                    if session:
+                        all_headers["Cookie"] = f"session={session}"
+                    body = urlencode(form) if form is not None else None
+                    if body is not None:
+                        all_headers["Content-Type"] = "application/x-www-form-urlencoded"
+                    connection.request(method, path, body=body, headers=all_headers)
+                    response = connection.getresponse()
+                    result = response.status, response.getheader("Location"), response.read().decode()
+                    connection.close()
+                    return result
+                self.assertEqual(request("GET", "/settings")[:2], (302, "/login?next=settings"))
+                session = self.login()
+                status, _, page = request("GET", "/settings", session=session)
+                self.assertEqual(status, 200)
+                self.assertIn("Password-free LAN access", page)
+                self.assertIn('action="/settings/ip/add"', page)
+                csrf = app.access_csrf_token(session, "ip-add")
+                self.assertEqual(request("POST", "/settings/ip/add",
+                                         {"csrf": csrf, "ip": "8.8.8.8"}, session)[:2],
+                                 (302, "/settings?msg=access_ip_invalid"))
+                self.assertEqual(allowlist.list_addresses(), [])
+                self.assertEqual(request("POST", "/settings/ip/add",
+                                         {"csrf": csrf, "ip": "192.168.7.21"}, session)[:2],
+                                 (302, "/settings?msg=access_ip_added"))
+                self.assertEqual(allowlist.list_addresses(), ["192.168.7.21"])
+                self.assertEqual(request("POST", "/settings/password",
+                                         {"csrf": app.access_csrf_token(session, "password"),
+                                          "current": "wrong", "new": "new-password-1234",
+                                          "confirm": "new-password-1234"}, session)[:2],
+                                 (302, "/settings?msg=access_current_wrong"))
+                self.assertEqual(app.ADMIN_PASSWORD, self.password)
+                self.assertEqual(request("POST", "/settings/password",
+                                         {"csrf": app.access_csrf_token(session, "password"),
+                                          "current": self.password, "new": "new-password-1234",
+                                          "confirm": "new-password-1234"}, session)[:2],
+                                 (302, "/login?changed=1"))
+                self.assertEqual(password_file.read_text().strip(), "new-password-1234")
+                self.assertFalse(app.session_valid(session))
+
+    def test_ip_admission_uses_peer_not_forwarded_header_and_cannot_edit_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            allowlist = app.IpAllowlist(Path(directory) / "login-access.json")
+            allowlist.change("192.168.7.21", add=True)
+            with patch.object(app, "IP_ALLOWLIST", allowlist), patch.object(app, "TRUST_PROXY", True):
+                conn = self.connect()
+                conn.request("GET", "/", headers={"X-Forwarded-For": "192.168.7.21"})
+                response = conn.getresponse()
+                self.assertEqual((response.status, response.getheader("Location")), (302, "/login"))
+                response.read()
+                conn.close()
+                with patch.object(app, "TRUST_PROXY", False), \
+                     patch.object(allowlist, "contains", return_value=True):
+                    conn = self.connect()
+                    conn.request("GET", "/")
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 200)
+                    response.read()
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("GET", "/settings")
+                    response = conn.getresponse()
+                    self.assertEqual((response.status, response.getheader("Location")),
+                                     (302, "/login?next=settings"))
+                    response.read()
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("POST", "/settings/ip/add", body="ip=10.0.0.2&csrf=no",
+                                 headers={"Content-Type": "application/x-www-form-urlencoded"})
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 403)
+                    response.read()
+                    conn.close()
+            with patch.object(app, "IP_ALLOWLIST", allowlist), patch.object(app, "TRUST_PROXY", False):
+                conn = self.connect()
+                conn.request("GET", "/", headers={"X-Forwarded-For": "192.168.7.21"})
+                response = conn.getresponse()
+                self.assertEqual((response.status, response.getheader("Location")), (302, "/login"))
+                response.read()
+                conn.close()
 
     def test_managed_node_page_and_edit_request(self):
         identifier = "12345678-1234-4234-8234-123456789abc"

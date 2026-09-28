@@ -168,9 +168,9 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 ## 交接
 
 - 分支：`feat/node-management`，基于 `feat/ui-redesign`，已推送至正式 GitHub 仓库。未发现临时项目规则。
-- 已完成：每个节点都有独立开关。停用时仅关闭该节点的监听，保留 UUID、配置和流量总量；启用时恢复监听。删除节点后显示编号重新排列，全部删除后新节点从 1 开始。随机重置放在删除旁边，两者均为红色按钮并使用确认弹窗。本分支此前完成的手动凭据、默认 TLS SNI、二维码分享、登录、地址显示和 iperf3 端口编辑仍然保留。
-- 检查：299 项自动化测试通过（8 项跳过）；语言检查和差异检查通过。随附的 sing-box 接受空入站列表。测试机上新建、停用、启用并删除了临时 AnyTLS 节点；TCP 端口随开关关闭和恢复，原有节点的 ID、端口及配置未变。Chromium 验证了桌面和 390 px 宽度的节点页面，均无横向溢出。
-- 部署：指定测试机已更新 `~/apps/vps-server` 中的源码和已安装运行副本；先前运行文件及节点状态的备份保存在仓库外。四项服务均处于运行状态。临时验收节点已删除。尚未执行实际重启主机测试。
+- 已完成： 控制台支持密码登录，以及对明确列出的私有局域网 IP 免密访问。使用密码登录的管理员可在设置中增删单个地址，并在输入当前密码后更改密码。公网 IP、网段、环回地址和伪造的转发请求头不能获得免密访问；仅靠 IP 免密也不能修改访问设置。此前的节点管理与 UI 功能仍在本分支。
+- 检查： 303 项自动化测试通过（8 项跳过）；语言及差异检查通过。HTTP 测试覆盖 IP 免密、公网 IP 拒绝、密码修改和仅靠 IP 访问设置时被阻止。Chromium 在桌面和手机宽度验证了登录与设置流程。测试机加入并移除了临时局域网 IP；当前名单为空。
+- 部署： 指定测试机在 `~/apps/vps-server` 运行本分支；旧运行文件及持久化访问状态已在仓库外备份。四项服务均在运行并已启用开机启动。免密名单持久保存在应用数据目录。尚未实际重启主机。
 - 待办：尚未在真实 Android 手机上验证 Clash 导入，也未验证主机实际重启后的启动。下一步：审核后合并并发布 `feat/node-management`，再完成手机与重启验证。
 ## 变更日志
 
@@ -323,4 +323,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `3d69356` docs(log): record GitHub synchronization
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
-- (this commit) docs(log): record node switch acceptance
+- `ab02c17` docs(log): record node switch acceptance
+- (this commit) feat(auth): add private-IP access and admin settings

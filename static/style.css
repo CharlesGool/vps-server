@@ -59,6 +59,17 @@ main { width: 100%; max-width: 75rem; margin: 0 auto; padding: clamp(1.25rem, 3v
 .login-visibility { position: absolute; inset-inline-end: .35rem; top: 50%; transform: translateY(-50%); min-height: 2rem; padding: .3rem .5rem; border: 0; background: transparent; color: var(--accent-strong); font-size: .8rem; }
 .login-visibility:hover { background: var(--surface-2); }
 .login-submit { width: 100%; margin-top: 1.35rem; }
+.access-workspace { width: min(100%, 48rem); }
+.access-card { max-width: none; margin-bottom: 1rem; }
+.access-card h2 { margin: 0 0 .7rem; font-size: 1.15rem; }
+.access-card p { margin: 0 0 1.2rem; }
+.access-ip-list { display: grid; gap: .5rem; margin: 0 0 1.25rem; padding: 0; list-style: none; }
+.access-ip-list li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; min-height: 3.25rem; padding: .5rem .7rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--surface-2); }
+.access-ip-list code { overflow-wrap: anywhere; }
+.access-ip-list form { margin: 0 0 0 auto; }
+.access-ip-form { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; }
+.access-ip-form label { flex: 1 1 14rem; margin: 0; }
+.access-ip-form button { flex: 0 0 auto; }
 .card.narrow { max-width: 26rem; }.card.wide { max-width: 68rem; }
 h1 { margin: 0 0 1.25rem; font-size: clamp(1.45rem, 2vw, 1.8rem); line-height: 1.25; letter-spacing: -.03em; }
 h2 { line-height: 1.3; letter-spacing: -.015em; }.muted { color: var(--muted); }.small { font-size: .85rem; }

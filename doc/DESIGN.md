@@ -37,9 +37,10 @@ describe the four previously documented modules.
      **80 and 443** with no authentication, so that anyone given only the IP can
      confirm in a browser whether this host's web ports are reachable from where
      they are.
-  2. **Private console** — a password-protected dashboard on a persisted random
-     high port, providing browser-based up/download speed testing and a log of
-     recently observed inbound connections.
+  2. **Private console** — a dashboard on a persisted random high port,
+     providing browser-based up/download speed testing and a log of recently
+     observed inbound connections. It accepts an admin password or an
+     explicitly allowed private LAN IP.
   3. **On-demand iperf3 window** — a bandwidth/latency test endpoint that is
      **off by default**; an operator opens a time-boxed window from the console,
      and it closes itself when the window expires.
@@ -127,7 +128,14 @@ trivially discoverable and **MUST NOT** ask for a password. So: different ports,
 different request handlers, different route tables. A request arriving on 80/443
 can never reach a console route, because `ProbeHandler` has no such routes — not
 because a check rejected it. That is the point; an authorization check can be
-bugged, an absent route cannot.
+bugged, an absent route cannot. Password-authenticated administrators can add
+individual private LAN IPs in Settings. Public IPs, shared-address space such as Tailscale IPv4, and
+network ranges are rejected. IP admission uses the connection peer, never a
+client-supplied forwarding header, and is disabled when `VPSSRV_TRUST_PROXY=1`
+because that mode has no configured trusted-proxy boundary. IP admission opens
+ordinary console pages; changing the password or IP list requires a password
+session. A gateway that maps several devices to one allowed private IP gives
+all those devices the same access.
 
 The public page accepts `GET` and `HEAD` on exactly two paths (`/` and
 `/favicon.ico`) and answers everything else with 404. It reads no query string,
@@ -459,7 +467,7 @@ The installer may perform an optional outbound lookup; failure only warns.
 | Path | Provided by | Purpose |
 |---|---|---|
 | `$PREFIX` | installer, default `/opt/vps-server` | Code, static assets, persisted port files |
-| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json` |
+| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, private-IP allowlist `login-access.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
 | `/etc/vps-server-proxy/` | installer | sing-box `config.json` (multiple inbounds) and its initial self-signed cert; new node certs live under `/etc/vps-server-nodes/certs/` |
@@ -483,7 +491,8 @@ reconfigure another.
 | `VPSSRV_CONSOLE_PORT_FILE` | Where the generated console port is remembered | `$PREFIX/console_port.txt` | no |
 | `VPSSRV_CONSOLE_TLS` | Serve the console over HTTPS | `0` | no |
 | `VPSSRV_AUTH` | Require login on the console | `1` | no |
-| `VPSSRV_PASSWORD_FILE` | Plaintext console password, editable by the operator | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_PASSWORD_FILE` | Plaintext console password; Settings verifies the current password before changing it | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_IP_ALLOWLIST_FILE` | Optional path for the private-IP allowlist | `$VPSSRV_DATA_DIR/login-access.json` | no |
 | `VPSSRV_CERT_DIR` | Self-signed cert location | `$PREFIX/certs` | no |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | Use an operator-supplied cert instead | — | no |
 | `VPSSRV_IPERF_PORT` | Port the iperf3 window listens on | `5201` | no |
@@ -538,8 +547,9 @@ exists to avoid.
 
 ## Data Design
 
-The visitor database and `portfwd.json` (enabled forwarding rules) persist under
-`$VPSSRV_DATA_DIR`. The console password, selected port, web certificates and
+The visitor database, `portfwd.json` (enabled forwarding rules), and
+`login-access.json` (private-IP allowlist) persist under `$VPSSRV_DATA_DIR`.
+The console password, selected port, web certificates and
 `.install-state` live under `$PREFIX`; the sing-box module configs and their
 certificates live in `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`.
 See [Paths & mounts][local-link-012]. The iperf3 deadline stays in memory
