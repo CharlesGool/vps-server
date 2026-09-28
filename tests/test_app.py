@@ -194,6 +194,7 @@ class ConsoleTest(unittest.TestCase):
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
                 self.assertIn('href="/settings/security"', page)
+                self.assertIn('class="card access-card preferences-card preferences-security-card"', page)
                 self.assertIn('href="/settings?lang=zh_cn"', page)
                 self.assertIn('data-theme-choice="sage"', page)
                 self.assertNotIn('action="/settings/ip/add"', page)
@@ -696,6 +697,10 @@ class ConsoleTest(unittest.TestCase):
         body = resp.read().decode()
         self.assertIn("Speed test", body)
         self.assertIn("Recent visitors", body)
+        nav = body.split('</nav>', 1)[0]
+        self.assertEqual(nav.count('href="/"'), 2)
+        self.assertLess(nav.rfind('href="/"'), nav.index('href="/speedtest"'))
+        self.assertIn('aria-current="page" href="/"', nav)
         conn.close()
 
     def test_logout_invalidates_session(self):

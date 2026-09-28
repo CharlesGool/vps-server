@@ -2030,7 +2030,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
         def link(href, key):
             cls = ' class="active"' if active == key else ""
             current = ' aria-current="page"' if active == key else ""
-            icons = {"speedtest": "gauge", "iperf": "timer", "proxy": "network",
+            icons = {"dashboard": "server", "speedtest": "gauge", "iperf": "timer", "proxy": "network",
                      "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text",
                      "settings": "settings-2"}
             return f'<a{cls}{current} href="{href}">{ui_icon(icons[key])}<span>{html.escape(t[key])}</span></a>'
@@ -2055,6 +2055,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
             {version_tag}
           </div>
           <div class="navlinks">
+            {link('/', 'dashboard')}
             {link('/speedtest', 'speedtest')}
             {iperf_link}
             {proxy_link}
@@ -2596,8 +2597,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             + f'>{esc(name)}</a>' for code, name in LANG_NAMES.items())
         body = f'''<div class="access-workspace preferences-workspace">
           <h1 class="access-page-title">{esc(t['settings'])}</h1>
-          <a class="preferences-security" href="/settings/security">{ui_icon('lock-keyhole')}<span>{esc(t['access_security'])}</span></a>
           <div class="preferences-grid">
+            <a class="card access-card preferences-card preferences-security-card" href="/settings/security">
+              <span class="preferences-security-heading">{ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>
+              <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>
+            </a>
             <section class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
               <div class="preferences-choices" role="group" aria-label="{esc(t['theme_label'], quote=True)}">{themes}</div>
             </section>
@@ -2774,7 +2778,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </div>
         </div>
         """
-        self.send_html(200, self.render_page(t['dashboard'], body, lang, active=None),
+        self.send_html(200, self.render_page(t['dashboard'], body, lang, active="dashboard"),
                        self.maybe_lang_cookie(query_lang))
 
     # -- speed test ----------------------------------------------------
