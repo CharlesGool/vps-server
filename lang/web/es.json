@@ -69,6 +69,7 @@
   "changelog": "Registro de cambios",
   "changelog_missing": "No se encontró doc/LOG.md ni su sección Changelog junto a la aplicación, así que no hay nada que mostrar aquí.",
   "changelog_fallback": "El registro de cambios en chino no está disponible en esta instalación; se muestra el de inglés.",
+  "development_fallback": "Las notas de la versión de prueba actual solo están disponibles en inglés.",
   "visitors_info": "Incluye todos los dispositivos con una conexión TCP a este host en cualquier puerto — establecida, semiabierta o en cierre — según muestras del núcleo tomadas cada {sec}s, además de las solicitudes HTTP a esta página. \"out\" identifica las conexiones abiertas por esta máquina. Solo TCP: este método no muestra UDP (DNS, VPN, QUIC) ni ICMP, y puede omitir las conexiones que comienzan y terminan entre dos muestras.",
   "visitors_info_http_only": "El seguimiento de conexiones está desactivado, así que solo se incluyen las solicitudes HTTP a esta página.",
   "iperf": "iperf3",

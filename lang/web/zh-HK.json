@@ -69,6 +69,7 @@
   "changelog": "變更記錄",
   "changelog_missing": "應用程式旁找不到 doc/LOG.md，或文件中沒有「變更記錄」章節，因此暫時無法顯示內容。",
   "changelog_fallback": "此安裝沒有香港繁體中文變更記錄，以下顯示英文版本。",
+  "development_fallback": "目前測試版本的更新說明暫只有英文版。",
   "visitors_info": "涵蓋所有曾與這部主機建立 TCP 連接的裝置，不限連接埠或連接狀態（已建立、半開或正在關閉；每 {sec} 秒從核心取樣一次），以及到訪本頁的 HTTP 請求。標示「出站」的連接由本機主動建立。此方法只涵蓋 TCP：無法看到 UDP（DNS、VPN、QUIC）及 ICMP；兩次取樣之間建立又結束的連接亦可能遺漏。",
   "visitors_info_http_only": "連接追蹤已關閉，因此此處只會顯示到訪本頁的 HTTP 請求。",
   "iperf": "iperf3",

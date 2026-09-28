@@ -256,6 +256,19 @@ These checked items are the former backlog's dated implementation and verificati
 - Current Web UI standard alignment (2026-09-28): the login header now repeats the console brand as a home link. The login card uses the shared dimensions and puts a Changelog version link and pre-login language selector in its footer. Password entry on login, Security verification and password change, and managed and legacy node forms starts masked and has an independent accessible Show/Hide button. The old login-only visibility script was replaced with one shared script. No dependency was added.
 - Checks: 311 automated tests passed (8 skipped); Python compilation, JavaScript syntax, and diff whitespace passed. Chromium verified the login page at 390 and 195 CSS px without horizontal overflow, the language menu and change to Simplified Chinese, and password visibility with retained value and focus. Security password fields were checked independently on a local fixture. The designated test host was not changed for this UI alignment. Remaining live checks are the host reboot, Android Clash import, live transfers through every policy, and allowlisted-device IP admission. Next action: deploy this UI alignment to the designated test host when requested and complete the remaining live checks when practical.
 - Test deployment (2026-09-28): deployed the Web UI from `c312456` as `dev-c312456` to the designated LAN test host under the standard application directory. Backed up the previous Web files outside the application directory with mode 0600, then replaced the root and source Web entry points, style sheet, password-control script, version stamp, and English project documents. Removed the superseded login-only script and restarted only `vps-server-web.service`. Node state, visitor data, and the existing Web password were left untouched. The Web service and proxy, node-meter, and AnyTLS services were active afterward; Web remained enabled at boot and listening on its existing `0.0.0.0:31080` port. Local and deployed source hashes matched. From the workstation, login, the new script, style sheet, and favicon returned HTTP 200; the login HTML reported `dev-c312456`, and Chromium visually checked the 390 px login layout. No Web service error appeared in the recent journal. A host reboot and authenticated review of the node forms were not performed. Next action: obtain the operator's visual feedback and address any issue found; the remaining live checks above are unchanged.
+- Current version and Changelog work: development builds now show curated post-`v3.0.0` notes from this file above the formal release history, using the deployed version stamp as the heading. Other UI languages label the English-only test notes while retaining their localized formal release entries. Clicking the login-page version link now returns to Changelog after password verification. The `v3.0.0` tag and Release remain unchanged; this is a development build.
+- Checks: 313 automated tests passed (8 skipped), including the version-link return and development-note visibility; document format and local links had zero errors, and multilingual structure had zero errors. Python compilation and diff whitespace checks passed. The designated test host still runs `dev-c312456` at this point. Next action: deploy this change with a stamp matching its committed source, verify the login version and authenticated Changelog over LAN, then record the host result.
+
+## Development Updates
+
+The current test build includes these changes after `v3.0.0`. This section is
+shown above formal releases in the Web Changelog and does not announce a new
+release.
+
+#### Changed
+
+- The login page uses the shared project header. Its footer links the running version to Changelog and offers language selection before sign-in.
+- Login, administrator verification, password change, and proxy-node forms each provide an independent Show/Hide control that preserves entered text and focus.
 
 ## Changelog
 
@@ -554,4 +567,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `4e26aea` chore(release): prepare v3.0.0 content
 - `444924c` docs(log): record v3.0.0 publication
 - `c312456` fix(web): align login and password controls with current standard
-- (this commit) docs(log): record Web UI test deployment
+- `25f1f9e` docs(log): record Web UI test deployment
+- (this commit) feat(web): show current test build updates

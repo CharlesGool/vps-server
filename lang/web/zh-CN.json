@@ -69,6 +69,7 @@
   "changelog": "更新日志",
   "changelog_missing": "应用目录下找不到 doc/LOG.md 或其中的 Changelog 章节，因此这里没有内容可显示。",
   "changelog_fallback": "此安装中没有简体中文更新日志，下面显示的是英文版。",
+  "development_fallback": "当前测试版本的更新说明暂只有英文版。",
   "visitors_info": "涵盖与本机建立过 TCP 连接的所有设备，不限端口、不限连接状态（已建立、半开、关闭中，每 {sec} 秒从内核采样一次），以及访问本页面的 HTTP 请求。标「出」的是本机主动发起的连接。仅限 TCP：UDP（DNS、VPN、QUIC）和 ICMP 这种方式看不到；在两次采样之间来去的连接仍可能漏掉。",
   "visitors_info_http_only": "连接追踪已关闭，因此这里只包含访问本页面的 HTTP 请求。",
   "iperf": "iperf3",

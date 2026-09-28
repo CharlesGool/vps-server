@@ -1206,8 +1206,43 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.request("GET", "/changelog")
         resp = conn.getresponse()
         self.assertEqual(resp.status, 302)
+        self.assertEqual(resp.getheader("Location"), "/login?next=changelog")
         resp.read()
         conn.close()
+
+    def test_login_version_link_returns_to_changelog(self):
+        conn = self.connect()
+        conn.request("GET", "/login?next=changelog")
+        page = conn.getresponse().read().decode()
+        conn.close()
+        self.assertIn('name="next" value="changelog"', page)
+        self.assertIn('href="/changelog"', page)
+
+        conn = self.connect()
+        conn.request("POST", "/login",
+                     body=urlencode({"password": app.ADMIN_PASSWORD, "next": "changelog"}),
+                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        response = conn.getresponse()
+        self.assertEqual(response.status, 302)
+        self.assertEqual(response.getheader("Location"), "/changelog")
+        response.read()
+        conn.close()
+
+    def test_development_updates_are_visible_without_handoff_details(self):
+        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
+        session = self.login()
+        with patch.object(app, "VERSION", "dev-test123"), patch.object(app, "VERSION_LABEL", "dev-test123"):
+            conn = self.connect()
+            conn.request("GET", "/changelog?lang=zh_cn", headers={"Cookie": f"session={session}"})
+            response = conn.getresponse()
+            body = response.read().decode()
+            conn.close()
+        self.assertEqual(response.status, 200)
+        self.assertIn("<h2>dev-test123</h2>", body)
+        self.assertIn("The login page uses the shared project header.", body)
+        self.assertIn(app.STRINGS["zh_cn"]["development_fallback"], body)
+        self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
+        self.assertNotIn("Test deployment (2026-09-28)", body)
 
     def test_changelog_markdown_is_escaped_not_injected(self):
         # LOG.md is author-controlled, but rendering must still escape tags.

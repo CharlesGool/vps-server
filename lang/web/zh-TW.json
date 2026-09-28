@@ -69,6 +69,7 @@
   "changelog": "更新日誌",
   "changelog_missing": "應用程式目錄下找不到 doc/LOG.md 或其中的 Changelog 章節，因此這裡沒有內容可顯示。",
   "changelog_fallback": "此安裝中沒有繁體中文更新日誌，下面顯示的是英文版。",
+  "development_fallback": "目前測試版本的更新說明暫只有英文版。",
   "visitors_info": "涵蓋與本機建立過 TCP 連線的所有裝置，不限連接埠、不限連線狀態（已建立、半開、關閉中，每 {sec} 秒從核心取樣一次），以及造訪本頁面的 HTTP 請求。標示「出」的是本機主動發起的連線。僅限 TCP：UDP（DNS、VPN、QUIC）和 ICMP 這種方式看不到；在兩次取樣之間往來的連線仍可能漏掉。",
   "visitors_info_http_only": "連線追蹤已關閉，因此這裡只包含造訪本頁面的 HTTP 請求。",
   "iperf": "iperf3",

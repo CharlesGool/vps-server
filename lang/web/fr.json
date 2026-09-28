@@ -69,6 +69,7 @@
   "changelog": "Journal des modifications",
   "changelog_missing": "doc/LOG.md ou sa section Changelog est introuvable à côté de l’application ; rien ne peut être affiché.",
   "changelog_fallback": "Le journal des modifications en chinois est indisponible dans cette installation ; affichage de la version anglaise.",
+  "development_fallback": "Les notes de la version de test actuelle sont disponibles uniquement en anglais.",
   "visitors_info": "Inclut tout appareil ayant une connexion TCP avec cet hôte, sur n’importe quel port — établie, à moitié ouverte ou en cours de fermeture — relevée dans le noyau toutes les {sec} s, ainsi que les requêtes HTTP vers cette page. « sortant » indique les connexions ouvertes par cette machine. TCP uniquement : UDP (DNS, VPN, QUIC) et ICMP ne sont pas visibles par cette méthode ; les connexions qui apparaissent et disparaissent entre deux relevés peuvent aussi être manquées.",
   "visitors_info_http_only": "Le suivi des connexions est désactivé ; seules les requêtes HTTP vers cette page sont donc prises en compte.",
   "iperf": "iperf3",

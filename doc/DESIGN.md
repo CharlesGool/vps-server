@@ -67,6 +67,7 @@ describe the four previously documented modules.
 - [x] Redesign the full Web UI with one accessible design system across the console, public reachability page, and setup wizard. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
 
 The console login page uses the same project brand and home link as the rest of the interface. Its card footer links the running version to Changelog and offers language selection before authentication. Theme controls remain in ordinary Settings. Every editable password field starts masked and has its own accessible Show/Hide control; changing visibility preserves the value and focus and never submits the form.
+For a development build, the Web Changelog displays the current test-build notes from `LOG.md` above the tagged release history. The running version comes from its deployed `VERSION` stamp; translated release history remains localized, and test-build notes fall back to English when a translation is unavailable.
 
 The shared SQLite-lock concern is a [known unresolved measurement question][local-link-002], not a mandate to change the architecture. Historical completed work and verification records are in [LOG][local-link-003].
 

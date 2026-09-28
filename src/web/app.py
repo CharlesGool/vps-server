@@ -1952,6 +1952,17 @@ def changelog_section(markdown):
     return section if re.search(r"^### v[^\s]+", section, re.MULTILINE) else None
 
 
+def development_updates_section(markdown):
+    """Select the public test-build notes without exposing Handoff details."""
+    match = re.search(r"^## Development Updates[ \t]*$", markdown, re.MULTILINE)
+    if not match:
+        return None
+    tail = markdown[match.end():]
+    next_section = re.search(r"^## [^#]", tail, re.MULTILINE)
+    section = tail[:next_section.start()] if next_section else tail
+    return section if re.search(r"^- ", section, re.MULTILINE) else None
+
+
 def render_changelog(markdown):
     """Render LOG's changelog headings and lists after selecting its section."""
     html_parts = []
@@ -1983,7 +1994,7 @@ def render_changelog(markdown):
             if "-->" not in stripped:
                 in_comment = True
             continue
-        if stripped.startswith("### v"):
+        if stripped.startswith(("### v", "### dev-")):
             started = True
             close_list()
             html_parts.append(f"<h2>{_inline_md(stripped[4:])}</h2>")
@@ -2352,7 +2363,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_logout()
 
         if not self.is_authenticated():
-            destination = ("/login?next=preferences" if path == "/settings" else
+            destination = ("/login?next=changelog" if path == "/changelog" else
+                           "/login?next=preferences" if path == "/settings" else
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
 
@@ -2468,7 +2480,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             password_error = False
         error_html = f'<p class="error" id="login-error" role="alert">{html.escape(error)}</p>' if error else ""
         invalid = ' aria-invalid="true" aria-describedby="login-error"' if error and password_error else ""
-        next_page = next_page if next_page in ("settings", "preferences") else ""
+        next_page = next_page if next_page in ("settings", "preferences", "changelog") else ""
         next_input = f'<input type="hidden" name="next" value="{next_page}">' if next_page else ""
         notice = (f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>'
                   if next_page == "settings" else "")
@@ -2529,7 +2541,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 f"Max-Age={SESSION_TTL_SECONDS}"
             )
             destination = ("/settings/security" if next_page == "settings" else
-                           "/settings" if next_page == "preferences" else "/")
+                           "/settings" if next_page == "preferences" else
+                           "/changelog" if next_page == "changelog" else "/")
             return self.redirect(destination,
                                  {"Set-Cookie": cookie})
         LOGIN_LIMITER.record_failure(ip)
@@ -4035,12 +4048,23 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if localized and path != localized:
             notice = f'<p class="muted small">{html.escape(t["changelog_fallback"])}</p>'
 
-        section = changelog_section(path.read_text(encoding="utf-8")) if path.exists() else None
+        source = path.read_text(encoding="utf-8") if path.exists() else ""
+        section = changelog_section(source)
+        development = ""
+        if VERSION.startswith("dev-"):
+            updates = development_updates_section(source)
+            if not updates and path != BASE_DIR / "doc" / "LOG.md":
+                english = BASE_DIR / "doc" / "LOG.md"
+                updates = development_updates_section(english.read_text(encoding="utf-8")) if english.exists() else None
+                if updates:
+                    development = f'<p class="muted small">{html.escape(t["development_fallback"])}</p>'
+            if updates:
+                development += render_changelog(f"### {VERSION_LABEL}\n{updates}")
         if section:
-            content = notice + render_changelog(section)
+            content = development + notice + render_changelog(section)
         else:
             # Missing file or section must not render other LOG modules as release notes.
-            content = f'<p class="muted">{html.escape(t["changelog_missing"])}</p>'
+            content = development + f'<p class="muted">{html.escape(t["changelog_missing"])}</p>'
         body = f"""
         <div class="card wide">
           <h1>{html.escape(t['changelog'])} <span class="version-inline">{html.escape(VERSION_LABEL)}</span></h1>

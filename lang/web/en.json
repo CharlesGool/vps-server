@@ -69,6 +69,7 @@
   "changelog": "Changelog",
   "changelog_missing": "doc/LOG.md or its Changelog section was not found next to the app, so there is nothing to show here.",
   "changelog_fallback": "The Chinese changelog is not available in this install; showing the English one.",
+  "development_fallback": "Current test-build notes are available in English only.",
   "visitors_info": "Covers every device with a TCP connection to this host on any port — established, half-open or closing — sampled from the kernel every {sec}s, plus HTTP requests to this page. \"out\" marks connections this machine opened itself. TCP only: UDP (DNS, VPN, QUIC) and ICMP are not visible to this method, and connections that come and go between two samples can still be missed.",
   "visitors_info_http_only": "Connection tracking is off, so this only covers HTTP requests to this page.",
   "iperf": "iperf3",
