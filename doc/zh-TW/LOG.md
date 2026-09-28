@@ -332,4 +332,5 @@ v2.0.0 包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實�
 - `be8b4a5` feat(nodes): add flexible limits and persistent IP login entry
 - `b0a9c6c` feat(web): copy Clash links and fit up to six node columns
 - `d07b40a` fix(web): mask configured values and align project documents
-- (this commit) fix(web): honor installed version stamp
+- `7065e18` fix(web): honor installed version stamp
+- (this commit) fix(web): prioritize deployed stamp over stale git metadata

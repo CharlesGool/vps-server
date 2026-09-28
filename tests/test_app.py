@@ -3051,10 +3051,13 @@ class InstallerContractTest(unittest.TestCase):
             (root / "config").mkdir()
             (root / "config" / "VERSION").write_text("2.0.0\n")
             (root / "VERSION").write_text("dev-testbuild\n")
+            (root / ".git").mkdir()
             with patch.object(app, "BASE_DIR", root):
                 self.assertEqual(app._read_version(), "dev-testbuild")
                 (root / "VERSION").unlink()
-                self.assertEqual(app._read_version(), "2.0.0")
+                with patch.object(app.subprocess, "run") as git:
+                    git.return_value.returncode = 1
+                    self.assertEqual(app._read_version(), "2.0.0")
 
     def test_no_documented_variable_is_ignored_by_the_code(self):
         # The other drift direction: a VPSSRV_ name in .env.example that

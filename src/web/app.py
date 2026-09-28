@@ -84,6 +84,12 @@ def _read_version():
     committed release copy when Git metadata is absent. A build that cannot
     establish what it is says so rather than guessing.
     """
+    installed_stamp = BASE_DIR / "VERSION"
+    if installed_stamp.is_file():
+        try:
+            return installed_stamp.read_text().strip() or "dev-unknown"
+        except OSError:
+            return "dev-unknown"
     if (BASE_DIR / ".git").exists():
         tag = subprocess.run(["git", "-C", str(BASE_DIR), "describe", "--tags",
                               "--exact-match", "HEAD"], capture_output=True,
@@ -96,10 +102,7 @@ def _read_version():
         if revision.returncode == 0 and re.fullmatch(r"[0-9a-f]{7,}", revision.stdout.strip()):
             return "dev-" + revision.stdout.strip()
     try:
-        version_file = BASE_DIR / "VERSION"
-        if not version_file.is_file():
-            version_file = BASE_DIR / "config" / "VERSION"
-        value = version_file.read_text().strip()
+        value = (BASE_DIR / "config" / "VERSION").read_text().strip()
     except OSError:
         return "dev-unknown"
     return value or "dev-unknown"
