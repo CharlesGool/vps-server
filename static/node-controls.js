@@ -5,7 +5,11 @@
       const dialog = document.getElementById(opener.dataset.dialogOpen);
       if (dialog) {
         dialog.showModal();
-        dialog.querySelector('[data-dialog-close]')?.focus();
+        if (dialog.classList.contains('node-access-dialog')) {
+          dialog.querySelector('input:not([type="hidden"])')?.focus();
+        } else {
+          dialog.querySelector('[data-dialog-close]')?.focus();
+        }
       }
       return;
     }

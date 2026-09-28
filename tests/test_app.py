@@ -555,6 +555,10 @@ class ConsoleTest(unittest.TestCase):
             self.assertIn('action="/proxy/node/create"', page)
             self.assertEqual(page.count('action="/proxy/node/delete"'), 2)
             self.assertEqual(page.count('class="node-confirm-dialog"'), 4)
+            self.assertEqual(page.count('class="node-access-dialog"'), 2)
+            self.assertEqual(page.count('action="/proxy/node/limits"'), 2)
+            self.assertIn('data-dialog-open="node-access-12345678-1234-4234-8234-123456789abc"', page)
+            self.assertNotIn('<details><summary>Access management</summary>', page)
             self.assertNotIn('type="checkbox" name="confirm"', page)
             self.assertIn('name="credential" value=""', page)
             self.assertIn('name="sni" value="www.bing.com"', page)
@@ -697,6 +701,7 @@ class ConsoleTest(unittest.TestCase):
         body = resp.read().decode()
         self.assertIn("Speed test", body)
         self.assertIn("Recent visitors", body)
+        self.assertIn("Home", body)
         nav = body.split('</nav>', 1)[0]
         self.assertEqual(nav.count('href="/"'), 2)
         self.assertLess(nav.rfind('href="/"'), nav.index('href="/speedtest"'))

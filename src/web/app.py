@@ -2030,7 +2030,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
         def link(href, key):
             cls = ' class="active"' if active == key else ""
             current = ' aria-current="page"' if active == key else ""
-            icons = {"dashboard": "server", "speedtest": "gauge", "iperf": "timer", "proxy": "network",
+            icons = {"home": "server", "speedtest": "gauge", "iperf": "timer", "proxy": "network",
                      "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text",
                      "settings": "settings-2"}
             return f'<a{cls}{current} href="{href}">{ui_icon(icons[key])}<span>{html.escape(t[key])}</span></a>'
@@ -2055,7 +2055,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
             {version_tag}
           </div>
           <div class="navlinks">
-            {link('/', 'dashboard')}
+            {link('/', 'home')}
             {link('/speedtest', 'speedtest')}
             {iperf_link}
             {proxy_link}
@@ -2778,7 +2778,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           </div>
         </div>
         """
-        self.send_html(200, self.render_page(t['dashboard'], body, lang, active="dashboard"),
+        self.send_html(200, self.render_page(t['dashboard'], body, lang, active="home"),
                        self.maybe_lang_cookie(query_lang))
 
     # -- speed test ----------------------------------------------------
@@ -3471,9 +3471,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               {self.node_metrics(node, meter_nodes, t)}
               {self.node_clash_share(node, lan_host, t)}
               <div class="node-secondary">
-                <details><summary>{esc(t['node_limit_manage'])}</summary>
+                <button type="button" class="node-action node-access-open" data-dialog-open="node-access-{identifier}">{esc(t['node_limit_manage'])}</button>
+                <div class="node-destructive-actions"><button type="button" class="node-action node-action-danger" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
+                <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button></div>
+              </div>
+              <dialog class="node-access-dialog" id="node-access-{identifier}" aria-labelledby="node-access-title-{identifier}">
                   <form method="post" action="/proxy/node/limits">
                     <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+                    <h3 id="node-access-title-{identifier}">{esc(t['node_limit_manage'])}</h3>
                     <div class="node-form-grid">
                       <label>{esc(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
                       <label>{esc(t['node_upload_speed'])}<input type="number" name="upload_mbps" min="0.001" max="10000000" step="any" value="{upload_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
@@ -3487,12 +3492,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity'])}</legend>{radios('expiry_mode', (("none", "node_validity_none"), ("set", "node_validity_set")), 'set' if node['expiry_count'] else 'none')}</fieldset>
                     <div class="node-duration"><label>{esc(t['node_validity_length'])}<input type="number" name="expiry_count" min="1" max="9999" value="{node['expiry_count'] or 1}"></label>
                       <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity_unit'])}</legend>{radios('expiry_unit', units, node['expiry_unit'] or 'months')}</fieldset></div>
-                    <button type="submit">{esc(t['node_save_limits'])}</button>
+                    <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button>
+                    <button type="submit">{esc(t['node_save_limits'])}</button></div>
                   </form>
-                </details>
-                <div class="node-destructive-actions"><button type="button" class="node-action node-action-danger" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
-                <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button></div>
-              </div>
+              </dialog>
               <dialog class="node-confirm-dialog" id="node-reset-{identifier}" aria-labelledby="node-reset-title-{identifier}">
                 <form method="post" action="/proxy/node/reset">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}"><input type="hidden" name="confirm" value="yes">
