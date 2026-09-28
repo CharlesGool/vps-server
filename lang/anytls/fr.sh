@@ -31,7 +31,6 @@ case "$key" in
   bbr_enabled) fmt='BBR activé' ;;
   bbr_enabling) fmt='Activation de BBR ...' ;;
   bbr_failed) fmt='Impossible d’activer BBR (noyau antérieur à 4.9 ou module tcp_bbr absent ; mettez le noyau à jour)' ;;
-  address_public) fmt='Publique' ;;
   address_lan) fmt='LAN-%s' ;;
   summary_heading) fmt=' Informations du nœud anytls' ;;
   summary_port) fmt=' Port : %s' ;;

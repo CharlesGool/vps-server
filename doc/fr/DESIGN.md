@@ -24,6 +24,8 @@ metadata:
 
 ## Objectifs de conception
 
+<a id="vps-design-goals"></a>
+
 **Objectifs réalisés dans la version v2.0.0 (voir les [limites de validation][local-link-001]) :**
 
 La version 2.0.0 comprend également des parcours d’installation expérimentaux pour frps et Lucky. Leur fonctionnement n’a pas été validé sur un hôte réel ; les objectifs ci-dessous décrivent les quatre modules documentés auparavant.
@@ -153,6 +155,8 @@ Le SNI n'est pas stocké dans la configuration sing-box : `setup-anytls.sh` ne l
 
 ### Le module proxy
 
+<a id="vps-proxy-module"></a>
+
 L'ancienne liste des tâches demandait si le binaire sing-box déjà embarqué prenait en charge d'autres protocoles qu'anytls, ou s'il fallait un deuxième moteur. C'est bien le cas : `vmess`, `vless`, `trojan` et `shadowsocks` (2022-blake3-aes-128-gcm) passent chacun `sing-box check` et, confirmation obtenue en les exécutant réellement plutôt qu'en validant seulement leur configuration, tous quatre ouvrent leurs ports et acceptent des connexions simultanément dans un seul processus `sing-box run`. Aucun deuxième moteur n'a été ajouté.
 
 Contrairement à anytls, il s'agit **d'une seule unité systemd (`vps-server-proxy.service`) avec plusieurs
@@ -168,7 +172,7 @@ L’installateur crée d’abord une entrée pour chaque protocole sélectionné
 
 `PortForwardManager.reserved_ports()` considère le port de chaque protocole proxy installé comme ceux du nœud anytls et de la console : il est réservé, si bien qu'une règle de transfert ne peut pas cibler un port déjà occupé par un protocole proxy.
 
-**La page `/proxy` de la console affiche également le nœud anytls**, s'il est installé. Un opérateur a jugé artificiel de placer anytls sur une page distincte : de son point de vue, ce sont tous des « nœuds proxy », quel que soit le moteur indépendant qui sert chacun d'eux. `/anytls` redirige vers cette page ; `POST /anytls/reset` reste inchangé, hormis la redirection finale vers `/proxy`. Les deux modules conservent un état entièrement indépendant (`public-ip.txt` et `SERVER_IP` d'anytls ne sont pas ceux du module proxy ; chacun peut être configuré différemment) et leurs propres boutons de réinitialisation ; seule la page d'affichage est commune.
+**La page `/proxy` de la console affiche également le nœud anytls**, s'il est installé. Un opérateur a jugé artificiel de placer anytls sur une page distincte : de son point de vue, ce sont tous des « nœuds proxy », quel que soit le moteur indépendant qui sert chacun d'eux. `/anytls` redirige vers cette page ; `POST /anytls/reset` reste inchangé, hormis la redirection finale vers `/proxy`. Les deux modules conservent un état entièrement indépendant et leurs propres boutons de réinitialisation ; seule la page d'affichage est commune.
 
 La page des nœuds affiche les adresses des interfaces de l’hôte et, si elle existe, l’adresse Tailscale. Elle n’affiche plus l’IP publique enregistrée à l’installation.
 
@@ -213,7 +217,7 @@ Un transfert relaie un port public TCP/UDP de cet hôte vers un appareil joignab
 
 - HTTP/HTTPS : les écouteurs publics sur 80/443 n'exposent que la page d'accessibilité ; la console de l'opérateur utilise un autre port, conservé sur disque. iperf3 n'écoute que dans une fenêtre de durée limitée ouverte après authentification.
 - La console lit `/proc/net/tcp[6]` pour journaliser les connexions TCP entrantes ; aucune route publique ne divulgue les secrets des proxys.
-- `install.sh` utilise le gestionnaire de paquets de la distribution et peut rechercher l'IP publique pendant l'installation ; le service lui-même n'effectue aucune requête sortante à l'exécution. `setup-anytls.sh` et `setup-proxy.sh` gèrent les unités sing-box et les certificats. iptables gère l'exposition temporaire d'iperf3 et les transferts activés ; systemd supervise les services et exécute les réinitialisations d'identifiants hors du bac à sable Web.
+- `install.sh` utilise le gestionnaire de paquets de la distribution et ne recherche pas l’IP publique ; le service ne le fait pas non plus à l’exécution. `setup-anytls.sh` et `setup-proxy.sh` gèrent les unités sing-box et les certificats. iptables gère l’exposition temporaire d’iperf3 et les transferts activés ; systemd supervise les services et exécute les réinitialisations d’identifiants hors du bac à sable Web.
 
 ## Pile technique
 
@@ -233,6 +237,8 @@ Un transfert relaie un port public TCP/UDP de cet hôte vers un appareil joignab
 Les solutions écartées et les raisons de chaque choix figurent dans les [Décisions][local-link-009] : ne pas les répéter ici.
 
 ## Conditions de reproduction
+
+<a id="vps-reproduction-requirements"></a>
 
 ### Environnement
 
@@ -256,9 +262,11 @@ Les solutions écartées et les raisons de chaque choix figurent dans les [Déci
 L'installateur installe les paquets système manquants (dont `iperf3`, facultatif) depuis les dépôts Debian/Ubuntu cibles, sans choisir de versions exactes ni d'instantanés de dépôt. Python, OpenSSL, les outils shell et système et systemd sont aussi fournis par l'OS cible. L'opérateur s'appuie sur les canaux de paquets maintenus pour la sécurité de la distribution choisie. Cela évite d'embarquer leurs binaires, mais les versions, empreintes et résolutions des dépendances transitives peuvent varier selon l'hôte et le moment ; **une restauration des dépendances
 strictement reproductible n'est pas obtenue**. Il faudrait pour cela une modification de l'installateur approuvée séparément et un instantané choisi de la distribution et de ses dépôts. Le champ `exclusions` lisible par machine du verrou consigne cette limite, et non un verrouillage fictif.
 
-Aucune clé API. Le service Web ne recherche pas l'IP publique par requête sortante à l'exécution. L'installateur peut effectuer une recherche sortante facultative ; son échec ne produit qu'un avertissement.
+Aucune clé API. Ni le service Web ni l’installateur ne recherchent l’IP publique par requête externe.
 
 ### Chemins et montages
+
+<a id="vps-paths-mounts"></a>
 
 | Chemin | Fourni par | Rôle |
 |---|---|---|
@@ -269,6 +277,8 @@ Aucune clé API. Le service Web ne recherche pas l'IP publique par requête sort
 | `/etc/vps-server-proxy/` | installateur | `config.json` de sing-box (plusieurs entrées) et son certificat autosigné initial ; les certificats des nouveaux nœuds sont dans `/etc/vps-server-nodes/certs/` |
 
 ### Référence de configuration
+
+<a id="vps-configuration-reference"></a>
 
 Toutes les variables utilisent le préfixe `VPSSRV_`. Ce n'est pas une question d'esthétique : `vps-webserver` utilise `VPSWS_` et `Anytsl-Serve` utilise `ANYTLS_`. Les trois peuvent cohabiter sur le même hôte ; un préfixe commun permettrait au `.env` d'un projet de reconfigurer silencieusement un autre.
 
@@ -303,11 +313,11 @@ Toutes les variables utilisent le préfixe `VPSSRV_`. Ce n'est pas une question 
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Flux parallèles dans chaque sens | `6` / `3` | non |
 | `VPSSRV_PING_SAMPLES` | Allers-retours utilisés pour calculer la latence | `20` | non |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | non |
-| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | Le module anytls conserve les noms d'origine | voir `.env.example` | non |
+| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | Le module anytls conserve les noms d'origine | voir `.env.example` | non |
 | `VPSSRV_ANYTLS_CONFIG` | Fichier où la console lit le nœud installé | `/etc/vps-server-anytls/config.json` | non |
 | `VPSSRV_ANYTLS_SERVICE` | Unité contrôlée par la console pour vérifier l'activité du nœud | `vps-server-anytls.service` | non |
 | `VPSSRV_ANYTLS_SETUP` | Script exécuté par la console pour renouveler les identifiants du nœud | `$PREFIX/anytls/setup-anytls.sh` | non |
-| `PROXY_PROTOCOLS`, `PROXY_SNI`, `SERVER_IP` | Paramètres du script du module proxy lui-même : module propre au projet, sans contrainte d'importation, mais noms sans préfixe pour conserver la distinction entre script et console d'anytls | voir `.env.example` | non |
+| `PROXY_PROTOCOLS`, `PROXY_SNI` | Paramètres du script du module proxy lui-même : module propre au projet, sans contrainte d'importation, mais noms sans préfixe pour conserver la distinction entre script et console d'anytls | voir `.env.example` | non |
 | `VPSSRV_PROXY_CONFIG` | Fichier où la console lit les nœuds installés | `/etc/vps-server-proxy/config.json` | non |
 | `VPSSRV_PROXY_SERVICE` | Unité contrôlée par la console pour vérifier l'activité des nœuds | `vps-server-proxy.service` | non |
 | `VPSSRV_PROXY_SETUP` | Script exécuté par la console pour renouveler les identifiants du protocole choisi | `$PREFIX/proxy/setup-proxy.sh` | non |
@@ -391,7 +401,7 @@ de ports, y compris les transferts activés.** C'est voulu et symétrique avec l
 - **Exécuter les scripts avec `bash <script>`, et non `./<script>`.** Le bit exécutable figure dans l'index Git et une copie fraîche l'a donc, mais pas une copie de travail sur un montage CIFS/SMB ; `./install.sh` y échoue avec « Permission denied ».
 - **Réimporter un exécutable fait perdre son bit exécutable.** La copie de travail du responsable est sur CIFS ; un fichier extrait là puis ajouté par `git add` est enregistré en `100644`, même s'il était en `100755` en amont. Cela s'est déjà produit pour le binaire `sing-box` et a rendu tout le module anytls inutilisable. Après réimportation, vérifier avec `git ls-files -s` et restaurer le bit avec `git update-index --chmod=+x <path>` : `chmod +x` seul est sans effet sur ce montage.
 - **Exécuter directement `setup-anytls.sh` renouvelle son port et son mot de passe.** Par défaut, il attribue de nouvelles valeurs aléatoires à `ANYTLS_PORT` et `ANYTLS_PASSWORD` et réécrit `config.json` à chaque exécution : l'invoquer à la main invalide donc tous les clients configurés avec les anciennes valeurs. `install.sh` ne le fait plus : lors d'une mise à niveau, il relit les deux valeurs dans `config.json` et les transmet au script ; un appel direct continue néanmoins de les modifier. Pour conserver le nœud, transmettre les valeurs actuelles, affichées toutes deux dans la section anytls de `/proxy` de la console : `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`. Comportement amont conservé volontairement. `setup-anytls.sh reset` les renouvelle volontairement ; le bouton de réinitialisation de la console est le moyen pris en charge pour le demander.
-- **La page des nœuds affiche les adresses des interfaces et de Tailscale.** L’ancien bloc d’adresse publique relevée à l’installation a été retiré : sur un VPS, il répétait l’adresse de l’interface et pouvait induire en erreur derrière un NAT. L’installation peut encore enregistrer `public-ip.txt` pour les scripts de configuration ; la console ne le lit pas.
+- **La page des nœuds affiche les adresses des interfaces et de Tailscale.** L’ancien bloc d’adresse publique relevée à l’installation a été retiré : sur un VPS, il répétait l’adresse de l’interface et pouvait induire en erreur derrière un NAT. Les scripts de configuration suppriment le `public-ip.txt` laissé par une ancienne installation ; la console ne le lit pas.
 - **Le `body` transmis à `render_page()`** **doit** contenir exactement un élément de premier niveau. `<main>` utilise `display: flex` sans surcharge de `flex-direction` : plusieurs éléments frères de premier niveau (par exemple un `<div class="card wide">` par protocole) s'alignent horizontalement au lieu de s'empiler. Ce bogue a réellement été livré dans une ancienne version de `/proxy` et signalé par un opérateur comme un problème de mise en page. Chaque page enveloppe donc tout dans une seule carte externe, avec les sections répétées imbriquées dans des div `.node-addr`.
 - **La désinstallation nécessite les mêmes `PREFIX` et `SERVICE_NAME` qu'à l'installation.** Sans variables d'environnement, `uninstall.sh` utilise les valeurs par défaut, ne trouve rien à ces chemins et annonce avoir réussi sans rien supprimer. La dernière ligne de l'installateur affiche la commande exacte avec les valeurs renseignées : l'utiliser plutôt que de la retaper de mémoire.
 

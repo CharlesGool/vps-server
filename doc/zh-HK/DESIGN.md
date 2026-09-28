@@ -24,6 +24,8 @@ metadata:
 
 ## 設計目標
 
+<a id="vps-design-goals"></a>
+
 **v2.0.0 已實作的目標(見[驗收限制][local-link-001]):**
 
 v2.0.0 亦包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真實主機驗收;以下目標描述先前已記錄的四個模組.
@@ -136,6 +138,8 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 
 ### proxy 模組
 
+<a id="vps-proxy-module"></a>
+
 舊待辦事項問:隨附 sing-box 執行檔是否支援 anytls 以外的協定,抑或需要第二個後端?答案是支援:`vmess`,`vless`,`trojan`,`shadowsocks`(2022-blake3-aes-128-gcm)均通過 `sing-box check`;而且透過實際執行,非僅檢查設定,證實四者可在同一 `sing-box run` 程序中同時綁定連接埠及接受連線.沒有新增第二個後端.
 
 與 anytls 不同,此模組採用**一個 systemd 服務單位(`vps-server-proxy.service`),一份 `config.json`
@@ -151,7 +155,7 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 
 `PortForwardManager.reserved_ports()` 把所有已安裝代理協定的連接埠列為保留,與既有 anytls 節點及控制台連接埠相同;轉發規則不能指向已由代理協定佔用的連接埠.
 
-**控制台的 `/proxy` 頁面亦顯示 anytls 節點**(如有安裝).操作員認為,從其角度兩者都是"代理節點",即使分屬不同獨立後端,分拆頁面也不合理.`/anytls` 會轉到這裏;`POST /anytls/reset` 不變,完成後只改為返回 `/proxy`.兩模組仍保持獨立狀態(anytls 自己的 `public-ip.txt`/`SERVER_IP` 並非代理模組的設定,兩者可不同),重設按鈕亦各自獨立;只共用顯示頁面.
+**控制台的 `/proxy` 頁面亦顯示 anytls 節點**(如有安裝).操作員認為,從其角度兩者都是"代理節點",即使分屬不同獨立後端,分拆頁面也不合理.`/anytls` 會轉到這裏;`POST /anytls/reset` 不變,完成後只改為返回 `/proxy`.兩模組仍保持獨立狀態,重設按鈕亦各自獨立;只共用顯示頁面.
 
 節點頁面列出主機網卡位址及可選的 Tailscale 位址,不再顯示安裝時記錄的公開 IP.
 
@@ -196,7 +200,7 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 
 - HTTP/HTTPS:80/443 公開監聽器只提供連通性頁面;操作員控制台使用持久保存的獨立連接埠;iperf3 只在經驗證後開啟的限時時段監聽.
 - 控制台讀取 `/proc/net/tcp[6]` 記錄入站 TCP 連線;不透過公開路由輸出代理機密.
-- `install.sh` 使用發行版套件管理器,並可於安裝時選擇查詢公開 IP;服務本身執行時不向外發送請求.`setup-anytls.sh` 和 `setup-proxy.sh` 管理 sing-box 服務單位及憑證.iptables 管理暫時開放的 iperf3 埠及已啟用的轉發;systemd 監督服務,並於 web 沙盒之外執行憑證重設.
+- `install.sh` 使用發行版套件管理器,不查詢公網 IP;服務運行期間也不對外查詢公網 IP.`setup-anytls.sh` 和 `setup-proxy.sh` 管理 sing-box 服務單位及憑證.iptables 管理暫時開放的 iperf3 埠及已啟用的轉發;systemd 監督服務,並於 web 沙盒之外執行憑證重設.
 
 ## 技術組合
 
@@ -216,6 +220,8 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 遭否決的方案及各選擇的原因見[決策][local-link-009],毋須在此重述.
 
 ## 重現要求
+
+<a id="vps-reproduction-requirements"></a>
 
 ### 環境
 
@@ -239,9 +245,11 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 安裝程式從目標 Debian/Ubuntu 套件庫安裝缺少的系統套件(包括可選 `iperf3`),但不選定準確版本或儲存庫快照.Python,OpenSSL,shell/系統工具和 systemd 亦由目標作業系統提供.主機操作員依賴所選發行版持續維護安全性的套件渠道取得更新.這避免隨附執行檔,但套件版本,雜湊及遞迴相依套件的解析可因主機及時間而異;**尚未達成嚴格,完全可重現的相依套件
 還原**.如要達成,須另外批准更改安裝程式,並選定發行版/儲存庫快照.鎖定檔內機器可讀的 `exclusions` 記錄這項界限,而非虛構的版本鎖定.
 
-沒有 API 金鑰.web 服務執行時不會向外查詢公開 IP.安裝程式可選擇對外查詢,失敗只作警告.
+沒有 API 金鑰.web 服務及安裝程式均不對外查詢公網 IP.
 
 ### 路徑與掛載
+
+<a id="vps-paths-mounts"></a>
 
 | 路徑 | 提供者 | 用途 |
 |---|---|---|
@@ -252,6 +260,8 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 | `/etc/vps-server-proxy/` | 安裝程式 | sing-box `config.json`(多個入站)及初始自簽憑證;新節點憑證位於 `/etc/vps-server-nodes/certs/` |
 
 ### 設定參考
+
+<a id="vps-configuration-reference"></a>
 
 所有變數使用 `VPSSRV_` 前綴.這不是外觀修飾:`vps-webserver` 使用 `VPSWS_`,`Anytsl-Serve` 使用 `ANYTLS_`;三者可安裝於同一主機,若共用前綴,一個項目的 `.env` 可默默改動另一項目的設定.
 
@@ -286,11 +296,11 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | 每方向並行串流數 | `6` / `3` | 否 |
 | `VPSSRV_PING_SAMPLES` | 計算延遲所用的往返樣本 | `20` | 否 |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | 否 |
-| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | anytls 模組保留上游變數名稱 | 見 `.env.example` | 否 |
+| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | anytls 模組保留上游變數名稱 | 見 `.env.example` | 否 |
 | `VPSSRV_ANYTLS_CONFIG` | 控制台讀取已安裝節點的位置 | `/etc/vps-server-anytls/config.json` | 否 |
 | `VPSSRV_ANYTLS_SERVICE` | 控制台檢查節點狀態的服務單位 | `vps-server-anytls.service` | 否 |
 | `VPSSRV_ANYTLS_SETUP` | 控制台更換節點憑證所用腳本 | `$PREFIX/anytls/setup-anytls.sh` | 否 |
-| `PROXY_PROTOCOLS`, `PROXY_SNI`, `SERVER_IP` | proxy 模組腳本層面的設定;雖為原創,不受隨附上游限制,仍維持無前綴,以符合 anytls 腳本與控制台的區分 | 見 `.env.example` | 否 |
+| `PROXY_PROTOCOLS`, `PROXY_SNI` | proxy 模組腳本層面的設定;雖為原創,不受隨附上游限制,仍維持無前綴,以符合 anytls 腳本與控制台的區分 | 見 `.env.example` | 否 |
 | `VPSSRV_PROXY_CONFIG` | 控制台讀取已安裝節點集合的位置 | `/etc/vps-server-proxy/config.json` | 否 |
 | `VPSSRV_PROXY_SERVICE` | 控制台檢查節點狀態的服務單位 | `vps-server-proxy.service` | 否 |
 | `VPSSRV_PROXY_SETUP` | 控制台更換選定協定憑證所用腳本 | `$PREFIX/proxy/setup-proxy.sh` | 否 |
@@ -374,7 +384,7 @@ SQLite 綱要原封不動繼承自 `vps-webserver`:一個 `visits` 表,僅保留
 - **以 `bash <script>` 而非 `./<script>` 執行腳本.** Git 索引記錄了可執行位元,新 clone 可用;但 CIFS/SMB 掛載的工作副本不會保留,當中的 `./install.sh` 會因"Permission denied"失敗.
 - **重新隨附任何可執行檔會遺失其模式位元.** 維護者的工作副本位於 CIFS,解壓後以 `git add` 加入的檔案會記為 `100644`,即使上游為 `100755`.`sing-box` 執行檔曾因此令整個 anytls 模組故障.重新隨附後用 `git ls-files -s` 檢查,以 `git update-index --chmod=+x <path>` 恢復;該掛載上的 `chmod +x` 並無效用.
 - **直接執行 `setup-anytls.sh` 會更換連接埠和密碼.** 它每次都為 `ANYTLS_PORT` 和 `ANYTLS_PASSWORD` 預設新的隨機值並重寫 `config.json`,令先前設定的所有用戶端失效.`install.sh` 升級時會從 `config.json` 讀回並傳入兩者,因此不再如此;直接呼叫仍然會.如要保留節點,傳入 `/proxy` 頁面的 anytls 區塊所列現值:`ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.此為刻意繼承的上游行為.`setup-anytls.sh reset` 是刻意更換,控制台重設按鈕是受支援的操作方式.
-- **節點頁面列出網卡及 Tailscale 位址.** 舊的安裝時公開位址區塊已移除:它在 VPS 上重複顯示網卡位址,在 NAT 後亦可能誤導使用者.安裝程式仍可為設定腳本記錄 `public-ip.txt`;控制台不再讀取它.
+- **節點頁面列出網絡介面及 Tailscale 位址.** 舊的安裝時公網位址區塊已移除:它在 VPS 上重複顯示介面位址,在 NAT 後亦可能誤導使用者.設定腳本會清除舊安裝留下的 `public-ip.txt`;控制台不讀取它.
 - **`body` 傳給 `render_page()` 時** **必須**剛好只有一個頂層元素. `<main>` 是 `display: flex` 且沒有覆寫 `flex-direction`,多個頂層同層元素(例如每協定一個 `<div class="card wide">`)會並排而非垂直堆疊;早期 `/proxy` 頁面確曾發佈此錯誤,操作員報告"layout is messed up".各頁以單一外層卡片包裹所有內容,重複區塊放於其中的 `.node-addr` div.
 - **移除時須使用安裝時相同的 `PREFIX` 和 `SERVICE_NAME`.** `uninstall.sh` 未設環境變數時使用預設值,如該等路徑無檔案,會報告成功但實際甚麼都沒移除.安裝摘要末行印出填好數值的準確指令,應使用該指令而非憑記憶輸入.
 

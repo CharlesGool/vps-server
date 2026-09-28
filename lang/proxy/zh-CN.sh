@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR 已启用' ;;
   enabling_bbr) fmt='开启 BBR ...' ;;
   bbr_failed) fmt='BBR 开启失败（内核可能 <4.9 或未编译 tcp_bbr 模块，需升级内核）' ;;
-  ip_lookup_failed) fmt='<自动获取失败，请手动替换为服务器公网IP>' ;;
   opening_port) fmt='放行端口 %s/tcp ...' ;;
   iptables_failed) fmt='iptables 放行 %s/tcp 失败；服务已启动，请手动放行该端口。' ;;
   firewall_missing) fmt='未找到可用的防火墙管理工具（ufw/firewalld/iptables），已跳过自动放行 %s/tcp。' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='配置已写入 %s（校验通过，协议：%s）' ;;
   service_started) fmt='服务已启动' ;;
   service_failed) fmt='服务启动失败，运行: journalctl -u %s -e' ;;
-  public_network) fmt='公网' ;;
   private_network) fmt='内网' ;;
   result_heading) fmt=' 多协议代理节点信息（%s）' ;;
   enabled_protocols) fmt=' 已启用协议: %s' ;;

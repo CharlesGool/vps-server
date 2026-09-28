@@ -5,7 +5,7 @@
 # Vendored from Anytsl-Serve v1.2.0 —— 来源与改动记录在 anytls/.upstream-version。
 # 服务名、配置目录、二进制路径都带上了 vps-server 前缀，且本项目
 # 增加了本地修正与多语言输出；完整偏差记录见 anytls/.upstream-version。
-# 环境变量名（ANYTLS_PORT / ANYTLS_PASSWORD / SNI / SERVER_IP）刻意保持上游原样：
+# 环境变量名（ANYTLS_PORT / ANYTLS_PASSWORD / SNI）刻意保持上游原样：
 # 改名就等于改 vendored 代码，而这正是 vendoring 策略要避免的事。
 set -Eeuo pipefail
 
@@ -13,7 +13,6 @@ set -Eeuo pipefail
 ANYTLS_PORT="${ANYTLS_PORT:-$(( (RANDOM % 20000) + 20000 ))}"
 ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-$(openssl rand -base64 16)}"
 SNI="${SNI:-www.bing.com}"           # 伪装用的 SNI，客户端 insecure=1 不校验证书，可随意填一个常见域名
-SERVER_IP="${SERVER_IP:-}"           # 不填则自动探测公网 IP
 
 INSTALL_DIR=/etc/vps-server-anytls
 BIN_PATH=/usr/local/bin/sing-box-vps-server
@@ -295,20 +294,6 @@ EOF
 
 urlenc(){ jq -rn --arg v "$1" '$v|@uri'; }
 
-# $SERVER_IP only — no more outbound auto-detection (dropped 2026-09-22).
-# The curl-based lookup used to return, on the common case of a VPS whose
-# public IP is bound directly to its own interface, the exact same address
-# get_lan_ips() already reports — an operator testing a real install found
-# the node page showing that address twice, once as "公网" and once as
-# "内网-eth0". On a box *without* a directly-bound public IP (behind NAT,
-# with no $SERVER_IP override), the auto-detected address was worse than
-# redundant: it is whatever the NAT gateway's own external IP happens to be,
-# which this node is not reachable at without a port-forward this project
-# has no way to confirm exists. An explicit $SERVER_IP is neither: it is the
-# operator's own deliberate statement of "reach me here" (e.g. exactly the
-# NAT+port-forward case above, done correctly), so it is the only source left.
-get_ip(){ echo "$SERVER_IP"; }
-
 get_lan_ips(){
   local iface cidr
   while read -r iface cidr; do
@@ -340,26 +325,11 @@ share_link(){
 }
 
 print_result(){
-  local wan_ip ts_ip iface ip entries=() entry label seen=()
+  local ts_ip iface ip entries=() entry label seen=()
 
   is_seen(){ local needle="$1" s; for s in "${seen[@]}"; do [[ "$s" == "$needle" ]] && return 0; done; return 1; }
 
-  # Only present when the operator explicitly set $SERVER_IP — see get_ip()'s
-  # own comment for why auto-detection was dropped entirely rather than kept
-  # as a fallback.
-  wan_ip="$(get_ip)"
-  if [[ -n "$wan_ip" ]]; then
-    entries+=("$(msg address_public)|${wan_ip}")
-    seen+=("$wan_ip")
-    # Persisted so app.py's console page can show it later: app.py makes no
-    # outbound request at runtime (see DESIGN.md), and this value only ever
-    # comes from an env var passed at install/reset time, which is gone by
-    # the time the console renders the page.
-    printf '%s\n' "$wan_ip" > "${INSTALL_DIR}/public-ip.txt"
-    chmod 0644 "${INSTALL_DIR}/public-ip.txt"
-  else
-    rm -f "${INSTALL_DIR}/public-ip.txt"
-  fi
+  rm -f "${INSTALL_DIR}/public-ip.txt"
 
   while read -r iface ip; do
     is_seen "$ip" && continue

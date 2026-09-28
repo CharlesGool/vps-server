@@ -46,7 +46,7 @@ web,iperf3,anytls,proxy,frps 與 Lucky 六個模組均可在安裝時選擇.frps
 - 執行環境:Python 3.9+(發行版提供的 `python3` 即可;不需安裝額外 Python 套件)
 - 架構:web 與 iperf3 模組支援各種架構;anytls,proxy,frps 及 Lucky **僅限 x86-64**,因為隨附的執行檔適用於 amd64
 - web 模組使用預設公開連接埠時,80 和 443 **必須**未被佔用;安裝程式會拒絕與 nginx,Apache,Caddy 或 `vps-webserver` 搶佔連接埠
-- 外部服務:執行時無需.安裝需要發行版的套件鏡像站;可選的公開 IP 查詢可能連接外部服務.
+- 外部服務:執行期間不需要.安裝需要發行版套件鏡像;節點摘要只使用網路介面位址及可用的 Tailscale 位址,不對外查詢公開 IP.
 - 最低需求:上述作業系統,執行環境,架構與閒置連接埠.尚未記錄其他建議的硬體需求;約 150 MB 的 VPS 磁碟空間可容納隨附執行檔.
 
 ## 安裝
@@ -145,8 +145,8 @@ bash deploy/uninstall.sh
 
 ## 致謝
 
-瀏覽器測試使用 [LibreSpeed](https://github.com/librespeed/speedtest);QR 圖碼使用
-[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);隨附的代理核心為
+瀏覽器測試使用 [LibreSpeed](https://github.com/librespeed/speedtest) ;QR 圖碼使用
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) ;隨附的代理核心為
 [sing-box](https://github.com/SagerNet/sing-box). 實驗性模組隨附
 [frp](https://github.com/fatedier/frp) 與
 [Lucky](https://github.com/gdy666/lucky). 元件清單和原始授權檔路徑見[第三方聲明][local-link-003].

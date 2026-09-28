@@ -23,7 +23,7 @@ FORMAT = re.compile(r"%(?:[0-9]+\$)?[sd]")
 class ProxyLocaleTest(unittest.TestCase):
     def test_catalogs_have_matching_keys_and_placeholders(self):
         english = dict(ENTRY.findall((CATALOGS / "en.sh").read_text()))
-        self.assertEqual(len(english), 51)
+        self.assertEqual(len(english), 49)
         for filename in LOCALES.values():
             with self.subTest(filename=filename):
                 catalog = dict(ENTRY.findall((CATALOGS / filename).read_text()))

@@ -33,10 +33,12 @@ metadata:
 ## 限制
 
 - 自动化检查已核对文案键名,占位符及文档结构,但新增译文尚未经过独立的母语审阅.
-- 正在使用的源码检出目录根部可能含有被 Git 忽略的运行状态(`admin_password.txt`,`console_port.txt`,`data/`)及 Python 缓存(`__pycache__/`).结构检查器会报告这些本地文件;仅包含受版本控制的项目文件的干净导出可通过检查.迁移时应保留运行状态.
+- 正在使用的源码检出根目录可能含有被 Git 忽略的运行状态(`admin_password.txt`,`console_port.txt`,`data/`,`certs/`)及 Python 缓存(`__pycache__/`).结构检查器会报告这些本地文件;仅包含受版本控制文件的干净导出可通过检查.迁移时应保留运行状态.若 CIFS 工作区挂载固定使用 0644 文件模式和 0755 目录模式,`chmod` 不会改变本地密钥显示的权限;须单独评估挂载访问控制.
 - 当前分支的真实主机验收限制见下文.
 
 ## 决策
+
+<a id="vps-decisions"></a>
 
 以下按日期排列的决策保留了被否决方案及其代价.历史决策不构成新的法律或发布批准.
 
@@ -53,11 +55,15 @@ metadata:
 
 ## 当前状态与验收限制
 
+<a id="vps-current-state"></a>
+
 v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在真实主机上完成验收;本次发布周期中,新的检出目录布局只经过本地自动化验证.
 
 2026-09-22 的源码快照将 `feat/proxy-protocols` 描述为叠加在尚未合并的 `feat/hardening-batch` 之上.v2.0.0 纳入了这两个分支当前的项目文件树,但 proxy 模块仍待操作员在真实主机上测试.独立应用的地址去重及公网 IP 修复已纳入分支审核.这里不声称已在真实主机验证 proxy 功能;旧容器由于 systemd 未作为 PID 1 运行而使用了 `systemctl` 桩.下文 147/147,150/150,153/153 和 156/156 的测试通过记录以及较早的真实主机检查均为历史记录,不是新验证.
 
 ### 分支记录 (2026-09-22 状态快照)
+
+<a id="vps-branch-record-2026-09-22"></a>
 
 原状态记录称功能已实现并自行测试,但操作员审核仍待进行;它叠加于 `feat/hardening-batch`,以使用其独立的 y/n 模块选择器.首次一次性 Docker 验证中 systemd 无法作为 PID 1 启动,因而用桩替换 `systemctl`;实际执行了 sing-box 配置检查,iptables 规则,凭据轮换,了解共享二进制文件的卸载,以及无人值守安装与升级重跑.测试发现并修复两个缺陷:无效 `PROXY_PROTOCOLS` 的验证被吞掉(导致零入站),以及生成端口溢出 sing-box 的 uint16 上限.记录当时新增 19 项测试,147/147 通过;这**不构成**对 proxy 功能的 systemd 或真实主机验证.
 
@@ -74,6 +80,8 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 已安装文件仍采用 `$PREFIX/app.py`,`$PREFIX/static/`,`$PREFIX/anytls/`,`$PREFIX/proxy/` 和 `$PREFIX/sing-box` 的平铺布局;模块配置仍使用 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.以下按日期记录的决策及已完成工作中的旧路径指其历史检出版本,不是当前使用说明.此次离线迁移检查不等于真实主机或 systemd 验证;仍待操作员验收.
 
 ## 已完成工作历史
+
+<a id="vps-completed-work"></a>
 
 以下已完成项是旧需求列表按日期记录的实施和验证历史,而非刚运行的测试报告.其余目标见[设计目标][local-link-003];尚未解决的 `_db_lock` 项目在[缺陷][local-link-004]中.
 
@@ -183,8 +191,12 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - 当前节点访问管理:原“流量与周期”在八种界面语言中更名为“访问管理”.流量上限,上传和下载限速,达到上限后的行为,重置间隔和有效期均移入独立弹窗.常规卡片宽度下,“访问管理”“随机重置”“删除节点”位于同一行.测速前的导航入口现称“首页”.
 - 本轮检查:311 项自动化测试通过(8 项跳过),Python 编译及 diff 空白检查通过.Chromium 确认中英文桌面卡片及 390 px 英文视口中的三按钮同排.窄屏弹窗打开时首个字段获得焦点,滚动设置时仍可见取消和保存按钮.未在测试机提交限制设置.
 - 本轮部署:指定测试机在标准应用目录运行 `dev-a785fe5`.旧版 Web 源码,样式,脚本,语言目录和版本标记的权限为 0600 的备份保存在应用目录外.仅重启 Web 服务.Web,proxy,node-meter 和 AnyTLS 服务均运行正常并设为开机启动;控制台在原地址和端口监听,并通过局域网提供新版本.未重启主机.
-- 待办:修复译本文档原有片段链接;在真实 Android 手机上验证 Clash 导入;验证各新策略的真实流量,名单内设备的 IP 免密访问及主机重启后的启动.下一步:完成这些验收检查,再审核并合并本分支.
+- 当前规范检查(2026-09-28):译本文档中失效的标题片段已改用各语言一致的固定锚点.proxy 和 anytls 安装摘要现在只列网卡地址及可用的 Tailscale 地址,清除旧的 `public-ip.txt`,且不再进行出站公网 IP 查询.`SERVER_IP` 不再是安装选项.这次源码修改尚未部署到测试机;现有模块仍运行此前版本.
+- 本轮检查:安装摘要修改后,311 项自动化测试通过(8 项跳过);Shell 语法,语言目录测试及 diff 空白检查通过.受版本控制文件的干净导出通过项目结构检查.当前工作区结构检查报告包括 `certs/` 在内的五项被忽略的运行状态或缓存,已列入限制.本地链接,译本文档和外部目标仍在最终复核.未发现临时项目规则.测试机上的安装摘要实际输出及主机重启尚未验证.
+- 待办:在真实 Android 手机上验证 Clash 导入,验证各新策略的真实流量,名单内设备的 IP 免密访问及主机重启后的启动.下一步:完成文档检查和发布范围审核并推送本分支,然后完成这些验收检查再合并.
 ## 变更日志
+
+<a id="vps-changelog"></a>
 
 此处仅列已打标签的发布版本.以下条目保留原变更日志的完整历史,并记录 v2.0.0 的发布内容.
 
@@ -219,6 +231,8 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - README 安装节的单行快速安装和分步命令仍使用 `--branch v1.0.4`;紧随 v1.1.0 发布后照着执行的用户会安装缺少端口转发的上一版.
 
 ### v1.1.0 — 2026-09-19
+
+<a id="vps-release-v1-1-0"></a>
 
 #### Added
 
@@ -349,4 +363,8 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `dd9627f` fix(web): keep security entry visible in settings
 - `0fc871a` fix(auth): return to requested settings page after login
 - `5c518c0` fix(web): add dashboard link and align security card
-- (this commit) docs(log): record settings review and deployment
+- `9db2482` docs(log): record settings review and deployment
+- `fdf8fbc` feat(nodes): move access limits into dialog
+- `a785fe5` fix(nodes): keep action buttons on one row
+- `d03abb7` docs(log): record access dialog and test deployment
+- (this commit) fix(standards): align setup addresses and document links

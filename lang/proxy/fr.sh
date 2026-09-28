@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR activé' ;;
   enabling_bbr) fmt='Activation de BBR ...' ;;
   bbr_failed) fmt='Impossible d’activer BBR (noyau antérieur à 4.9 ou module tcp_bbr absent ; mettez à niveau le noyau)' ;;
-  ip_lookup_failed) fmt='<échec de la détection automatique de l’IP ; remplacez par l’IP publique du serveur>' ;;
   opening_port) fmt='Ouverture du port %s/tcp ...' ;;
   iptables_failed) fmt='iptables ne peut pas ouvrir %s/tcp ; le service fonctionne, ouvrez ce port manuellement.' ;;
   firewall_missing) fmt='Aucun gestionnaire de pare-feu utilisable (ufw/firewalld/iptables) ; ouverture automatique de %s/tcp ignorée.' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='%s écrit (validation réussie ; protocoles : %s)' ;;
   service_started) fmt='Service démarré' ;;
   service_failed) fmt='Échec du démarrage du service ; exécutez : journalctl -u %s -e' ;;
-  public_network) fmt='Public' ;;
   private_network) fmt='Privé' ;;
   result_heading) fmt=' Informations du nœud proxy multiprotocole (%s)' ;;
   enabled_protocols) fmt=' Protocoles activés : %s' ;;

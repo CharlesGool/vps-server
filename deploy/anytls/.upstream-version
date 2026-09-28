@@ -34,13 +34,11 @@
 #     iptables line appeared in the operator-facing summary on every repeat
 #     install. Upstream only redirected stderr, because on a first install the
 #     rule never exists and -C always fails.
-#   * print_result() writes the detected public address to
-#     $INSTALL_DIR/public-ip.txt. The console shows the node's client
-#     configuration for that address, and app.py makes no outbound request at
-#     runtime — so the one moment the address can be learned is install time.
-#     Removed with the config directory on uninstall.
+#   * print_result() lists interface and Tailscale addresses only and removes
+#     a public-ip.txt left by an older installation. An explicit SERVER_IP no
+#     longer adds a separate address to the client summary.
 #
-# The environment variable names (ANYTLS_PORT, ANYTLS_PASSWORD, SNI, SERVER_IP)
+# The environment variable names (ANYTLS_PORT, ANYTLS_PASSWORD, SNI)
 # are deliberately NOT renamed to a VPSSRV_ prefix: renaming them would mean
 # editing vendored logic, which is what this file exists to keep honest.
 #
@@ -51,15 +49,10 @@
 #     now checks whether /etc/vps-server-proxy/config.json still exists before
 #     deleting the binary; if it does, only $INSTALL_DIR is removed. The
 #     symmetric check lives in proxy/setup-proxy.sh's own uninstall().
-#   * get_ip() no longer falls back to an outbound curl lookup
-#     (api.ip.sb/ifconfig.me) when $SERVER_IP is unset — it returns
-#     $SERVER_IP or nothing. Changed 2026-09-22: an operator testing a real
-#     install found the node page showing the same IP twice (once as
-#     "public", once as a LAN interface) on a VPS with no NAT, since the
-#     auto-detected address there is just whatever the main interface
-#     already has. print_result() now also skips any later address source
-#     that repeats one an earlier source already reported, and only writes
-#     (or removes) public-ip.txt based on whether $SERVER_IP was given.
+#   * get_ip() was first limited to explicit SERVER_IP in 2026-09-22 after a
+#     real host exposed duplicate public and interface addresses. It has now
+#     been removed along with that separate public-address output; the
+#     duplicate filter still applies to interface and Tailscale addresses.
 #
 #   * Operator-facing messages now use eight native shell catalogs under
 #     lang/anytls/. The installed module requires that catalog directory,

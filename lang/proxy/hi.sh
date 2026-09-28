@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR चालू है' ;;
   enabling_bbr) fmt='BBR चालू किया जा रहा है ...' ;;
   bbr_failed) fmt='BBR चालू नहीं हो सका (कर्नेल 4.9 से पुराना हो सकता है या tcp_bbr अनुपस्थित है; कर्नेल अपग्रेड करें)' ;;
-  ip_lookup_failed) fmt='<IP स्वतः पता नहीं चला; इसे सर्वर के सार्वजनिक IP से बदलें>' ;;
   opening_port) fmt='पोर्ट %s/tcp खोला जा रहा है ...' ;;
   iptables_failed) fmt='iptables से %s/tcp नहीं खुला; सेवा चल रही है, इसलिए पोर्ट हाथ से खोलें।' ;;
   firewall_missing) fmt='उपयोग योग्य फ़ायरवॉल प्रबंधक (ufw/firewalld/iptables) नहीं मिला; %s/tcp स्वतः नहीं खोला गया।' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='%s लिखा गया (जाँच सफल; प्रोटोकॉल: %s)' ;;
   service_started) fmt='सेवा शुरू हो गई' ;;
   service_failed) fmt='सेवा शुरू नहीं हुई; चलाएँ: journalctl -u %s -e' ;;
-  public_network) fmt='सार्वजनिक' ;;
   private_network) fmt='निजी' ;;
   result_heading) fmt=' बहु-प्रोटोकॉल प्रॉक्सी नोड जानकारी (%s)' ;;
   enabled_protocols) fmt=' चालू प्रोटोकॉल: %s' ;;

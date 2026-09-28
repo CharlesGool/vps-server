@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR enabled' ;;
   enabling_bbr) fmt='Enabling BBR ...' ;;
   bbr_failed) fmt='Could not enable BBR (kernel may be older than 4.9 or lack tcp_bbr; upgrade the kernel)' ;;
-  ip_lookup_failed) fmt='<automatic IP lookup failed; replace with the server public IP>' ;;
   opening_port) fmt='Opening port %s/tcp ...' ;;
   iptables_failed) fmt='iptables failed to open %s/tcp; service is running, so open this port manually.' ;;
   firewall_missing) fmt='No usable firewall manager (ufw/firewalld/iptables); skipped automatic opening of %s/tcp.' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='Wrote %s (validated; protocols: %s)' ;;
   service_started) fmt='Service started' ;;
   service_failed) fmt='Service failed to start; run: journalctl -u %s -e' ;;
-  public_network) fmt='Public' ;;
   private_network) fmt='Private' ;;
   result_heading) fmt=' Multi-protocol proxy node information (%s)' ;;
   enabled_protocols) fmt=' Enabled protocols: %s' ;;

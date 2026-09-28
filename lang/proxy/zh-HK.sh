@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR 已啟用' ;;
   enabling_bbr) fmt='正在啟用 BBR ...' ;;
   bbr_failed) fmt='無法啟用 BBR（核心可能低於 4.9 或缺少 tcp_bbr，請升級核心）' ;;
-  ip_lookup_failed) fmt='<自動取得 IP 失敗，請改為伺服器的公用 IP>' ;;
   opening_port) fmt='正在開放連接埠 %s/tcp ...' ;;
   iptables_failed) fmt='iptables 無法開放 %s/tcp；服務已啟動，請手動開放此連接埠。' ;;
   firewall_missing) fmt='找不到可用的防火牆管理工具（ufw/firewalld/iptables）；已略過自動開放 %s/tcp。' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='已寫入 %s（驗證通過；協定：%s）' ;;
   service_started) fmt='服務已啟動' ;;
   service_failed) fmt='服務啟動失敗；請執行：journalctl -u %s -e' ;;
-  public_network) fmt='公網' ;;
   private_network) fmt='內網' ;;
   result_heading) fmt=' 多協定代理節點資訊（%s）' ;;
   enabled_protocols) fmt=' 已啟用協定：%s' ;;

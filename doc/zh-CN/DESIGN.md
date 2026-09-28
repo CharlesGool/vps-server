@@ -24,6 +24,8 @@ metadata:
 
 ## 设计目标
 
+<a id="vps-design-goals"></a>
+
 **v2.0.0 已实现的目标(见[验收限制][local-link-001]):**
 
 v2.0.0 也包含实验性的 frps 和 Lucky 安装路径.它们尚未在真实主机上完成行为验收;以下目标描述此前已记录的四个模块.
@@ -195,6 +197,8 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 
 ### proxy 模块
 
+<a id="vps-proxy-module"></a>
+
 旧需求曾询问随附的 sing-box 二进制文件能否支持 anytls 以外的协议,还是需要使用第二套后端.答案是前者:`vmess`,`vless`,`trojan`,`shadowsocks`(2022-blake3-aes-128-gcm)都通过 `sing-box check`;实际运行验证(并非仅检查配置)表明,四者可以在同一个 `sing-box run` 进程中同时绑定端口并接受连接.因此没有引入第二套后端.
 
 与 anytls 不同,这里是**一个 systemd unit(`vps-server-proxy.service`)和一份 `config.json` 中
@@ -210,7 +214,7 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 
 `PortForwardManager.reserved_ports()` 将所有已安装代理协议的端口,与 anytls 节点及控制台的端口一样视为保留端口;端口转发规则不能指向代理协议占用的端口.
 
-**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里;`POST /anytls/reset` 保持原样,但完成后返回 `/proxy`.两个模块的状态仍完全独立(anytls 自己的 `public-ip.txt`/`SERVER_IP` 不等于 proxy 模块的设置;可以分别配置),重置按钮也独立;只是共享展示页面.
+**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里;`POST /anytls/reset` 保持原样,但完成后返回 `/proxy`.两个模块的状态仍完全独立,重置按钮也独立;只是共享展示页面.
 
 节点页面列出主机网卡地址及可选的 Tailscale 地址,不再显示安装时记录的公网 IP.
 
@@ -289,7 +293,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 
 - HTTP/HTTPS:80/443 上的公开监听器只提供可达性页面;操作员控制台使用单独的持久化端口.iperf3 仅在鉴权后开启的限时窗口中监听.
 - 控制台读取 `/proc/net/tcp[6]` 记录入站 TCP 连接;公开路由不导出代理凭据.
-- `install.sh` 使用发行版包管理器,并可在安装时查询公网 IP;服务运行时不发出出站请求.`setup-anytls.sh` 与 `setup-proxy.sh` 管理 sing-box unit 和证书.iptables 管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外执行凭据重置.
+- `install.sh` 使用发行版包管理器,不查询公网 IP;服务运行时也不进行出站公网 IP 查询.`setup-anytls.sh` 与 `setup-proxy.sh` 管理 sing-box unit 和证书.iptables 管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外执行凭据重置.
 
 ## 技术栈
 
@@ -309,6 +313,8 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 各方案及其被否决的替代方案和理由见[决策][local-link-009],这里不重复.
 
 ## 复现要求
+
+<a id="vps-reproduction-requirements"></a>
 
 ### 环境
 
@@ -334,9 +340,11 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 安装程序从目标 Debian/Ubuntu 仓库安装缺失的系统包(包括可选的 `iperf3`),不选择精确版本或仓库快照.Python,OpenSSL,shell/系统工具及 systemd 同样由目标系统提供.主机操作员依靠所选发行版持续维护安全更新的软件包渠道.这避免随附这些二进制文件,但不同主机,不同时刻的包版本,散列及传递依赖解析可能不同;**尚未实现严格,完全可复现的依赖
 恢复**.要实现它,需要另行批准安装程序修改并选择发行版/仓库快照.锁文件可机读的 `exclusions` 记录了这一边界,而非虚构的锁定.
 
-无需 API 密钥.Web 服务运行时不查询公网 IP;安装程序可能进行可选出站查询,失败仅给出警告.
+无需 API 密钥.Web 服务和安装程序均不进行出站公网 IP 查询.
 
 ### 路径与挂载
+
+<a id="vps-paths-mounts"></a>
 
 | 路径 | 由谁提供 | 用途 |
 |---|---|---|
@@ -347,6 +355,8 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(多个入站)及初始自签名证书;新节点证书位于 `/etc/vps-server-nodes/certs/` |
 
 ### 配置参考
+
+<a id="vps-configuration-reference"></a>
 
 所有变量都使用 `VPSSRV_` 前缀.这不是装饰性的:`vps-webserver` 占用
 `VPSWS_` 前缀,`Anytsl-Serve` 占用 `ANYTLS_` 前缀,三者可能同时装在一台主机上,
@@ -383,11 +393,11 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | 每个方向的并行流数 | `6` / `3` | 否 |
 | `VPSSRV_PING_SAMPLES` | 用于计算延迟数值的往返次数 | `20` | 否 |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | 否 |
-| `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI`,`SERVER_IP` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
+| `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
 | `VPSSRV_ANYTLS_CONFIG` | 控制台从哪里读取已安装的节点信息 | `/etc/vps-server-anytls/config.json` | 否 |
 | `VPSSRV_ANYTLS_SERVICE` | 控制台用来检查节点存活状态的 unit | `vps-server-anytls.service` | 否 |
 | `VPSSRV_ANYTLS_SETUP` | 控制台用来轮换该节点凭据所运行的脚本 | `$PREFIX/anytls/setup-anytls.sh` | 否 |
-| `PROXY_PROTOCOLS`,`PROXY_SNI`,`SERVER_IP` | proxy 模块自有的脚本级变量;不受随附上游代码的限制,但为保持 anytls 的脚本与控制台之分而保留不带前缀的名称 | 见 `.env.example` | 否 |
+| `PROXY_PROTOCOLS`,`PROXY_SNI` | proxy 模块自有的脚本级变量;不受随附上游代码的限制,但为保持 anytls 的脚本与控制台之分而保留不带前缀的名称 | 见 `.env.example` | 否 |
 | `VPSSRV_PROXY_CONFIG` | 控制台读取已安装节点集合的位置 | `/etc/vps-server-proxy/config.json` | 否 |
 | `VPSSRV_PROXY_SERVICE` | 控制台检查节点存活状态的 unit | `vps-server-proxy.service` | 否 |
 | `VPSSRV_PROXY_SETUP` | 控制台运行以轮换指定协议凭据的脚本 | `$PREFIX/proxy/setup-proxy.sh` | 否 |
@@ -524,7 +534,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
   这是刻意继承下来的上游行为.`setup-anytls.sh reset` 才是有意去轮换它们的,
   控制台上的重置按钮是官方支持的,用来达到这个目的的方式.
-- **节点页面列出网卡和 Tailscale 地址.** 旧的安装时公网地址区块已移除:它在 VPS 上重复显示网卡地址,在 NAT 后也可能误导用户.安装程序仍可为设置脚本记录 `public-ip.txt`;控制台不再读取它.
+- **节点页面列出网卡和 Tailscale 地址.** 旧的安装时公网地址区块已移除:它在 VPS 上重复显示网卡地址,在 NAT 后也可能误导用户.设置脚本会清除旧安装留下的 `public-ip.txt`;控制台不读取它.
 - **`body` 传给 `render_page()` 时** **必须**恰好包含一个顶层元素. `<main>` 使用 `display: flex`,未覆盖 `flex-direction`,因此多个顶层兄弟元素(例如每个协议一个 `<div class="card wide">`)会并排而非上下堆叠.这是 `/proxy` 页面早期版本真实发布过的缺陷,操作员报告为“布局乱了”.每个页面都用一个外层卡片包住全部内容,重复分区则在其内部以 `.node-addr` div 嵌套.
 - **拆卸时需要用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`.** 不带任何环境变量
   运行 `uninstall.sh` 会读取默认值,在那些路径上什么都找不到,并报告"成功",

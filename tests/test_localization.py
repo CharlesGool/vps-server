@@ -61,7 +61,7 @@ class LocalizationTest(unittest.TestCase):
                                      re.findall(r"<[^>]+>", english[key]), (tag, key))
 
     def test_shell_catalogs_keep_keys_and_printf_shapes(self):
-        expected_counts = {"installer": 96, "anytls": 72, "proxy": 51,
+        expected_counts = {"installer": 96, "anytls": 71, "proxy": 49,
                            "frps": 16, "lucky": 23, "uninstaller": 15}
         format_pattern = r"%(?:[0-9]+\$)?[-+ #0]*[0-9.]*(?:s|d|i|u|f|%)"
         for component, expected_count in expected_counts.items():

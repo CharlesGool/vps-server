@@ -31,7 +31,6 @@ case "$key" in
   bbr_enabled) fmt='BBR مفعّل' ;;
   bbr_enabling) fmt='جارٍ تفعيل BBR ...' ;;
   bbr_failed) fmt='تعذر تفعيل BBR (قد تكون النواة أقدم من 4.9 أو تفتقد tcp_bbr؛ حدّث النواة)' ;;
-  address_public) fmt='عام' ;;
   address_lan) fmt='LAN-%s' ;;
   summary_heading) fmt=' معلومات عقدة anytls' ;;
   summary_port) fmt=' المنفذ: %s' ;;

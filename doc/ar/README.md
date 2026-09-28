@@ -46,7 +46,7 @@ metadata:
 - بيئة التشغيل: Python 3.9+ (يكفي `python3` الخاص بالتوزيعة؛ لا توجد تبعيات Python يلزم تثبيتها).
 - البنية: أي بنية لوحدتي web وiperf3؛ و**x86-64 فقط** لوحدات anytls وproxy وfrps وLucky، لأن الملفات التنفيذية المضمّنة تستهدف amd64.
 - لوحدة web على منافذها العامة الافتراضية، **يجب** أن يكون المنفذان 80 و443 متاحين؛ يرفض المثبّت التثبيت بدلًا من مزاحمة nginx أو Apache أو Caddy أو `vps-webserver`.
-- الخدمات الخارجية: لا شيء وقت التشغيل. يحتاج التثبيت إلى مرآة حزم التوزيعة؛ وقد يتصل البحث الاختياري عن عنوان IP العام بخدمة خارجية.
+- الخدمات الخارجية: لا شيء وقت التشغيل. يحتاج التثبيت إلى مرآة حزم التوزيعة؛ وتستخدم ملخصات العقد عناوين واجهات الشبكة وTailscale عند توفره دون استعلام خارجي عن عنوان IP العام.
 - الحد الأدنى: النظام وبيئة التشغيل والبنية والمنافذ المتاحة المذكورة أعلاه. لم تُسجّل متطلبات إضافية موصى بها للعتاد؛ ويمكن لخادم VPS بسعة قرص تقارب 150 MB استيعاب الملف التنفيذي المضمّن.
 
 ## التثبيت
@@ -145,8 +145,8 @@ bash deploy/uninstall.sh
 
 ## شكر وتقدير
 
-يستخدم اختبار المتصفح [LibreSpeed](https://github.com/librespeed/speedtest)؛ ويستخدم عرض رموز QR مكتبة
-[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)؛ ومحرك الوكيل المضمّن هو
+يستخدم اختبار المتصفح [LibreSpeed](https://github.com/librespeed/speedtest) ؛ ويستخدم عرض رموز QR مكتبة
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) ؛ ومحرك الوكيل المضمّن هو
 [sing-box](https://github.com/SagerNet/sing-box). تضم الوحدات التجريبية
 [frp](https://github.com/fatedier/frp) و
 [Lucky](https://github.com/gdy666/lucky). راجع [إشعارات الأطراف الثالثة][local-link-003] لجرد المكوّنات ومسارات تراخيصها الأصلية.

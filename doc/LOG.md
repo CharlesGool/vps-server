@@ -33,10 +33,12 @@ No other breaking issue is recorded in the prior status snapshot; the startup/sh
 ## Limitations
 
 - Automated checks verify catalog keys, placeholders, and document structure, but the new translations have not had independent native-language review.
-- A live source checkout may contain ignored runtime state (`admin_password.txt`, `console_port.txt`, `data/`) and Python cache (`__pycache__/`) at its root. The structure checker reports these local files; a clean export of versioned project files passes. Preserve the runtime state during migration.
+- A live source checkout may contain ignored runtime state (`admin_password.txt`, `console_port.txt`, `data/`, `certs/`) and Python cache (`__pycache__/`) at its root. The structure checker reports these local files; a clean export of versioned project files passes. Preserve the runtime state during migration. On a CIFS working copy mounted with fixed 0644 file and 0755 directory modes, `chmod` does not change the displayed modes of local secrets; the mount's access control requires separate assessment.
 - Current branch host acceptance limits are recorded below.
 
 ## Decisions
+
+<a id="vps-decisions"></a>
 
 The dated decisions below preserve both rejected alternatives and their costs. A historical decision is not a new legal or release approval.
 
@@ -53,6 +55,8 @@ The dated decisions below preserve both rejected alternatives and their costs. A
 
 ## Current state and acceptance limits
 
+<a id="vps-current-state"></a>
+
 Version 2.0.0 includes experimental frps and Lucky install paths. Their
 behavior has not been accepted on a real host; the new checkout layout has
 only local automated verification in this release cycle.
@@ -67,6 +71,8 @@ not run as PID 1. The recorded 147/147, 150/150, 153/153 and 156/156 suite
 results and earlier real-host checks below are historical, not new validation.
 
 ### Branch record (2026-09-22 status snapshot)
+
+<a id="vps-branch-record-2026-09-22"></a>
 
 The original status described the feature as implemented and self-tested while
 operator review was pending, stacked on `feat/hardening-batch` for its independent
@@ -127,6 +133,8 @@ their historical checkout, not current instructions. Offline migration checks
 are not real-host/systemd validation; operator acceptance remains pending.
 
 ## Completed work history
+
+<a id="vps-completed-work"></a>
 
 These checked items are the former backlog's dated implementation and verification record, not a newly executed test report. For remaining goals, see [Design Goals][local-link-003]; the unresolved `_db_lock` item remains under [Bugs][local-link-004].
 
@@ -236,9 +244,13 @@ These checked items are the former backlog's dated implementation and verificati
 - Current node access work: the former Limits and cycle editor is named Access management in all eight interface languages. Its traffic cap, directional speed limits, cap response, reset interval, and validity controls now open in a separate dialog; the card footer keeps Access management, Random reset, and Delete node on one row at normal card widths. The navigation label before Speed test is now Home.
 - Checks for this work: 311 automated tests passed (8 skipped), Python compilation and diff whitespace checks passed. Chromium confirmed a single footer row in Chinese and English at desktop card width and English at a 390 px viewport. The dialog opened with its first field focused and kept Cancel and Save visible while its controls scrolled on the narrow viewport. No limits were submitted on the test host.
 - Deployment for this work: the designated test host runs `dev-a785fe5` under the standard application directory. A mode-0600 backup of the previous Web source, styles, script, catalogs, and version stamp remains outside the application directory. Only the Web service was restarted. The Web, proxy, node-meter, and AnyTLS services were active and enabled for boot; the console listened on its existing address and port and served the new version over LAN. No host reboot was performed.
-- Remaining: repair inherited translated-document fragments, verify Android Clash import on a real phone, live transfer through every new policy, IP admission from an allowlisted device, and startup after a real reboot. Next action: complete those acceptance checks, then review and merge the branch.
+- Current standards review (2026-09-28): translated documents now use stable shared section anchors where their old heading fragments did not resolve. The proxy and anytls setup summaries now list only interface and optional Tailscale addresses, remove legacy `public-ip.txt`, and make no outbound public-IP lookup. `SERVER_IP` is no longer a setup option. This source change has not been deployed to the test host; its installed modules still run the preceding version.
+- Checks for this review: 311 automated tests passed (8 skipped) after the setup-summary change; shell syntax, locale-catalog tests, and diff whitespace checks passed. A clean export of tracked files passed the project structure checker. The checkout structure checker reports five ignored runtime/cache entries, including `certs/`; this is recorded under Limitations. Local links, translated documents, and external destinations are under final review. No temporary project rules were found. Live setup-summary output on the test host and a host reboot remain unverified.
+- Remaining: verify Android Clash import on a real phone, live transfer through every new policy, IP admission from an allowlisted device, and startup after a real reboot. Next action: finish the document checks and publication review, push this branch, then complete those acceptance checks before merge.
 
 ## Changelog
+
+<a id="vps-changelog"></a>
 
 Only tagged releases are listed here. The following entries retain the complete
 former changelog history and record the v2.0.0 release content.
@@ -298,6 +310,8 @@ former changelog history and record the v2.0.0 release content.
   missing port forwarding entirely.
 
 ### v1.1.0 — 2026-09-19
+
+<a id="vps-release-v1-1-0"></a>
 
 #### Added
 
@@ -501,4 +515,8 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `dd9627f` fix(web): keep security entry visible in settings
 - `0fc871a` fix(auth): return to requested settings page after login
 - `5c518c0` fix(web): add dashboard link and align security card
-- (this commit) docs(log): record settings review and deployment
+- `9db2482` docs(log): record settings review and deployment
+- `fdf8fbc` feat(nodes): move access limits into dialog
+- `a785fe5` fix(nodes): keep action buttons on one row
+- `d03abb7` docs(log): record access dialog and test deployment
+- (this commit) fix(standards): align setup addresses and document links

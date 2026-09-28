@@ -33,10 +33,12 @@ La anterior instantánea de estado no registraba otros problemas que impidieran 
 ## Limitaciones
 
 - Las comprobaciones automatizadas verifican las claves de los catálogos, los marcadores de posición y la estructura de los documentos, pero las nuevas traducciones todavía no han recibido una revisión independiente por hablantes nativos.
-- Un árbol de trabajo activo puede contener datos de ejecución ignorados (`admin_password.txt`, `console_port.txt`, `data/`) y la caché de Python (`__pycache__/`) en su raíz. El comprobador de estructura señala esos archivos locales; una exportación limpia de los archivos versionados del proyecto supera la comprobación. Conserva los datos de ejecución durante la migración.
+- Un árbol de trabajo activo puede contener datos de ejecución ignorados (`admin_password.txt`, `console_port.txt`, `data/`, `certs/`) y la caché de Python (`__pycache__/`) en su raíz. El comprobador de estructura señala esos archivos locales; una exportación limpia de archivos versionados supera la comprobación. Conserve los datos durante la migración. En un montaje CIFS que presenta siempre los archivos con modo 0644 y los directorios con 0755, `chmod` no cambia el modo mostrado de los secretos locales; evalúe aparte el control de acceso del montaje.
 - Los límites actuales de aceptación de esta rama en un servidor real se documentan más abajo.
 
 ## Decisiones
+
+<a id="vps-decisions"></a>
 
 Las decisiones fechadas conservan tanto las alternativas descartadas como sus costes. Una decisión histórica no constituye una nueva aprobación legal ni de publicación.
 
@@ -53,11 +55,15 @@ Las decisiones fechadas conservan tanto las alternativas descartadas como sus co
 
 ## Limitaciones y estado actual de aceptación
 
+<a id="vps-current-state"></a>
+
 La versión 2.0.0 incluye rutas experimentales de instalación para frps y Lucky. Su funcionamiento no se ha aceptado en un servidor real; durante este ciclo de publicación, la nueva organización del repositorio solo se ha verificado mediante pruebas automatizadas locales.
 
 La instantánea original del 2026-09-22 describía `feat/proxy-protocols` sobre `feat/hardening-batch`, todavía sin integrar. La versión 2.0.0 incorpora el árbol actual del proyecto de ambas ramas, pero siguen pendientes las pruebas del módulo proxy por el operador en un servidor real. Las correcciones de deduplicación de direcciones y de IP pública aplicadas por separado formaron parte de la revisión de ramas. Aquí no se afirma que la función proxy se haya verificado en un servidor real; el contenedor antiguo usó un `systemctl` simulado porque systemd no funcionaba como PID 1. Los resultados de las suites 147/147, 150/150, 153/153 y 156/156 y las verificaciones anteriores en servidores reales indicadas más abajo son históricos, no una nueva validación.
 
 ### Branch record (2026-09-22 status snapshot)
+
+<a id="vps-branch-record-2026-09-22"></a>
 
 El estado original describía la función como implementada y probada por su autor, aún pendiente de revisión por el operador y superpuesta a `feat/hardening-batch` para utilizar su selector de módulos independiente de sí/no. En la primera verificación con Docker desechable, systemd no pudo funcionar como PID 1, por lo que se simuló `systemctl`; sí se ejercitaron comprobaciones reales de configuración de sing-box, reglas iptables, rotación de credenciales, desinstalación consciente del binario compartido y una instalación desatendida seguida de una actualización. Se corrigieron dos errores hallados en esas pruebas: se ignoraba la validación fallida de `PROXY_PROTOCOLS` (cero entradas) y un puerto generado excedía el límite uint16 de sing-box. El registro notificaba 19 pruebas nuevas y 147/147 aprobadas en ese momento; esto **no** constituye verificación con systemd ni en un servidor real de la función proxy.
 
@@ -72,6 +78,8 @@ Para trabajos anteriores ya publicados, el estado registraba una comprobación d
 En este árbol de trabajo, la implementación web está en `src/web/app.py`. Los comandos de instalación y eliminación están en `deploy/install.sh` y `deploy/uninstall.sh`; el código operativo está en `deploy/systemd/`, `deploy/anytls/` y `deploy/proxy/`. El ejecutable amd64, los metadatos de versión y el aviso original están ahora en `third_party/sing-box/{sing-box,sing-box.version,LICENSE}`. Los recursos de terceros servidos directamente permanecen en `static/third_party/`; el verificador de dependencias está en `tools/verify_dependencies/`. La instalación sigue siendo plana (`$PREFIX/app.py`, `$PREFIX/static/`, `$PREFIX/anytls/`, `$PREFIX/proxy/`, `$PREFIX/sing-box`) y la configuración de los módulos sigue usando `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Los nombres de ruta anteriores en las decisiones fechadas y el trabajo completado describen el árbol histórico, no instrucciones actuales. Las comprobaciones de migración sin conexión no validan un servidor real ni systemd; sigue pendiente la aceptación del operador.
 
 ## Historial del trabajo completado
+
+<a id="vps-completed-work"></a>
 
 Estos elementos finalizados constituyen el registro fechado de implementación y verificación del antiguo trabajo pendiente, no un informe de pruebas recién ejecutadas. Para objetivos restantes, consulta [Objetivos de diseño][local-link-003]; el asunto sin resolver de `_db_lock` permanece en [Errores][local-link-004].
 
@@ -159,7 +167,7 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 [local-link-002]: DESIGN.md#objetivos-de-diseño
 [local-link-003]: DESIGN.md#objetivos-de-diseño
 [local-link-004]: #errores
-[local-link-005]: #v110-2026-09-19
+[local-link-005]: #vps-release-v1-1-0
 [local-link-006]: #branch-record-2026-09-22-status-snapshot
 [local-link-007]: THIRD_PARTY_NOTICES.md
 
@@ -181,8 +189,12 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Gestión actual del acceso a nodos: el antiguo editor de límites y ciclo se llama ahora Gestión de acceso en los ocho idiomas de la interfaz. El límite de tráfico, los límites separados de subida y bajada, la acción al alcanzar el límite, el intervalo de restablecimiento y la vigencia se abren en un diálogo independiente. Con el ancho habitual de las tarjetas, Gestión de acceso, Restablecimiento aleatorio y Eliminar nodo aparecen en la misma fila. El enlace anterior a la prueba de velocidad se llama ahora Inicio.
 - Comprobaciones de este trabajo: pasaron 311 pruebas automatizadas (8 omitidas), la compilación de Python y la comprobación de espacios del diff. Chromium confirmó los tres botones en una sola fila en tarjetas de escritorio en chino e inglés y en una vista inglesa de 390 px. En la vista estrecha, el diálogo enfocó el primer campo y mantuvo visibles Cancelar y Guardar durante el desplazamiento. No se guardaron límites en el host de prueba.
 - Despliegue de este trabajo: el host de prueba designado ejecuta `dev-a785fe5` en el directorio estándar de la aplicación. El código Web, los estilos, el script, los catálogos y la versión anteriores tienen una copia de seguridad con permiso 0600 fuera del directorio de la aplicación. Solo se reinició Web. Web, proxy, node-meter y AnyTLS estaban activos y habilitados para iniciar al arrancar; la consola escuchaba en su dirección y puerto anteriores y entregaba la nueva versión por LAN. No se reinició el host.
-- Pendiente: reparar fragmentos heredados de documentos traducidos; verificar la importación de Clash en un Android real, el tráfico real bajo cada política nueva, el acceso por IP desde un dispositivo autorizado y el inicio tras un reinicio real. Siguiente paso: completar esas pruebas de aceptación y después revisar y fusionar la rama.
+- Revisión actual de normas (2026-09-28): los fragmentos rotos de documentos traducidos usan ahora anclas estables comunes a todos los idiomas. Los resúmenes de instalación de proxy y anytls solo enumeran interfaces y Tailscale si está disponible, eliminan el antiguo `public-ip.txt` y no consultan la IP pública en Internet. `SERVER_IP` ya no es una opción de instalación. Este cambio de código no se ha desplegado en el host de prueba; sus módulos instalados siguen ejecutando la versión anterior.
+- Comprobaciones de esta revisión: después de cambiar los resúmenes, pasaron 311 pruebas automatizadas (8 omitidas), la sintaxis de shell, las pruebas de catálogos y el control de espacios del diff. Una exportación limpia de archivos versionados superó la comprobación de estructura. El árbol de trabajo presenta cinco entradas de ejecución o caché ignoradas, incluida `certs/`; figuran en Limitaciones. Los enlaces locales, las traducciones y los destinos externos siguen en revisión final. No se encontraron reglas temporales del proyecto. No se han probado la salida real del resumen en el host de prueba ni un reinicio.
+- Pendiente: verificar la importación de Clash en un Android real, el tráfico real bajo cada política nueva, el acceso por IP desde un dispositivo autorizado y el inicio tras un reinicio real. Siguiente paso: terminar la revisión de documentos y publicación, subir esta rama y completar esas pruebas de aceptación antes de fusionarla.
 ## Historial de cambios
+
+<a id="vps-changelog"></a>
 
 Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan íntegramente el historial anterior de cambios y documentan el contenido de la versión v2.0.0.
 
@@ -217,6 +229,8 @@ Aquí solo se enumeran versiones etiquetadas. Las siguientes entradas conservan 
 - La sección de instalación del README todavía clonaba `--branch v1.0.4` tanto en la instalación rápida de una línea como en el comando paso a paso; quien siguiera esas instrucciones justo después de publicarse v1.1.0 habría instalado la versión anterior sin reenvío de puertos.
 
 ### v1.1.0 — 2026-09-19
+
+<a id="vps-release-v1-1-0"></a>
 
 #### Added
 
@@ -347,4 +361,8 @@ Las entradas conservan los títulos originales de los commits de Git en orden cr
 - `dd9627f` fix(web): keep security entry visible in settings
 - `0fc871a` fix(auth): return to requested settings page after login
 - `5c518c0` fix(web): add dashboard link and align security card
-- (this commit) docs(log): record settings review and deployment
+- `9db2482` docs(log): record settings review and deployment
+- `fdf8fbc` feat(nodes): move access limits into dialog
+- `a785fe5` fix(nodes): keep action buttons on one row
+- `d03abb7` docs(log): record access dialog and test deployment
+- (this commit) fix(standards): align setup addresses and document links

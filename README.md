@@ -97,7 +97,7 @@ maintained, and their code is vendored here rather than absorbed.
   proxy, frps, and Lucky, because the bundled executables target amd64
 - For the web module on its default public ports, 80 and 443 **MUST** be free — the
   installer refuses rather than competing with nginx, Apache, Caddy, or `vps-webserver`
-- External services: none at runtime. Installation needs your distro's package mirror; optional public-IP lookup may contact an external service.
+- External services: none at runtime. Installation needs your distro's package mirror; the node summaries use interface and optional Tailscale addresses without an outbound public-IP lookup.
 - Minimum: the OS, runtime, architecture, and free ports above. No additional recommended hardware requirement is recorded; a VPS with roughly 150 MB disk accommodates the vendored binary.
 
 ## Install

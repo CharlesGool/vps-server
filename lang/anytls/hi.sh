@@ -31,7 +31,6 @@ case "$key" in
   bbr_enabled) fmt='BBR चालू है' ;;
   bbr_enabling) fmt='BBR चालू किया जा रहा है ...' ;;
   bbr_failed) fmt='BBR चालू नहीं हुआ (कर्नेल 4.9 से पुराना हो सकता है या tcp_bbr अनुपस्थित है; कर्नेल अद्यतन करें)' ;;
-  address_public) fmt='सार्वजनिक' ;;
   address_lan) fmt='LAN-%s' ;;
   summary_heading) fmt=' anytls नोड की जानकारी' ;;
   summary_port) fmt=' पोर्ट: %s' ;;

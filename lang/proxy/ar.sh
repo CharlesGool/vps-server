@@ -16,7 +16,6 @@ case "$key" in
   bbr_enabled) fmt='BBR مفعّل' ;;
   enabling_bbr) fmt='جارٍ تفعيل BBR ...' ;;
   bbr_failed) fmt='تعذّر تفعيل BBR (قد تكون النواة أقدم من 4.9 أو لا تحتوي tcp_bbr؛ حدّث النواة)' ;;
-  ip_lookup_failed) fmt='<فشل تحديد IP تلقائيًا؛ استبدله بعنوان IP العام للخادم>' ;;
   opening_port) fmt='جارٍ فتح المنفذ %s/tcp ...' ;;
   iptables_failed) fmt='فشل iptables في فتح %s/tcp؛ الخدمة تعمل، فافتح المنفذ يدويًا.' ;;
   firewall_missing) fmt='لا تتوفر أداة جدار ناري صالحة (ufw/firewalld/iptables)؛ تم تخطي فتح %s/tcp تلقائيًا.' ;;
@@ -27,7 +26,6 @@ case "$key" in
   config_written) fmt='تمت كتابة %s (اجتازت التحقق؛ البروتوكولات: %s)' ;;
   service_started) fmt='بدأت الخدمة' ;;
   service_failed) fmt='فشل بدء الخدمة؛ نفّذ: journalctl -u %s -e' ;;
-  public_network) fmt='عام' ;;
   private_network) fmt='خاص' ;;
   result_heading) fmt=' معلومات عقدة الوكيل متعدد البروتوكولات (%s)' ;;
   enabled_protocols) fmt=' البروتوكولات المفعّلة: %s' ;;

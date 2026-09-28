@@ -35,8 +35,8 @@ metadata:
 | sing-box | `v1.13.14`; संशोधन `25a600db24f7680ad9806ce5427bd0ab8afe1114`; बाइनरी SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL संस्करण 3 या बाद का, साथ में upstream की नाम-संबंधी शर्त (सूचना के अनुसार) | साथ वितरित निष्पादन फ़ाइल, anytls और proxy दोनों के लिए | [upstream सूचना][local-link-002]; [GPL का पूरा पाठ][local-link-003] | अनुरूप स्रोत लिंक और अपस्ट्रीम नाम/संबद्धता शर्त बनाए रखें | 2026-09-27: आर्काइव, बाइनरी, लाइसेंस और टैग संशोधन मेल खाते थे |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | अपस्ट्रीम लाइसेंस के अनुसार LGPL-3.0 | साथ वितरित ब्राउज़र इंजन | [मूल LGPL पाठ][local-link-006] और [GPL पाठ][local-link-007] | लाइसेंस पाठ और अपस्ट्रीम स्रोत उपलब्ध रखें | 2026-09-27: दो टैग फ़ाइलें और लाइसेंस मेल खाते थे |
 | qrcode-generator | `js2.0.4`; संशोधन `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | अपस्ट्रीम लाइसेंस के अनुसार MIT | साथ वितरित क्लाइंट-पक्ष QR लाइब्रेरी | [मूल MIT पाठ][local-link-008] | अनिवार्य कॉपीराइट और लाइसेंस सूचनाएँ बनाए रखें | 2026-09-27: दो टैग फ़ाइलें और लाइसेंस मेल खाते थे |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/fontsource/tree/main/packages/inter) | SIL OFL 1.1 | साथ दिया गया लैटिन इंटरफ़ेस फ़ॉन्ट, 400/600/700 भार | [license](../../static/licenses/OFL-Inter.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/fontsource/tree/main/packages/noto-sans-sc) | SIL OFL 1.1 | साथ दिया गया CJK इंटरफ़ेस फ़ॉन्ट, 400/700 भार | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | साथ दिया गया लैटिन इंटरफ़ेस फ़ॉन्ट, 400/600/700 भार | [license](../../static/licenses/OFL-Inter.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | साथ दिया गया CJK इंटरफ़ेस फ़ॉन्ट, 400/700 भार | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | साथ दिए गए इंटरफ़ेस SVG आइकन | [license](../../static/licenses/Lucide-ISC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
 | iperf3 | वितरण का पैकेज; संस्करण तय नहीं | [ESnet/iperf](https://github.com/esnet/iperf) | पहले दर्ज BSD-3-Clause | OS से स्थापित अलग प्रोग्राम के रूप में चलाया जाता है; यहाँ पुनर्वितरित नहीं | कॉपीराइट दर्ज नहीं; OS पैकेज मूल लाइसेंस देता है | बाद में साथ वितरित या पुनर्वितरित करने पर दोबारा आकलन करें | दर्ज नहीं; वितरण से पहले फिर सत्यापित करें |
 
@@ -136,13 +136,13 @@ MIT कॉपीराइट और लाइसेंस सूचना क्
 [local-link-002]: ../../third_party/sing-box/LICENSE
 [local-link-003]: ../../LICENSE
 [local-link-004]: #संबंधित-स्रोत
-[local-link-005]: LOG.md#निर्णय
+[local-link-005]: LOG.md#vps-decisions
 [local-link-006]: ../../static/licenses/LGPL-3.0.txt
 [local-link-007]: ../../LICENSE
 [local-link-008]: ../../static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
-[local-link-010]: LOG.md#निर्णय
-[local-link-011]: DESIGN.md#पुनर्निर्माण-की-आवश्यकताएँ
+[local-link-010]: LOG.md#vps-decisions
+[local-link-011]: DESIGN.md#vps-reproduction-requirements
 [local-link-012]: ../../third_party/sing-box/LICENSE
 [local-link-013]: ../../static/licenses/LGPL-3.0.txt
 [local-link-014]: ../../static/licenses/MIT.txt

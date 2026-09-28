@@ -46,7 +46,7 @@ Los módulos seleccionables son web, iperf3, anytls, proxy, frps y Lucky. frps y
 - Entorno: Python 3.9+ (basta el `python3` de la distribución; no hay dependencias de Python que instalar).
 - Arquitectura: cualquiera para web e iperf3; **solo x86-64** para anytls, proxy, frps y Lucky, porque los ejecutables incluidos son para amd64.
 - Para el módulo web en sus puertos públicos predeterminados, 80 y 443 **DEBEN** estar libres: el instalador rechaza la instalación en vez de competir con nginx, Apache, Caddy o `vps-webserver`.
-- Servicios externos: ninguno durante la ejecución. La instalación requiere el repositorio de paquetes de tu distribución; la consulta opcional de la IP pública puede contactar con un servicio externo.
+- Servicios externos: ninguno en tiempo de ejecución. La instalación necesita el repositorio de paquetes de la distribución; los resúmenes de nodos usan direcciones de interfaces y de Tailscale si está disponible, sin consultar la IP pública en Internet.
 - Mínimo: el SO, entorno, arquitectura y puertos libres anteriores. No se registra ningún requisito de hardware recomendado adicional; un VPS con unos 150 MB de disco admite el binario incluido.
 
 ## Instalación

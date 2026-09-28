@@ -31,7 +31,6 @@ set -Eeuo pipefail
 # ========== 可配置项 ==========
 PROXY_PROTOCOLS="${PROXY_PROTOCOLS:-vmess,vless,trojan,shadowsocks}"
 PROXY_SNI="${PROXY_SNI:-www.bing.com}"
-SERVER_IP="${SERVER_IP:-}"
 
 INSTALL_DIR=/etc/vps-server-proxy
 BIN_PATH=/usr/local/bin/sing-box-vps-server
@@ -155,13 +154,6 @@ EOF
 }
 
 urlenc(){ jq -rn --arg v "$1" '$v|@uri'; }
-
-get_ip(){
-  [[ -n "$SERVER_IP" ]] && { echo "$SERVER_IP"; return; }
-  curl -fsSL4 --max-time 5 https://api.ip.sb/ip 2>/dev/null \
-    || curl -fsSL4 --max-time 5 https://ifconfig.me 2>/dev/null \
-    || msg ip_lookup_failed
-}
 
 get_lan_ips(){
   local iface cidr
@@ -498,16 +490,11 @@ share_link(){
 }
 
 print_result(){
-  local wan_ip ts_ip iface ip entries=() entry label proto
+  local ts_ip iface ip entries=() entry label proto
   compute_selected_protocols
   local protocols=("${SELECTED_PROTOCOLS[@]}")
 
-  wan_ip="$(get_ip)"
-  entries+=("$(msg public_network)|${wan_ip}")
-  if [[ "$wan_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    printf '%s\n' "$wan_ip" > "${INSTALL_DIR}/public-ip.txt"
-    chmod 0644 "${INSTALL_DIR}/public-ip.txt"
-  fi
+  rm -f "${INSTALL_DIR}/public-ip.txt"
   while read -r iface ip; do
     entries+=("$(msg private_network)-${iface}|${ip}")
   done < <(get_lan_ips)

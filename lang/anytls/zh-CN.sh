@@ -31,7 +31,6 @@ case "$key" in
   bbr_enabled) fmt='BBR 已启用' ;;
   bbr_enabling) fmt='正在启用 BBR ...' ;;
   bbr_failed) fmt='无法启用 BBR(内核可能低于 4.9 或缺少 tcp_bbr;请升级内核)' ;;
-  address_public) fmt='公网' ;;
   address_lan) fmt='内网-%s' ;;
   summary_heading) fmt=' anytls 节点信息' ;;
   summary_port) fmt=' 端口:%s' ;;

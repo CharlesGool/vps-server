@@ -654,7 +654,7 @@ install_anytls() {
   # Its own script owns everything anytls: deps, binary, config, unit,
   # firewall, BBR, and the client-config summary it prints at the end.
   ANYTLS_PORT="${ANYTLS_PORT:-}" ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-}" \
-  SNI="${SNI:-www.bing.com}" SERVER_IP="${SERVER_IP:-}" \
+  SNI="${SNI:-www.bing.com}" \
   VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/anytls/setup-anytls.sh"
 }
 
@@ -669,7 +669,6 @@ install_proxy() {
   # preserve_proxy() above has already exported them on an upgrade, and
   # setup-proxy.sh generates fresh ones itself when they arrive empty.
   PROXY_PROTOCOLS="${PROXY_PROTOCOLS:-}" PROXY_SNI="${PROXY_SNI:-www.bing.com}" \
-  SERVER_IP="${SERVER_IP:-}" \
   PROXY_VMESS_PORT="${PROXY_VMESS_PORT:-}" PROXY_VMESS_UUID="${PROXY_VMESS_UUID:-}" \
   PROXY_VLESS_PORT="${PROXY_VLESS_PORT:-}" PROXY_VLESS_UUID="${PROXY_VLESS_UUID:-}" \
   PROXY_TROJAN_PORT="${PROXY_TROJAN_PORT:-}" PROXY_TROJAN_PASSWORD="${PROXY_TROJAN_PASSWORD:-}" \

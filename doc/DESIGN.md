@@ -24,6 +24,8 @@ metadata:
 
 ## Design Goals
 
+<a id="vps-design-goals"></a>
+
 **Implemented goals in v2.0.0 (see [acceptance limits][local-link-001]):**
 
 Version 2.0.0 also contains experimental frps and Lucky installer paths.
@@ -238,6 +240,8 @@ from the certificate rather than keeping a second copy that could drift.
 
 ### The proxy module
 
+<a id="vps-proxy-module"></a>
+
 The former backlog asked whether the already-vendored sing-box binary covers more
 protocols than anytls, or whether a second backend would be needed. It does:
 `vmess`, `vless`, `trojan` and `shadowsocks` (2022-blake3-aes-128-gcm) each
@@ -323,11 +327,9 @@ an operator reported having anytls on its own separate page as an artificial
 split, since both are "proxy nodes" from their point of view regardless of
 which of the two independent backends serves each one. `/anytls` redirects
 here; `POST /anytls/reset` is unchanged, just redirects back to `/proxy`
-afterwards. The two modules keep fully independent state (anytls's own
-  `public-ip.txt`/`SERVER_IP` are not the proxy module's — each can be
-  configured differently) and independent reset buttons; only the page they
-  render onto is shared. The page lists host interface and optional Tailscale
-  addresses. It does not display the install-time public-IP lookup.
+afterwards. The two modules keep independent configurations and reset
+buttons; only the page they render onto is shared. The page lists host
+interface and optional Tailscale addresses without a separate public-IP lookup.
 
 ### iperf3 window lifecycle
 
@@ -411,7 +413,7 @@ or `tailscale ip` on that device.
 
 - HTTP/HTTPS: public listeners on 80/443 expose only the reachability page; the operator console uses a separate persisted port. iperf3 listens only within an authenticated time-boxed window.
 - The console reads `/proc/net/tcp[6]` to log inbound TCP connections; it does not export proxy secrets on public routes.
-- `install.sh` uses the distro package manager and optionally looks up the public IP during installation; the service itself makes no outbound request at runtime. `setup-anytls.sh` and `setup-proxy.sh` manage sing-box units and certificates. iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs credential resets outside the web sandbox.
+- `install.sh` uses the distro package manager and does not look up a public IP. The service makes no outbound public-IP request at runtime. `setup-anytls.sh` and `setup-proxy.sh` manage sing-box units and certificates. iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs credential resets outside the web sandbox.
 
 ## Tech stack
 
@@ -432,6 +434,8 @@ Rejected alternatives and the reasoning behind each choice live in
 [Decisions][local-link-009] — do not restate them here.
 
 ## Reproduction requirements
+
+<a id="vps-reproduction-requirements"></a>
 
 ### Environment
 
@@ -474,9 +478,11 @@ installer change and a selected distribution/repository snapshot. The lock's
 machine-readable `exclusions` records this boundary, not a fictitious pin.
 
 No API keys. The web service makes no outbound public-IP lookup at runtime.
-The installer may perform an optional outbound lookup; failure only warns.
+The installer does not perform an outbound public-IP lookup.
 
 ### Paths & mounts
+
+<a id="vps-paths-mounts"></a>
 
 | Path | Provided by | Purpose |
 |---|---|---|
@@ -487,6 +493,8 @@ The installer may perform an optional outbound lookup; failure only warns.
 | `/etc/vps-server-proxy/` | installer | sing-box `config.json` (multiple inbounds) and its initial self-signed cert; new node certs live under `/etc/vps-server-nodes/certs/` |
 
 ### Configuration reference
+
+<a id="vps-configuration-reference"></a>
 
 All variables use the `VPSSRV_` prefix. This is not cosmetic: `vps-webserver`
 owns `VPSWS_` and `Anytsl-Serve` owns `ANYTLS_`, and all three may be installed
@@ -524,11 +532,11 @@ reconfigure another.
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Parallel streams per direction | `6` / `3` | no |
 | `VPSSRV_PING_SAMPLES` | Round trips used for the latency figure | `20` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | no |
-| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI`, `SERVER_IP` | The anytls module keeps the upstream names | see `.env.example` | no |
+| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | The anytls module keeps these upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
 | `VPSSRV_ANYTLS_SETUP` | Script the console runs to rotate the node's credentials | `$PREFIX/anytls/setup-anytls.sh` | no |
-| `PROXY_PROTOCOLS`, `PROXY_SNI`, `SERVER_IP` | The proxy module's own script-level knobs — first-party, so no vendoring constraint, but kept unprefixed to match anytls's script-vs-console distinction | see `.env.example` | no |
+| `PROXY_PROTOCOLS`, `PROXY_SNI` | The proxy module's own script-level knobs — first-party, so no vendoring constraint, but kept unprefixed to match anytls's script-vs-console distinction | see `.env.example` | no |
 | `VPSSRV_PROXY_CONFIG` | Where the console reads the installed node set from | `/etc/vps-server-proxy/config.json` | no |
 | `VPSSRV_PROXY_SERVICE` | Unit the console checks for node liveness | `vps-server-proxy.service` | no |
 | `VPSSRV_PROXY_SETUP` | Script the console runs to rotate the selected protocol's credentials | `$PREFIX/proxy/setup-proxy.sh` | no |
@@ -692,8 +700,8 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   for that.
 - **The node page lists interface and Tailscale addresses.** The former
   install-time public-address block was removed because it duplicated a VPS
-  interface address and could be misleading behind NAT. Installation may still
-  record `public-ip.txt` for setup scripts; the console does not read it.
+  interface address and could be misleading behind NAT. Setup scripts remove
+  a `public-ip.txt` left by an older installation; the console does not read it.
 - **`body` fed into `render_page()`** **MUST** be exactly one top-level element.
   `<main>` is `display: flex` with no `flex-direction` override, so more than
   one top-level sibling (e.g. one `<div class="card wide">` per protocol)
