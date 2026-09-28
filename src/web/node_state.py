@@ -13,7 +13,7 @@ import stat
 import tempfile
 import uuid
 
-from node_inventory import InvalidInventory, import_legacy, validate_inventory
+from node_inventory import InvalidInventory, import_legacy, migrate_inventory, validate_inventory
 
 
 STATE_PATH = Path("/etc/vps-server-nodes/state.json")
@@ -55,7 +55,7 @@ def read_inventory(*, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
     inventory = _read_json(state_path)
     if inventory is None:
         return None
-    validate_inventory(inventory)
+    inventory = migrate_inventory(inventory)
     if check_installed:
         _assert_matches(inventory, _installed(config_paths))
     return inventory

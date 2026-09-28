@@ -130,8 +130,24 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn('autocomplete="current-password"', body)
         self.assertIn('class="login-visibility"', body)
         self.assertIn('class="language-menu login-language-menu"', body)
-        self.assertNotIn('action="/login/ip"', body)
+        self.assertIn('action="/login/ip"', body)
         self.assertIn('/static/login.js', body)
+        conn = self.connect()
+        conn.request("POST", "/login/ip", body="")
+        response = conn.getresponse()
+        self.assertEqual((response.status, response.getheader("Location")),
+                         (302, "/login?ip=unavailable&next=settings"))
+        response.read()
+        conn.close()
+        conn = self.connect()
+        conn.request("GET", "/login?ip=unavailable&next=settings")
+        response = conn.getresponse()
+        denied = response.read().decode()
+        conn.close()
+        self.assertEqual(response.status, 200)
+        self.assertIn("This IP cannot use password-free access", denied)
+        self.assertIn('name="next" value="settings"', denied)
+        self.assertNotIn('aria-invalid="true"', denied)
 
     def test_access_settings_reject_public_ips_and_require_password_session(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -258,7 +274,8 @@ class ConsoleTest(unittest.TestCase):
                 "inbound": {"users": [{"password": "test-secret"}],
                             "tls": {"certificate_path": "/missing/cert.pem"}},
                 "cap_bytes": 10485760, "upload_bytes": 1048576,
-                "download_bytes": 2097152, "expires_at": None,
+                "download_bytes": 2097152, "expires_at": None, "expiry_count": None, "expiry_unit": None,
+                "cap_action": "throttle", "upload_limit_bps": None, "download_limit_bps": None,
                 "reset_mode": "monthly", "next_reset_at": "2030-02-01T00:00:00+00:00"}
         applied = []
         session = self.login()
@@ -304,8 +321,10 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(applied[0]["name"], "New name")
 
             limits = urlencode({"id": identifier, "csrf": app.node_csrf_token(session, identifier),
-                                "cap_gib": "12", "expires_at": "", "reset_mode": "monthly",
-                                "next_reset_at": ""})
+                                "cap_gib": "12", "upload_mbps": "2.5", "download_mbps": "0.5",
+                                "cap_action": "block", "expiry_mode": "set", "expiry_count": "6",
+                                "expiry_unit": "months", "reset_mode": "repeat",
+                                "reset_count": "1", "reset_unit": "months", "next_reset_at": ""})
             conn = self.connect()
             conn.request("POST", "/proxy/node/limits", body=limits,
                          headers={"Cookie": f"session={session}",
@@ -315,6 +334,11 @@ class ConsoleTest(unittest.TestCase):
             conn.close()
             self.assertEqual(response.status, 302)
             self.assertEqual(applied[1]["cap_bytes"], 12 * 1073741824)
+            self.assertEqual(applied[1]["upload_limit_bps"], 2_500_000)
+            self.assertEqual(applied[1]["download_limit_bps"], 500_000)
+            self.assertEqual(applied[1]["cap_action"], "block")
+            self.assertEqual(applied[1]["expiry_count"], 6)
+            self.assertTrue(applied[1]["reset_mode"].startswith("every:1:months:"))
 
             toggle = urlencode({"id": identifier, "csrf": app.node_csrf_token(session, identifier),
                                 "enabled": "no"})
@@ -335,7 +359,9 @@ class ConsoleTest(unittest.TestCase):
                             "users": [{"password": "test-secret"}],
                             "tls": {"certificate_path": "/missing/cert.pem"}},
                 "cap_bytes": None, "upload_bytes": 0, "download_bytes": 0,
-                "expires_at": None, "reset_mode": "none", "next_reset_at": None}
+                "expires_at": None, "expiry_count": None, "expiry_unit": None,
+                "cap_action": "throttle", "upload_limit_bps": None, "download_limit_bps": None,
+                "reset_mode": "none", "next_reset_at": None}
         state_file = Path(TEST_DATA_DIR) / "clash-node-state.json"
         state_file.write_text("{}")
         path = f"/clash/sub/{node['id']}/{app.clash_share_token(node)}"
@@ -386,7 +412,9 @@ class ConsoleTest(unittest.TestCase):
         node = {"id": identifier, "number": 3, "name": "First", "protocol": "shadowsocks",
                 "port": 24001, "enabled": True, "inbound": {"password": "test-key"},
                 "cap_bytes": None, "upload_bytes": 0, "download_bytes": 0,
-                "expires_at": None, "reset_mode": "none", "next_reset_at": None}
+                "expires_at": None, "expiry_count": None, "expiry_unit": None,
+                "cap_action": "throttle", "upload_limit_bps": None, "download_limit_bps": None,
+                "reset_mode": "none", "next_reset_at": None}
         second = {**node, "id": "22345678-1234-4234-8234-123456789abc",
                   "number": 4, "name": "Second", "port": 24002}
         state_file = Path(TEST_DATA_DIR) / "multi-node-state.json"

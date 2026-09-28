@@ -68,6 +68,7 @@ if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_f
 # a checkout. Keep their imports independent of the caller's working directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from node_state import read_inventory, _read_json
+from node_inventory import advance_reset_interval, reset_interval
 
 
 def _read_version():
@@ -2290,7 +2291,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "POST" and path == "/login":
             return self.handle_login(lang)
         if method == "POST" and path == "/login/ip":
-            return self.handle_ip_login()
+            return self.handle_ip_login(lang)
         if method == "GET" and path == "/logout":
             return self.handle_logout()
 
@@ -2390,18 +2391,20 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
     # -- auth ------------------------------------------------------------
 
-    def page_login(self, lang, query_lang, status=200, error=None, next_page=""):
+    def page_login(self, lang, query_lang, status=200, error=None, next_page="", password_error=True):
         t = STRINGS[lang]
+        if not error and parse_qs(urlsplit(self.path).query).get("ip") == ["unavailable"]:
+            error = t["login_ip_unavailable"]
+            password_error = False
         error_html = f'<p class="error" id="login-error" role="alert">{html.escape(error)}</p>' if error else ""
-        invalid = ' aria-invalid="true" aria-describedby="login-error"' if error else ""
+        invalid = ' aria-invalid="true" aria-describedby="login-error"' if error and password_error else ""
         next_page = "settings" if next_page == "settings" else ""
         next_input = '<input type="hidden" name="next" value="settings">' if next_page else ""
         notice = f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>' if next_page else ""
         changed = ('<p class="notice" role="status">' + html.escape(t["password_changed"]) + '</p>'
                    if parse_qs(urlsplit(self.path).query).get("changed") == ["1"] else "")
-        ip_available = not next_page and not TRUST_PROXY and IP_ALLOWLIST.contains(self.client_address[0])
         ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
-                     f'<button type="submit">{html.escape(t["login_ip_access"])}</button></form>') if ip_available else ""
+                     f'<button type="submit">{html.escape(t["login_ip_access"])}</button></form>')
         body = f"""
         <div class="login-shell">
           <div class="login-panel">
@@ -2459,9 +2462,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"],
                         next_page=next_page)
 
-    def handle_ip_login(self):
+    def handle_ip_login(self, lang):
         if TRUST_PROXY or not IP_ALLOWLIST.contains(self.client_address[0]):
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.redirect("/login?ip=unavailable&next=settings",
+                                 {"Cache-Control": "no-store"})
         token = create_ip_session(self.client_address[0])
         cookie = (f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
                   f"Max-Age={SESSION_TTL_SECONDS}")
@@ -3266,12 +3270,19 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span><code>{esc(value)}</code></div>'
                                 for label, value in addresses_available)
             cap = "" if node["cap_bytes"] is None else str(Decimal(node["cap_bytes"]) / 1073741824)
-            expiry = node["expires_at"][:16] if node["expires_at"] else ""
+            upload_speed = "" if node["upload_limit_bps"] is None else str(Decimal(node["upload_limit_bps"]) / 1000000)
+            download_speed = "" if node["download_limit_bps"] is None else str(Decimal(node["download_limit_bps"]) / 1000000)
+            interval = reset_interval(node["reset_mode"])
+            reset_choice = "none" if node["reset_mode"] == "none" else "once" if node["reset_mode"] == "once" else "repeat"
+            reset_count, reset_unit = (interval[0], interval[1]) if interval else (1, "months")
             next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
-            modes = "".join(f'<label class="node-radio"><input type="radio" name="reset_mode" value="{mode}"'
-                            f'{" checked" if mode == node["reset_mode"] else ""}><span>{esc(t[label])}</span></label>'
-                            for mode, label in (("none", "node_reset_none"), ("monthly", "node_reset_monthly"),
-                                                ("once", "node_reset_once")))
+            def radios(name, options, selected):
+                return "".join(f'<label class="node-radio"><input type="radio" name="{name}" value="{value}"'
+                               f'{" checked" if value == selected else ""}><span>{esc(t[key])}</span></label>'
+                               for value, key in options)
+            units = (("days", "node_days"), ("months", "node_months"), ("years", "node_years"))
+            reset_modes = (("none", "node_reset_none"), ("repeat", "node_reset_repeat")) + \
+                          ((("once", "node_reset_once"),) if reset_choice == "once" else ())
             is_active = node["enabled"] and running[module]
             status_key = "node_disabled" if not node["enabled"] else ("node_active" if is_active else "node_stopped")
             status_class = "is-open" if is_active else "is-closed"
@@ -3312,9 +3323,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
                     <div class="node-form-grid">
                       <label>{esc(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
-                      <label>{esc(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
-                    </div><fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_schedule'])}</legend>{modes}</fieldset>
-                    <label>{esc(t['node_reset_time_utc'])}<input type="datetime-local" name="next_reset_at" value="{next_reset}"></label>
+                      <label>{esc(t['node_upload_speed'])}<input type="number" name="upload_mbps" min="0.001" max="10000000" step="any" value="{upload_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+                      <label>{esc(t['node_download_speed'])}<input type="number" name="download_mbps" min="0.001" max="10000000" step="any" value="{download_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+                    </div>
+                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_cap_action'])}</legend>{radios('cap_action', (("throttle", "node_cap_slow"), ("block", "node_cap_block")), node['cap_action'])}</fieldset>
+                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_schedule'])}</legend>{radios('reset_mode', reset_modes, reset_choice)}</fieldset>
+                    <div class="node-duration"><label>{esc(t['node_reset_every'])}<input type="number" name="reset_count" min="1" max="9999" value="{reset_count}"></label>
+                      <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_unit'])}</legend>{radios('reset_unit', units, reset_unit)}</fieldset></div>
+                    {'<label>' + esc(t['node_reset_time_utc']) + '<input type="datetime-local" name="next_reset_at" value="' + next_reset + '"></label>' if reset_choice == 'once' else '<input type="hidden" name="next_reset_at" value="">'}
+                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity'])}</legend>{radios('expiry_mode', (("none", "node_validity_none"), ("set", "node_validity_set")), 'set' if node['expiry_count'] else 'none')}</fieldset>
+                    <div class="node-duration"><label>{esc(t['node_validity_length'])}<input type="number" name="expiry_count" min="1" max="9999" value="{node['expiry_count'] or 1}"></label>
+                      <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity_unit'])}</legend>{radios('expiry_unit', units, node['expiry_unit'] or 'months')}</fieldset></div>
                     <button type="submit">{esc(t['node_save_limits'])}</button>
                   </form>
                 </details>
@@ -3436,20 +3455,31 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             suspect = bool(meter_nodes[node["id"]]["suspect"])
         except (KeyError, TypeError):
             suspect = True
-        limited = suspect or (cap is not None and used >= cap) or (
-            node["expires_at"] is not None and
-            datetime.fromisoformat(node["expires_at"]) <= datetime.now(timezone.utc))
-        limit = t["node_limited"] if limited else t["node_normal"]
+        remaining = ((datetime.fromisoformat(node["expires_at"]) - datetime.now(timezone.utc)).total_seconds()
+                     if node["expires_at"] else None)
+        expired = remaining is not None and remaining <= 0
+        capped = cap is not None and used >= cap
+        blocked = expired or (capped and node["cap_action"] == "block")
+        limited = suspect or (capped and not blocked)
+        limit = t["node_blocked"] if blocked else t["node_limited"] if limited else t["node_normal"]
         cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
+        speed = lambda direction: (f'{node[direction + "_limit_bps"] / 1000000:g} Mbps' if node[direction + "_limit_bps"] is not None else t["node_unlimited"])
+        validity_label = (t["node_validity_expired"] if expired else
+                          t["node_remaining_hours"].format(count=max(1, int((remaining + 3599) // 3600)))
+                          if remaining < 86400 else
+                          t["node_remaining_days"].format(count=max(1, int((remaining + 86399) // 86400)))) if remaining is not None else ""
+        validity = (f'<div class="node-validity-stat"><small>{html.escape(t["node_validity"])}</small>'
+                    f'<strong>{html.escape(validity_label)}</strong></div>' if remaining is not None else "")
         return f'''<section class="node-usage" aria-label="{html.escape(t['node_traffic'])}">
           <div class="node-usage-heading"><h3>{html.escape(t['node_traffic'])}</h3>
-            <span class="node-limit {'is-limited' if limited else ''}">{html.escape(limit)}</span></div>
+            <span class="node-limit {'is-limited' if limited or blocked else ''}">{html.escape(limit)}</span></div>
           <div class="node-stats">
-            <div><small>{html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong></div>
-            <div><small>{html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong></div>
+            <div><small>{html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong><small>{html.escape(speed('upload'))}</small></div>
+            <div><small>{html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong><small>{html.escape(speed('download'))}</small></div>
             <div><small>{html.escape(t['node_cap'])}</small><strong>{html.escape(cap_label)}</strong></div>
             <div><small>{html.escape(t['node_next_reset'])}</small><strong>{html.escape(reset_label)}</strong></div>
+            {validity}
           </div>
         </section>'''
 
@@ -3527,7 +3557,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         expected = {
             "create": {"protocol", "csrf", "name", "port", "sni", "credential"},
             "edit": {"id", "csrf", "name", "port", "credential"},
-            "limits": {"id", "csrf", "cap_gib", "expires_at", "reset_mode", "next_reset_at"},
+            "limits": {"id", "csrf", "cap_gib", "upload_mbps", "download_mbps",
+                       "cap_action", "expiry_mode", "expiry_count", "expiry_unit",
+                       "reset_mode", "reset_count", "reset_unit", "next_reset_at"},
             "reset": {"id", "csrf", "confirm"},
             "delete": {"id", "csrf", "confirm"},
             "toggle": {"id", "csrf", "enabled"},
@@ -3588,31 +3620,65 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     request["cap_bytes"] = int(amount * 1073741824)
                 else:
                     request["cap_bytes"] = None
+                def speed(value):
+                    if not value.strip():
+                        return None
+                    amount = Decimal(value)
+                    if not amount.is_finite() or not Decimal("0.001") <= amount <= 10000000:
+                        raise ValueError("invalid speed")
+                    result = int(amount * 1000000)
+                    if result < 1000:
+                        raise ValueError("invalid speed")
+                    return result
+                request["upload_limit_bps"] = speed(form["upload_mbps"][0])
+                request["download_limit_bps"] = speed(form["download_mbps"][0])
+                if form["cap_action"][0] not in ("throttle", "block"):
+                    raise ValueError("invalid cap action")
+                request["cap_action"] = form["cap_action"][0]
+                now = datetime.now(timezone.utc)
+                def duration(count_value, unit_value):
+                    count = int(count_value)
+                    if not 1 <= count <= 9999 or unit_value not in ("days", "months", "years"):
+                        raise ValueError("invalid duration")
+                    anchor = "-" if unit_value == "days" else str(now.day) if unit_value == "months" else now.strftime("%m-%d")
+                    mode = f"every:{count}:{unit_value}:{anchor}"
+                    return count, unit_value, mode, advance_reset_interval(now, mode).isoformat()
                 def date_value(value):
                     if not value:
                         return None
                     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
                         raise ValueError("invalid date")
                     return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).isoformat()
-                request["expires_at"] = date_value(form["expires_at"][0])
+                expiry_mode = form["expiry_mode"][0]
+                current = read_inventory(state_path=NODE_STATE_PATH,
+                                         config_paths={"anytls": ANYTLS_CONFIG, "proxy": PROXY_CONFIG})
+                existing = next(node for node in current["nodes"] if node["id"] == identifier)
+                if expiry_mode == "set":
+                    count, unit, _, due = duration(form["expiry_count"][0], form["expiry_unit"][0])
+                    if (existing["expiry_count"], existing["expiry_unit"]) != (count, unit):
+                        request.update(expiry_count=count, expiry_unit=unit, expires_at=due)
+                elif expiry_mode == "none":
+                    if existing["expiry_count"] is not None:
+                        request.update(expiry_count=None, expiry_unit=None, expires_at=None)
+                else:
+                    raise ValueError("invalid expiry mode")
                 mode = form["reset_mode"][0]
-                if mode not in ("none", "monthly", "once"):
+                if mode not in ("none", "repeat", "once"):
                     raise ValueError("invalid reset mode")
-                request["reset_mode"] = mode
-                if mode == "monthly":
-                    now = datetime.now(timezone.utc)
-                    year = now.year + (now.month == 12)
-                    month = now.month % 12 + 1
-                    request["next_reset_at"] = datetime(year, month, 1,
-                                                           tzinfo=timezone.utc).isoformat()
+                if mode == "repeat":
+                    _, _, request["reset_mode"], request["next_reset_at"] = duration(
+                        form["reset_count"][0], form["reset_unit"][0])
                 elif mode == "once":
+                    request["reset_mode"] = "once"
                     request["next_reset_at"] = date_value(form["next_reset_at"][0])
                     if request["next_reset_at"] is None or \
-                            datetime.fromisoformat(request["next_reset_at"]) <= datetime.now(timezone.utc):
+                            datetime.fromisoformat(request["next_reset_at"]) <= now:
                         raise ValueError("reset must be future")
                 else:
+                    request["reset_mode"] = "none"
                     request["next_reset_at"] = None
-            except (ValueError, InvalidOperation, OverflowError, KeyError):
+            except (ValueError, InvalidOperation, OverflowError, KeyError, InvalidInventory,
+                    TypeError, StopIteration):
                 return self.redirect("/proxy?msg=node_settings_failed")
         success = node_control_apply(request)
         key = ({"reset": "node_reset_done", "create": "node_created", "delete": "node_deleted"}

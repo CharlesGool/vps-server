@@ -57,7 +57,7 @@ describe the four previously documented modules.
 
 **Tracked goals and current status:**
 
-- [x] 2026-09-19 Per-node traffic accounting, data cap, and expiry: the five proxy protocols track upload/download independently; after the cap or expiry, upload and download are each policed at 1 Mbps. A monthly or specified-time cycle clears the period count and lifts the limit. The implementation passed live-host tests on 2026-09-27.
+- [x] 2026-09-19 Per-node traffic accounting and data caps: the five proxy protocols track upload/download independently. The original 1 Mbps response to a cap and the monthly or one-time reset passed live-host tests on 2026-09-27. The current branch adds separate upload/download speed caps, a choice of 1 Mbps throttling or blocking after the traffic cap, recurring cycles measured in days, calendar months or years, and an optional validity duration that blocks traffic on expiry. The new policy rules and state migration have automated checks; the current test host has verified the UI and migration, while live transfer through every policy combination remains unverified.
 - [x] 2026-09-19 Browser-based first-run setup: this checkout uses a short-lived setup wizard in `tools/setup_wizard/setup_wizard.py` when the interactive installer has no `VPSSRV_MODULES` value. It collects language, modules, ports, and authentication choices; the shell installer performs the selected actions only after validating the result. This checkout has not been accepted on a real host.
 - [ ] 2026-09-22 Complete frps console support for tokens and connection information. The installer now offers frps on this checkout, but the console requirement remains unscoped: decide whether token information means an auth token, client config snippet, or connected-proxy list.
 - [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
@@ -275,8 +275,13 @@ console can then create multiple numbered nodes for any installed protocol,
 delete individual nodes, and leave a module installed with zero listeners.
 Node IDs remain stable and hidden in the visible UI; every form and Clash
 subscription targets the ID, so repeated protocols stay independent. A node's
-connection editor replaces its visible facts in the same card; traffic caps,
-expiry and reset cycles have a separate form. Adding or deleting a node
+connection editor replaces its visible facts in the same card. The separate
+traffic form accepts a GiB cap, Mbps upload/download limits, cap response,
+recurring reset interval and optional validity duration. A reset clears period
+usage and lifts quota enforcement; it does not renew the validity duration.
+The version-one inventory is converted to version two on read: old absolute
+expiry dates are cleared so their former 1 Mbps meaning cannot silently become
+a block, while identities, counters, caps and schedules remain intact. Adding or deleting a node
 changes the sing-box config, inventory, firewall and nft accounting under one
 lock, with rollback on failure. Newly created TLS nodes get their own
 self-signed certificate. The console uses `font-display: optional` for its

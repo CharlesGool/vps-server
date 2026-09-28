@@ -335,10 +335,17 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
 .node-stats strong { margin-top: .1rem; font-size: .9rem; font-variant-numeric: tabular-nums; }
 .node-limit { grid-column: auto; color: var(--success); font-size: .75rem; font-weight: 700; white-space: nowrap; }
 .managed-node .node-share { margin: 0; padding: .75rem 1.25rem; align-items: center; }
-.managed-node .node-secondary { margin: 0; padding: .8rem 1.25rem; align-items: center; }
-.managed-node .node-secondary > details[open] { order: 2; }
+.managed-node .node-secondary { display: block; margin: 0; padding: .8rem 1.25rem; }
+.managed-node .node-secondary > details { width: 100%; }
 .managed-node .node-secondary > details[open] form { max-width: 40rem; }
-.managed-node .node-destructive-actions { flex-wrap: wrap; }
+.managed-node .node-destructive-actions { justify-content: flex-end; flex-wrap: wrap; margin-top: .8rem; }
+.node-duration { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; margin: 0 0 1rem; }
+.node-duration > label { min-width: 6rem; flex: 0 0 6rem; }
+.node-duration > fieldset { flex: 1; min-width: 0; margin: 0; }
+.node-duration > fieldset legend { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.node-reset-cycle:has(input[name="reset_mode"]:checked:not([value="repeat"])) + .node-duration,
+.node-reset-cycle:has(input[name="expiry_mode"]:checked:not([value="set"])) + .node-duration { display: none; }
+.node-validity-stat { grid-column: 1 / -1; }
 @media (max-width: 34rem) {
   .managed-node .proxy-node-header { align-items: flex-start; flex-wrap: wrap; }
   .managed-node .node-header-controls { margin-inline-start: auto; }

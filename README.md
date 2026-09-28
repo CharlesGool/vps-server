@@ -62,10 +62,13 @@ See [current state and acceptance limits][local-link-001].
   sing-box process shares the vendored binary with anytls. Each installed
   protocol starts with a numbered node. The console can create more nodes of
   any installed protocol and delete individual nodes. New nodes accept a manual
-  credential or generate one when that field is blank; TLS nodes default to
+  password or protocol-specific key/UUID, or generate one when the field is blank; TLS nodes default to
   `www.bing.com` for SNI. The node page lists interface and Tailscale addresses.
-  Each node has a traffic
-  cap in GiB, separate connection and limit editors, and random-reset controls,
+  Each node can have a traffic cap in GiB, separate upload and download speed limits
+  in Mbps, and a choice to throttle both directions to 1 Mbps or block traffic
+  after the cap. A configurable cycle of days, months, or years clears period
+  usage; an optional validity duration blocks traffic when it ends. Connection
+  and limit editors remain separate, alongside random-reset controls,
   plus the same LAN-only Clash Meta import option. The import URL
   contains an opaque token and changes after the node's connection settings
   or name changes. The public ports do not serve proxy configurations.

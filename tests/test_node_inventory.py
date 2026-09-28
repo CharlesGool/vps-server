@@ -66,7 +66,8 @@ class InventoryTests(unittest.TestCase):
         second = copy.deepcopy(state["nodes"][0])
         second.update(id="6c101472-c204-460d-a193-29d72fb5e590", number=6,
                       name="second node", port=30001,
-                      enabled=False, cap_bytes=1024, expires_at="2030-01-01T00:00:00+00:00",
+                      enabled=False, cap_bytes=1024, expiry_count=1, expiry_unit="years",
+                      expires_at="2030-01-01T00:00:00+00:00",
                       upload_bytes=200, download_bytes=400,
                       total_upload_bytes=200, total_download_bytes=400, counter_epoch=1)
         second["inbound"]["tag"] = "anytls-second"
@@ -160,8 +161,8 @@ class InventoryTests(unittest.TestCase):
                  lambda s: s["nodes"][0].update(port=30000),
                  lambda s: s["nodes"][0].update(port=True),
                  lambda s: s["nodes"][0].update(cap_bytes=0),
-                 lambda s: s["nodes"][0].update(expires_at="tomorrow"),
-                 lambda s: s["nodes"][0].update(expires_at="2030-01-01T00:00:00"),
+                 lambda s: s["nodes"][0].update(expiry_count=1, expiry_unit="years", expires_at="tomorrow"),
+                 lambda s: s["nodes"][0].update(expiry_count=1, expiry_unit="years", expires_at="2030-01-01T00:00:00"),
                  lambda s: s["nodes"][0].update(upload_bytes=-1),
                  lambda s: s["nodes"][0].update(enabled=1),
                  lambda s: s["nodes"][0]["inbound"].update(tag="direct")]

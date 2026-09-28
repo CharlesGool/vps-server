@@ -12,7 +12,7 @@ import calendar
 import copy
 from datetime import datetime, timezone
 
-from node_inventory import InvalidInventory, validate_inventory
+from node_inventory import InvalidInventory, advance_reset_interval, validate_inventory
 
 MAX_BYTES = (1 << 64) - 1
 FAMILIES = ("ipv4", "ipv6")
@@ -136,7 +136,7 @@ def update_accounting(inventory, state, snapshots):
 
 
 def desired_policy(inventory, state, *, now):
-    """Return per-ID decisions; caps and dates both request a 1 Mbps limit."""
+    """Return per-ID decisions for quota throttling or complete blocking."""
     validate_inventory(inventory)
     _state(inventory, state)
     _now(now)
@@ -149,11 +149,18 @@ def desired_policy(inventory, state, *, now):
         used = node["upload_bytes"] + node["download_bytes"]
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
         active = node["enabled"]
-        throttled = capped or expired or suspect
-        policy[node["id"]] = {"active": active, "expired": expired,
+        blocked = active and (expired or (capped and node["cap_action"] == "block"))
+        throttled = (capped and not blocked) or suspect
+        def rate(direction):
+            if not active or blocked:
+                return None
+            configured = node[f"{direction}_limit_bps"]
+            return min(configured, LIMIT_BPS) if configured is not None and throttled else \
+                LIMIT_BPS if throttled else configured
+        policy[node["id"]] = {"active": active, "blocked": blocked, "expired": expired,
                               "capped": capped,
-                              "upload_bps": LIMIT_BPS if active and throttled else None,
-                              "download_bps": LIMIT_BPS if active and throttled else None,
+                              "upload_bps": rate("upload"),
+                              "download_bps": rate("download"),
                               "suspect": suspect}
     return policy
 
@@ -187,18 +194,10 @@ def advance_cycles(inventory, state, *, now):
         if mode == "once":
             node["reset_mode"] = "none"
             node["next_reset_at"] = None
-            node["expires_at"] = None
         else:
-            months = 0
             while due <= now:
-                due = _month_after(due)
-                months += 1
+                due = _month_after(due) if mode == "monthly" else advance_reset_interval(due, mode)
             node["next_reset_at"] = due.isoformat()
-            if node["expires_at"] is not None:
-                expiry = datetime.fromisoformat(node["expires_at"])
-                for _ in range(months):
-                    expiry = _month_after(expiry)
-                node["expires_at"] = expiry.isoformat()
         node["upload_bytes"] = node["download_bytes"] = 0
         entry = ledger["nodes"].get(node["id"])
         if entry is not None and entry["samples"] is not None:

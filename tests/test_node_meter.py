@@ -105,6 +105,8 @@ class MeterTests(unittest.TestCase):
             self.sample()
 
     def test_rate_change_reinstalls_rules_for_existing_nodes(self):
+        self.inventory["nodes"][0]["cap_bytes"] = 100
+        write_inventory(self.inventory, state_path=self.state)
         self.sample()
         self.assertEqual(len(self.backend.batches), 1)
         with patch("node_meter.LIMIT_BYTES_PER_SECOND", LIMIT_BYTES_PER_SECOND - 1000):
@@ -112,6 +114,27 @@ class MeterTests(unittest.TestCase):
         self.assertEqual(len(self.backend.batches), 2)
         self.assertIn(f"rate over {LIMIT_BYTES_PER_SECOND - 1000} bytes/second",
                       self.backend.batches[-1])
+
+    def test_per_direction_speeds_and_cap_block_apply_to_both_families(self):
+        node = self.inventory["nodes"][0]
+        node.update(cap_bytes=10, cap_action="block",
+                    upload_limit_bps=2_000_000, download_limit_bps=500_000)
+        write_inventory(self.inventory, state_path=self.state)
+        policy = self.sample()
+        self.assertEqual((policy[node["id"]]["upload_bps"],
+                          policy[node["id"]]["download_bps"]), (2_000_000, 500_000))
+        batch = self.backend.batches[-1]
+        self.assertIn("rate over 250000 bytes/second", batch)
+        self.assertIn("rate over 62500 bytes/second", batch)
+        self.assertIn("quota name", batch)
+        self.assertIn("drop", batch)
+        stem = node["id"].replace("-", "")
+        self.backend.values[f"c_{stem}_ipv4_upload"] = 10
+        policy = self.sample()
+        self.assertTrue(policy[node["id"]]["blocked"])
+        batch = self.backend.batches[-1]
+        self.assertIn("meta nfproto ipv4 tcp dport 20001 drop", batch)
+        self.assertIn("meta nfproto ipv6 udp sport 20001 drop", batch)
 
     def test_added_and_deleted_nodes_reconcile_without_losing_survivor_usage(self):
         self.sample()

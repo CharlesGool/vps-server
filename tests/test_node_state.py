@@ -54,6 +54,25 @@ class NodeStateTests(unittest.TestCase):
         self.assertEqual(combined["nodes"][0]["id"], first_id)
         self.assertEqual(len(combined["migration_hashes"]), 2)
 
+    def test_version_one_state_migrates_without_reinterpreting_old_expiry(self):
+        current = initialize_inventory(state_path=self.state, config_paths=self.configs)
+        old = json.loads(json.dumps(current))
+        old["version"] = 1
+        for node in old["nodes"]:
+            for key in ("cap_action", "upload_limit_bps", "download_limit_bps",
+                        "expiry_count", "expiry_unit"):
+                node.pop(key)
+            node["expires_at"] = "2030-01-01T00:00:00+00:00"
+        self.state.write_text(json.dumps(old))
+        migrated = read_inventory(state_path=self.state, config_paths=self.configs)
+        self.assertEqual(migrated["version"], 2)
+        self.assertEqual([node["id"] for node in migrated["nodes"]],
+                         [node["id"] for node in old["nodes"]])
+        self.assertTrue(all(node["cap_action"] == "throttle" and
+                            node["expires_at"] is None for node in migrated["nodes"]))
+        write_inventory(migrated, state_path=self.state)
+        self.assertEqual(json.loads(self.state.read_text())["version"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

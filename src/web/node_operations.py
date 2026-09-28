@@ -13,7 +13,9 @@ import uuid
 from node_inventory import InvalidInventory, PROTOCOLS, _inbound, render_config, validate_inventory
 
 
-_EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "expires_at",
+_EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "cap_action",
+                       "upload_limit_bps", "download_limit_bps",
+                       "expiry_count", "expiry_unit", "expires_at",
                        "reset_mode", "next_reset_at"})
 _UUID_PROTOCOLS = frozenset({"vmess", "vless"})
 
@@ -90,19 +92,6 @@ def _port_available(inventory, port, reserved, current=None):
         raise InvalidInventory("port already in use or reserved")
 
 
-def _expiry(value):
-    if value is None:
-        return
-    if not isinstance(value, str):
-        raise InvalidInventory("invalid expiry")
-    try:
-        date = datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise InvalidInventory("invalid expiry") from exc
-    if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
-        raise InvalidInventory("expiry must be UTC")
-
-
 def _effective(node, now):
     # Quota and date limits change bandwidth policy, never inbound presence.
     return node["enabled"]
@@ -117,7 +106,9 @@ def _new_uuid(factory):
 
 def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id=None,
                 prototype_inbound=None, credential=None,
-                cap_bytes=None, expires_at=None, reset_mode="none", next_reset_at=None,
+                cap_bytes=None, cap_action="throttle", upload_limit_bps=None,
+                download_limit_bps=None, expiry_count=None, expiry_unit=None,
+                expires_at=None, reset_mode="none", next_reset_at=None,
                 uuid_factory=uuid.uuid4):
     """Copy one same-protocol inbound, replacing its identity and secret."""
     validate_inventory(inventory)
@@ -165,7 +156,9 @@ def create_node(inventory, protocol, name, port, *, reserved_ports, prototype_id
     node = {"id": identifier, "number": candidate["next_number"],
             "name": name, "protocol": protocol, "port": port,
             "inbound": inbound, "enabled": True, "cap_bytes": cap_bytes,
-            "expires_at": expires_at, "reset_mode": reset_mode,
+            "cap_action": cap_action, "upload_limit_bps": upload_limit_bps,
+            "download_limit_bps": download_limit_bps, "expiry_count": expiry_count,
+            "expiry_unit": expiry_unit, "expires_at": expires_at, "reset_mode": reset_mode,
             "next_reset_at": next_reset_at,
             "upload_bytes": 0, "download_bytes": 0,
             "total_upload_bytes": 0, "total_download_bytes": 0,
@@ -224,10 +217,10 @@ def edit_node(inventory, identifier, changes, *, reserved_ports):
     if "credential" in changes:
         _set_credential(node, changes["credential"])
         _unique_credential(candidate, node)
-    for key in ("name", "cap_bytes", "expires_at", "reset_mode", "next_reset_at"):
+    for key in ("name", "cap_bytes", "cap_action", "upload_limit_bps", "download_limit_bps",
+                "expiry_count", "expiry_unit", "expires_at", "reset_mode", "next_reset_at"):
         if key in changes:
             node[key] = changes[key]
-    _expiry(node["expires_at"])
     if node["cap_bytes"] is not None and (type(node["cap_bytes"]) is not int or
                                           node["cap_bytes"] <= 0):
         raise InvalidInventory("cap must be positive")

@@ -221,10 +221,10 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
-- Completed: the login page now follows the supplied card layout, with language selection, password login, and an IP access button shown only to allowlisted private addresses. Clicking it creates a session bound to the source IP; removing the IP ends that access on the next request. The allowlist settings now use the supplied security-card layout. Managed proxy cards use a compact connection, traffic, sharing, and actions layout; their switches have a horizontal track and a 44 px touch target. Disabling the last node now keeps its sing-box unit stopped; enabling a node starts it even when the unit was inactive. Password authentication remains required for access settings.
-- Checks: 304 automated tests passed (8 skipped); the language checker and diff checks passed. HTTP tests covered the explicit IP login, public and spoofed-IP rejection, source binding, password changes, and blocked settings access. Chromium checked the login and settings layouts on desktop and at 390 px width, including the IP button, password path, and language selection. The updated node card and switch were checked on the test host. No horizontal overflow was observed.
-- Deployment: the designated test host runs this branch under `~/apps/vps-server`; the prior runtime files and persistent access state were backed up outside the repository. The web, proxy, and node-meter services are active; AnyTLS is inactive because its only node is disabled. All four units are enabled for boot. The allowlist persists in the app data directory. An actual host reboot has not been performed.
-- Remaining: Android Clash import on a real phone and startup after a real reboot remain unverified. Next action: merge and release `feat/node-management` after review, then run the phone and reboot checks.
+- Completed: the node editor labels its secret as a password; the traffic editor keeps its trigger in place when expanded. Each node now accepts independent upload/download Mbps limits, a 1 Mbps throttle or block response to a GiB traffic cap, recurring resets every chosen number of days/months/years, and an optional validity duration that blocks traffic on expiry. Version-one state upgrades on read while preserving node IDs, usage and cap; old absolute expiry dates are cleared rather than reinterpreted as blocking. The IP access button is always present and directs unlisted sources to password login and private-IP allowlist settings. Password authentication remains required to edit access settings.
+- Checks: 308 automated tests passed (8 skipped); Python compilation and diff whitespace checks passed. Chromium checked the unlisted-IP message and the expanded node form at desktop and 390 px width on the test host; the traffic editor trigger kept the same position when toggled. Nft accepted the new directional-limit and cap-block rules in check-only mode. A real traffic transfer through every policy combination remains unverified.
+- Deployment: the designated test host is running this branch under `~/apps/vps-server`; its previous runtime files and node state were backed up outside the repository. The node state migrated to schema version two and retained its single disabled AnyTLS node. Web, proxy and node-meter services are active; AnyTLS is inactive by design. All four units are enabled for boot. An actual host reboot has not been performed.
+- Remaining: Android Clash import on a real phone, live transfer through every new policy and startup after a real reboot remain unverified. Next action: review and merge this branch after those checks, then select a release.
 
 ## Changelog
 
@@ -477,4 +477,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `a676537` feat(nodes): add per-node switch and compact numbering
 - `ab02c17` docs(log): record node switch acceptance
 - `860cdc4` feat(auth): add private-IP access and admin settings
-- (this commit) feat(web): refine access screens and proxy node cards
+- `ad08a80` feat(web): refine access screens and proxy node cards
+- (this commit) feat(nodes): add flexible limits and persistent IP login entry

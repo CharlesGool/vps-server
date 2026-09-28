@@ -77,8 +77,11 @@ def parse_counters(document, inventory, epoch, *, new_ids=frozenset()):
 
 def _policy_key(inventory, policy):
     inputs = [(LIMIT_BYTES_PER_SECOND, node["id"], node["port"], node["cap_bytes"],
-               policy[node["id"]]["active"], policy[node["id"]]["expired"],
-               policy[node["id"]]["capped"], policy[node["id"]]["suspect"])
+               node["cap_action"], policy[node["id"]]["active"],
+               policy[node["id"]]["blocked"], policy[node["id"]]["expired"],
+               policy[node["id"]]["capped"],
+               policy[node["id"]]["suspect"], policy[node["id"]]["upload_bps"],
+               policy[node["id"]]["download_bps"])
               for node in inventory["nodes"]]
     return hashlib.sha256(json.dumps(inputs, separators=(",", ":")).encode()).hexdigest()
 
@@ -101,9 +104,11 @@ def render_rules(inventory, policy, *, replace=False):
         if not decision["active"]:
             continue
         for direction in ("upload", "download"):
-            lines.append(f"add limit inet {TABLE} l_{stem}_{direction} "
-                         f"{{ rate over {LIMIT_BYTES_PER_SECOND} bytes/second "
-                         "burst 16384 bytes; }")
+            rate = decision[f"{direction}_bps"]
+            if rate is not None:
+                lines.append(f"add limit inet {TABLE} l_{stem}_{direction} "
+                             f"{{ rate over {(rate + 7) // 8} bytes/second "
+                             "burst 16384 bytes; }")
         # A named quota is shared across upload/download and both IP families.
         # It is needed only while below the cap; once crossed, unconditional
         # directional limits take over on the next reconciliation.
@@ -113,19 +118,27 @@ def render_rules(inventory, policy, *, replace=False):
             used = node["upload_bytes"] + node["download_bytes"]
             lines.append(f"add quota inet {TABLE} q_{stem} "
                          f"{{ over {node['cap_bytes']} bytes used {used} bytes; }}")
+            if node["cap_action"] == "throttle":
+                for direction in ("upload", "download"):
+                    lines.append(f"add limit inet {TABLE} lcap_{stem}_{direction} "
+                                 f"{{ rate over {LIMIT_BYTES_PER_SECOND} bytes/second "
+                                 "burst 16384 bytes; }")
         for family, nft_family in (("ipv4", "ipv4"), ("ipv6", "ipv6")):
             for direction, chain, port_field in (("upload", "input", "dport"),
                                                  ("download", "output", "sport")):
                 for protocol in ("tcp", "udp"):
                     match = (f"meta nfproto {nft_family} {protocol} "
                              f"{port_field} {port}")
-                    if decision["expired"] or decision["capped"] or decision["suspect"]:
+                    if decision["blocked"]:
+                        lines.append(f"add rule inet {TABLE} {chain} {match} drop")
+                    elif decision[f"{direction}_bps"] is not None:
                         lines.append(f"add rule inet {TABLE} {chain} {match} "
                                      f"limit name \"l_{stem}_{direction}\" drop")
-                    elif quota:
+                    if quota:
+                        tail = ("drop" if node["cap_action"] == "block" else
+                                f'limit name "lcap_{stem}_{direction}" drop')
                         lines.append(f"add rule inet {TABLE} {chain} {match} "
-                                     f"quota name \"q_{stem}\" "
-                                     f"limit name \"l_{stem}_{direction}\" drop")
+                                     f"quota name \"q_{stem}\" {tail}")
                     lines.append(f"add rule inet {TABLE} {chain} {match} "
                                  f"counter name {_name(identifier, family, direction)}")
     return "\n".join(lines) + "\n"

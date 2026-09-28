@@ -44,7 +44,7 @@ class AccountingTests(unittest.TestCase):
         self.assertEqual((node["upload_bytes"], node["download_bytes"]), (7, 3))
         self.assertEqual((node["total_upload_bytes"], node["total_download_bytes"]), (7, 3))
         self.assertEqual(desired_policy(inventory, state, now=NOW)[self.identifier],
-                         {"active": True, "expired": False, "capped": True,
+                         {"active": True, "blocked": False, "expired": False, "capped": True,
                           "upload_bps": 1_000_000, "download_bps": 1_000_000,
                           "suspect": False})
         again, state = self.update(raw, inventory, state)
@@ -54,37 +54,37 @@ class AccountingTests(unittest.TestCase):
         self.assertEqual(more["nodes"][0]["download_bytes"], 7)
         self.assertTrue(desired_policy(more, state, now=NOW)[self.identifier]["active"])
 
-    def test_expiry_boundary_disabled_and_uncapped(self):
+    def test_expiry_boundary_blocks_even_without_cap(self):
         inventory, state = self.update(counters(1))
         node = inventory["nodes"][0]
-        node["expires_at"] = "2030-01-01T00:00:00+00:00"
+        node.update(expiry_count=1, expiry_unit="years",
+                    expires_at="2030-01-01T00:00:00+00:00")
         at = desired_policy(inventory, state, now=NOW)[self.identifier]
         self.assertTrue(at["expired"])
-        self.assertTrue(at["active"])
-        self.assertEqual((at["upload_bps"], at["download_bps"]), (1_000_000, 1_000_000))
+        self.assertTrue(at["blocked"])
+        self.assertEqual((at["upload_bps"], at["download_bps"]), (None, None))
         self.assertTrue(desired_policy(inventory, state, now=NOW.replace(year=2029))
                         [self.identifier]["active"])
-        node["expires_at"] = None
+        node.update(expiry_count=None, expiry_unit=None, expires_at=None)
         node["enabled"] = False
         self.assertFalse(desired_policy(inventory, state, now=NOW)[self.identifier]["active"])
         node["enabled"] = True
         node["cap_bytes"] = None
         self.assertIsNone(desired_policy(inventory, state, now=NOW)[self.identifier]["upload_bps"])
 
-    def test_monthly_cycle_preserves_lifetime_and_lifts_date_throttle(self):
+    def test_monthly_cycle_preserves_lifetime_and_lifts_cap_throttle(self):
         inventory, state = self.update(counters(7, 5))
         node = inventory["nodes"][0]
         node["reset_mode"] = "monthly"
         node["next_reset_at"] = "2030-01-01T00:00:00+00:00"
-        node["expires_at"] = "2029-12-20T00:00:00+00:00"
-        self.assertTrue(desired_policy(inventory, state, now=NOW)[self.identifier]["expired"])
+        self.assertTrue(desired_policy(inventory, state, now=NOW)[self.identifier]["capped"])
         next_inventory, next_state = advance_cycles(inventory, state, now=NOW)
         result = next_inventory["nodes"][0]
         self.assertEqual((result["upload_bytes"], result["download_bytes"]), (0, 0))
         self.assertEqual((result["total_upload_bytes"], result["total_download_bytes"]), (7, 5))
-        self.assertEqual(result["expires_at"], "2030-01-20T00:00:00+00:00")
+        self.assertIsNone(result["expires_at"])
         self.assertEqual(result["next_reset_at"], "2030-02-01T00:00:00+00:00")
-        self.assertFalse(desired_policy(next_inventory, next_state, now=NOW)[self.identifier]["expired"])
+        self.assertFalse(desired_policy(next_inventory, next_state, now=NOW)[self.identifier]["capped"])
         self.assertIsNone(desired_policy(next_inventory, next_state, now=NOW)[self.identifier]["upload_bps"])
         with_new_bytes, _ = update_accounting(next_inventory, next_state,
                                               {self.identifier: counters(8, 6)})
@@ -96,14 +96,41 @@ class AccountingTests(unittest.TestCase):
         node = inventory["nodes"][0]
         node["reset_mode"] = "once"
         node["next_reset_at"] = "2030-01-01T00:00:00+00:00"
-        node["expires_at"] = "2029-12-30T00:00:00+00:00"
         result, ledger = advance_cycles(inventory, state, now=NOW)
         node = result["nodes"][0]
-        self.assertEqual((node["reset_mode"], node["next_reset_at"], node["expires_at"]),
-                         ("none", None, None))
+        self.assertEqual((node["reset_mode"], node["next_reset_at"]), ("none", None))
         self.assertEqual(node["upload_bytes"], 0)
         self.assertEqual(node["total_upload_bytes"], 11)
         self.assertEqual(advance_cycles(result, ledger, now=NOW), (result, ledger))
+
+    def test_custom_month_interval_restores_end_of_month_anchor(self):
+        inventory, state = self.update(counters(7, 5))
+        node = inventory["nodes"][0]
+        node["reset_mode"] = "every:1:months:31"
+        node["next_reset_at"] = "2030-02-28T12:00:00+00:00"
+        result, _ = advance_cycles(inventory, state,
+                                   now=datetime(2030, 3, 1, tzinfo=timezone.utc))
+        self.assertEqual(result["nodes"][0]["next_reset_at"], "2030-03-31T12:00:00+00:00")
+        self.assertEqual(result["nodes"][0]["upload_bytes"], 0)
+
+    def test_cap_block_and_independent_directional_rates(self):
+        inventory, state = self.update(counters(7, 5))
+        node = inventory["nodes"][0]
+        node.update(cap_action="block", upload_limit_bps=2_000_000,
+                    download_limit_bps=500_000)
+        policy = desired_policy(inventory, state, now=NOW)[self.identifier]
+        self.assertTrue(policy["blocked"])
+        self.assertEqual((policy["upload_bps"], policy["download_bps"]), (None, None))
+        node["cap_bytes"] = 100
+        policy = desired_policy(inventory, state, now=NOW)[self.identifier]
+        self.assertFalse(policy["blocked"])
+        self.assertEqual((policy["upload_bps"], policy["download_bps"]),
+                         (2_000_000, 500_000))
+        node["cap_bytes"] = 10
+        node["cap_action"] = "throttle"
+        policy = desired_policy(inventory, state, now=NOW)[self.identifier]
+        self.assertEqual((policy["upload_bps"], policy["download_bps"]),
+                         (1_000_000, 500_000))
 
     def test_directional_reset_preserves_totals_and_blocks_service(self):
         inventory, state = self.update(counters(8, 4))

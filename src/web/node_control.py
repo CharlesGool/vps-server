@@ -35,7 +35,9 @@ PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 APP_DIR = Path(__file__).resolve().parent
 IPERF_PORT_FILE = Path(os.environ.get("VPSSRV_DATA_DIR", str(APP_DIR / "data"))) / "iperf-port.txt"
 EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
-                         "expires_at", "reset_mode", "next_reset_at"))
+                         "cap_action", "upload_limit_bps", "download_limit_bps",
+                         "expiry_count", "expiry_unit", "expires_at",
+                         "reset_mode", "next_reset_at"))
 _HOST_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
 
 

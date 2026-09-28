@@ -130,6 +130,7 @@ class OperationsTests(unittest.TestCase):
         self.inventory["nodes"][1]["total_download_bytes"] = 2
         updated = edit_node(self.inventory, identifier,
                             {"name": "renamed", "port": 30000, "cap_bytes": 11,
+                             "expiry_count": 1, "expiry_unit": "years",
                              "expires_at": "2031-01-01T00:00:00+00:00",
                              "credential": "d7f4aecc-4b17-4f58-b1e2-47fe00400cd2"}, reserved_ports=[])
         self.assertEqual(updated["nodes"][1]["id"], identifier)
@@ -142,7 +143,8 @@ class OperationsTests(unittest.TestCase):
         for change in ({"id": str(uuid.uuid4())}, {"protocol": "trojan"},
                        {"inbound": {}}, {"upload_bytes": 0}, {"enabled": False},
                        {"cap_bytes": 0}, {"port": 20003}, {"port": 40000},
-                       {"credential": "invalid"}, {"expires_at": "2030-01-01"}):
+                       {"credential": "invalid"}, {"expires_at": "2030-01-01"},
+                       {"cap_action": "invalid"}, {"upload_limit_bps": 0}):
             with self.subTest(change=change), self.assertRaises(InvalidInventory):
                 edit_node(self.inventory, identifier, change, reserved_ports=[40000])
         with self.assertRaises(InvalidInventory):
@@ -150,7 +152,8 @@ class OperationsTests(unittest.TestCase):
 
     def test_disabled_expired_and_exhausted_effective_state(self):
         first, second, third = self.inventory["nodes"][:3]
-        first["expires_at"] = "2030-01-01T00:00:00+00:00"
+        first.update(expiry_count=1, expiry_unit="years",
+                     expires_at="2030-01-01T00:00:00+00:00")
         second["cap_bytes"] = 10
         second["upload_bytes"] = 10
         second["total_upload_bytes"] = 10
