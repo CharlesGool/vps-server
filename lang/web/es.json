@@ -284,5 +284,20 @@
   "node_validity_expired": "Caducado",
   "node_remaining_days": "Quedan {count} días",
   "node_remaining_hours": "Quedan {count} horas",
-  "node_clash_copy_label": "Copiar enlace de suscripción de Clash"
+  "node_clash_copy_label": "Copiar enlace de suscripción de Clash",
+  "node_keep_port": "Dejar vacío para conservar el puerto actual",
+  "lucky_not_installed": "Lucky no está instalado.",
+  "lucky_admin_note": "Gestiona DDNS y el proxy inverso en Lucky. Esta consola no modifica sus credenciales, reglas ni servicios de escucha. Su inicio de sesión HTTP envía las credenciales sin cifrar.",
+  "lucky_server_address": "IP de este servidor",
+  "lucky_admin": "Dirección de administración",
+  "lucky_ssh_tunnel": "Usa un túnel SSH para acceder a localhost.",
+  "lucky_account": "Cuenta",
+  "lucky_password": "Contraseña",
+  "frps_not_installed": "frps no está instalado.",
+  "frps_heading": "Servidor frps",
+  "frps_bind": "Dirección de escucha",
+  "frps_status": "Estado",
+  "frps_token": "Token",
+  "private_value_failed": "No se pudo cargar el valor.",
+  "private_copy_failed": "No se pudo copiar."
 }

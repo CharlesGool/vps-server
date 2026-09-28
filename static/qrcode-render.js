@@ -23,6 +23,13 @@
       }
     }
   }
+  window.renderPrivateQr = function (el, value) {
+    if (!el || !value) return;
+    var qr = qrcode(0, "M");
+    qr.addData(value);
+    qr.make();
+    el.innerHTML = qr.createSvgTag({ scalable: true });
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", renderAll);

@@ -284,5 +284,20 @@
   "node_validity_expired": "Expired",
   "node_remaining_days": "{count} days left",
   "node_remaining_hours": "{count} hours left",
-  "node_clash_copy_label": "Copy Clash subscription link"
+  "node_clash_copy_label": "Copy Clash subscription link",
+  "node_keep_port": "Leave blank to keep current port",
+  "lucky_not_installed": "Lucky is not installed.",
+  "lucky_admin_note": "Manage DDNS and reverse proxy settings in Lucky. This console does not change Lucky credentials, rules, or listeners. Its HTTP login sends credentials without encryption.",
+  "lucky_server_address": "This server IP",
+  "lucky_admin": "Admin address",
+  "lucky_ssh_tunnel": "Use an SSH tunnel to reach localhost.",
+  "lucky_account": "Account",
+  "lucky_password": "Password",
+  "frps_not_installed": "frps is not installed.",
+  "frps_heading": "frps server",
+  "frps_bind": "Bind address",
+  "frps_status": "Status",
+  "frps_token": "Token",
+  "private_value_failed": "Could not load value.",
+  "private_copy_failed": "Could not copy."
 }

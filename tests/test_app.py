@@ -380,17 +380,30 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertIn("Traffic cap (GiB)", page)
             self.assertIn('name="cap_gib"', page)
-            self.assertIn('class="node-import"', page)
-            copy_id = f"clash-url-{node['id']}"
-            self.assertIn(f'data-copy="{copy_id}"', page)
-            copied = html.unescape(re.search(rf'<span id="{copy_id}" hidden>([^<]+)</span>', page).group(1))
-            self.assertEqual(copied, f"http://192.168.50.23:{app.CONSOLE_PORT}{path}")
-            self.assertLess(page.index(f'data-copy="{copy_id}"'), page.index('class="node-import"'))
+            self.assertIn('class="node-import private-share-import"', page)
+            self.assertIn('class="private-share-copy"', page)
+            self.assertLess(page.index('class="private-share-copy"'), page.index('class="node-import private-share-import"'))
             self.assertIn("/static/qrcode-render.js", page)
-            link = html.unescape(re.search(r'class="node-import" href="([^"]+)', page).group(1))
-            self.assertEqual(urlsplit(link).scheme, "clash")
-            self.assertIn(path, unquote(link))
+            self.assertNotIn(path, page)
+            self.assertNotIn('test-secret', page)
+            self.assertNotIn('25001', page)
             self.assertNotIn(f'>{node["id"]}<', page)
+            session = self.login()
+            conn = self.connect()
+            conn.request("GET", f"/proxy/private-value?id={node['id']}&field=share",
+                         headers={"Cookie": "session=" + session})
+            response = conn.getresponse()
+            copied = json.loads(response.read())["value"]
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader("Cache-Control"), "no-store")
+            self.assertEqual(copied, f"http://192.168.50.23:{app.CONSOLE_PORT}{path}")
+            conn = self.connect()
+            conn.request("GET", f"/proxy/private-value?id={node['id']}&field=credential")
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 302)
             conn = self.connect()
             conn.request("GET", path)
             response = conn.getresponse()
@@ -500,7 +513,16 @@ class ConsoleTest(unittest.TestCase):
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             self.assertEqual(response.getheader('Cache-Control'), 'no-store')
-            self.assertIn(b'test-frps-secret', response.read())
+            body = response.read()
+            self.assertNotIn(b'test-frps-secret', body)
+            self.assertNotIn(b'7000', body)
+            conn.close()
+            conn = self.connect()
+            conn.request('GET', '/proxy/private-value?id=frps&field=credential',
+                         headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())['value'], 'test-frps-secret')
             conn.close()
             with patch.object(app, 'AUTH_ENABLED', False):
                 conn = self.connect()
@@ -522,11 +544,22 @@ class ConsoleTest(unittest.TestCase):
             self.assertNotIn(b'test-lucky-secret', response.read())
             conn.close()
             conn = self.connect()
-            conn.request('GET', '/lucky', headers={'Cookie': 'session=' + self.login()})
+            cookie = self.login()
+            conn.request('GET', '/lucky', headers={'Cookie': 'session=' + cookie})
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             self.assertEqual(response.getheader('Cache-Control'), 'no-store')
-            self.assertIn(b'test-lucky-secret', response.read())
+            body = response.read()
+            self.assertNotIn(b'test-lucky-secret', body)
+            self.assertNotIn(b'test-lucky-account', body)
+            self.assertNotIn(b'16601', body)
+            conn.close()
+            conn = self.connect()
+            conn.request('GET', '/proxy/private-value?id=lucky&field=credential',
+                         headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())['value'], 'test-lucky-secret')
             conn.close()
             with patch.object(app, 'AUTH_ENABLED', False):
                 conn = self.connect()
@@ -1919,9 +1952,9 @@ class AnytlsPageTest(unittest.TestCase):
         _, body = self.get("/proxy")
         for key in ("anytls_port", "anytls_password", "anytls_sni"):
             self.assertIn(app.STRINGS["en"][key], body)
-        self.assertIn('id="anytls-pw"', body, "the password needs its own copy button")
-        self.assertIn("27999", body)
-        self.assertIn(self.FAKE_PASSWORD, body)
+        self.assertIn('data-private-id="legacy-anytls"', body)
+        self.assertNotIn("27999", body)
+        self.assertNotIn(self.FAKE_PASSWORD, body)
 
     def test_page_keeps_addresses_without_share_links_or_qr_scripts(self):
         with patch.object(app, "local_addresses", return_value=[("eth0", "192.168.1.8")]), \
@@ -2383,10 +2416,10 @@ class ProxyPageTest(unittest.TestCase):
     def test_page_shows_ports_secrets_and_sni_without_clash_configuration(self):
         _, body = self.get("/proxy")
         for port in ("41001", "45001", "50001", "55001"):
-            self.assertIn(port, body)
+            self.assertNotIn(port, body)
         for secret in (self.FAKE_VMESS_UUID, self.FAKE_VLESS_UUID,
                        self.FAKE_TROJAN_PASSWORD, self.FAKE_SS_PASSWORD):
-            self.assertIn(secret, body)
+            self.assertNotIn(secret, body)
         self.assertIn(self.FAKE_SNI, body)
         self.assertNotIn('id="proxy-vmess-clash-', body)
         self.assertNotIn('id="proxy-vless-clash-', body)
@@ -2394,7 +2427,7 @@ class ProxyPageTest(unittest.TestCase):
         self.assertNotIn('id="proxy-shadowsocks-clash-', body)
         for proto in ("vmess", "vless", "trojan", "shadowsocks"):
             self.assertNotIn(f'id="proxy-{proto}-link-', body)
-            self.assertIn(f'id="proxy-{proto}-secret"', body)
+            self.assertIn(f'data-private-id="legacy-{proto}"', body)
         self.assertIn(app.STRINGS["en"]["anytls_lan"].format(iface="eth0"), body)
 
     def test_page_hides_proxy_share_links_and_qr(self):
@@ -2776,7 +2809,8 @@ class PortForwardConsoleTest(unittest.TestCase):
         resp, body = self.get("/portfwd", cookie)
         self.assertEqual(resp.status, 200)
         self.assertIn("game", body)
-        self.assertIn("25565", body)
+        self.assertNotIn("25565", body)
+        self.assertIn('data-private-field="public-port"', body)
 
         rule_id = app.PORTFWD.list_rules()[0]["id"]
         status, location = self.post("/portfwd/delete", f"id={rule_id}", cookie)
@@ -2947,9 +2981,9 @@ class IperfLabelTest(unittest.TestCase):
     def test_page_offers_default_reverse_and_udp_commands(self):
         body = self._page()
         port = app.IPERF_WINDOW.port
-        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} --json", body)
-        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} -R --json", body)
-        self.assertIn(f"iperf3 -c 127.0.0.1 -p {port} -u -b 100M --json", body)
+        self.assertNotIn(f"iperf3 -c 127.0.0.1 -p {port}", body)
+        for field in ('cmd-default', 'cmd-reverse', 'cmd-udp'):
+            self.assertIn(f'data-private-field="{field}"', body)
         for key in ("iperf_cmd_default", "iperf_cmd_reverse", "iperf_cmd_udp"):
             self.assertIn(app.STRINGS["en"][key], body)
 

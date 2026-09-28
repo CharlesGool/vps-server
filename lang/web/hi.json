@@ -284,5 +284,20 @@
   "node_validity_expired": "समय समाप्त",
   "node_remaining_days": "{count} दिन शेष",
   "node_remaining_hours": "{count} घंटे शेष",
-  "node_clash_copy_label": "Clash सदस्यता लिंक कॉपी करें"
+  "node_clash_copy_label": "Clash सदस्यता लिंक कॉपी करें",
+  "node_keep_port": "मौजूदा पोर्ट रखने के लिए खाली छोड़ें",
+  "lucky_not_installed": "Lucky इंस्टॉल नहीं है।",
+  "lucky_admin_note": "DDNS और रिवर्स प्रॉक्सी सेटिंग Lucky में प्रबंधित करें। यह कंसोल Lucky के क्रेडेंशियल, नियम या लिसनर नहीं बदलता। इसका HTTP लॉगिन क्रेडेंशियल बिना एन्क्रिप्शन भेजता है।",
+  "lucky_server_address": "इस सर्वर का IP",
+  "lucky_admin": "प्रशासन पता",
+  "lucky_ssh_tunnel": "localhost तक पहुँचने के लिए SSH टनल का उपयोग करें।",
+  "lucky_account": "खाता",
+  "lucky_password": "पासवर्ड",
+  "frps_not_installed": "frps इंस्टॉल नहीं है।",
+  "frps_heading": "frps सर्वर",
+  "frps_bind": "बाइंड पता",
+  "frps_status": "स्थिति",
+  "frps_token": "टोकन",
+  "private_value_failed": "मान लोड नहीं हो सका।",
+  "private_copy_failed": "कॉपी नहीं हो सका।"
 }

@@ -39,6 +39,7 @@
     }
     return Promise.resolve(legacyCopy(text));
   }
+  window.copyPrivateText = copy;
 
   function flash(button, ok) {
     var original = button.dataset.original || button.textContent;

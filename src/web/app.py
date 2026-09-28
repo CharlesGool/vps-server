@@ -2092,6 +2092,7 @@ STATIC_FILES = {
     "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
     "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
     "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
+    "/static/private-values.js": ("application/javascript", BASE_DIR / "static" / "private-values.js"),
     "/static/node-controls.js": ("application/javascript", BASE_DIR / "static" / "node-controls.js"),
     "/static/login.js": ("application/javascript", BASE_DIR / "static" / "login.js"),
     "/static/qrcode.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode.js"),
@@ -2335,6 +2336,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             if not AUTH_ENABLED:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             return self.page_proxy(lang, query_lang)
+        if method == "GET" and path == "/proxy/private-value":
+            if not AUTH_ENABLED:
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            return self.handle_proxy_private_value(parsed)
         if method == "POST" and path == "/proxy/reset":
             return self.handle_proxy_reset()
         if method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
@@ -2780,7 +2785,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         key = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
         if key in IPERF_MESSAGE_KEYS:
             cls = "error" if key == "iperf_port_invalid" else "notice"
-            notice = f'<p class="{cls}">{html.escape(t[key].format(port=port))}</p>'
+            notice = f'<p class="{cls}">{html.escape(t[key].format(port="••••••"))}</p>'
 
         countdown_script = ""
         if is_open:
@@ -2796,7 +2801,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             # escaping it would also escape the <span> tags the script needs.
             deadline = int(time.time()) + remaining
             state = t["iperf_state_open"].format(
-                port=port,
+                port='••••••',
                 mins=f'<span id="iperf-mins">{remaining // 60}</span>',
                 secs=f'<span id="iperf-secs">{remaining % 60}</span>',
             )
@@ -2813,22 +2818,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </form>
             """
         else:
-            state = html.escape(t["iperf_state_closed"].format(port=port))
+            state = html.escape(t["iperf_state_closed"].format(port='••••••'))
             state_attr = ""
             open_label = t["iperf_open"]
             close_form = ""
 
-        # The Host header is what the operator actually typed to get here, so
-        # it is the address their tester should aim at too. It is only echoed
-        # into a command example, and it is escaped.
-        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
-        commands = render_copyable(
-            t, t['iperf_cmd_default'], f"iperf3 -c {host} -p {port} --json", "iperf-cmd-default",
-        ) + render_copyable(
-            t, t['iperf_cmd_reverse'], f"iperf3 -c {host} -p {port} -R --json", "iperf-cmd-reverse",
-        ) + render_copyable(
-            t, t['iperf_cmd_udp'], f"iperf3 -c {host} -p {port} -u -b 100M --json", "iperf-cmd-udp",
-        )
+        commands = ''.join(
+            f'<div class="copyrow"><div class="copyhead">{html.escape(t[label])}</div>'
+            f'{self.private_value_control("iperf", field, t, copy=True)}</div>'
+            for label, field in (("iperf_cmd_default", "cmd-default"),
+                                 ("iperf_cmd_reverse", "cmd-reverse"),
+                                 ("iperf_cmd_udp", "cmd-udp")))
 
         body = f"""
         <div class="card">
@@ -2836,10 +2836,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {notice}
           <div class="iperf-facts">
             <div class="iperf-fact"><span>{html.escape(t['iperf_status'])}</span><strong class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</strong></div>
-            <div class="iperf-fact"><span>{html.escape(t['iperf_port'])}</span><strong>{port}</strong></div>
+            <div class="iperf-fact"><span>{html.escape(t['iperf_port'])}</span><strong>{self.private_value_control('iperf', 'port', t)}</strong></div>
           </div>
           <form method="post" action="/iperf/port" class="iperf-port-form">
-            <label>{html.escape(t['iperf_change_port'])}<input type="number" name="port" min="1024" max="65535" value="{port}" required {'disabled' if is_open else ''}></label>
+            <label>{html.escape(t['iperf_change_port'])}<input type="number" name="port" min="1024" max="65535" placeholder="••••••" required {'disabled' if is_open else ''}></label>
             <button type="submit" {'disabled' if is_open else ''}>{html.escape(t['iperf_save_port'])}</button>
           </form>
           <div class="iperf-actions">
@@ -2856,6 +2856,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {commands}
         </div>
         <script src="/static/copy.js"></script>
+        <script src="/static/private-values.js"></script>
         {countdown_script}
         """
         self.send_html(200, self.render_page(t['iperf_heading'], body, lang, active="iperf"),
@@ -2925,8 +2926,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div class="node-addr">
               <h2>{label}</h2>
               <p class="iperf-state {state_cls}">{html.escape(state_label)}
-                &mdash; {proto} :{rule['public_port']} {html.escape(t['portfwd_via'])}
-                {html.escape(rule['target_host'])}:{rule['target_port']}</p>
+                &mdash; {proto} :{self.private_value_control('forward-' + rule['id'], 'public-port', t)} {html.escape(t['portfwd_via'])}
+                {html.escape(rule['target_host'])}:{self.private_value_control('forward-' + rule['id'], 'target-port', t)}</p>
               <div class="iperf-actions">
                 <form method="post" action="{toggle_action}" class="inline-form">
                   <input type="hidden" name="id" value="{html.escape(rule['id'])}">
@@ -2978,6 +2979,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {rules_html}
           {add_form}
         </div>
+        <script src="/static/private-values.js"></script>
         """
         self.send_html(200, self.render_page(t['portfwd_heading'], body, lang, active="portfwd"),
                        self.maybe_lang_cookie(query_lang))
@@ -3018,30 +3020,38 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     # -- anytls node ----------------------------------------------------
 
     def page_lucky(self, lang, query_lang):
+        t = STRINGS[lang]
         data = lucky_admin()
         if data is None:
-            return self.send_html(404, self.render_page('Lucky', '<div class="card">Lucky not installed</div>', lang))
-        port = data['AdminWebListenPort']
+            return self.send_html(404, self.render_page('Lucky', f'<div class="card">{html.escape(t["lucky_not_installed"])}</div>', lang))
         public = data.get('AllowInternetaccess') is True
-        address = 'this server IP' if public else 'localhost (use an SSH tunnel)'
-        status = 'running' if _run_quiet(['systemctl', 'is-active', '--quiet', LUCKY_SERVICE]) else 'stopped'
-        body = ('<div class="card"><h1>Lucky</h1><p>Use Lucky’s own admin UI for DDNS and reverse proxy settings. '
-                'This console does not modify Lucky DNS credentials, rules or listeners.</p>'
-                '<p>Admin: %s:%s (HTTP; credentials are unencrypted in transit). Status: %s.</p>'
-                '<p>Account: <code>%s</code>; Password: <code>%s</code></p></div>') % (
-                    address, port, status, html.escape(str(data.get('AdminAccount', ''))),
-                    html.escape(str(data.get('AdminPassword', ''))))
+        address = t['lucky_server_address'] if public else 'localhost'
+        status = t['node_active'] if _run_quiet(['systemctl', 'is-active', '--quiet', LUCKY_SERVICE]) else t['node_stopped']
+        body = (f'<div class="card"><h1>Lucky</h1><p>{html.escape(t["lucky_admin_note"])}</p>'
+                f'<p>{html.escape(t["lucky_admin"])}: {html.escape(address)}: '
+                f'{self.private_value_control("lucky", "port", t)}</p>'
+                f'{"<p>" + html.escape(t["lucky_ssh_tunnel"]) + "</p>" if not public else ""}'
+                f'<p>{html.escape(t["frps_status"])}: {html.escape(status)}</p>'
+                f'<p>{html.escape(t["lucky_account"])}: {self.private_value_control("lucky", "account", t)}</p>'
+                f'<p>{html.escape(t["lucky_password"])}: {self.private_value_control("lucky", "credential", t, copy=True)}</p>'
+                '</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page('Lucky', body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def page_frps(self, lang, query_lang):
+        t = STRINGS[lang]
         node = frps_node()
         if node is None:
-            return self.send_html(404, self.render_page('frps', '<div class="card">frps not installed</div>', lang))
-        status = 'running' if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else 'stopped'
-        body = ('<div class="card"><h1>frps server</h1><p>Bind: %s:%s</p>'
-                '<p>Status: %s</p><p>Token: <code>%s</code></p></div>') % (
-                    html.escape(node['address']), node['port'], status, html.escape(node['token']))
+            return self.send_html(404, self.render_page('frps', f'<div class="card">{html.escape(t["frps_not_installed"])}</div>', lang))
+        status = t['node_active'] if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else t['node_stopped']
+        body = ('<div class="card"><h1>%s</h1><p>%s: %s: %s</p>'
+                '<p>%s: %s</p><p>%s: %s</p></div>'
+                '<script src="/static/copy.js"></script>'
+                '<script src="/static/private-values.js"></script>') % (
+                    html.escape(t['frps_heading']), html.escape(t['frps_bind']),
+                    html.escape(node['address']), self.private_value_control('frps', 'port', t),
+                    html.escape(t['frps_status']), html.escape(status),
+                    html.escape(t['frps_token']), self.private_value_control('frps', 'credential', t, copy=True))
         return self.send_html(200, self.render_page('frps', body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
@@ -3095,11 +3105,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
         if anytls is not None:
             if anytls["running"]:
-                state = t["anytls_state_running"].format(port=anytls["port"])
+                state = t["anytls_state_running"].format(port='••••••')
                 state_class = "is-open"
             else:
                 state = t["anytls_state_stopped"].format(
-                    port=anytls["port"], service=ANYTLS_SERVICE
+                    port='••••••', service=ANYTLS_SERVICE
                 )
                 state_class = "is-closed"
             health = ("" if anytls["running"] else
@@ -3120,12 +3130,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               {health}
               <dl class="kv proxy-node-facts">
                 <dt>{html.escape(t['anytls_port'])}</dt>
-                <dd>{html.escape(str(anytls['port']))}</dd>
+                <dd>{self.private_value_control('legacy-anytls', 'port', t)}</dd>
                 <dt>{html.escape(t['anytls_password'])}</dt>
-                <dd class="secret"><code id="anytls-pw">{html.escape(anytls['password'])}</code>
-                  <button type="button" class="copybtn" data-copy="anytls-pw"
-                          data-copied="{html.escape(t['copied'])}"
-                          >{html.escape(t['copy'])}</button></dd>
+                <dd class="secret">{self.private_value_control('legacy-anytls', 'credential', t, copy=True)}</dd>
                 <dt>{html.escape(t['anytls_sni'])}</dt>
                 <dd>{html.escape(anytls['sni'] or '—')}</dd>
               </dl>
@@ -3186,12 +3193,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   {proxy_health}
                   <dl class="kv proxy-node-facts">
                     <dt>{html.escape(t['proxy_port'])}</dt>
-                    <dd>{html.escape(str(node['port']))}</dd>
+                    <dd>{self.private_value_control('legacy-' + proto, 'port', t)}</dd>
                     <dt>{html.escape(secret_label)}</dt>
-                    <dd class="secret"><code id="proxy-{proto}-secret">{html.escape(str(node['secret']))}</code>
-                      <button type="button" class="copybtn" data-copy="proxy-{proto}-secret"
-                              data-copied="{html.escape(t['copied'])}"
-                              >{html.escape(t['copy'])}</button></dd>
+                    <dd class="secret">{self.private_value_control('legacy-' + proto, 'credential', t, copy=True)}</dd>
                     {sni_row}
                   </dl>
                   <div class="proxy-node-addresses">{"".join(blocks)}</div>
@@ -3231,6 +3235,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <div class="proxy-node-grid">{"".join(sections)}</div>
         </div>
         <script src="/static/copy.js"></script>
+        <script src="/static/private-values.js"></script>
         {'''<script src="/static/qrcode.js"></script>
         <script src="/static/qrcode-utf8.js"></script>
         <script src="/static/qrcode-render.js"></script>''' if lan_host and managed else ''}
@@ -3258,10 +3263,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             identifier = node["id"]
             token = node_csrf_token(session, identifier)
             inbound = node["inbound"]
-            credential = (inbound["password"] if protocol == "shadowsocks" else
-                          inbound["users"][0]["uuid" if protocol in ("vmess", "vless") else "password"])
             sni = _cert_common_name(inbound["tls"]["certificate_path"]) if protocol != "shadowsocks" else ""
-            secret_id = "node-secret-" + identifier
             sni_fact = (f'<div class="node-fact"><dt>{esc(t["proxy_sni"])}</dt><dd>{esc(sni or "—")}</dd></div>'
                         if protocol != "shadowsocks" else
                         f'<div class="node-fact"><dt>{esc(t["proxy_sni"])}</dt><dd>{esc(t["node_not_applicable"])}</dd></div>')
@@ -3302,17 +3304,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
                   <div class="node-form-grid">
                     <label>{esc(t['node_name'])}<input name="name" maxlength="64" value="{esc(node['name'], quote=True)}" required></label>
-                    <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{node['port']}" required></label>
-                    <label>{esc(t['node_credential'])}<input name="credential" value="" placeholder="{esc(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
+                    <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_keep_port'], quote=True)}"></label>
+                    <label>{esc(t['node_credential'])}<input type="password" name="credential" value="" placeholder="{esc(t['node_keep_credential'], quote=True)}" autocomplete="new-password"></label>
                     {sni_input}
                   </div><button type="submit">{esc(t['node_save_settings'])}</button>
                 </form>
               </details>
               <dl class="proxy-node-facts">
-                <div class="node-fact"><dt>{esc(t['proxy_port'])}</dt><dd>{node['port']}</dd></div>
+                <div class="node-fact"><dt>{esc(t['proxy_port'])}</dt><dd>{self.private_value_control(identifier, 'port', t)}</dd></div>
                 {sni_fact}
-                <div class="node-fact node-fact-secret"><dt>{esc(t['node_credential'])}</dt><dd class="secret"><code id="{secret_id}">{esc(credential)}</code>
-                  <button type="button" class="copybtn" data-copy="{secret_id}" data-copied="{esc(t['copy'])}">{esc(t['copy'])}</button></dd></div>
+                <div class="node-fact node-fact-secret"><dt>{esc(t['node_credential'])}</dt><dd class="secret">{self.private_value_control(identifier, 'credential', t, copy=True)}</dd></div>
               </dl></section>
               <div class="proxy-node-addresses">{addresses}</div>
               {self.node_metrics(node, meter_nodes, t)}
@@ -3372,7 +3373,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div class="node-form-grid">
               <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
               <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
-              <label>{esc(t['node_credential'])}<input name="credential" value="" placeholder="{esc(t['node_credential_random'], quote=True)}" autocomplete="new-password"><small class="node-field-hint" data-credential-hint>{esc(t['node_credential_password_hint'])}</small></label>
+              <label>{esc(t['node_credential'])}<input type="password" name="credential" value="" placeholder="{esc(t['node_credential_random'], quote=True)}" autocomplete="new-password"><small class="node-field-hint" data-credential-hint>{esc(t['node_credential_password_hint'])}</small></label>
               <label data-sni-field>{esc(t['proxy_sni'])}<input name="sni" value="www.bing.com" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")
@@ -3389,31 +3390,108 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div></header>
           {notice}{create}<div class="proxy-node-grid managed-node-grid">{empty_state}</div></div>
           <script src="/static/copy.js"></script>
+          <script src="/static/private-values.js"></script>
           <script src="/static/node-controls.js"></script>
           {qr_scripts}'''
         return self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
+    def private_value_control(self, identifier, field, t, copy=False):
+        esc = html.escape
+        return (f'<span class="private-value" data-private-id="{esc(identifier, quote=True)}" '
+                f'data-private-field="{field}" data-show="{esc(t["login_show_password"], quote=True)}" '
+                f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
+                f'data-error="{esc(t["private_value_failed"], quote=True)}">'
+                f'<code data-private-text>••••••</code>'
+                f'<button type="button" class="private-reveal" aria-pressed="false">{esc(t["login_show_password"])}</button>'
+                + (f'<button type="button" class="private-copy" data-copied="{esc(t["copied"], quote=True)}" data-error="{esc(t["private_copy_failed"], quote=True)}">{esc(t["copy"])}</button>' if copy else '')
+                + '</span>')
+
     def node_clash_share(self, node, lan_host, t):
         if node is None or lan_host is None:
             return ""
-        scheme = "https" if CONSOLE_TLS else "http"
-        url = (f"{scheme}://{lan_host}:{CONSOLE_PORT}/clash/sub/"
-               f"{node['id']}/{clash_share_token(node)}")
-        deep_link = "clash://install-config?url=" + quote(url, safe="")
-        escaped_link = html.escape(deep_link, quote=True)
-        escaped_url = html.escape(url)
-        copy_id = f"clash-url-{node['id']}"
-        return f'''<div class="node-share">
-          <span id="{copy_id}" hidden>{escaped_url}</span>
-          <button type="button" class="copybtn" data-copy="{copy_id}"
-            data-copied="{html.escape(t['copy'])}"
+        return f'''<div class="node-share" data-share-id="{html.escape(node['id'], quote=True)}">
+          <button type="button" class="private-share-copy" data-copied="{html.escape(t['copied'], quote=True)}" data-error="{html.escape(t['private_copy_failed'], quote=True)}"
             aria-label="{html.escape(t['node_clash_copy_label'], quote=True)}">{html.escape(t['copy'])}</button>
-          <a class="node-import" href="{escaped_link}">{html.escape(t['node_clash_import'])}</a>
+          <button type="button" class="node-import private-share-import" data-error="{html.escape(t['private_value_failed'], quote=True)}">{html.escape(t['node_clash_import'])}</button>
           <details class="qr-details"><summary>{html.escape(t['node_clash_qr'])}</summary>
-            <div class="qr" data-qr-text="{escaped_link}"></div>
+            <div class="qr" data-private-qr data-error="{html.escape(t['private_value_failed'], quote=True)}"></div>
           </details>
         </div>'''
+
+    def handle_proxy_private_value(self, parsed):
+        query = parse_qs(parsed.query)
+        identifier = query.get('id', [''])[0]
+        field = query.get('field', [''])[0]
+        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-default', 'cmd-reverse', 'cmd-udp', 'public-port', 'target-port', 'account'):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            if identifier == 'lucky' and field in ('port', 'account', 'credential'):
+                data = lucky_admin()
+                if data is None:
+                    raise ValueError('no Lucky admin')
+                value = str(data['AdminWebListenPort'] if field == 'port' else
+                            data.get('AdminAccount', '') if field == 'account' else
+                            data.get('AdminPassword', ''))
+            elif identifier == 'iperf' and field in ('port', 'cmd-default', 'cmd-reverse', 'cmd-udp'):
+                host = (self.headers.get('Host') or '').split(':')[0] or '<server-ip>'
+                suffix = {'cmd-default': '', 'cmd-reverse': ' -R', 'cmd-udp': ' -u -b 100M'}
+                value = (str(IPERF_WINDOW.port) if field == 'port' else
+                         f'iperf3 -c {host} -p {IPERF_WINDOW.port}{suffix[field]} --json')
+            elif identifier.startswith('forward-') and field in ('public-port', 'target-port'):
+                rule = next(item for item in PORTFWD.list_rules() if item['id'] == identifier[8:])
+                value = str(rule['public_port' if field == 'public-port' else 'target_port'])
+            elif identifier == 'frps' and field in ('port', 'credential'):
+                node = frps_node()
+                if node is None:
+                    raise ValueError('no frps node')
+                value = str(node['port'] if field == 'port' else node['token'])
+            elif identifier.startswith('legacy-') and field in ('port', 'credential'):
+                protocol = identifier.removeprefix('legacy-')
+                node = (anytls_node() if protocol == 'anytls' else
+                        next(item for item in proxy_nodes() if item['type'] == protocol))
+                if node is None:
+                    raise ValueError('no legacy node')
+                value = str(node['port'] if field == 'port' else
+                            node['password'] if protocol == 'anytls' else node['secret'])
+            else:
+                value = self.managed_private_value(identifier, field)
+        except (OSError, ValueError, TypeError, KeyError, StopIteration):
+            return self.send_html(404, 'Not found', {'Cache-Control': 'no-store'})
+        data = json.dumps({'value': value}).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        self.wfile.write(data)
+
+    def managed_private_value(self, identifier, field):
+        try:
+            inventory = read_inventory(state_path=NODE_STATE_PATH,
+                                       config_paths={'anytls': ANYTLS_CONFIG, 'proxy': PROXY_CONFIG})
+            node = next(item for item in inventory['nodes'] if item['id'] == identifier)
+            if field == 'port':
+                value = str(node['port'])
+            elif field == 'credential':
+                inbound = node['inbound']
+                protocol = node['protocol']
+                value = (inbound['password'] if protocol == 'shadowsocks' else
+                         inbound['users'][0]['uuid' if protocol in ('vmess', 'vless') else 'password'])
+            elif field == 'share':
+                host = clash_lan_host((self.headers.get('Host') or '').split(':')[0])
+                if host is None:
+                    raise ValueError('no LAN address')
+                scheme = 'https' if CONSOLE_TLS else 'http'
+                value = (f'{scheme}://{host}:{CONSOLE_PORT}/clash/sub/'
+                         f'{identifier}/{clash_share_token(node)}')
+            else:
+                raise ValueError('unsupported node value')
+            return value
+        except (OSError, ValueError, TypeError, KeyError, StopIteration):
+            raise ValueError('no managed node')
 
     def handle_clash_subscription(self, path):
         parts = path.split("/")
@@ -3530,7 +3608,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <input type="hidden" name="protocol" value="{html.escape(protocol)}">
           <input type="hidden" name="csrf" value="{token}">
           <label>{html.escape(label)}
-            <input type="text" name="credential" autocomplete="off" required>
+            <input type="password" name="credential" autocomplete="off" required>
           </label>
           <button type="submit">{html.escape(t['node_save_credential'])}</button>
         </form>
@@ -3605,7 +3683,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if action == "edit":
             try:
                 request["name"] = form["name"][0]
-                request["port"] = int(form["port"][0])
+                request["port"] = int(form["port"][0]) if form["port"][0] else node["port"]
                 credential = form["credential"][0]
                 if credential:
                     request["credential"] = credential

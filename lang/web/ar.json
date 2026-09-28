@@ -284,5 +284,20 @@
   "node_validity_expired": "انتهت الصلاحية",
   "node_remaining_days": "متبقٍ {count} يومًا",
   "node_remaining_hours": "متبقٍ {count} ساعة",
-  "node_clash_copy_label": "نسخ رابط اشتراك Clash"
+  "node_clash_copy_label": "نسخ رابط اشتراك Clash",
+  "node_keep_port": "اتركه فارغًا للاحتفاظ بالمنفذ الحالي",
+  "lucky_not_installed": "Lucky غير مثبت.",
+  "lucky_admin_note": "أدر إعدادات DDNS والوكيل العكسي في Lucky. لا تغيّر هذه اللوحة بيانات اعتماد Lucky أو قواعده أو منافذ الاستماع. يرسل تسجيل الدخول عبر HTTP بيانات الاعتماد دون تشفير.",
+  "lucky_server_address": "عنوان IP لهذا الخادم",
+  "lucky_admin": "عنوان الإدارة",
+  "lucky_ssh_tunnel": "استخدم نفق SSH للوصول إلى localhost.",
+  "lucky_account": "الحساب",
+  "lucky_password": "كلمة المرور",
+  "frps_not_installed": "frps غير مثبت.",
+  "frps_heading": "خادم frps",
+  "frps_bind": "عنوان الاستماع",
+  "frps_status": "الحالة",
+  "frps_token": "الرمز",
+  "private_value_failed": "تعذّر تحميل القيمة.",
+  "private_copy_failed": "تعذّر النسخ."
 }

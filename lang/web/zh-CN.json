@@ -284,5 +284,20 @@
   "node_validity_expired": "已到期",
   "node_remaining_days": "剩余 {count} 天",
   "node_remaining_hours": "剩余 {count} 小时",
-  "node_clash_copy_label": "复制 Clash 订阅链接"
+  "node_clash_copy_label": "复制 Clash 订阅链接",
+  "node_keep_port": "留空则保留当前端口",
+  "lucky_not_installed": "尚未安装 Lucky.",
+  "lucky_admin_note": "请在 Lucky 中管理 DDNS 和反向代理设置.本控制台不修改 Lucky 的凭据,规则或监听器.其 HTTP 登录会明文传输凭据.",
+  "lucky_server_address": "本机 IP",
+  "lucky_admin": "管理地址",
+  "lucky_ssh_tunnel": "使用 SSH 隧道访问 localhost.",
+  "lucky_account": "账号",
+  "lucky_password": "密码",
+  "frps_not_installed": "尚未安装 frps.",
+  "frps_heading": "frps 服务端",
+  "frps_bind": "监听地址",
+  "frps_status": "状态",
+  "frps_token": "令牌",
+  "private_value_failed": "无法读取该值.",
+  "private_copy_failed": "复制失败."
 }
