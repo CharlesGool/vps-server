@@ -2327,7 +2327,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.handle_logout()
 
         if not self.is_authenticated():
-            return self.redirect("/login?next=settings" if path.startswith("/settings") else "/login")
+            destination = ("/login?next=preferences" if path == "/settings" else
+                           "/login?next=settings" if path.startswith("/settings") else "/login")
+            return self.redirect(destination)
 
         if path == "/settings/verify" and method == "GET":
             return self.page_security_verify(lang)
@@ -2441,9 +2443,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             password_error = False
         error_html = f'<p class="error" id="login-error" role="alert">{html.escape(error)}</p>' if error else ""
         invalid = ' aria-invalid="true" aria-describedby="login-error"' if error and password_error else ""
-        next_page = "settings" if next_page == "settings" else ""
-        next_input = '<input type="hidden" name="next" value="settings">' if next_page else ""
-        notice = f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>' if next_page else ""
+        next_page = next_page if next_page in ("settings", "preferences") else ""
+        next_input = f'<input type="hidden" name="next" value="{next_page}">' if next_page else ""
+        notice = (f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>'
+                  if next_page == "settings" else "")
         changed = ('<p class="notice" role="status">' + html.escape(t["password_changed"]) + '</p>'
                    if parse_qs(urlsplit(self.path).query).get("changed") == ["1"] else "")
         ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
@@ -2458,7 +2461,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <div class="login-language-field">
               <span id="login-language-label">{html.escape(t['login_language'])}</span>
               <details class="language-menu login-language-menu"><summary aria-labelledby="login-language-label">{html.escape(LANG_NAMES[lang])}</summary>
-                <div class="language-options">{render_lang_switcher(lang, '&next=settings' if next_page else '')}</div></details>
+                <div class="language-options">{render_lang_switcher(lang, '&next=' + next_page if next_page else '')}</div></details>
             </div>
             <form method="post" action="/login" class="login-form"
                   data-show-label="{html.escape(t['login_show_password'], quote=True)}"
@@ -2502,7 +2505,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
                 f"Max-Age={SESSION_TTL_SECONDS}"
             )
-            return self.redirect("/settings/security" if next_page == "settings" else "/",
+            destination = ("/settings/security" if next_page == "settings" else
+                           "/settings" if next_page == "preferences" else "/")
+            return self.redirect(destination,
                                  {"Set-Cookie": cookie})
         LOGIN_LIMITER.record_failure(ip)
         self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"],

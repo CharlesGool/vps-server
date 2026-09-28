@@ -180,7 +180,16 @@ class ConsoleTest(unittest.TestCase):
                     result = response.status, response.getheader("Location"), response.read().decode()
                     connection.close()
                     return result
-                self.assertEqual(request("GET", "/settings")[:2], (302, "/login?next=settings"))
+                self.assertEqual(request("GET", "/settings")[:2], (302, "/login?next=preferences"))
+                self.assertEqual(request("GET", "/settings/security")[:2],
+                                 (302, "/login?next=settings"))
+                status, _, login_page = request("GET", "/login?next=preferences")
+                self.assertEqual(status, 200)
+                self.assertIn('name="next" value="preferences"', login_page)
+                self.assertNotIn("Enter the admin password to manage access settings", login_page)
+                self.assertEqual(request("POST", "/login", {"password": self.password,
+                                                             "next": "preferences"})[:2],
+                                 (302, "/settings"))
                 session = self.login()
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
