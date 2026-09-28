@@ -1,7 +1,7 @@
 {
   "title": "vps-server",
   "login": "登录",
-  "login_heading": "登录控制台",
+  "login_heading": "登录",
   "login_show_password": "显示",
   "login_hide_password": "隐藏",
   "password": "密码",
@@ -13,8 +13,8 @@
   "admin_sign_in_note": "输入管理员密码后才能管理访问设置。",
   "password_changed": "密码已修改，请使用新密码登录。",
   "access_heading": "访问设置",
-  "access_ips": "内网 IP 免密访问",
-  "access_ip_note": "只接受单个 RFC 1918 内网或 IPv6 ULA 地址。公网和共享地址（包括 Tailscale IPv4）均不接受。如果网关把多台设备映射为同一个允许的 IP，它们都能免密进入。修改这些设置仍需密码登录。",
+  "access_ips": "指定 IP 免密登录",
+  "access_ip_note": "允许这些单个内网 IP 地址无需密码打开控制台。公网及共享地址不予接受。",
   "access_load_error": "无法读取已保存的 IP 列表。密码登录仍可使用；添加有效 IP 可重建列表。",
   "access_ip_empty": "尚未添加 IP 地址。",
   "access_ip_address": "内网 IP 地址",
@@ -257,5 +257,10 @@
   "node_credential_password_hint": "8–128 位，不含空格",
   "node_credential_uuid_hint": "填写 UUID",
   "node_credential_ss_hint": "填写 16 字节密钥的 Base64 编码",
-  "node_empty": "暂无节点。"
+  "node_empty": "暂无节点。",
+  "login_intro": "输入 Web 密码以管理这台设备。",
+  "login_language": "语言",
+  "login_ip_access": "使用 IP 免密访问",
+  "access_security": "安全",
+  "access_ip_shared_note": "共享同一来源 IP 的人也能操作控制台。请仅在可信局域网使用。"
 }

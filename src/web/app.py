@@ -1501,6 +1501,7 @@ def pick_lang(cookie_lang, query_lang, accept_language):
 # ---------------------------------------------------------------------------
 
 _sessions = {}
+_ip_sessions = {}
 _sessions_lock = threading.Lock()
 
 
@@ -1524,9 +1525,31 @@ def session_valid(token):
         return True
 
 
+def create_ip_session(address):
+    token = secrets.token_urlsafe(32)
+    with _sessions_lock:
+        _ip_sessions[token] = (address, time.time() + SESSION_TTL_SECONDS)
+    return token
+
+
+def ip_session_valid(token, address):
+    if not token or TRUST_PROXY or not IP_ALLOWLIST.contains(address):
+        return False
+    with _sessions_lock:
+        entry = _ip_sessions.get(token)
+        if entry is None:
+            return False
+        saved_address, expiry = entry
+        if expiry < time.time():
+            del _ip_sessions[token]
+            return False
+        return hmac.compare_digest(saved_address, address)
+
+
 def destroy_session(token):
     with _sessions_lock:
         _sessions.pop(token, None)
+        _ip_sessions.pop(token, None)
 
 
 def access_csrf_token(session, action):
@@ -1549,6 +1572,7 @@ def change_admin_password(current, replacement):
         ADMIN_PASSWORD = replacement
         with _sessions_lock:
             _sessions.clear()
+            _ip_sessions.clear()
         return True
 
 
@@ -1842,11 +1866,11 @@ init_db()
 # ---------------------------------------------------------------------------
 
 
-def render_lang_switcher(lang):
+def render_lang_switcher(lang, suffix=""):
     parts = []
     for code, name in LANG_NAMES.items():
         cls = "lang active" if code == lang else "lang"
-        parts.append(f'<a class="{cls}" href="?lang={code}">{html.escape(name)}</a>')
+        parts.append(f'<a class="{cls}" href="?lang={code}{suffix}">{html.escape(name)}</a>')
     return "\n".join(parts)
 
 
@@ -1933,7 +1957,7 @@ def render_changelog(markdown):
     return "\n".join(html_parts)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
 _UI_ICON_CACHE = {}
 
 
@@ -1947,20 +1971,26 @@ def ui_icon(name):
     return _UI_ICON_CACHE[name]
 
 
-def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False):
+def render_theme_menu(lang):
     t = STRINGS[lang]
-    lang_switcher = render_lang_switcher(lang)
-    lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
-                 f'<div class="language-options">{lang_switcher}</div></details>')
     theme_options = "".join(
         f'<button type="button" data-theme-choice="{choice}" aria-pressed="{str(choice == "slate-blue").lower()}">'
         f'<span class="theme-swatch theme-swatch-{choice}" aria-hidden="true"></span>{html.escape(t[key])}</button>'
         for choice, key in (("slate-blue", "theme_slate_blue"), ("sage", "theme_sage"),
                             ("teal", "theme_teal"), ("plum", "theme_plum"))
     )
-    theme_menu = (f'<details class="theme-menu"><summary>{html.escape(t["theme_label"])}</summary>'
-                  f'<div class="theme-options" role="group" aria-label="{html.escape(t["theme_label"], quote=True)}">'
-                  f'{theme_options}</div></details>')
+    return (f'<details class="theme-menu"><summary>{html.escape(t["theme_label"])}</summary>'
+            f'<div class="theme-options" role="group" aria-label="{html.escape(t["theme_label"], quote=True)}">'
+            f'{theme_options}</div></details>')
+
+
+def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False,
+                ip_authenticated=False, bare=False):
+    t = STRINGS[lang]
+    lang_switcher = render_lang_switcher(lang)
+    lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
+                 f'<div class="language-options">{lang_switcher}</div></details>')
+    theme_menu = render_theme_menu(lang)
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
@@ -1977,7 +2007,8 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
         logout_link = (f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
                        if AUTH_ENABLED and password_authenticated else
                        f'<a href="/login?next=settings">{ui_icon("settings-2")}<span>{html.escape(t["admin_sign_in"])}</span></a>'
-                       if AUTH_ENABLED else "")
+                       f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
+                       if AUTH_ENABLED and ip_authenticated else "")
         iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
         # Only when a module is actually installed — a link to a page that
         # can only say "not installed" is worse than no link. anytls and the
@@ -2009,7 +2040,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
           </div>
         </nav>
         """
-    else:
+    elif not bare:
         nav = f"""
         <nav class="topnav minimal" aria-label="{html.escape(t['nav_label'], quote=True)}">
           <div class="brandwrap">
@@ -2030,7 +2061,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/theme.js" defer></script>
 </head>
-<body>
+<body{' class="login-page"' if bare else ''}>
 {nav}
 <main>
 {body}
@@ -2049,6 +2080,7 @@ CHANGELOG_PATHS = {
 STATIC_FILES = {
     "/static/style.css": ("text/css", BASE_DIR / "static" / "style.css"),
     "/static/theme.js": ("application/javascript", BASE_DIR / "static" / "theme.js"),
+    "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
     "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-600.woff2"),
@@ -2127,20 +2159,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def is_authenticated(self):
         if not AUTH_ENABLED:
             return True
-        if session_valid(self.get_cookie("session")):
-            return True
-        # TRUST_PROXY has no configured trusted-peer list, so the real visitor
-        # cannot be proven when a reverse proxy is in use.
-        if TRUST_PROXY:
-            return False
-        return IP_ALLOWLIST.contains(self.client_address[0])
+        token = self.get_cookie("session")
+        return session_valid(token) or ip_session_valid(token, self.client_address[0])
 
     def is_password_authenticated(self):
         return AUTH_ENABLED and session_valid(self.get_cookie("session"))
 
-    def render_page(self, title, body, lang, active=None, show_nav=True):
+    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False):
         return render_page(title, body, lang, active, show_nav,
-                           password_authenticated=self.is_password_authenticated())
+                           password_authenticated=self.is_password_authenticated(),
+                           ip_authenticated=ip_session_valid(self.get_cookie("session"),
+                                                             self.client_address[0]), bare=bare)
 
     def client_ip(self):
         if TRUST_PROXY:
@@ -2250,7 +2279,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         # With auth off there is nothing to log in or out of: a login form
         # that accepts nothing and a logout link that ends no session are
         # both dead ends, so send those paths back to the dashboard.
-        if path in ("/login", "/logout") and not AUTH_ENABLED:
+        if path in ("/login", "/login/ip", "/logout") and not AUTH_ENABLED:
             return self.redirect("/")
         if path.startswith("/settings") and not AUTH_ENABLED:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -2260,6 +2289,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.page_login(lang, query_lang, next_page=next_page)
         if method == "POST" and path == "/login":
             return self.handle_login(lang)
+        if method == "POST" and path == "/login/ip":
+            return self.handle_ip_login()
         if method == "GET" and path == "/logout":
             return self.handle_logout()
 
@@ -2368,12 +2399,21 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         notice = f'<p class="muted small">{html.escape(t["admin_sign_in_note"])}</p>' if next_page else ""
         changed = ('<p class="notice" role="status">' + html.escape(t["password_changed"]) + '</p>'
                    if parse_qs(urlsplit(self.path).query).get("changed") == ["1"] else "")
+        ip_available = not next_page and not TRUST_PROXY and IP_ALLOWLIST.contains(self.client_address[0])
+        ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
+                     f'<button type="submit">{html.escape(t["login_ip_access"])}</button></form>') if ip_available else ""
         body = f"""
         <div class="login-shell">
           <div class="login-panel">
-            <div class="login-brand">{ui_icon('server')}<span>vps-server</span></div>
+            <a class="login-brand" href="/">{ui_icon('lock-keyhole')}<span>vps-server</span></a>
             <h1>{html.escape(t['login_heading'])}</h1>
+            <p class="login-intro">{html.escape(t['login_intro'])}</p>
             {changed}{notice}{error_html}
+            <div class="login-language-field">
+              <span id="login-language-label">{html.escape(t['login_language'])}</span>
+              <details class="language-menu login-language-menu"><summary aria-labelledby="login-language-label">{html.escape(LANG_NAMES[lang])}</summary>
+                <div class="language-options">{render_lang_switcher(lang, '&next=settings' if next_page else '')}</div></details>
+            </div>
             <form method="post" action="/login" class="login-form"
                   data-show-label="{html.escape(t['login_show_password'], quote=True)}"
                   data-hide-label="{html.escape(t['login_hide_password'], quote=True)}">
@@ -2385,12 +2425,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               </div>
               <button type="submit" class="login-submit">{html.escape(t['login'])}</button>
             </form>
+            {ip_button}
+            <div class="login-footer"><span class="login-version">{html.escape(VERSION_LABEL)}</span>{render_theme_menu(lang)}</div>
           </div>
           <script src="/static/login.js"></script>
         </div>
         """
         headers = self.maybe_lang_cookie(query_lang)
-        self.send_html(status, self.render_page(t['login'], body, lang, show_nav=False), headers)
+        self.send_html(status, self.render_page(t['login'], body, lang, show_nav=False, bare=True), headers)
 
     def handle_login(self, lang):
         raw = self.read_body(LOGIN_BODY_LIMIT)
@@ -2417,6 +2459,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"],
                         next_page=next_page)
 
+    def handle_ip_login(self):
+        if TRUST_PROXY or not IP_ALLOWLIST.contains(self.client_address[0]):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        token = create_ip_session(self.client_address[0])
+        cookie = (f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
+                  f"Max-Age={SESSION_TTL_SECONDS}")
+        return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
+
     def handle_logout(self):
         token = self.get_cookie("session")
         if token:
@@ -2428,7 +2478,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         t = STRINGS[lang]
         esc = html.escape
         token = self.get_cookie("session")
-        current_ip = normalized_ip(self.client_address[0])
         addresses = IP_ALLOWLIST.list_addresses()
         message = parse_qs(parsed.query).get("msg", [""])[0]
         allowed_messages = {"access_ip_added", "access_ip_removed", "access_ip_invalid",
@@ -2440,22 +2489,25 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             f'<li><code>{esc(address)}</code><form method="post" action="/settings/ip/remove">'
             f'<input type="hidden" name="ip" value="{esc(address, quote=True)}">'
             f'<input type="hidden" name="csrf" value="{access_csrf_token(token, "ip-remove")}">'
-            f'<button type="submit" class="node-action node-action-danger" aria-label="{esc(t["access_remove_ip"].format(ip=address), quote=True)}">'
+            f'<button type="submit" class="access-remove" aria-label="{esc(t["access_remove_ip"].format(ip=address), quote=True)}">'
             f'{esc(t["access_remove"])}</button></form></li>' for address in addresses)
         if not rows:
             rows = f'<li class="muted">{esc(t["access_ip_empty"])}</li>'
         body = f'''<div class="access-workspace">
-          <header class="proxy-overview"><div><p class="proxy-eyebrow">{esc(t['settings'])}</p>
-            <h1>{esc(t['access_heading'])}</h1></div></header>{feedback}
-          <section class="card access-card"><h2>{esc(t['access_ips'])}</h2>
-            <p class="muted">{esc(t['access_ip_note'])}</p>{load_warning}
+          <h1 class="access-page-title">{esc(t['access_heading'])}</h1>{feedback}
+          <section class="access-card access-ip-card">
+            <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
+              <h2>{esc(t['access_ips'])}</h2></div>{ui_icon('lock-keyhole')}</header>
+            <div class="access-card-body"><p>{esc(t['access_ip_note'])}</p>
+              <p>{esc(t['access_ip_shared_note'])}</p>{load_warning}
             <ul class="access-ip-list">{rows}</ul>
             <form method="post" action="/settings/ip/add" class="access-ip-form">
               <input type="hidden" name="csrf" value="{access_csrf_token(token, 'ip-add')}">
-              <label for="access-new-ip">{esc(t['access_ip_address'])}
-                <input id="access-new-ip" name="ip" value="{esc(current_ip, quote=True)}" required spellcheck="false" autocomplete="off"></label>
+              <label class="sr-only" for="access-new-ip">{esc(t['access_ip_address'])}</label>
+              <input id="access-new-ip" name="ip" placeholder="192.168.1.10" required spellcheck="false" autocomplete="off">
               <button type="submit">{esc(t['access_add'])}</button>
             </form>
+            </div>
           </section>
           <section class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
@@ -2465,7 +2517,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <label>{esc(t['access_confirm_password'])}<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label>
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
-          </section></div>'''
+          </section><script src="/static/access-settings.js" defer></script></div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -3206,9 +3258,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                           inbound["users"][0]["uuid" if protocol in ("vmess", "vless") else "password"])
             sni = _cert_common_name(inbound["tls"]["certificate_path"]) if protocol != "shadowsocks" else ""
             secret_id = "node-secret-" + identifier
-            sni_fact = (f'<dt>{esc(t["proxy_sni"])}</dt><dd>{esc(sni or "—")}</dd>'
+            sni_fact = (f'<div class="node-fact"><dt>{esc(t["proxy_sni"])}</dt><dd>{esc(sni or "—")}</dd></div>'
                         if protocol != "shadowsocks" else
-                        f'<dt>{esc(t["proxy_sni"])}</dt><dd>{esc(t["node_not_applicable"])}</dd>')
+                        f'<div class="node-fact"><dt>{esc(t["proxy_sni"])}</dt><dd>{esc(t["node_not_applicable"])}</dd></div>')
             sni_input = (f'<label>{esc(t["proxy_sni"])}<input name="sni" value="{esc(sni, quote=True)}" required></label>'
                          if protocol != "shadowsocks" else "")
             addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span><code>{esc(value)}</code></div>'
@@ -3225,7 +3277,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             status_class = "is-open" if is_active else "is-closed"
             toggle_label = t["node_disable"] if node["enabled"] else t["node_enable"]
             cards.append(f'''
-            <article class="proxy-node">
+            <article class="proxy-node managed-node">
               <header class="proxy-node-header"><div><span class="proxy-node-protocol">#{node['number']} · {esc(protocol)}</span>
                 <h2>{esc(node['name'])}</h2></div>
                 <div class="node-header-controls"><span class="proxy-node-status {status_class}">{esc(t[status_key])}</span>
@@ -3234,7 +3286,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <input type="hidden" name="enabled" value="{'no' if node['enabled'] else 'yes'}">
                     <button type="submit" role="switch" aria-checked="{'true' if node['enabled'] else 'false'}" aria-label="{esc(toggle_label, quote=True)}" title="{esc(toggle_label, quote=True)}" class="node-toggle" ><span aria-hidden="true"></span></button>
                   </form></div></header>
-              <details class="node-inline-edit"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
+              <section class="node-connection"><details class="node-inline-edit"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
                 <form method="post" action="/proxy/node/edit" autocomplete="off" class="node-inline-form">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
                   <div class="node-form-grid">
@@ -3245,13 +3297,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   </div><button type="submit">{esc(t['node_save_settings'])}</button>
                 </form>
               </details>
-              <dl class="kv proxy-node-facts">
-                <dt>{esc(t['node_name'])}</dt><dd>{esc(node['name'])}</dd>
-                <dt>{esc(t['proxy_port'])}</dt><dd>{node['port']}</dd>
-                <dt>{esc(t['node_credential'])}</dt><dd class="secret"><code id="{secret_id}">{esc(credential)}</code>
-                  <button type="button" class="copybtn" data-copy="{secret_id}" data-copied="{esc(t['copied'])}">{esc(t['copy'])}</button></dd>
+              <dl class="proxy-node-facts">
+                <div class="node-fact"><dt>{esc(t['proxy_port'])}</dt><dd>{node['port']}</dd></div>
                 {sni_fact}
-              </dl>
+                <div class="node-fact node-fact-secret"><dt>{esc(t['node_credential'])}</dt><dd class="secret"><code id="{secret_id}">{esc(credential)}</code>
+                  <button type="button" class="copybtn" data-copy="{secret_id}" data-copied="{esc(t['copy'])}">{esc(t['copy'])}</button></dd></div>
+              </dl></section>
               <div class="proxy-node-addresses">{addresses}</div>
               {self.node_metrics(node, meter_nodes, t)}
               {self.node_clash_share(node, lan_host, t)}
@@ -3317,7 +3368,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <div class="proxy-summary" aria-label="{esc(t['node_summary'])}">
             <div><strong>{count}</strong><span>{esc(t['node_total'])}</span></div>
             <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div></header>
-          {notice}{create}<div class="proxy-node-grid">{empty_state}</div></div>
+          {notice}{create}<div class="proxy-node-grid managed-node-grid">{empty_state}</div></div>
           <script src="/static/copy.js"></script>
           <script src="/static/node-controls.js"></script>
           {qr_scripts}'''
@@ -3391,14 +3442,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         limit = t["node_limited"] if limited else t["node_normal"]
         cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
-        return f'''<div class="node-usage" aria-label="{html.escape(t['node_traffic'])}">
-          <span class="node-number">#{node['number']}</span>
-          <div><small>{html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong></div>
-          <div><small>{html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong></div>
-          <div><small>{html.escape(t['node_cap'])}</small><strong>{html.escape(cap_label)}</strong></div>
-          <div><small>{html.escape(t['node_next_reset'])}</small><strong>{html.escape(reset_label)}</strong></div>
-          <span class="node-limit {'is-limited' if limited else ''}">{html.escape(limit)}</span>
-        </div>'''
+        return f'''<section class="node-usage" aria-label="{html.escape(t['node_traffic'])}">
+          <div class="node-usage-heading"><h3>{html.escape(t['node_traffic'])}</h3>
+            <span class="node-limit {'is-limited' if limited else ''}">{html.escape(limit)}</span></div>
+          <div class="node-stats">
+            <div><small>{html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong></div>
+            <div><small>{html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong></div>
+            <div><small>{html.escape(t['node_cap'])}</small><strong>{html.escape(cap_label)}</strong></div>
+            <div><small>{html.escape(t['node_next_reset'])}</small><strong>{html.escape(reset_label)}</strong></div>
+          </div>
+        </section>'''
 
     def node_settings_form(self, protocol, port, sni, node, t):
         if node is None:

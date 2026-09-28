@@ -129,9 +129,9 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 ## 交接
 
 - 分支：`feat/node-management`，基於 `feat/ui-redesign`，已推送至正式 GitHub 倉庫。未發現臨時項目規則。
-- 已完成： 控制台支援密碼登入，以及對明確列出的私人區域網絡 IP 免密存取。以密碼登入的管理員可在設定中增刪單一位址，並在輸入目前密碼後更改密碼。公網 IP、網段、迴路位址及偽造的轉送標頭不能取得免密存取；僅憑 IP 免密亦不能修改存取設定。先前的節點管理及 UI 功能仍在本分支。
-- 檢查： 303 項自動化測試通過（8 項略過）；語言及差異檢查通過。HTTP 測試涵蓋 IP 免密、公網 IP 拒絕、密碼修改，以及僅憑 IP 存取設定時被阻止。Chromium 以桌面及手機闊度驗證了登入及設定流程。測試機加入並移除了臨時區域網絡 IP；目前名單為空。
-- 部署： 指定測試機在 `~/apps/vps-server` 運行本分支；舊執行檔案及持久存取狀態已在倉庫外備份。四項服務均在運行並已啟用開機啟動。免密名單持久保存在應用程式資料目錄。尚未實際重啟主機。
+- 已完成： 登入頁採用提供的卡片佈局，包含語言選擇、密碼登入，以及只對獲准私人 IP 顯示的免密按鈕。點擊後建立綁定來源 IP 的工作階段，移出名單後下次請求即失效。免密設定改用提供的安全卡片佈局。受管理代理節點卡片將連線、流量、分享及操作緊湊分組；開關改為橫向軌道，觸控區域為 44 px。停用最後一個節點時，所屬 sing-box 服務現在保持停止；即使服務原先未運行，啟用節點也會啟動它。修改存取設定仍須密碼登入。
+- 檢查： 304 項自動化測試通過（8 項略過）；語言及差異檢查通過。HTTP 測試涵蓋明確選擇 IP 登入、公網與偽造 IP 拒絕、來源綁定、密碼修改及免密存取設定被阻止。Chromium 在桌面及 390 px 闊度檢查登入及設定佈局，包括免密按鈕、密碼入口及語言選擇。測試機上的節點卡片與開關也已檢查，沒有橫向溢出。
+- 部署： 指定測試機在 `~/apps/vps-server` 運行本分支；舊執行檔案及持久存取狀態在倉庫外備份。Web、代理及節點計量服務正在運行；AnyTLS 的唯一節點已停用，因此該服務未運行。四項服務均已啟用開機啟動。免密名單持久保存在應用程式資料目錄。尚未實際重啟主機。
 - 待辦：尚未在真正的 Android 手機驗證 Clash 匯入，也未驗證主機實際重新啟動後的啟動情況。下一步：審查後合併並發佈 `feat/node-management`，再完成手機及重啟驗證。
 ## 變更記錄
 
@@ -285,4 +285,5 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
 - `ab02c17` docs(log): record node switch acceptance
-- (this commit) feat(auth): add private-IP access and admin settings
+- `860cdc4` feat(auth): add private-IP access and admin settings
+- (this commit) feat(web): refine access screens and proxy node cards

@@ -18,6 +18,7 @@ class FakeHost:
     def __init__(self):
         self.calls = []
         self.fail = None
+        self.active_result = True
 
     def _call(self, name):
         self.calls.append(name)
@@ -26,7 +27,7 @@ class FakeHost:
             raise RuntimeError("injected host failure")
 
     def active(self, service):
-        return True
+        return self.active_result
 
     def check(self, path):
         self._call("check")
@@ -146,7 +147,7 @@ class NodeControlTests(unittest.TestCase):
         self.assertFalse(disabled["nodes"][0]["enabled"])
         self.assertEqual(disabled["nodes"][0]["id"], original["id"])
         self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
-        self.assertEqual(self.host.calls, ["check", "stop", "reconcile", "start", "close:20001"])
+        self.assertEqual(self.host.calls, ["check", "stop", "reconcile", "close:20001"])
         self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), disabled)
         with patch("node_control._free_port"):
             edited = self.apply({"action": "edit", "id": self.identifier,
@@ -155,6 +156,7 @@ class NodeControlTests(unittest.TestCase):
         self.assertFalse(edited["nodes"][0]["enabled"])
         self.assertEqual(json.loads(self.configs["anytls"].read_text())["inbounds"], [])
         self.host.calls.clear()
+        self.host.active_result = False
         with patch("node_control._free_port"):
             enabled = self.apply({"action": "toggle", "id": self.identifier, "enabled": True})
         self.assertEqual(enabled["nodes"][0]["id"], original["id"])
@@ -162,14 +164,17 @@ class NodeControlTests(unittest.TestCase):
         self.assertEqual(enabled["nodes"][0]["inbound"]["users"][0]["password"],
                          "paused-node-secret")
         self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 1)
-        self.assertEqual(self.host.calls, ["check", "open:30001", "stop", "reconcile", "start"])
+        self.assertEqual(self.host.calls, ["check", "open:30001", "reconcile", "start"])
 
-    def test_toggle_start_failure_restores_enabled_listener(self):
+    def test_toggle_start_failure_restores_disabled_listener(self):
+        self.apply({"action": "toggle", "id": self.identifier, "enabled": False})
+        self.host.calls.clear()
+        self.host.active_result = False
         self.host.fail = "start"
-        with self.assertRaises(NodeControlError):
-            self.apply({"action": "toggle", "id": self.identifier, "enabled": False})
-        self.assertEqual(read_inventory(state_path=self.state, config_paths=self.configs), self.inventory)
-        self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 1)
+        with patch("node_control._free_port"), self.assertRaises(NodeControlError):
+            self.apply({"action": "toggle", "id": self.identifier, "enabled": True})
+        self.assertFalse(read_inventory(state_path=self.state, config_paths=self.configs)["nodes"][0]["enabled"])
+        self.assertEqual(len(json.loads(self.configs["anytls"].read_text())["inbounds"]), 0)
         self.assertIn("open:20001", self.host.calls)
 
     def test_create_new_protocol_and_rollback_on_restart_failure(self):

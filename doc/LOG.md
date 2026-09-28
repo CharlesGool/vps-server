@@ -221,9 +221,9 @@ These checked items are the former backlog's dated implementation and verificati
 ## Handoff
 
 - Branch: `feat/node-management`, based on `feat/ui-redesign`, pushed to the formal GitHub repository. No temporary project rules were found.
-- Completed: the console accepts password login and password-free access from explicitly listed private LAN IPs. Settings shows the list and lets a password-authenticated admin add or remove individual addresses and change the password after entering the current one. Public IPs, shared-address space, network ranges, loopback addresses, and spoofed forwarding headers cannot grant password-free access. IP admission does not authorize access-setting changes. Earlier node-management and UI work remains in this branch.
-- Checks: 303 automated tests passed (8 skipped); the language and diff checkers passed. HTTP tests covered IP admission, public-IP rejection, password changes, and blocked access to Settings from an IP-only visit. Chromium checked the login and settings flows at desktop and phone widths. The test host accepted a temporary LAN allowlist entry, then removed it; no entry remains.
-- Deployment: the designated test host runs this branch under `~/apps/vps-server`; the old runtime files and persistent access state were backed up outside the repository. Four services are active and enabled. The allowlist persists in the app data directory. An actual host reboot has not been performed.
+- Completed: the login page now follows the supplied card layout, with language selection, password login, and an IP access button shown only to allowlisted private addresses. Clicking it creates a session bound to the source IP; removing the IP ends that access on the next request. The allowlist settings now use the supplied security-card layout. Managed proxy cards use a compact connection, traffic, sharing, and actions layout; their switches have a horizontal track and a 44 px touch target. Disabling the last node now keeps its sing-box unit stopped; enabling a node starts it even when the unit was inactive. Password authentication remains required for access settings.
+- Checks: 304 automated tests passed (8 skipped); the language checker and diff checks passed. HTTP tests covered the explicit IP login, public and spoofed-IP rejection, source binding, password changes, and blocked settings access. Chromium checked the login and settings layouts on desktop and at 390 px width, including the IP button, password path, and language selection. The updated node card and switch were checked on the test host. No horizontal overflow was observed.
+- Deployment: the designated test host runs this branch under `~/apps/vps-server`; the prior runtime files and persistent access state were backed up outside the repository. The web, proxy, and node-meter services are active; AnyTLS is inactive because its only node is disabled. All four units are enabled for boot. The allowlist persists in the app data directory. An actual host reboot has not been performed.
 - Remaining: Android Clash import on a real phone and startup after a real reboot remain unverified. Next action: merge and release `feat/node-management` after review, then run the phone and reboot checks.
 
 ## Changelog
@@ -476,4 +476,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
 - `ab02c17` docs(log): record node switch acceptance
-- (this commit) feat(auth): add private-IP access and admin settings
+- `860cdc4` feat(auth): add private-IP access and admin settings
+- (this commit) feat(web): refine access screens and proxy node cards

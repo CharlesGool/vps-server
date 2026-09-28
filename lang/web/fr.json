@@ -1,7 +1,7 @@
 {
   "title": "vps-server",
   "login": "Se connecter",
-  "login_heading": "Se connecter à la console",
+  "login_heading": "Connexion",
   "login_show_password": "Afficher",
   "login_hide_password": "Masquer",
   "password": "Mot de passe",
@@ -13,8 +13,8 @@
   "admin_sign_in_note": "Saisissez le mot de passe administrateur pour gérer les accès.",
   "password_changed": "Mot de passe modifié. Connectez-vous avec le nouveau mot de passe.",
   "access_heading": "Paramètres d’accès",
-  "access_ips": "Accès sans mot de passe depuis le réseau local",
-  "access_ip_note": "Seules les adresses individuelles des réseaux locaux RFC 1918 et IPv6 ULA sont acceptées. Les adresses publiques et partagées, dont Tailscale IPv4, sont refusées. Si une passerelle présente plusieurs appareils avec une même IP autorisée, tous pourront entrer sans mot de passe. Un mot de passe reste requis pour modifier ces réglages.",
+  "access_ips": "Accès sans mot de passe par IP définie",
+  "access_ip_note": "Autorisez ces IP privées individuelles à ouvrir la console sans mot de passe. Les adresses publiques ou partagées sont refusées.",
   "access_load_error": "La liste des IP enregistrées est illisible. La connexion par mot de passe reste possible ; l’ajout d’une IP valide recrée la liste.",
   "access_ip_empty": "Aucune adresse IP ajoutée.",
   "access_ip_address": "Adresse IP privée",
@@ -257,5 +257,10 @@
   "node_credential_password_hint": "8 à 128 caractères, sans espace",
   "node_credential_uuid_hint": "Saisissez un UUID",
   "node_credential_ss_hint": "Saisissez une clé de 16 octets en Base64",
-  "node_empty": "Aucun nœud pour le moment."
+  "node_empty": "Aucun nœud pour le moment.",
+  "login_intro": "Saisissez le mot de passe web pour administrer ce serveur.",
+  "login_language": "Langue",
+  "login_ip_access": "Accéder par IP sans mot de passe",
+  "access_security": "Sécurité",
+  "access_ip_shared_note": "Toute personne partageant une IP source autorisée peut aussi utiliser la console. Réservez cette option à un réseau local de confiance."
 }

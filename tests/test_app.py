@@ -72,6 +72,18 @@ class IpAllowlistTest(unittest.TestCase):
             self.assertFalse(allowlist.load_error)
             self.assertEqual(app.IpAllowlist(path).list_addresses(), ["10.1.2.3"])
 
+    def test_ip_session_is_bound_to_peer_and_allowlist(self):
+        token = app.create_ip_session("192.168.1.20")
+        try:
+            with patch.object(app.IP_ALLOWLIST, "contains", return_value=True):
+                self.assertTrue(app.ip_session_valid(token, "192.168.1.20"))
+                self.assertFalse(app.ip_session_valid(token, "192.168.1.21"))
+                with patch.object(app, "TRUST_PROXY", True):
+                    self.assertFalse(app.ip_session_valid(token, "192.168.1.20"))
+            self.assertFalse(app.ip_session_valid(token, "192.168.1.20"))
+        finally:
+            app.destroy_session(token)
+
 
 class ConsoleTest(unittest.TestCase):
     @classmethod
@@ -117,6 +129,8 @@ class ConsoleTest(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertIn('autocomplete="current-password"', body)
         self.assertIn('class="login-visibility"', body)
+        self.assertIn('class="language-menu login-language-menu"', body)
+        self.assertNotIn('action="/login/ip"', body)
         self.assertIn('/static/login.js', body)
 
     def test_access_settings_reject_public_ips_and_require_password_session(self):
@@ -143,8 +157,9 @@ class ConsoleTest(unittest.TestCase):
                 session = self.login()
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
-                self.assertIn("Password-free LAN access", page)
+                self.assertIn("Specified IP password-free access", page)
                 self.assertIn('action="/settings/ip/add"', page)
+                self.assertIn('placeholder="192.168.1.10"', page)
                 csrf = app.access_csrf_token(session, "ip-add")
                 self.assertEqual(request("POST", "/settings/ip/add",
                                          {"csrf": csrf, "ip": "8.8.8.8"}, session)[:2],
@@ -154,6 +169,9 @@ class ConsoleTest(unittest.TestCase):
                                          {"csrf": csrf, "ip": "192.168.7.21"}, session)[:2],
                                  (302, "/settings?msg=access_ip_added"))
                 self.assertEqual(allowlist.list_addresses(), ["192.168.7.21"])
+                status, _, page = request("GET", "/settings", session=session)
+                self.assertEqual(status, 200)
+                self.assertIn('class="access-remove"', page)
                 self.assertEqual(request("POST", "/settings/password",
                                          {"csrf": app.access_csrf_token(session, "password"),
                                           "current": "wrong", "new": "new-password-1234",
@@ -184,11 +202,32 @@ class ConsoleTest(unittest.TestCase):
                     conn = self.connect()
                     conn.request("GET", "/")
                     response = conn.getresponse()
+                    self.assertEqual((response.status, response.getheader("Location")), (302, "/login"))
+                    response.read()
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("GET", "/login")
+                    response = conn.getresponse()
+                    self.assertIn('action="/login/ip"', response.read().decode())
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("POST", "/login/ip", body="", headers={"Content-Type": "application/x-www-form-urlencoded"})
+                    response = conn.getresponse()
+                    self.assertEqual((response.status, response.getheader("Location")), (302, "/"))
+                    cookie = SimpleCookie()
+                    cookie.load(response.getheader("Set-Cookie"))
+                    ip_token = cookie["session"].value
+                    self.assertFalse(app.session_valid(ip_token))
+                    response.read()
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("GET", "/", headers={"Cookie": f"session={ip_token}"})
+                    response = conn.getresponse()
                     self.assertEqual(response.status, 200)
                     response.read()
                     conn.close()
                     conn = self.connect()
-                    conn.request("GET", "/settings")
+                    conn.request("GET", "/settings", headers={"Cookie": f"session={ip_token}"})
                     response = conn.getresponse()
                     self.assertEqual((response.status, response.getheader("Location")),
                                      (302, "/login?next=settings"))
@@ -196,11 +235,14 @@ class ConsoleTest(unittest.TestCase):
                     conn.close()
                     conn = self.connect()
                     conn.request("POST", "/settings/ip/add", body="ip=10.0.0.2&csrf=no",
-                                 headers={"Content-Type": "application/x-www-form-urlencoded"})
+                                 headers={"Content-Type": "application/x-www-form-urlencoded",
+                                          "Cookie": f"session={ip_token}"})
                     response = conn.getresponse()
                     self.assertEqual(response.status, 403)
                     response.read()
                     conn.close()
+                self.assertFalse(app.ip_session_valid(ip_token, "127.0.0.1"))
+                app.destroy_session(ip_token)
             with patch.object(app, "IP_ALLOWLIST", allowlist), patch.object(app, "TRUST_PROXY", False):
                 conn = self.connect()
                 conn.request("GET", "/", headers={"X-Forwarded-For": "192.168.7.21"})

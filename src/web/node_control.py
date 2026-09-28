@@ -381,7 +381,10 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
             write_inventory(candidate, state_path=state_path)
             state_written = True
             backend.reconcile(state_path=state_path, config_paths=config_paths)
-            if active:
+            # An empty inbound list means every node in this module is off.
+            # Keep the unit stopped; starting sing-box without listeners can
+            # hit systemd's start limit after repeated toggles.
+            if proposed["inbounds"]:
                 backend.start(SERVICES[module])
             if action == "delete" or (action == "toggle" and not request["enabled"]):
                 backend.firewall(affected["port"], False, affected["protocol"])

@@ -1,7 +1,7 @@
 {
   "title": "vps-server",
   "login": "Iniciar sesión",
-  "login_heading": "Iniciar sesión en la consola",
+  "login_heading": "Iniciar sesión",
   "login_show_password": "Mostrar",
   "login_hide_password": "Ocultar",
   "password": "Contraseña",
@@ -13,8 +13,8 @@
   "admin_sign_in_note": "Introduce la contraseña de administrador para gestionar el acceso.",
   "password_changed": "Contraseña cambiada. Inicia sesión con la nueva contraseña.",
   "access_heading": "Configuración de acceso",
-  "access_ips": "Acceso sin contraseña desde la LAN",
-  "access_ip_note": "Solo se aceptan direcciones individuales de LAN RFC 1918 e IPv6 ULA. Se rechazan las direcciones públicas y compartidas, incluida Tailscale IPv4. Si una pasarela presenta varios dispositivos con una IP permitida, todos podrán entrar sin contraseña. Se requiere contraseña para cambiar estos ajustes.",
+  "access_ips": "Acceso sin contraseña por IP indicada",
+  "access_ip_note": "Permite que estas IP privadas individuales abran la consola sin contraseña. No se aceptan direcciones públicas ni compartidas.",
   "access_load_error": "No se pudo leer la lista de IP guardada. El acceso con contraseña sigue disponible; añadir una IP válida reconstruye la lista.",
   "access_ip_empty": "No hay direcciones IP añadidas.",
   "access_ip_address": "Dirección IP privada",
@@ -257,5 +257,10 @@
   "node_credential_password_hint": "Entre 8 y 128 caracteres, sin espacios",
   "node_credential_uuid_hint": "Introduce un UUID",
   "node_credential_ss_hint": "Introduce una clave de 16 bytes en Base64",
-  "node_empty": "Aún no hay nodos."
+  "node_empty": "Aún no hay nodos.",
+  "login_intro": "Introduce la contraseña web para administrar este servidor.",
+  "login_language": "Idioma",
+  "login_ip_access": "Acceder con IP sin contraseña",
+  "access_security": "Seguridad",
+  "access_ip_shared_note": "Cualquiera que comparta una IP de origen autorizada también podrá usar la consola. Úsalo solo en una red local de confianza."
 }

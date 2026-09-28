@@ -39,7 +39,8 @@ See [current state and acceptance limits][local-link-001].
   about the host.
 - **Measures throughput from a browser.** A console on a persisted random high
   port runs up/download tests using the LibreSpeed engine. It accepts an admin
-  password or an explicitly allowed private LAN IP. Only a
+  password or an explicitly allowed private LAN IP: the login page offers an
+  IP access button when that address is allowed. Only a
   password-authenticated admin can change the password or IP list; public IPs
   cannot be added.
 - **Measures throughput and latency with iperf3, on demand.** The console opens

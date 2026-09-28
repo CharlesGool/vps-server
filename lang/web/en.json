@@ -1,7 +1,7 @@
 {
   "title": "vps-server",
   "login": "Log in",
-  "login_heading": "Sign in to the console",
+  "login_heading": "Log in",
   "login_show_password": "Show",
   "login_hide_password": "Hide",
   "password": "Password",
@@ -13,8 +13,8 @@
   "admin_sign_in_note": "Enter the admin password to manage access settings.",
   "password_changed": "Password changed. Sign in with the new password.",
   "access_heading": "Access settings",
-  "access_ips": "Password-free LAN access",
-  "access_ip_note": "Only individual RFC 1918 LAN and IPv6 ULA addresses are accepted. Public and shared addresses, including Tailscale IPv4, are rejected. If a gateway maps several devices to one allowed IP, all of them can enter without a password. Password is still required to change these settings.",
+  "access_ips": "Specified IP password-free access",
+  "access_ip_note": "Allow these individual private IP addresses to open the console without a password. Public and shared addresses are not accepted.",
   "access_load_error": "The saved IP list could not be read. Password sign-in still works; adding a valid IP replaces the damaged list.",
   "access_ip_empty": "No IP addresses added.",
   "access_ip_address": "Private IP address",
@@ -257,5 +257,10 @@
   "node_credential_password_hint": "8–128 characters without spaces",
   "node_credential_uuid_hint": "Use a UUID",
   "node_credential_ss_hint": "Use a base64-encoded 16-byte key",
-  "node_empty": "No nodes yet."
+  "node_empty": "No nodes yet.",
+  "login_intro": "Enter the web password to manage this server.",
+  "login_language": "Language",
+  "login_ip_access": "Use IP access",
+  "access_security": "Security",
+  "access_ip_shared_note": "Anyone sharing an allowed source IP can also use the console. Use this only on a trusted local network."
 }

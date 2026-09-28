@@ -1,7 +1,7 @@
 {
   "title": "vps-server",
   "login": "登入",
-  "login_heading": "登入控制台",
+  "login_heading": "登入",
   "login_show_password": "顯示",
   "login_hide_password": "隱藏",
   "password": "密碼",
@@ -13,8 +13,8 @@
   "admin_sign_in_note": "輸入管理員密碼後才可管理存取設定。",
   "password_changed": "密碼已更改，請用新密碼登入。",
   "access_heading": "存取設定",
-  "access_ips": "內網 IP 免密碼存取",
-  "access_ip_note": "只接受單一 RFC 1918 區域網絡或 IPv6 ULA 位址。公網及共用位址（包括 Tailscale IPv4）均不接受。若閘道把多部裝置映射為同一個允許的 IP，它們都可免密進入。修改這些設定仍須密碼登入。",
+  "access_ips": "指定 IP 免密登入",
+  "access_ip_note": "允許這些單一私人 IP 位址無需密碼開啟控制台。公網及共用位址不予接受。",
   "access_load_error": "無法讀取已儲存的 IP 清單。密碼登入仍可使用；新增有效 IP 可重建清單。",
   "access_ip_empty": "尚未新增 IP 位址。",
   "access_ip_address": "內網 IP 位址",
@@ -257,5 +257,10 @@
   "node_credential_password_hint": "8–128 字元，不含空白",
   "node_credential_uuid_hint": "填寫 UUID",
   "node_credential_ss_hint": "填寫 16 位元組密鑰的 Base64 編碼",
-  "node_empty": "暫無節點。"
+  "node_empty": "暫無節點。",
+  "login_intro": "輸入 Web 密碼以管理這部裝置。",
+  "login_language": "語言",
+  "login_ip_access": "使用 IP 免密存取",
+  "access_security": "安全",
+  "access_ip_shared_note": "共用同一來源 IP 的人也可操作控制台。請只在可信的局域網絡使用。"
 }

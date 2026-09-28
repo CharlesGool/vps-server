@@ -168,9 +168,9 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 ## 交接
 
 - 分支：`feat/node-management`，基于 `feat/ui-redesign`，已推送至正式 GitHub 仓库。未发现临时项目规则。
-- 已完成： 控制台支持密码登录，以及对明确列出的私有局域网 IP 免密访问。使用密码登录的管理员可在设置中增删单个地址，并在输入当前密码后更改密码。公网 IP、网段、环回地址和伪造的转发请求头不能获得免密访问；仅靠 IP 免密也不能修改访问设置。此前的节点管理与 UI 功能仍在本分支。
-- 检查： 303 项自动化测试通过（8 项跳过）；语言及差异检查通过。HTTP 测试覆盖 IP 免密、公网 IP 拒绝、密码修改和仅靠 IP 访问设置时被阻止。Chromium 在桌面和手机宽度验证了登录与设置流程。测试机加入并移除了临时局域网 IP；当前名单为空。
-- 部署： 指定测试机在 `~/apps/vps-server` 运行本分支；旧运行文件及持久化访问状态已在仓库外备份。四项服务均在运行并已启用开机启动。免密名单持久保存在应用数据目录。尚未实际重启主机。
+- 已完成： 登录页采用提供的卡片布局，包含语言选择、密码登录，以及只向获准内网 IP 显示的免密按钮。点击后建立绑定来源 IP 的会话，移出名单后下一次请求即失效。免密设置改用提供的安全卡片布局。托管代理节点卡片将连接、流量、分享和操作紧凑分组；开关改为横向轨道，触控区域为 44 px。停用最后一个节点时，所属 sing-box 服务现在保持停止；即使服务原先未运行，启用节点也会启动它。修改访问设置仍需密码登录。
+- 检查： 304 项自动化测试通过（8 项跳过）；语言和差异检查通过。HTTP 测试覆盖显式 IP 登录、公网及伪造 IP 拒绝、来源绑定、密码修改和免密访问设置被阻止。Chromium 在桌面及 390 px 宽度检查登录和设置布局，包括免密按钮、密码入口及语言选择。测试机上的节点卡片与开关也已检查，未见横向溢出。
+- 部署： 指定测试机在 `~/apps/vps-server` 运行本分支；旧运行文件及持久访问状态在仓库外备份。Web、代理及节点计量服务正在运行；AnyTLS 的唯一节点已停用，因此该服务未运行。四项服务均已启用开机启动。免密名单持久保存在应用数据目录。尚未实际重启主机。
 - 待办：尚未在真实 Android 手机上验证 Clash 导入，也未验证主机实际重启后的启动。下一步：审核后合并并发布 `feat/node-management`，再完成手机与重启验证。
 ## 变更日志
 
@@ -324,4 +324,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `6e461a3` fix(iperf): clarify finished state
 - `a676537` feat(nodes): add per-node switch and compact numbering
 - `ab02c17` docs(log): record node switch acceptance
-- (this commit) feat(auth): add private-IP access and admin settings
+- `860cdc4` feat(auth): add private-IP access and admin settings
+- (this commit) feat(web): refine access screens and proxy node cards
