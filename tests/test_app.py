@@ -148,6 +148,7 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn('class="login-version app-login-version" href="/changelog"', body)
         self.assertIn('action="/login/ip"', body)
         self.assertIn('/static/password-fields.js', body)
+        self.assertNotIn('/static/auth-history.js', body)
         conn = self.connect()
         conn.request("POST", "/login/ip", body="")
         response = conn.getresponse()
@@ -199,7 +200,9 @@ class ConsoleTest(unittest.TestCase):
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
                 self.assertIn('href="/settings/security"', page)
-                self.assertIn('class="card access-card preferences-card preferences-security-card"', page)
+                self.assertIn('id="settings-security"', page)
+                self.assertIn('href="#settings-security"', page)
+                self.assertIn('href="/settings/security"', page)
                 self.assertIn('href="/settings?lang=zh_cn"', page)
                 self.assertIn('data-theme-choice="sage"', page)
                 self.assertNotIn('action="/settings/ip/add"', page)
@@ -614,13 +617,22 @@ class ConsoleTest(unittest.TestCase):
             conn.close()
             cookie = self.login()
             conn = self.connect()
-            conn.request('GET', '/frps', headers={'Cookie': 'session=' + cookie})
+            conn.request('GET', '/frp', headers={'Cookie': 'session=' + cookie})
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             self.assertEqual(response.getheader('Cache-Control'), 'no-store')
             body = response.read()
             self.assertNotIn(b'test-frps-secret', body)
             self.assertNotIn(b'7000', body)
+            self.assertIn(b'FRPC client', body)
+            self.assertIn(b'/static/favicon-frp.svg', body)
+            conn.close()
+            conn = self.connect()
+            conn.request('GET', '/static/favicon-frp.svg')
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader('Content-Type'), 'image/svg+xml')
+            self.assertIn(b'<svg', response.read())
             conn.close()
             conn = self.connect()
             conn.request('GET', '/proxy/private-value?id=frps&field=credential',
@@ -629,12 +641,34 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(json.loads(response.read())['value'], 'test-frps-secret')
             conn.close()
+            conn = self.connect()
+            conn.request('GET', '/proxy/private-value?id=frps&field=frpc-config',
+                         headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            client_config = json.loads(response.read())['value']
+            self.assertIn('serverPort = 7000', client_config)
+            self.assertIn('auth.token = "test-frps-secret"', client_config)
+            self.assertIn('serverAddr = "<server-ip>"', client_config)
+            conn.close()
             with patch.object(app, 'AUTH_ENABLED', False):
                 conn = self.connect()
                 conn.request('GET', '/frps')
                 response = conn.getresponse()
                 self.assertNotIn(b'test-frps-secret', response.read())
                 conn.close()
+
+    def test_frp_page_explains_missing_server_without_exposing_client_template(self):
+        cookie = self.login()
+        with patch.object(app, 'FRPS_CONFIG', Path(TEST_DATA_DIR) / 'missing-frps.toml'):
+            conn = self.connect()
+            conn.request('GET', '/frp', headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            body = response.read()
+            self.assertIn(b'FRPS is not installed', body)
+            self.assertNotIn(b'data-private-field="frpc-config"', body)
+            conn.close()
 
     def test_lucky_credentials_only_on_authenticated_console(self):
         config = Path(TEST_DATA_DIR) / 'lucky.json'
@@ -709,7 +743,11 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn("Home", body)
         nav = body.split('</nav>', 1)[0]
         self.assertEqual(nav.count('href="/"'), 2)
-        self.assertLess(nav.rfind('href="/"'), nav.index('href="/speedtest"'))
+        self.assertLess(nav.rfind('href="/"'), nav.rfind('href="/changelog"'))
+        self.assertNotIn('href="/speedtest"', nav)
+        self.assertIn('href="/speedtest"', body)
+        self.assertIn('href="/frp"', body)
+        self.assertIn('/static/auth-history.js', body)
         self.assertIn('aria-current="page" href="/"', nav)
         conn.close()
 
@@ -1564,7 +1602,7 @@ class AuthDisabledTest(unittest.TestCase):
         config = Path(TEST_DATA_DIR) / 'frps-off.toml'
         config.write_text('bindPort = 7000\nauth.token = "auth-off-frps-secret"\n')
         with patch.object(app, 'FRPS_CONFIG', config):
-            for path in ('/', '/frps'):
+            for path in ('/', '/frps', '/frp'):
                 conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=10)
                 conn.request('GET', path)
                 resp = conn.getresponse()
@@ -1839,10 +1877,10 @@ class ProbePageTest(unittest.TestCase):
         config = Path(TEST_DATA_DIR) / 'frps-public.toml'
         config.write_text('bindPort = 7000\nauth.token = "public-frps-secret"\n')
         with patch.object(app, 'FRPS_CONFIG', config):
-            for path in ('/', '/frps'):
+            for path in ('/', '/frps', '/frp'):
                 response, body = self.get(path)
                 self.assertNotIn('public-frps-secret', body)
-                if path == '/frps':
+                if path != '/':
                     self.assertEqual(response.status, 404)
 
     def test_root_reports_reachability_without_any_session(self):
@@ -2736,9 +2774,9 @@ class ProxyPageTest(unittest.TestCase):
             self.assertEqual(body.count('class="proxy-workspace"'), 1)
             self.assertEqual(body.count('class="proxy-node"'), 5)
             self.assertIn('class="proxy-node-grid"', body)
-            # One /anytls link (in the version-tag/changelog area doesn't
-            # exist), one nav entry, one dashboard tile — not two of each.
-            self.assertEqual(body.count('href="/proxy"'), 1)
+            # Function navigation lives on the Dashboard, not in the global header.
+            self.assertEqual(body.count('href="/proxy"'), 0)
+            self.assertIn('href="/"', body)
         finally:
             app.ANYTLS_CONFIG = original_anytls_config
 

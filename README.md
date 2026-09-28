@@ -82,6 +82,11 @@ See [current state and acceptance limits][local-link-001].
 The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
 and Lucky remain experimental; their behavior has not been accepted on a real
 host for this version.
+The authenticated FRPS / FRPC page shows the local FRPS service, interface
+addresses, and connection settings, with its token and port masked until
+requested. It also provides a copyable FRPC connection template. FRPC runs
+on another device, so this page does not report that device's live status or
+install its client.
 
 **Non-goals:** no ACME or domain names (443 is self-signed on purpose); no
 always-on iperf3; no reverse proxy or containers; the public page never reveals

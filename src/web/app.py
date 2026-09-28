@@ -2053,32 +2053,25 @@ def render_theme_menu(lang):
 
 
 def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False,
-                ip_authenticated=False, bare=False):
+                ip_authenticated=False, bare=False, back_href=None):
     t = STRINGS[lang]
+    favicon = ('login' if bare else 'security' if back_href == '/settings' else
+               active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
+                                    'visitors', 'changelog', 'settings') else
+               'frp' if title == t['frp_heading'] else 'lucky' if title == 'Lucky' else 'home')
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
         def link(href, key):
             cls = ' class="active"' if active == key else ""
             current = ' aria-current="page"' if active == key else ""
-            icons = {"home": "server", "speedtest": "gauge", "iperf": "timer", "proxy": "network",
-                     "portfwd": "route", "visitors": "users-round", "changelog": "scroll-text",
-                     "settings": "settings-2"}
+            icons = {"home": "server", "changelog": "scroll-text", "settings": "settings-2"}
             return f'<a{cls}{current} href="{href}">{ui_icon(icons[key])}<span>{html.escape(t[key])}</span></a>'
 
         # No session to end when auth is off — offering "Log out" would be a
         # link to nowhere (the route itself redirects to / in that mode).
         logout_link = (f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
                        if AUTH_ENABLED and (password_authenticated or ip_authenticated) else "")
-        iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
-        # Only when a module is actually installed — a link to a page that
-        # can only say "not installed" is worse than no link. anytls and the
-        # proxy module live on the same /proxy page (see page_proxy()'s
-        # docstring), so one link covers either or both being installed.
-        proxy_link = link('/proxy', 'proxy') if (anytls_installed() or proxy_installed()) else ""
-        lucky_link = f'<a href="/lucky">{ui_icon("settings-2")}<span>Lucky</span></a>' if LUCKY_CONFIG.is_file() and AUTH_ENABLED else ""
-        frps_link = f'<a href="/frps">{ui_icon("radio")}<span>frps</span></a>' if FRPS_CONFIG.is_file() and AUTH_ENABLED else ""
-        portfwd_link = link('/portfwd', 'portfwd') if PORTFWD_ENABLED else ""
         nav = f"""
         <nav class="topnav" aria-label="{html.escape(t['nav_label'], quote=True)}">
           <div class="brandwrap">
@@ -2087,13 +2080,6 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
           </div>
           <div class="navlinks">
             {link('/', 'home')}
-            {link('/speedtest', 'speedtest')}
-            {iperf_link}
-            {proxy_link}
-            {frps_link}
-            {lucky_link}
-            {portfwd_link}
-            {link('/visitors', 'visitors')}
             {link('/changelog', 'changelog')}
             {link('/settings', 'settings') if AUTH_ENABLED and (password_authenticated or ip_authenticated) else ''}
             {logout_link}
@@ -2116,13 +2102,23 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
           <div class="navlinks">{theme_menu}{lang_menu}</div>
         </nav>
         """
+    if show_nav and active != 'home':
+        destination = back_href or '/'
+        destination_label = t['settings'] if destination == '/settings' else t['dashboard']
+        body = (f'<a class="page-back" href="{html.escape(destination, quote=True)}">'
+                f'{html.escape(t["back_to"].format(destination=destination_label))}</a>' + body)
+    history_guard = ('<script src="/static/auth-history.js"></script>'
+                     if password_authenticated or ip_authenticated else '')
     return f"""<!doctype html>
 <html lang="{HTML_LANG_TAGS.get(lang, lang)}"{RTL_ATTR.get(lang, "")}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(t['title'])}</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<link rel="icon" type="image/svg+xml" href="/static/favicon-{favicon}.svg">
+<script src="/static/route-motion.js"></script>
+<script src="/static/layout-motion.js"></script>
+{history_guard}
 <script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/theme.js" defer></script>
@@ -2149,7 +2145,14 @@ STATIC_FILES = {
     "/static/theme.js": ("application/javascript", BASE_DIR / "static" / "theme.js"),
     "/static/password-fields.js": ("application/javascript", BASE_DIR / "static" / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
+    "/static/settings-sections.js": ("application/javascript", BASE_DIR / "static" / "settings-sections.js"),
+    "/static/route-motion.js": ("application/javascript", BASE_DIR / "static" / "route-motion.js"),
+    "/static/layout-motion.js": ("application/javascript", BASE_DIR / "static" / "layout-motion.js"),
+    "/static/auth-history.js": ("application/javascript", BASE_DIR / "static" / "auth-history.js"),
     "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
+    **{f"/static/favicon-{page}.svg": ("image/svg+xml", BASE_DIR / "static" / f"favicon-{page}.svg")
+       for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
+                    "changelog", "settings", "security", "frp", "lucky", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-700.woff2"),
@@ -2233,11 +2236,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def is_password_authenticated(self):
         return AUTH_ENABLED and session_valid(self.get_cookie("session"))
 
-    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False):
+    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None):
         return render_page(title, body, lang, active, show_nav,
                            password_authenticated=self.is_password_authenticated(),
                            ip_authenticated=ip_session_valid(self.get_cookie("session"),
-                                                             self.client_address[0]), bare=bare)
+                                                             self.client_address[0]), bare=bare,
+                           back_href=back_href)
 
     def client_ip(self):
         if TRUST_PROXY:
@@ -2408,6 +2412,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "GET" and path == "/lucky" and AUTH_ENABLED:
             return self.page_lucky(lang, query_lang)
         if method == "GET" and path == "/frps" and AUTH_ENABLED:
+            return self.redirect('/frp')
+        if method == "GET" and path == "/frp" and AUTH_ENABLED:
             return self.page_frps(lang, query_lang)
         if method == "GET" and path == "/proxy":
             if not AUTH_ENABLED:
@@ -2574,7 +2580,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             <button type="submit">{html.escape(t['access_verify_button'])}</button>
           </form></section></div>'''
         return self.send_html(status,
-                              self.render_page(t['access_verify_heading'], body, lang, active="settings"),
+                              self.render_page(t['access_verify_heading'], body, lang, active="settings", back_href='/settings'),
                               {"Cache-Control": "no-store"})
 
     def handle_security_verify(self, lang):
@@ -2640,22 +2646,30 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             + f'>{esc(name)}</a>' for code, name in LANG_NAMES.items())
         body = f'''<div class="access-workspace preferences-workspace">
           <h1 class="access-page-title">{esc(t['settings'])}</h1>
-          <div class="preferences-grid">
-            <a class="card access-card preferences-card preferences-security-card" href="/settings/security">
-              <span class="preferences-security-heading">{ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>
-              <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>
-            </a>
-            <section class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
+          <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['settings'], quote=True)}">
+            <a href="#settings-appearance" aria-current="location">{esc(t['theme_label'])}</a>
+            <a href="#settings-language">{esc(t['login_language'])}</a>
+            <a href="#settings-security">{esc(t['access_security'])}</a>
+          </nav><div class="settings-content">
+            <section id="settings-appearance" class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
               <div class="preferences-mode"><h3>{esc(t['appearance_mode'])}</h3>
                 <div class="preferences-choices" role="group" aria-label="{esc(t['appearance_mode'], quote=True)}">{modes}</div></div>
               <h3 class="preferences-group-title">{esc(t['theme_color'])}</h3>
               <div class="preferences-choices" role="group" aria-label="{esc(t['theme_color'], quote=True)}">{themes}</div>
+              <div class="preferences-motion"><div><h3>{esc(t['page_motion'])} <span class="badge">{esc(t['page_motion_beta'])}</span></h3>
+                <p class="muted small">{esc(t['page_motion_help'])}</p></div>
+                <button type="button" class="motion-switch" role="switch" aria-label="{esc(t['page_motion'], quote=True)}"
+                  aria-checked="false" data-page-motion-switch><span aria-hidden="true"></span></button></div>
             </section>
-            <section class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
+            <section id="settings-language" class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
             </section>
-          </div>
-        </div>'''
+            <section id="settings-security" class="card access-card preferences-card preferences-security-card">
+              <span class="preferences-security-heading">{ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>
+              <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>
+              <a class="preferences-security-enter" href="/settings/security">{esc(t['access_enter_security'])}</a>
+            </section>
+          </div></div></div><script src="/static/settings-sections.js" defer></script>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -2685,9 +2699,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             t, "access-confirm-password", t["access_confirm_password"], "confirm",
             'autocomplete="new-password" minlength="12" maxlength="128" required')
         body = f'''<div class="access-workspace">
-          <a class="preferences-back" href="/settings">{esc(t['settings'])}</a>
           <h1 class="access-page-title">{esc(t['access_heading'])}</h1>{feedback}
-          <section class="access-card access-ip-card">
+          <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['access_heading'], quote=True)}">
+            <a href="#security-ips" aria-current="location">{esc(t['access_ips'])}</a>
+            <a href="#security-password">{esc(t['access_password'])}</a>
+          </nav><div class="settings-content"><section id="security-ips" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
               <h2>{esc(t['access_ips'])}</h2></div>{ui_icon('lock-keyhole')}</header>
             <div class="access-card-body"><p>{esc(t['access_ip_note'])}</p>
@@ -2708,15 +2724,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </form>
             </div>
           </section>
-          <section class="card access-card"><h2>{esc(t['access_password'])}</h2>
+          <section id="security-password" class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
               <input type="hidden" name="csrf" value="{access_csrf_token(token, 'password')}">
               {new_password_field}
               {confirm_password_field}
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
-          </section><script src="/static/access-settings.js" defer></script></div>'''
-        return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
+          </section></div></div><script src="/static/access-settings.js" defer></script>
+          <script src="/static/settings-sections.js" defer></script></div>'''
+        return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def handle_settings_post(self, path):
@@ -2798,6 +2815,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <span class="tile-label">{html.escape(t['proxy'])}</span>
             </a>
             """
+        frp_tile = (f'<a class="tile" href="/frp"><span class="tile-icon">{ui_icon("radio")}</span>'
+                    f'<span class="tile-label">{html.escape(t["frp_heading"])}</span></a>') if AUTH_ENABLED else ''
+        lucky_tile = (f'<a class="tile" href="/lucky"><span class="tile-icon">{ui_icon("settings-2")}</span>'
+                      '<span class="tile-label">Lucky</span></a>') if AUTH_ENABLED and LUCKY_CONFIG.is_file() else ''
         portfwd_tile = ""
         if PORTFWD_ENABLED:
             active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
@@ -2817,6 +2838,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </a>
             {iperf_tile}
             {proxy_tile}
+            {frp_tile}
+            {lucky_tile}
             {portfwd_tile}
             <a class="tile" href="/visitors">
               <span class="tile-icon">{ui_icon("users-round")}</span>
@@ -3245,18 +3268,32 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def page_frps(self, lang, query_lang):
         t = STRINGS[lang]
         node = frps_node()
+        esc = html.escape
         if node is None:
-            return self.send_html(404, self.render_page('frps', f'<div class="card">{html.escape(t["frps_not_installed"])}</div>', lang))
-        status = t['node_active'] if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else t['node_stopped']
-        body = ('<div class="card"><h1>%s</h1><p>%s: %s: %s</p>'
-                '<p>%s: %s</p><p>%s: %s</p></div>'
-                '<script src="/static/copy.js"></script>'
-                '<script src="/static/private-values.js"></script>') % (
-                    html.escape(t['frps_heading']), html.escape(t['frps_bind']),
-                    html.escape(node['address']), self.private_value_control('frps', 'port', t),
-                    html.escape(t['frps_status']), html.escape(status),
-                    html.escape(t['frps_token']), self.private_value_control('frps', 'credential', t, copy=True))
-        return self.send_html(200, self.render_page('frps', body, lang),
+            server = f'<p class="muted">{esc(t["frps_not_installed"])}</p>'
+            client = f'<p class="muted">{esc(t["frp_client_unavailable"])}</p>'
+        else:
+            status = t['node_active'] if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else t['node_stopped']
+            addresses = address_entries(t)
+            address_list = (f'<div class="frp-addresses"><h3>{esc(t["frp_addresses"])}</h3><ul>' +
+                            ''.join(f'<li><span>{esc(label)}</span><code>{esc(address)}</code></li>'
+                                    for label, address in addresses) + '</ul></div>') if addresses else ''
+            server = (f'<dl class="frp-facts"><div><dt>{esc(t["frps_status"])}</dt><dd>{esc(status)}</dd></div>'
+                      f'<div><dt>{esc(t["frps_bind"])}</dt><dd><code>{esc(node["address"])}</code></dd></div>'
+                      f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t)}</dd></div>'
+                      f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True)}</dd></div></dl>'
+                      f'{address_list}')
+            client = (f'<p class="muted">{esc(t["frp_client_note"])}</p>'
+                      f'<p class="muted small">{esc(t["frp_address_note"])}</p>'
+                      f'<div class="frp-config"><span>{esc(t["frp_client_config"])}</span>'
+                      f'{self.private_value_control("frps", "frpc-config", t, copy=True)}</div>')
+        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frp_heading"])}</h1></div>'
+                f'<div class="frp-grid"><section class="card frp-card"><div class="frp-card-head">'
+                f'{ui_icon("server")}<h2>{esc(t["frps_heading"])}</h2></div>{server}</section>'
+                f'<section class="card frp-card"><div class="frp-card-head">{ui_icon("network")}'
+                f'<h2>{esc(t["frp_client_heading"])}</h2></div>{client}</section></div></div>'
+                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
+        return self.send_html(200, self.render_page(t['frp_heading'], body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def page_proxy(self, lang, query_lang):
@@ -3630,7 +3667,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         identifier = query.get('id', [''])[0]
         field = query.get('field', [''])[0]
-        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-default', 'cmd-reverse', 'cmd-udp', 'public-port', 'target-port', 'account'):
+        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'frpc-config', 'share', 'cmd-default', 'cmd-reverse', 'cmd-udp', 'public-port', 'target-port', 'account'):
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         try:
             if identifier == 'lucky' and field in ('port', 'account', 'credential'):
@@ -3648,11 +3685,15 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             elif identifier.startswith('forward-') and field in ('public-port', 'target-port'):
                 rule = next(item for item in PORTFWD.list_rules() if item['id'] == identifier[8:])
                 value = str(rule['public_port' if field == 'public-port' else 'target_port'])
-            elif identifier == 'frps' and field in ('port', 'credential'):
+            elif identifier == 'frps' and field in ('port', 'credential', 'frpc-config'):
                 node = frps_node()
                 if node is None:
                     raise ValueError('no frps node')
-                value = str(node['port'] if field == 'port' else node['token'])
+                if field == 'frpc-config':
+                    value = (f'serverAddr = "<server-ip>"\nserverPort = {node["port"]}\n'
+                             f'auth.method = "token"\nauth.token = {json.dumps(node["token"])}')
+                else:
+                    value = str(node['port'] if field == 'port' else node['token'])
             elif identifier.startswith('legacy-') and field in ('port', 'credential'):
                 protocol = identifier.removeprefix('legacy-')
                 node = (anytls_node() if protocol == 'anytls' else

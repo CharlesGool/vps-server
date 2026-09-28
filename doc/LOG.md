@@ -228,6 +228,9 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
+- Current work (2026-09-29): a read-only FRPS / FRPC console page groups local FRPS service details, interface addresses, and a revealable, copyable FRPC connection template. The Dashboard links to it; the authenticated header is limited to Home, Changelog, Settings, and Sign out, and child pages have a Back control. Ordinary and Security Settings use section navigation, with a separate action to enter the protected area. Each page has a distinct tab symbol in the shared project frame. Appearance offers an optional Beta page transition; responsive resize motion is separate. Protected pages hide before browser history caching and require a fresh server request when revisited after sign-out. The server does not claim to observe a remote FRPC process. A later Web setup page with independent module enable/disable and install choices is tracked in DESIGN, separate from the existing installation wizard.
+- Checks for current work: 314 automated tests passed (8 skipped); Python compilation, JavaScript syntax, and Git whitespace checks passed. Document formatting and local-link checks had zero errors; the existing three CJK-navigation warnings and five external URLs remain. Multilingual static checks passed with zero errors. Project structure passed on a clean export of versioned and new source files; the live checkout still reports the five ignored runtime entries documented under Limitations. Local Chromium verified Dashboard to FRP navigation, explicit Back, browser Back/Forward, FRP masked values, desktop and 390 px layouts without horizontal overflow, Settings section navigation, and sign-out followed by browser Back returning to Login after a fresh server request. An iPhone user-agent emulation starts page motion off and accepts explicit opt-in. Browser motion on real iOS and Android devices and deployment to the test host are not verified in this work.
+- Next action: review the FRP view and page motion on the designated test host, including a real mobile browser. The future Web setup page remains design backlog and is not implemented. No temporary project rules were found.
 - Branch: `main`, tracking the official GitHub repository. No temporary project rules were found.
 - Completed: the node editor labels its secret as a password; the traffic editor keeps its trigger in place when expanded. Each node accepts independent upload/download Mbps limits, a 1 Mbps throttle or block response to a GiB traffic cap, recurring resets every chosen number of days/months/years, and an optional validity duration that blocks traffic on expiry. Version-one state upgrades on read while preserving node IDs, usage and cap; old absolute expiry dates are cleared rather than reinterpreted as blocking. The IP access button is always present and directs unlisted sources to password login and private-IP allowlist settings. Every managed node has a copy button immediately before Clash Meta import; it copies the LAN subscription URL. The node grid automatically fits one to six columns, caps the count at six on wider screens, and stacks facts inside narrow cards. Password authentication remains required to edit access settings.
 - Checks: 308 automated tests passed (8 skipped); Python compilation and diff whitespace checks passed. Chromium checked the unlisted-IP message and the expanded node form at desktop and 390 px width on the test host; the traffic editor trigger kept the same position when toggled. With three existing nodes and three browser-only clones, Chromium confirmed one through six columns at 390, 900, 1200, 1440, 1920 and 2560 px respectively, six columns at 3840 px, no horizontal overflow, and successful copying of a node's LAN subscription URL. Nft accepted the directional-limit and cap-block rules in check-only mode. A real traffic transfer through every policy combination remains unverified.
@@ -268,6 +271,11 @@ release.
 
 #### Changed
 
+- The authenticated header now keeps global navigation; function entry cards live on the Dashboard and child pages include a Back control.
+- Ordinary and Security Settings now have responsive section navigation. The ordinary Security label only scrolls to its entry card; Enter Security starts the protected route.
+- Page-specific tab icons share the project frame and use the function's symbol.
+- The FRPS / FRPC page shows local server details and a copyable client connection template while keeping ports and tokens masked until requested.
+- Appearance now offers a Beta page-transition switch; the interface also animates responsive window reflow. Protected pages are rechecked on browser history return so sign-out does not expose a cached console view.
 - The login page uses the shared project header. Its footer links the running version to Changelog and offers language selection before sign-in.
 - Login, administrator verification, password change, and proxy-node forms each provide an independent Show/Hide control that preserves entered text and focus.
 
@@ -570,4 +578,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `c312456` fix(web): align login and password controls with current standard
 - `25f1f9e` docs(log): record Web UI test deployment
 - `2c0e4d7` feat(web): show current test build updates
-- (this commit) docs(log): record version and Changelog deployment
+- `4d0db36` docs(log): record version and Changelog deployment
+- (this commit) feat(web): align navigation and add FRP information
