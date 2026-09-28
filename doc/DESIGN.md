@@ -138,7 +138,10 @@ The resulting session is bound to the connection peer and the allowlist is
 rechecked on every request. Security Settings requires administrator-password
 verification recorded for the session and expires after ten minutes. An IP-only
 session completes that challenge and receives a new password-authenticated
-session; changing the password invalidates all existing sessions. The allowlist
+session; changing the password invalidates all existing sessions. The ordinary
+Settings page holds appearance and language choices without a second password
+check. Its separate Security page requires the short-lived verification before
+showing the allowlist or changing security controls. The allowlist
 accepts only individual RFC 1918 IPv4 or unique-local IPv6 addresses and has a
 separate enable switch. A gateway that maps several devices to one allowed
 private IP gives all those devices the same access.

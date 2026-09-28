@@ -80,6 +80,19 @@ main:has(.managed-node-grid) { max-width: 135rem; }
 .login-footer .theme-menu summary { min-height: 2.75rem; padding: .45rem .65rem; border-radius: 8px; color: var(--muted); font-size: .82rem; cursor: pointer; }
 .login-footer .theme-options { inset-inline-end: 0; }
 .access-workspace { width: min(100%, 68rem); }
+.access-verify-workspace { width: min(100%, 38rem); }
+.access-verify-form { display: grid; gap: .6rem; margin-top: 1.5rem; }
+.access-verify-form label, .access-verify-form input { margin: 0; }
+.access-verify-form button { justify-self: start; margin-top: .5rem; }
+.preferences-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+.preferences-card { margin: 0; }
+.preferences-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.preferences-choice { display: flex; align-items: center; gap: .6rem; min-height: 3rem; padding: .7rem .8rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--fg); font: inherit; font-size: .9rem; font-weight: 500; text-align: start; text-decoration: none; cursor: pointer; }
+.preferences-choice:hover, .preferences-choice[aria-pressed="true"], .preferences-choice[aria-current="true"] { border-color: var(--accent); background: var(--surface-2); color: var(--fg); }
+.preferences-security { display: inline-flex; align-items: center; gap: .6rem; margin-top: 1rem; padding: .8rem 1rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--fg); font-weight: 600; text-decoration: none; }
+.preferences-security:hover { background: var(--surface-2); }
+.preferences-security .ui-icon { color: var(--accent); }
+.preferences-back { display: inline-block; margin-bottom: .75rem; font-size: .9rem; font-weight: 600; }
 .access-page-title { margin-bottom: 1.2rem; }
 .access-card { max-width: none; margin-bottom: 1rem; }
 .access-ip-card { overflow: hidden; border: 1px solid var(--card-border); border-radius: 14px; background: var(--card-bg); box-shadow: var(--shadow); }
@@ -104,6 +117,7 @@ main:has(.managed-node-grid) { max-width: 135rem; }
 .access-toggle-form button:hover { background: var(--surface-2); }
 .card.access-card h2 { margin-bottom: .7rem; }
 @media (max-width: 34rem) {
+  .preferences-choices { grid-template-columns: 1fr; }
   .login-page main { padding: .75rem; }
   .login-panel { padding: 1.5rem; }
   .access-card-header, .access-card-body { padding-inline: 1rem; }

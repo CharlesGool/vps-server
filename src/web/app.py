@@ -2024,10 +2024,6 @@ def render_theme_menu(lang):
 def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False,
                 ip_authenticated=False, bare=False):
     t = STRINGS[lang]
-    lang_switcher = render_lang_switcher(lang)
-    lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
-                 f'<div class="language-options">{lang_switcher}</div></details>')
-    theme_menu = render_theme_menu(lang)
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
@@ -2042,10 +2038,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
         # No session to end when auth is off — offering "Log out" would be a
         # link to nowhere (the route itself redirects to / in that mode).
         logout_link = (f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
-                       if AUTH_ENABLED and password_authenticated else
-                       f'<a href="/login?next=settings">{ui_icon("settings-2")}<span>{html.escape(t["admin_sign_in"])}</span></a>'
-                       f'<a href="/logout">{ui_icon("log-out")}<span>{html.escape(t["logout"])}</span></a>'
-                       if AUTH_ENABLED and ip_authenticated else "")
+                       if AUTH_ENABLED and (password_authenticated or ip_authenticated) else "")
         iperf_link = link('/iperf', 'iperf') if IPERF_ENABLED else ""
         # Only when a module is actually installed — a link to a page that
         # can only say "not installed" is worse than no link. anytls and the
@@ -2072,12 +2065,13 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
             {link('/changelog', 'changelog')}
             {link('/settings', 'settings') if AUTH_ENABLED and (password_authenticated or ip_authenticated) else ''}
             {logout_link}
-            {theme_menu}
-            {lang_menu}
           </div>
         </nav>
         """
     elif not bare:
+        lang_menu = (f'<details class="language-menu"><summary>{html.escape(LANG_NAMES[lang])}</summary>'
+                     f'<div class="language-options">{render_lang_switcher(lang)}</div></details>')
+        theme_menu = render_theme_menu(lang)
         nav = f"""
         <nav class="topnav minimal" aria-label="{html.escape(t['nav_label'], quote=True)}">
           <div class="brandwrap">
@@ -2339,11 +2333,15 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.page_security_verify(lang)
         if path == "/settings/verify" and method == "POST":
             return self.handle_security_verify(lang)
-        if path.startswith("/settings") and not security_settings_valid(self.get_cookie("session")):
+        security_path = path == "/settings/security" or path in (
+            "/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle", "/settings/password")
+        if security_path and not security_settings_valid(self.get_cookie("session")):
             if method == "GET":
                 return self.redirect("/settings/verify", {"Cache-Control": "no-store"})
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         if method == "GET" and path == "/settings":
+            return self.page_preferences(lang, query_lang)
+        if method == "GET" and path == "/settings/security":
             return self.page_settings(lang, query_lang, parsed)
         if method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle",
                                          "/settings/password"):
@@ -2504,7 +2502,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
                 f"Max-Age={SESSION_TTL_SECONDS}"
             )
-            return self.redirect("/settings" if next_page == "settings" else "/",
+            return self.redirect("/settings/security" if next_page == "settings" else "/",
                                  {"Set-Cookie": cookie})
         LOGIN_LIMITER.record_failure(ip)
         self.page_login(lang, None, status=401, error=STRINGS[lang]["wrong_password"],
@@ -2522,11 +2520,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def page_security_verify(self, lang, error=None, status=200):
         t = STRINGS[lang]
         token = self.get_cookie("session")
-        body = f'''<div class="access-workspace"><section class="card access-card">
+        body = f'''<div class="access-workspace access-verify-workspace"><section class="card access-card">
           <h1>{html.escape(t['access_verify_heading'])}</h1>
           <p>{html.escape(t['access_verify_note'])}</p>
           {f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ''}
-          <form method="post" action="/settings/verify" autocomplete="off">
+          <form class="access-verify-form" method="post" action="/settings/verify" autocomplete="off">
             <input type="hidden" name="csrf" value="{access_csrf_token(token, 'verify')}">
             <label for="security-password">{html.escape(t['password'])}</label>
             <input id="security-password" type="password" name="password" autocomplete="current-password" required autofocus>
@@ -2568,7 +2566,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         new_token = create_session(security_verified=True)
         cookie = (f"session={new_token}; Path=/; HttpOnly; SameSite=Strict; "
                   f"Max-Age={SESSION_TTL_SECONDS}")
-        return self.redirect("/settings", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
+        return self.redirect("/settings/security", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
     def handle_logout(self):
         token = self.get_cookie("session")
@@ -2576,6 +2574,35 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             destroy_session(token)
         cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
         self.redirect("/login", {"Set-Cookie": cookie})
+
+    def page_preferences(self, lang, query_lang):
+        t = STRINGS[lang]
+        esc = html.escape
+        themes = "".join(
+            f'<button type="button" class="preferences-choice" data-theme-choice="{choice}" '
+            f'aria-pressed="{str(choice == "slate-blue").lower()}">'
+            f'<span class="theme-swatch theme-swatch-{choice}" aria-hidden="true"></span>'
+            f'{esc(t[key])}</button>'
+            for choice, key in (("slate-blue", "theme_slate_blue"), ("sage", "theme_sage"),
+                                ("teal", "theme_teal"), ("plum", "theme_plum")))
+        languages = "".join(
+            f'<a class="preferences-choice" href="/settings?lang={code}"'
+            + (' aria-current="true"' if code == lang else '')
+            + f'>{esc(name)}</a>' for code, name in LANG_NAMES.items())
+        body = f'''<div class="access-workspace preferences-workspace">
+          <h1 class="access-page-title">{esc(t['settings'])}</h1>
+          <div class="preferences-grid">
+            <section class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
+              <div class="preferences-choices" role="group" aria-label="{esc(t['theme_label'], quote=True)}">{themes}</div>
+            </section>
+            <section class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
+              <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
+            </section>
+          </div>
+          <a class="preferences-security" href="/settings/security">{ui_icon('lock-keyhole')}<span>{esc(t['access_security'])}</span></a>
+        </div>'''
+        return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def page_settings(self, lang, query_lang, parsed):
         t = STRINGS[lang]
@@ -2597,6 +2624,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if not rows:
             rows = f'<li class="muted">{esc(t["access_ip_empty"])}</li>'
         body = f'''<div class="access-workspace">
+          <a class="preferences-back" href="/settings">{esc(t['settings'])}</a>
           <h1 class="access-page-title">{esc(t['access_heading'])}</h1>{feedback}
           <section class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
@@ -2684,7 +2712,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 key = "access_ip_invalid"
             except OSError:
                 key = "access_ip_error"
-        return self.redirect(f"/settings?msg={key}", {"Cache-Control": "no-store"})
+        return self.redirect(f"/settings/security?msg={key}", {"Cache-Control": "no-store"})
 
     # -- dashboard ---------------------------------------------------------
 

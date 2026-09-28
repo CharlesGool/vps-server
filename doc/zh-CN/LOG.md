@@ -177,6 +177,8 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - 本轮安全对齐:安全设置须经管理员密码验证,权限固定 10 分钟.验证成功换发会话;仅 IP 免密的会话未经验证不得读取名单或修改设置.权限有效期间修改密码只填写新密码和确认,修改后旧会话全部失效.私有 IPv4 与唯一本地 IPv6 名单共用独立启用开关;每次免密访问都重新检查名单和开关.Clash 导入按钮默认可见,仪表盘增设更新日志和设置入口.
 - 本轮安全对齐检查:311 项自动化测试通过(8 项跳过);文档格式和多语言检查零错误;Python 编译及差异空白检查通过.本地链接检查仍报告 20 处原有译文片段错误(未改动基线有 20 处);没有新增损坏链接.Chromium 确认仪表盘的更新日志和设置入口,安全设置页及独立 IP 免密开关,390 px 宽度下清晰可读的 Clash 导入按钮,且页面没有横向溢出.
 - 本轮安全对齐部署:指定测试机在备份旧 Web 文件,语言目录,文档和 IP 名单后接收了候选版本;备份权限为 0600.仅重启 Web 服务.登录页显示所部署的开发修订版本,四项服务运行正常,原有 IP 名单文件未改动.尚未实际重启主机,也未从名单内设备实测 IP 免密登录.
+- 本轮设置调整:移除了导航栏中重复的管理员登录入口.普通设置页提供外观与语言选项,任何已登录会话(包括仅 IP 免密会话)都可打开.独立安全页及所有安全修改仍需限时管理员密码权限.验证表单收窄卡片并调整按钮间距和对齐.
+- 本轮检查:311 项自动化测试通过(8 项跳过);文档格式和多语言检查零错误,Python 编译及差异空白检查通过.浏览器复核与测试机部署尚待完成.
 - 待办:修复译本文档原有片段链接;在真实 Android 手机上验证 Clash 导入;验证各新策略的真实流量,名单内设备的 IP 免密访问及主机重启后的启动.下一步:完成这些验收检查,再审核并合并本分支.
 ## 变更日志
 
@@ -338,4 +340,5 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `7065e18` fix(web): honor installed version stamp
 - `b870053` fix(web): prioritize deployed stamp over stale git metadata
 - `81f1e13` feat(auth): align security settings and dashboard access
-- (this commit) docs(log): record security alignment checks and deployment
+- `7524ec3` docs(log): record security alignment checks and deployment
+- (this commit) feat(web): separate preferences from security settings

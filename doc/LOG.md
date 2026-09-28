@@ -230,6 +230,8 @@ These checked items are the former backlog's dated implementation and verificati
 - Current security alignment: Security Settings now requires administrator-password verification with a fixed ten-minute permission. A completed challenge rotates the session; IP-only sessions cannot read the allowlist or change settings without that challenge. Password changes need only the new value and confirmation during the permission window and invalidate old sessions. Private IPv4 and unique-local IPv6 entries share an enable switch; each IP admission rechecks the list and switch. The Clash import button has a visible default state, and Changelog and Settings links are dashboard tiles.
 - Checks for this alignment: 311 automated tests passed (8 skipped); document format and multilingual checks had zero errors; Python compilation and diff whitespace checks passed. The local link checker still reports 20 inherited translated-fragment errors (20 on the unchanged baseline); no new broken link was introduced. Chromium confirmed the dashboard Changelog and Settings tiles, the Security Settings page and its separate IP access control, a readable Clash import button on a 390 px viewport, and no page-level horizontal overflow.
 - Deployment of this alignment: the designated test host received this candidate after a mode-0600 backup of its previous Web files, catalogs, documents, and IP allowlist. Only the Web service was restarted. Its login page reported the deployed development revision, four services were active, and the existing IP allowlist file remained unchanged. An actual host reboot and a live IP admission from an allowlisted device have not been tested.
+- Current settings work: removed the duplicate administrator sign-in navigation link. Ordinary Settings now contains appearance and language choices and opens for any authenticated session, including IP-only access. Its separate Security page and every security write still require the short-lived administrator-password permission. The verification form uses a narrower card and a spaced, aligned submit button.
+- Checks for this work: 311 automated tests passed (8 skipped); document format and multilingual checks had zero errors, and Python compilation and diff whitespace checks passed. Browser review and test-host deployment remain pending.
 - Remaining: repair inherited translated-document fragments, verify Android Clash import on a real phone, live transfer through every new policy, IP admission from an allowlisted device, and startup after a real reboot. Next action: complete those acceptance checks, then review and merge the branch.
 
 ## Changelog
@@ -490,4 +492,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `7065e18` fix(web): honor installed version stamp
 - `b870053` fix(web): prioritize deployed stamp over stale git metadata
 - `81f1e13` feat(auth): align security settings and dashboard access
-- (this commit) docs(log): record security alignment checks and deployment
+- `7524ec3` docs(log): record security alignment checks and deployment
+- (this commit) feat(web): separate preferences from security settings

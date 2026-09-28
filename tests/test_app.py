@@ -184,6 +184,12 @@ class ConsoleTest(unittest.TestCase):
                 session = self.login()
                 status, _, page = request("GET", "/settings", session=session)
                 self.assertEqual(status, 200)
+                self.assertIn('href="/settings/security"', page)
+                self.assertIn('href="/settings?lang=zh_cn"', page)
+                self.assertIn('data-theme-choice="sage"', page)
+                self.assertNotIn('action="/settings/ip/add"', page)
+                status, _, page = request("GET", "/settings/security", session=session)
+                self.assertEqual(status, 200)
                 self.assertIn("Specified IP password-free access", page)
                 self.assertIn('action="/settings/ip/add"', page)
                 self.assertIn('placeholder="192.168.1.10 / fd12::1"', page)
@@ -192,26 +198,26 @@ class ConsoleTest(unittest.TestCase):
                 csrf = app.access_csrf_token(session, "ip-add")
                 self.assertEqual(request("POST", "/settings/ip/add",
                                          {"csrf": csrf, "ip": "8.8.8.8"}, session)[:2],
-                                 (302, "/settings?msg=access_ip_invalid"))
+                                 (302, "/settings/security?msg=access_ip_invalid"))
                 self.assertEqual(allowlist.list_addresses(), [])
                 self.assertEqual(request("POST", "/settings/ip/add",
                                          {"csrf": csrf, "ip": "192.168.7.21"}, session)[:2],
-                                 (302, "/settings?msg=access_ip_added"))
+                                 (302, "/settings/security?msg=access_ip_added"))
                 self.assertEqual(allowlist.list_addresses(), ["192.168.7.21"])
                 self.assertEqual(request("POST", "/settings/ip/add",
                                          {"csrf": csrf, "ip": "fd12::1"}, session)[:2],
-                                 (302, "/settings?msg=access_ip_added"))
+                                 (302, "/settings/security?msg=access_ip_added"))
                 toggle = app.access_csrf_token(session, "ip-toggle")
                 self.assertEqual(request("POST", "/settings/ip/toggle",
                                          {"csrf": toggle, "enabled": "0"}, session)[:2],
-                                 (302, "/settings?msg=access_ip_disabled"))
+                                 (302, "/settings/security?msg=access_ip_disabled"))
                 self.assertFalse(allowlist.contains("192.168.7.21"))
                 self.assertFalse(app.IpAllowlist(allowlist.path).is_enabled())
                 self.assertEqual(request("POST", "/settings/ip/toggle",
                                          {"csrf": toggle, "enabled": "1"}, session)[:2],
-                                 (302, "/settings?msg=access_ip_enabled"))
+                                 (302, "/settings/security?msg=access_ip_enabled"))
                 self.assertTrue(allowlist.contains("fd12::1"))
-                status, _, page = request("GET", "/settings", session=session)
+                status, _, page = request("GET", "/settings/security", session=session)
                 self.assertEqual(status, 200)
                 self.assertIn('class="access-remove"', page)
                 self.assertEqual(request("POST", "/settings/password",
@@ -228,7 +234,7 @@ class ConsoleTest(unittest.TestCase):
             with app._sessions_lock:
                 app._security_sessions[session] = time.time() - 1
             conn = self.connect()
-            conn.request("GET", "/settings", headers={"Cookie": f"session={session}"})
+            conn.request("GET", "/settings/security", headers={"Cookie": f"session={session}"})
             response = conn.getresponse()
             self.assertEqual((response.status, response.getheader("Location")),
                              (302, "/settings/verify"))
@@ -252,7 +258,7 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(post("/settings/verify", {"csrf": csrf, "password": "wrong"})[0], 401)
             status, location, cookie = post("/settings/verify", {"csrf": csrf,
                                                                    "password": self.password})
-            self.assertEqual((status, location), (302, "/settings"))
+            self.assertEqual((status, location), (302, "/settings/security"))
             jar = SimpleCookie()
             jar.load(cookie)
             new_session = jar["session"].value
@@ -301,10 +307,20 @@ class ConsoleTest(unittest.TestCase):
                     conn.request("GET", "/", headers={"Cookie": f"session={ip_token}"})
                     response = conn.getresponse()
                     self.assertEqual(response.status, 200)
-                    response.read()
+                    dashboard = response.read().decode()
+                    self.assertIn('href="/settings"', dashboard)
+                    self.assertNotIn('href="/login?next=settings"', dashboard)
                     conn.close()
                     conn = self.connect()
                     conn.request("GET", "/settings", headers={"Cookie": f"session={ip_token}"})
+                    response = conn.getresponse()
+                    preferences = response.read().decode()
+                    self.assertEqual(response.status, 200)
+                    self.assertIn('href="/settings/security"', preferences)
+                    self.assertNotIn('action="/settings/ip/add"', preferences)
+                    conn.close()
+                    conn = self.connect()
+                    conn.request("GET", "/settings/security", headers={"Cookie": f"session={ip_token}"})
                     response = conn.getresponse()
                     self.assertEqual((response.status, response.getheader("Location")),
                                      (302, "/settings/verify"))
@@ -316,6 +332,7 @@ class ConsoleTest(unittest.TestCase):
                     challenge = response.read().decode()
                     self.assertEqual(response.status, 200)
                     self.assertIn('action="/settings/verify"', challenge)
+                    self.assertIn('class="access-verify-form"', challenge)
                     self.assertNotIn('action="/settings/ip/add"', challenge)
                     conn.close()
                     conn = self.connect()
@@ -750,15 +767,21 @@ class ConsoleTest(unittest.TestCase):
         conn.close()
         self.assertIn("登录", body)
 
-    def test_nav_shows_all_three_language_links(self):
+    def test_settings_shows_language_choices_outside_navigation(self):
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/", headers={"Cookie": f"session={session}"})
         body = conn.getresponse().read().decode()
         conn.close()
-        self.assertIn("?lang=en", body)
-        self.assertIn("?lang=zh_cn", body)
-        self.assertIn("?lang=zh_tw", body)
+        self.assertNotIn('class="language-menu"', body)
+        self.assertNotIn('class="theme-menu"', body)
+        conn = self.connect()
+        conn.request("GET", "/settings", headers={"Cookie": f"session={session}"})
+        body = conn.getresponse().read().decode()
+        conn.close()
+        self.assertIn("/settings?lang=en", body)
+        self.assertIn("/settings?lang=zh_cn", body)
+        self.assertIn("/settings?lang=zh_tw", body)
 
     # -- speed test ----------------------------------------------------
     # Endpoints match LibreSpeed's own garbage.php/empty.php/getIP.php

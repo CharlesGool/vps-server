@@ -138,6 +138,8 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - 本輪安全對齊:安全設定須經管理員密碼驗證,權限固定 10 分鐘.驗證成功會換發工作階段;純 IP 免密工作階段未經驗證不得讀取名單或修改設定.權限有效期間修改密碼只填新密碼及確認,修改後舊工作階段全部失效.私人 IPv4 及唯一本地 IPv6 名單共用獨立啟用開關;每次免密存取都重新檢查名單及開關.Clash 匯入按鈕預設可見,儀表板新增更新日誌及設定入口.
 - 本輪安全對齊檢查:311 項自動化測試通過(8 項略過);文件格式及多語言檢查零錯誤;Python 編譯及差異空白檢查通過.本機連結檢查仍報告 20 處原有譯文片段錯誤(未改動基線有 20 處);沒有新增損壞連結.Chromium 確認儀表板的更新日誌及設定入口,安全設定頁與獨立 IP 免密開關,390 px 寬度下清晰可讀的 Clash 匯入按鈕,而頁面沒有橫向溢出.
 - 本輪安全對齊部署:指定測試機在備份舊 Web 檔案,語言目錄,文件及 IP 名單後接收候選版本;備份權限為 0600.只重啟 Web 服務.登入頁顯示已部署的開發修訂版本,四項服務運作正常,原有 IP 名單檔案未改動.尚未實際重啟主機,亦未從名單內裝置實測 IP 免密登入.
+- 本輪設定調整:移除了導覽列中重複的管理員登入入口.一般設定頁提供外觀及語言選項,任何已登入工作階段(包括純 IP 免密工作階段)均可開啟.獨立安全頁及所有安全修改仍須限時管理員密碼權限.驗證表單收窄卡片並調整按鈕間距及對齊.
+- 本輪檢查:311 項自動化測試通過(8 項略過);文件格式及多語言檢查零錯誤,Python 編譯及差異空白檢查通過.瀏覽器複核及測試機部署尚待完成.
 - 待辦:修復譯本文件原有片段連結;在真實 Android 手機驗證 Clash 匯入;驗證各新政策的實際流量,名單內裝置的 IP 免密存取及主機重啟後的啟動.下一步:完成這些驗收檢查,再審核並合併本分支.
 ## 變更記錄
 
@@ -299,4 +301,5 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - `7065e18` fix(web): honor installed version stamp
 - `b870053` fix(web): prioritize deployed stamp over stale git metadata
 - `81f1e13` feat(auth): align security settings and dashboard access
-- (this commit) docs(log): record security alignment checks and deployment
+- `7524ec3` docs(log): record security alignment checks and deployment
+- (this commit) feat(web): separate preferences from security settings

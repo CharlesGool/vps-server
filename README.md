@@ -44,7 +44,9 @@ See [current state and acceptance limits][local-link-001].
   access settings. Security Settings requires a recent administrator-password
   verification before showing its IP list or accepting changes. The allowlist
   accepts individual private IPv4 and unique-local IPv6 addresses, with a
-  separate switch to disable IP access without deleting entries. Password
+  separate switch to disable IP access without deleting entries. Appearance
+  and language choices are available on the ordinary Settings page; its Security
+  section asks for the administrator password when verification has expired. Password
   changes invalidate existing sessions.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
