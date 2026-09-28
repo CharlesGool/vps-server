@@ -84,12 +84,12 @@ main:has(.managed-node-grid) { max-width: 135rem; }
 .access-verify-form { display: grid; gap: .6rem; margin-top: 1.5rem; }
 .access-verify-form label, .access-verify-form input { margin: 0; }
 .access-verify-form button { justify-self: start; margin-top: .5rem; }
-.preferences-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+.preferences-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; gap: 1rem; }
 .preferences-card { margin: 0; }
 .preferences-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
 .preferences-choice { display: flex; align-items: center; gap: .6rem; min-height: 3rem; padding: .7rem .8rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--fg); font: inherit; font-size: .9rem; font-weight: 500; text-align: start; text-decoration: none; cursor: pointer; }
 .preferences-choice:hover, .preferences-choice[aria-pressed="true"], .preferences-choice[aria-current="true"] { border-color: var(--accent); background: var(--surface-2); color: var(--fg); }
-.preferences-security { display: inline-flex; align-items: center; gap: .6rem; margin-top: 1rem; padding: .8rem 1rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--fg); font-weight: 600; text-decoration: none; }
+.preferences-security { display: inline-flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding: .8rem 1rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--fg); font-weight: 600; text-decoration: none; }
 .preferences-security:hover { background: var(--surface-2); }
 .preferences-security .ui-icon { color: var(--accent); }
 .preferences-back { display: inline-block; margin-bottom: .75rem; font-size: .9rem; font-weight: 600; }

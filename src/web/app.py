@@ -2591,6 +2591,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             + f'>{esc(name)}</a>' for code, name in LANG_NAMES.items())
         body = f'''<div class="access-workspace preferences-workspace">
           <h1 class="access-page-title">{esc(t['settings'])}</h1>
+          <a class="preferences-security" href="/settings/security">{ui_icon('lock-keyhole')}<span>{esc(t['access_security'])}</span></a>
           <div class="preferences-grid">
             <section class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
               <div class="preferences-choices" role="group" aria-label="{esc(t['theme_label'], quote=True)}">{themes}</div>
@@ -2599,7 +2600,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
             </section>
           </div>
-          <a class="preferences-security" href="/settings/security">{ui_icon('lock-keyhole')}<span>{esc(t['access_security'])}</span></a>
         </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
