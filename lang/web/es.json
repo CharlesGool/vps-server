@@ -283,5 +283,6 @@
   "node_blocked": "Acceso bloqueado",
   "node_validity_expired": "Caducado",
   "node_remaining_days": "Quedan {count} días",
-  "node_remaining_hours": "Quedan {count} horas"
+  "node_remaining_hours": "Quedan {count} horas",
+  "node_clash_copy_label": "Copiar enlace de suscripción de Clash"
 }

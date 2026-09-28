@@ -283,5 +283,6 @@
   "node_blocked": "已禁止使用",
   "node_validity_expired": "已到期",
   "node_remaining_days": "剩餘 {count} 天",
-  "node_remaining_hours": "剩餘 {count} 小時"
+  "node_remaining_hours": "剩餘 {count} 小時",
+  "node_clash_copy_label": "複製 Clash 訂閱連結"
 }

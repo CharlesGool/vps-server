@@ -283,5 +283,6 @@
   "node_blocked": "पहुँच बंद है",
   "node_validity_expired": "समय समाप्त",
   "node_remaining_days": "{count} दिन शेष",
-  "node_remaining_hours": "{count} घंटे शेष"
+  "node_remaining_hours": "{count} घंटे शेष",
+  "node_clash_copy_label": "Clash सदस्यता लिंक कॉपी करें"
 }

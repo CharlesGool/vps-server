@@ -283,5 +283,6 @@
   "node_blocked": "الوصول ممنوع",
   "node_validity_expired": "انتهت الصلاحية",
   "node_remaining_days": "متبقٍ {count} يومًا",
-  "node_remaining_hours": "متبقٍ {count} ساعة"
+  "node_remaining_hours": "متبقٍ {count} ساعة",
+  "node_clash_copy_label": "نسخ رابط اشتراك Clash"
 }

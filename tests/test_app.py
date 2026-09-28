@@ -381,6 +381,11 @@ class ConsoleTest(unittest.TestCase):
             self.assertIn("Traffic cap (GiB)", page)
             self.assertIn('name="cap_gib"', page)
             self.assertIn('class="node-import"', page)
+            copy_id = f"clash-url-{node['id']}"
+            self.assertIn(f'data-copy="{copy_id}"', page)
+            copied = html.unescape(re.search(rf'<span id="{copy_id}" hidden>([^<]+)</span>', page).group(1))
+            self.assertEqual(copied, f"http://192.168.50.23:{app.CONSOLE_PORT}{path}")
+            self.assertLess(page.index(f'data-copy="{copy_id}"'), page.index('class="node-import"'))
             self.assertIn("/static/qrcode-render.js", page)
             link = html.unescape(re.search(r'class="node-import" href="([^"]+)', page).group(1))
             self.assertEqual(urlsplit(link).scheme, "clash")

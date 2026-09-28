@@ -3402,7 +3402,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                f"{node['id']}/{clash_share_token(node)}")
         deep_link = "clash://install-config?url=" + quote(url, safe="")
         escaped_link = html.escape(deep_link, quote=True)
+        escaped_url = html.escape(url)
+        copy_id = f"clash-url-{node['id']}"
         return f'''<div class="node-share">
+          <span id="{copy_id}" hidden>{escaped_url}</span>
+          <button type="button" class="copybtn" data-copy="{copy_id}"
+            data-copied="{html.escape(t['copy'])}"
+            aria-label="{html.escape(t['node_clash_copy_label'], quote=True)}">{html.escape(t['copy'])}</button>
           <a class="node-import" href="{escaped_link}">{html.escape(t['node_clash_import'])}</a>
           <details class="qr-details"><summary>{html.escape(t['node_clash_qr'])}</summary>
             <div class="qr" data-qr-text="{escaped_link}"></div>

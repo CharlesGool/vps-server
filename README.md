@@ -39,8 +39,9 @@ See [current state and acceptance limits][local-link-001].
   about the host.
 - **Measures throughput from a browser.** A console on a persisted random high
   port runs up/download tests using the LibreSpeed engine. It accepts an admin
-  password or an explicitly allowed private LAN IP: the login page offers an
-  IP access button when that address is allowed. Only a
+  password or an explicitly allowed private LAN IP. The login page always shows
+  the IP access button; an unlisted visitor is guided to password login and
+  access settings. Only a
   password-authenticated admin can change the password or IP list; public IPs
   cannot be added.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
@@ -56,8 +57,8 @@ See [current state and acceptance limits][local-link-001].
   HTTP — read from `/proc/net/tcp[6]`, stored in SQLite, most recent 1000 kept.
 - **Serves an anytls proxy.** sing-box with a self-signed certificate, plus BBR.
   The authenticated `/proxy` page shows the node status, traffic, editable
-  connection settings, and a one-tap Clash Meta for Android import link with QR
-  code when a private LAN address is available.
+  connection settings, and a one-tap Clash Meta for Android import link with a
+  copyable subscription URL and QR code when a private LAN address is available.
 - **Serves vmess/vless/trojan/shadowsocks proxies, any subset.** One more
   sing-box process shares the vendored binary with anytls. Each installed
   protocol starts with a numbered node. The console can create more nodes of
@@ -69,8 +70,8 @@ See [current state and acceptance limits][local-link-001].
   after the cap. A configurable cycle of days, months, or years clears period
   usage; an optional validity duration blocks traffic when it ends. Connection
   and limit editors remain separate, alongside random-reset controls,
-  plus the same LAN-only Clash Meta import option. The import URL
-  contains an opaque token and changes after the node's connection settings
+  plus the same LAN-only Clash Meta import and subscription-link copy options.
+  The import URL contains an opaque token and changes after the node's connection settings
   or name changes. The public ports do not serve proxy configurations.
 
 The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
