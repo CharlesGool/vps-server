@@ -26,7 +26,7 @@ metadata:
 
 <a id="vps-design-goals"></a>
 
-**Implemented goals in v2.0.0 (see [acceptance limits][local-link-001]):**
+**Implemented goals in the current release (see [acceptance limits][local-link-001]):**
 
 Version 2.0.0 also contains experimental frps and Lucky installer paths.
 Their host behavior has not been accepted on a real host; the goals below

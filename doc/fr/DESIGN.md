@@ -26,7 +26,7 @@ metadata:
 
 <a id="vps-design-goals"></a>
 
-**Objectifs réalisés dans la version v2.0.0 (voir les [limites de validation][local-link-001]) :**
+**Objectifs réalisés dans la version actuelle (voir les [limites de validation][local-link-001]) :**
 
 La version 2.0.0 comprend également des parcours d’installation expérimentaux pour frps et Lucky. Leur fonctionnement n’a pas été validé sur un hôte réel ; les objectifs ci-dessous décrivent les quatre modules documentés auparavant.
 
@@ -55,7 +55,7 @@ La version 2.0.0 comprend également des parcours d’installation expérimentau
 - [ ] 2026-09-22 Achever la prise en charge de frps dans la console pour les jetons et les informations de connexion. L’installateur propose désormais frps, mais le périmètre de la console reste à définir : ces informations désignent-elles un jeton d’authentification, un extrait de configuration client ou une liste des proxys connectés ?
 - [ ] Définir le périmètre de la demande plus large de fonctionnalités de `gdy666/lucky` consignée dans l’instantané du 2026-09-22. Le dépôt propose maintenant un parcours d’installation de Lucky, mais aucune liste de fonctionnalités plus larges ni aucun critère de validation n’étaient consignés.
 - [x] Validation des contrôles des nœuds sur un hôte réel terminée : les numéros affichés restent consécutifs après une suppression et repartent de 1 après la suppression de tous les nœuds, tandis que les UUID masqués conservent leur identité ; nom, port, identifiant de connexion et SNI TLS sont modifiables ; le SNI est sans objet pour Shadowsocks ; la réinitialisation aléatoire du port et de l’identifiant conserve le SNI. Chaque nœud peut être désactivé sans perdre sa configuration ni son historique de trafic, puis réactivé sur le même port. Les contrôles ont passé les essais sur hôte réel le 2026-09-27.
-- [x] Toute la Web UI a été repensée avec un système visuel clair et cohérent pour la console, la page publique de connectivité et l’assistant de configuration. La réalisation du 2026-09-27 harmonise espacements et commandes, propose quatre couleurs d’accent mémorisées, des polices et icônes intégrées, un focus visible et des mises en page adaptatives.
+- [x] Toute la Web UI partage un système visuel accessible pour la console, la page publique de connectivité et l’assistant de configuration. Les espacements, commandes, polices et icônes incluses, le focus visible et les mises en page adaptatives restent en place. Les paramètres ordinaires proposent huit couleurs d’accent persistantes et des modes clair et sombre indépendants ; changer de mode conserve la couleur.
 
 La question du verrou SQLite partagé est une [question de mesure connue mais non résolue][local-link-002], pas une obligation de modifier l'architecture. Les travaux achevés et les vérifications historiques figurent dans le [LOG][local-link-003].
 

@@ -24,7 +24,7 @@ metadata:
 
 ## 簡介
 
-這套可按模組選用的工具供 Debian/Ubuntu VPS 使用:公開頁面檢查網頁連接埠能否連通,操作員控制台提供網速測試及連線紀錄,按需開啟的 iperf3 測試時段,以及 sing-box 代理節點.v2.0.0 亦包含四協定 `proxy` 模組,以及實驗性的 frps 和 Lucky 安裝程式.參閱[現況及驗收限制][local-link-001].
+這套可按模組選用的工具供 Debian/Ubuntu VPS 使用:公開頁面檢查網頁連接埠能否連通,操作員控制台提供網速測試及連線紀錄,按需開啟的 iperf3 測試時段,以及 sing-box 代理節點.v3.0.0 新增受管理節點,流量政策,私人 IP 免密存取和明暗外觀選項.套件亦包含實驗性的 frps 和 Lucky 安裝程式.參閱[現況及驗收限制][local-link-001].
 
 ## 功能
 
@@ -54,7 +54,7 @@ web,iperf3,anytls,proxy,frps 和 Lucky 六個模組均可於安裝時選用.frps
 一行快速安裝(最新發佈標籤,不設定變數):
 
 ```bash
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 逐步安裝及設定:
@@ -62,13 +62,13 @@ git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # 複製發佈標籤;預設分支可能包含尚未發佈的變更.
 # 列出發佈標籤: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # 可選;每個變數都有可用預設值
 bash deploy/install.sh
 ```
 
-`deploy/install.sh` 會詢問要安裝的模組,介面語言,是否以密碼保護控制台,以及使用哪些連接埠.v2.0.0 標籤包含六個可選模組;frps 和 Lucky 屬實驗性模組.
+`deploy/install.sh` 會詢問要安裝的模組,介面語言,是否以密碼保護控制台,以及使用哪些連接埠.v3.0.0 標籤包含六個可選模組;frps 和 Lucky 屬實驗性模組.
 
 **再次執行會原地升級.** 程式偵測既有安裝,讓操作員選擇保留設定,並只詢問舊版本未有的設定;每項附有預設值,按 Enter 即可接受.控制台密碼,持久保存的連接埠,憑證,訪客紀錄,anytls 節點憑證,以及所有已安裝代理協定的連接埠及憑證都會保留.如要重新回答設定問題,在升級提問時回答 `n`.
 

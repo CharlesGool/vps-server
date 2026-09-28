@@ -26,8 +26,9 @@ metadata:
 
 A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
 reachability, an operator console for speed tests and connection logging, an
-on-demand iperf3 window, and sing-box proxy nodes. Version 2.0.0 also includes
-the four-protocol `proxy` module and experimental frps and Lucky installers.
+on-demand iperf3 window, and sing-box proxy nodes. Version 3.0.0 adds managed
+nodes, traffic policies, private-IP access, and light/dark appearance choices.
+The bundle also includes experimental frps and Lucky installers.
 See [current state and acceptance limits][local-link-001].
 
 ## What it does
@@ -105,7 +106,7 @@ maintained, and their code is vendored here rather than absorbed.
 One-line quick install (latest release tag, no configuration variables):
 
 ```bash
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Step by step, with configuration:
@@ -113,14 +114,14 @@ Step by step, with configuration:
 ```bash
 # Clone a release tag; the default branch can contain unpublished changes.
 # List release tags: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash deploy/install.sh
 ```
 
 `deploy/install.sh` asks which modules to install, the interface language,
-whether to password-protect the console, and which ports to use. The v2.0.0
+whether to password-protect the console, and which ports to use. The v3.0.0
 tag includes all six selectable modules; frps and Lucky are experimental.
 
 **Re-running it upgrades in place.** It detects an existing install, offers to

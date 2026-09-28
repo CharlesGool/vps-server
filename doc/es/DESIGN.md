@@ -26,7 +26,7 @@ metadata:
 
 <a id="vps-design-goals"></a>
 
-**Objetivos implementados en v2.0.0 (consulta los [límites de aceptación][local-link-001]):**
+**Objetivos implementados en la versión actual (consulta los [límites de aceptación][local-link-001]):**
 
 La versión 2.0.0 también contiene rutas de instalación experimentales para frps y Lucky. Su funcionamiento no se ha aceptado en un servidor real; los objetivos siguientes describen los cuatro módulos documentados anteriormente.
 
@@ -48,7 +48,7 @@ La versión 2.0.0 también contiene rutas de instalación experimentales para fr
 - [ ] 2026-09-22 Completar el soporte de frps en la consola para tokens e información de conexión. El instalador actual ya ofrece frps, pero el requisito de la consola sigue sin delimitarse: decidir si la información del token significa un token de autenticación, un fragmento de configuración del cliente o una lista de proxies conectados.
 - [ ] Delimitar la solicitud más amplia de funciones de `gdy666/lucky` registrada en la instantánea de estado del 2026-09-22. El árbol actual ya ofrece una ruta de instalación de Lucky, pero no se registraron una lista más amplia de funciones ni criterios de aceptación.
 - [x] Validación de los controles de nodos en un servidor real completada: los números visibles quedan consecutivos tras borrar nodos y vuelven a empezar en 1 cuando no queda ninguno, mientras que los UUID ocultos conservan la identidad; se pueden editar nombre, puerto, credencial y SNI TLS; Shadowsocks muestra SNI como no aplicable; el restablecimiento aleatorio de puerto y credencial conserva el SNI. Cada nodo puede desactivarse sin borrar su configuración ni sus registros de tráfico y reactivarse en el mismo puerto. Los controles superaron las pruebas en un servidor real el 2026-09-27.
-- [x] Se rediseñó toda la Web UI con un sistema visual claro y coherente para la consola, la página pública de conectividad y el asistente de instalación. La implementación del 2026-09-27 unifica espacios y controles, ofrece cuatro colores de acento persistentes, fuentes e iconos incluidos, foco visible y diseños adaptables.
+- [x] Toda la Web UI comparte un sistema visual accesible para la consola, la página pública de conectividad y el asistente de instalación. Se mantienen los espacios, controles, fuentes e iconos incluidos, el foco visible y los diseños adaptables. Los ajustes ordinarios ofrecen ocho colores de acento persistentes y modos claro y oscuro independientes; cambiar de modo conserva el color.
 
 La preocupación por el bloqueo SQLite compartido es una [cuestión de medición conocida y sin resolver][local-link-002], no una orden de modificar la arquitectura. El trabajo histórico completado y las pruebas registradas están en [LOG][local-link-003].
 

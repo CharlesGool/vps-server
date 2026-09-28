@@ -24,7 +24,7 @@ metadata:
 
 ## Introduction
 
-Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de vérification de l'accessibilité des ports web, une console d'administration pour les tests de débit et la journalisation des connexions, une fenêtre iperf3 à la demande et des nœuds proxy sing-box. La version 2.0.0 comprend également le module `proxy` à quatre protocoles et les installateurs expérimentaux de frps et Lucky. Voir [l'état actuel et les limites de validation][local-link-001].
+Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de vérification de l’accessibilité des ports web, une console d’administration pour les tests de débit et la journalisation des connexions, une fenêtre iperf3 à la demande et des nœuds proxy sing-box. La version v3.0.0 ajoute des nœuds gérés, des règles de trafic, un accès sans mot de passe depuis des IP privées et des modes clair et sombre. Le paquet comprend aussi les installateurs expérimentaux de frps et Lucky. Voir [l’état actuel et les limites de validation][local-link-001].
 
 ## Fonctionnalités
 
@@ -54,7 +54,7 @@ Les modules sélectionnables sont web, iperf3, anytls, proxy, frps et Lucky. frp
 Installation rapide en une ligne (dernier tag publié, sans variables de configuration) :
 
 ```bash
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Installation pas à pas, avec configuration :
@@ -62,13 +62,13 @@ Installation pas à pas, avec configuration :
 ```bash
 # Clonez un tag de version ; la branche par défaut peut contenir des modifications non publiées.
 # Listez les tags de version : `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # facultatif : chaque variable a une valeur par défaut fonctionnelle
 bash deploy/install.sh
 ```
 
-`deploy/install.sh` demande les modules à installer, la langue de l’interface, l’activation de la protection de la console par mot de passe et les ports. Le tag v2.0.0 comprend les six modules sélectionnables ; frps et Lucky sont expérimentaux.
+`deploy/install.sh` demande les modules à installer, la langue de l’interface, l’activation de la protection de la console par mot de passe et les ports. Le tag v3.0.0 comprend les six modules sélectionnables ; frps et Lucky sont expérimentaux.
 
 **Une nouvelle exécution met à niveau l'installation sur place.** Le script détecte l'installation existante, propose de conserver sa configuration et ne demande que les paramètres absents de la version installée, chacun avec sa valeur par défaut : appuyer sur Entrée est donc une réponse valable. Le mot de passe de la console, le port conservé, les certificats, le journal des visiteurs, les identifiants du nœud anytls ainsi que les ports et identifiants de chaque protocole proxy installé sont préservés. Répondez `n` à la question de mise à niveau pour redéfinir les paramètres.
 

@@ -24,7 +24,7 @@ metadata:
 
 ## Introducción
 
-Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: una página pública para comprobar la accesibilidad de los puertos web, una consola para realizar pruebas de velocidad y registrar conexiones, una ventana iperf3 bajo demanda y nodos proxy sing-box. La versión 2.0.0 también incluye el módulo `proxy` de cuatro protocolos y los instaladores experimentales de frps y Lucky. Consulta el [estado actual y los límites de aceptación][local-link-001].
+Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: una página pública para comprobar la accesibilidad de los puertos web, una consola para realizar pruebas de velocidad y registrar conexiones, una ventana iperf3 bajo demanda y nodos proxy sing-box. La versión v3.0.0 añade nodos administrados, políticas de tráfico, acceso sin contraseña desde IP privadas y modos de apariencia claro y oscuro. El paquete también incluye instaladores experimentales de frps y Lucky. Consulta el [estado actual y los límites de aceptación][local-link-001].
 
 ## Qué hace
 
@@ -54,7 +54,7 @@ Los módulos seleccionables son web, iperf3, anytls, proxy, frps y Lucky. frps y
 Instalación rápida en una línea (última etiqueta de versión, sin variables de configuración):
 
 ```bash
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Paso a paso, con configuración:
@@ -62,13 +62,13 @@ Paso a paso, con configuración:
 ```bash
 # Clona una etiqueta de versión; la rama predeterminada puede contener cambios aún no publicados.
 # Lista las etiquetas de versión: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v2.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # opcional: todas las variables tienen un valor predeterminado funcional
 bash deploy/install.sh
 ```
 
-`deploy/install.sh` pregunta qué módulos instalar, el idioma de la interfaz, si se debe proteger la consola con contraseña y qué puertos usar. La etiqueta v2.0.0 incluye los seis módulos seleccionables; frps y Lucky son experimentales.
+`deploy/install.sh` pregunta qué módulos instalar, el idioma de la interfaz, si se debe proteger la consola con contraseña y qué puertos usar. La etiqueta v3.0.0 incluye los seis módulos seleccionables; frps y Lucky son experimentales.
 
 **Volver a ejecutarlo actualiza la instalación existente.** Detecta una instalación previa, ofrece conservar su configuración y solo pregunta por los ajustes inexistentes en la versión instalada, cada uno con su valor predeterminado, por lo que pulsar Intro es válido. Se conservan la contraseña de la consola, el puerto persistente, los certificados, el registro de visitantes, las credenciales del nodo anytls y el puerto y las credenciales de cada protocolo proxy instalado. Responde `n` a la pregunta de actualización para volver a configurar los ajustes.
 

@@ -251,14 +251,33 @@ These checked items are the former backlog's dated implementation and verificati
 - Current Web appearance alignment (2026-09-28): ordinary Settings now offers all eight prescribed accent colors and separate light/dark modes. Both choices persist in local storage, restore before CSS loads, and remain independent when toggled. The existing shared components use semantic color variables in both modes; the narrow header now wraps its brand and version at high zoom. All eight UI catalogs include the new option labels. No temporary project rules were found.
 - Checks for this alignment: 311 automated tests passed (8 skipped); Python and JavaScript syntax, document format, multilingual catalogs, local links, and diff whitespace passed with zero errors. The document checker retained two proper-name warnings in English navigation. Chromium confirmed theme and mode persistence after reload and language change, all 16 color/mode combinations had at least 4.5:1 contrast for body, muted, and primary-button text, and the Arabic Settings page had no horizontal overflow at 390, 320, or 195 CSS px (the last approximates 200% zoom at 390 px). The desktop Settings layout and dark mobile layout were visually inspected.
 - Deployment for this alignment: the designated test host runs `dev-abe8f0d` from the standard application directory. The previous runtime application, styles, theme script, catalogs, documents, and version were backed up outside that directory with mode 0600. The deployed root `app.py` and source copy, styles, theme script, catalogs, and documents now match this revision. Only the Web service was restarted; persistent data and access settings were not changed. The LAN login response includes the new theme choices, mode bootstrap, and version, and the theme script is served. Web, proxy, node-meter, and AnyTLS were active and enabled for boot; the console remained on its existing listener. An actual reboot and a live policy transfer were not performed.
-- Remaining: verify Android Clash import on a real phone, live transfer through every new policy, IP admission from an allowlisted device, and startup after a real reboot. Next action: complete those acceptance checks before merge.
+- Release preparation (2026-09-28): the operator reports that functional testing is complete and requests a major release on `main`. The next version is `v3.0.0`, following `v2.0.0`. The branch can fast-forward into `main`; the release content, translations, final artifact checks, publication review, tag, GitHub Release, snapshot, and Notion sync are being prepared. Three unchanged executable blobs over 10 MB remain in the repository because they are identical to the blobs already published in `v2.0.0` and support its offline installation path: sing-box (57,995,520 bytes), frps (20,332,728 bytes), and Lucky (10,883,644 bytes). No new large blob is introduced.
+- Independent acceptance evidence still absent from this record: Android Clash import on a real phone, live transfer through every policy, IP admission from an allowlisted device, and startup after a real reboot. The operator reports that functional testing passed. Next action: finish the formal release checks and publish `v3.0.0` on `main`.
 
 ## Changelog
 
 <a id="vps-changelog"></a>
 
 Only tagged releases are listed here. The following entries retain the complete
-former changelog history and record the v2.0.0 release content.
+former changelog history and record the current release content.
+
+### v3.0.0 — 2026-09-28
+
+#### Added
+
+- Managed AnyTLS, VMess, VLESS, Trojan, and Shadowsocks nodes can be created, edited, disabled, reset, and deleted individually. Display numbers stay contiguous; hidden UUIDs preserve identity. Connection details can be copied or imported into Clash Meta for Android by link or QR code.
+- Each node tracks upload and download traffic and supports a GiB cap, separate directional speed limits, recurring resets in days, months, or years, and an optional validity period. A reached cap can throttle both directions to 1 Mbps or block access; an expired validity period blocks access.
+- Password-free access is available to an explicit private-IP allowlist. Security Settings requires a recent administrator-password check, including for IP-only sessions, before exposing or changing credentials and access rules.
+
+#### Changed
+
+- Unified the console and login layouts, responsive node cards, dashboard navigation, and settings. Ordinary Settings now offers eight persistent accent colors and independent light/dark modes. Stored credentials and configured ports are masked until an authorized reveal or use.
+- The iperf3 view separates service state from its editable port. Installer upgrades preserve the runtime web entry point and staged modules. Proxy setup summaries list interface and optional Tailscale addresses without public-IP lookup. Translated document fragments and third-party source links were repaired.
+
+#### Verification and limits
+
+- The operator reports that functional testing passed. The local suite passed 311 tests (8 skipped); the designated test host served the new login and theme assets with Web, proxy, node-meter, and AnyTLS services active and enabled for boot. An actual reboot and every live policy transfer were not independently witnessed in this release preparation.
+- No new or changed blob over 10 MB was added. The existing sing-box (57,995,520 bytes), frps (20,332,728 bytes), and Lucky (10,883,644 bytes) executables have the same Git blob IDs as in `v2.0.0`; provenance and license records remain in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md). frps and Lucky remain experimental.
 
 ### v2.0.0 — 2026-09-27
 
@@ -528,4 +547,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `933bafa` docs(log): finish standards audit handoff
 - `e2778a5` docs(log): record formal branch publication
 - `abe8f0d` feat(web): align appearance with current theme standard
-- (this commit) docs(log): record appearance deployment
+- `2d624db` docs(log): record appearance deployment
+- (this commit) chore(release): prepare v3.0.0 content
