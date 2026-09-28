@@ -3045,6 +3045,17 @@ class InstallerContractTest(unittest.TestCase):
                             "VERSION must be derived, not written in app.py")
         self.assertIn("_read_version()", source)
 
+    def test_installed_version_stamp_takes_priority_over_bundled_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config").mkdir()
+            (root / "config" / "VERSION").write_text("2.0.0\n")
+            (root / "VERSION").write_text("dev-testbuild\n")
+            with patch.object(app, "BASE_DIR", root):
+                self.assertEqual(app._read_version(), "dev-testbuild")
+                (root / "VERSION").unlink()
+                self.assertEqual(app._read_version(), "2.0.0")
+
     def test_no_documented_variable_is_ignored_by_the_code(self):
         # The other drift direction: a VPSSRV_ name in .env.example that
         # nothing reads is worse than an undocumented one, because it reads
