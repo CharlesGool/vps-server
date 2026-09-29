@@ -1498,7 +1498,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         response.read()
         conn.close()
 
-    def test_release_changelog_omits_old_development_updates(self):
+    def test_development_changelog_shows_current_updates_without_old_notes(self):
         self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
         session = self.login()
         with patch.object(app, "VERSION", "dev-test123"), patch.object(app, "VERSION_LABEL", "dev-test123"):
@@ -1508,9 +1508,10 @@ class ChangelogAndVersionTest(unittest.TestCase):
             body = response.read().decode()
             conn.close()
         self.assertEqual(response.status, 200)
-        self.assertNotIn("<h2>dev-test123</h2>", body)
+        self.assertIn("<h2>dev-test123</h2>", body)
+        self.assertIn("In-place installs now prepare", body)
         self.assertNotIn("The login page uses the shared project header.", body)
-        self.assertNotIn(app.STRINGS["zh_cn"]["development_fallback"], body)
+        self.assertIn(app.STRINGS["zh_cn"]["development_fallback"], body)
         self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
         self.assertNotIn("Test deployment (2026-09-28)", body)
 
@@ -1527,7 +1528,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
             conn.close()
         self.assertEqual(response.status, 200)
         self.assertIn("test-95ca649", body)
-        self.assertNotIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("In-place installs now prepare", body)
         self.assertIn("v4.0.0", body)
 
     def test_changelog_markdown_is_escaped_not_injected(self):

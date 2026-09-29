@@ -297,6 +297,8 @@ def run_toggle(prefix, module, enabled):
         raise RuntimeError("module is not installed")
     if module == "web":
         target = Path(prefix) / "data" / "web-public-enabled"
+        # Give the console time to return its redirect before restarting it.
+        time.sleep(2)
         switch_web_setting(target, enabled)
         return
     if module == "iperf3":
