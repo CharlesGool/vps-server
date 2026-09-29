@@ -46,7 +46,7 @@ case "$key" in
   modules_are) fmt='Modules: %s\n' ;;
   port_busy) fmt='Port %s is already held by another process.\nFree it, or pick different ports with VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT,\nor set VPSSRV_PUBLIC_ENABLE=0 to skip the public page. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
   iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
-  iperf_failed) fmt='Could not install iperf3 (apt output above). The console will say so when a window is requested; install it by hand with: apt install iperf3\n' ;;
+  iperf_failed) fmt='Could not install iperf3 (apt output above). Installation stopped; fix the package source and rerun the script.\n' ;;
   anytls_arch) fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   proxy_arch) fmt='The proxy module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   iperf_web_required) fmt='The iperf3 module has no effect without the web module — the console is the only thing that opens or closes its window. Add "web" to VPSSRV_MODULES, or drop "iperf3".\n' ;;

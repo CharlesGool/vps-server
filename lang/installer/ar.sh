@@ -46,7 +46,7 @@ case "$key" in
   modules_are) fmt='الوحدات: %s\n' ;;
   port_busy) fmt='المنفذ %s مستخدم بالفعل من عملية أخرى.\nأخلِه أو اختر منافذ أخرى باستخدام VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT،\nأو اضبط VPSSRV_PUBLIC_ENABLE=0 لتجاوز الصفحة العامة. تحقّق باستخدام:\n  ss -lntp "( sport = :%s )"\n' ;;
   iperf_installing) fmt='جارٍ تثبيت iperf3 من التوزيعة ...\n' ;;
-  iperf_failed) fmt='تعذّر تثبيت iperf3 (مخرجات apt أعلاه). ستوضح اللوحة ذلك عند طلب فتح نافذة؛ ثبّته يدويًا باستخدام: apt install iperf3\n' ;;
+  iperf_failed) fmt='تعذّر تثبيت iperf3 (مخرجات apt أعلاه). توقّف التثبيت؛ أصلح مصدر الحزم ثم أعد تشغيل البرنامج النصي.\n' ;;
   anytls_arch) fmt='تحتاج وحدة anytls إلى x86-64؛ بنية هذا المضيف هي %s. ستُتجاوز، لأن ملف sing-box التنفيذي المضمّن لن يعمل هنا.\n' ;;
   proxy_arch) fmt='تحتاج وحدة proxy إلى x86-64؛ بنية هذا المضيف هي %s. ستُتجاوز، لأن ملف sing-box التنفيذي المضمّن لن يعمل هنا.\n' ;;
   iperf_web_required) fmt='لا فائدة من وحدة iperf3 دون وحدة web؛ فاللوحة وحدها تفتح نافذتها وتغلقها. أضف "web" إلى VPSSRV_MODULES، أو احذف "iperf3".\n' ;;

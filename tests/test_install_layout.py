@@ -10,6 +10,35 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallLayoutTests(unittest.TestCase):
+    def test_in_place_install_stages_frps_and_lucky_binaries(self):
+        installer = (ROOT / "deploy/install.sh").read_text()
+        function = installer.split("copy_selected_files() {", 1)[1].split("\n}\n", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            for module, executable in (("frp", "frps"), ("lucky", "lucky")):
+                source = prefix / "third_party" / module
+                source.mkdir(parents=True)
+                (source / executable).write_text(f"{module} binary\n")
+                (source / "LICENSE").write_text("license\n")
+                (source / "component.txt").write_text("component\n")
+                (prefix / "deploy" / ("frps" if module == "frp" else module)).mkdir(parents=True)
+            script = f'''set -euo pipefail
+SRC_DIR={prefix}
+PREFIX={prefix}
+ANYTLS_CONFIG_PATH={prefix}/absent-anytls
+PROXY_CONFIG_PATH={prefix}/absent-proxy
+MODULES=frps,lucky
+has_module() {{ case ",$MODULES," in *",$1,"*) return 0 ;; esac; return 1; }}
+msg() {{ :; }}
+copy_selected_files() {{{function}
+}}
+copy_selected_files
+'''
+            subprocess.run(["bash", "-c", script], check=True, capture_output=True, text=True)
+            for module, executable in (("frp", "frps"), ("lucky", "lucky")):
+                self.assertEqual((prefix / "vendor" / module / executable).read_text(),
+                                 f"{module} binary\n")
+
     def test_in_place_web_install_creates_flat_entry_and_helper(self):
         installer = (ROOT / "deploy/install.sh").read_text()
         function = installer.split("copy_selected_files() {", 1)[1].split("\n}\n", 1)[0]
