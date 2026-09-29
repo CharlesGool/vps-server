@@ -1,5 +1,5 @@
 {
-  "access_page": "<h1>进入安装程序</h1><form method=\"post\" action=\"/login\"><label>访问令牌<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>进入</button></form>",
+  "access_page": "<h1>进入安装程序</h1><form method=\"post\" action=\"/login\"><label>设置密码<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>进入</button></form>",
   "setup_form": "<h1>选择安装设置</h1><p>已安装版本:%s;现有模块:%s.选择“保留”会沿用已记录的设置和节点凭据.从安装选项中移除模块不会自动卸载模块;请明确确认要将其从本次安装选择中移除.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><h2>模块</h2>%s<h2>代理协议</h2>%s<label>现有配置 <select name=\"policy\"><option value=\"preserve\">保留</option><option value=\"reconfigure\">重新配置(会删除原配置)</option></select></label><br><label>输入 DELETE 以确认重新配置或移除模块: <input name=\"confirm\"></label><br><p>取消勾选已安装的代理协议会删除其配置和凭据.请逐项确认移除:</p>%s<label>控制台密码保护 <select name=\"auth\"><option value=\"1\" %s>开启</option><option value=\"0\" %s>关闭</option></select></label><br><label>公开页面 <select name=\"public\"><option value=\"1\" %s>开启</option><option value=\"0\" %s>关闭</option></select></label><br><label>控制台端口(留空则沿用现有端口或随机生成) <input name=\"port\" inputmode=\"numeric\"></label><br><label>语言 <select name=\"language\">%s</select></label><br><label>Lucky 管理端口(默认 16601) <input name=\"lucky_port\" value=\"%s\" inputmode=\"numeric\"></label><br><label>通过公开 HTTP 暴露 Lucky 管理界面?凭据会以明文传输. <select name=\"lucky_public\"><option value=\"0\" %s>否(默认)</option><option value=\"1\" %s>是(还需在服务器终端另行确认)</option></select></label><br><button>应用选择并继续安装</button></form>",
   "remove_protocol": "<label><input type=\"checkbox\" name=\"remove_protocol\" value=\"%s\">确认移除已安装的 %s</label><br>",
   "malformed_selection": "选择格式错误",
@@ -26,6 +26,21 @@
   "certificate_fingerprint": "证书 SHA256 指纹:",
   "setup_url": "设置网址:%s://%s:%d/",
   "wildcard_note": "请将上方的通配地址替换为此服务器可访问的 IP.",
-  "access_token": "一次性访问令牌(请在页面中输入,切勿放入 URL):",
-  "expires": "设置向导将在 %d 秒后过期."
+  "access_token": "一次性设置密码（在页面输入，不要放进网址）：",
+  "expires": "设置向导将在 %d 秒后过期.",
+  "first_run_form": "<h1>首次设置</h1><p>选择现在要安装的模块。其余模块以后可以在控制面板中安装。</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>模块</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>代理协议（选择代理节点时至少选择一种）</h2><div class=\"wizard-choices\">%s</div></section><label>语言<select name=\"language\">%s</select></label><button>安装所选模块</button></form>",
+  "console_required": "浏览器初始化必须安装网页控制台。",
+  "selection_pending": "安装即将开始。<a href=\"/\">查看进度</a>。",
+  "setup_progress": "正在安装。请稍后刷新本页。",
+  "setup_ready": "设置完成。<a href=\"%s\">进入控制面板</a>。请使用安装终端显示的管理员密码。",
+  "setup_ready_terminal": "设置完成。控制面板地址和密码显示在安装终端。",
+  "setup_title": "vps-server 设置",
+  "show_password": "显示密码",
+  "hide_password": "隐藏密码",
+  "module_web": "网页控制台与公网连通页",
+  "module_iperf3": "iperf3 测试窗口",
+  "module_anytls": "AnyTLS 代理",
+  "module_proxy": "代理节点",
+  "module_frps": "FRPS 服务端",
+  "module_lucky": "Lucky"
 }

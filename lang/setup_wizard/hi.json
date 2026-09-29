@@ -1,5 +1,5 @@
 {
-  "access_page": "<h1>इंस्टॉलर तक पहुँच</h1><form method=\"post\" action=\"/login\"><label>प्रवेश टोकन<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>प्रवेश करें</button></form>",
+  "access_page": "<h1>इंस्टॉलर तक पहुँच</h1><form method=\"post\" action=\"/login\"><label>प्रवेश सेटअप पासवर्ड<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>प्रवेश करें</button></form>",
   "setup_form": "<h1>सेटअप चयन</h1><p>स्थापित: %s; मौजूदा मॉड्यूल: %s। संरक्षित रखें विकल्प दर्ज सेटिंग्स और नोड क्रेडेंशियल सुरक्षित रखता है। हटाए गए मॉड्यूल अनइंस्टॉल नहीं होते; चयनित इंस्टॉल समूह से हटाने की स्पष्ट पुष्टि करें।</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><h2>मॉड्यूल</h2>%s<h2>प्रॉक्सी प्रोटोकॉल</h2>%s<label>मौजूदा कॉन्फ़िगरेशन <select name=\"policy\"><option value=\"preserve\">संरक्षित रखें</option><option value=\"reconfigure\">फिर से कॉन्फ़िगर करें (डेटा मिटेगा)</option></select></label><br><label>फिर से कॉन्फ़िगर करने या मॉड्यूल हटाने की पुष्टि के लिए DELETE लिखें: <input name=\"confirm\"></label><br><p>स्थापित प्रॉक्सी प्रोटोकॉल का चयन हटाने से उसका कॉन्फ़िगरेशन और क्रेडेंशियल मिट जाते हैं। हर हटाने की पुष्टि करें:</p>%s<label>कंसोल पासवर्ड सुरक्षा <select name=\"auth\"><option value=\"1\" %s>चालू</option><option value=\"0\" %s>बंद</option></select></label><br><label>सार्वजनिक पृष्ठ <select name=\"public\"><option value=\"1\" %s>चालू</option><option value=\"0\" %s>बंद</option></select></label><br><label>कंसोल पोर्ट (खाली = मौजूदा या यादृच्छिक) <input name=\"port\" inputmode=\"numeric\"></label><br><label>भाषा <select name=\"language\">%s</select></label><br><label>Lucky व्यवस्थापक पोर्ट (डिफ़ॉल्ट 16601) <input name=\"lucky_port\" value=\"%s\" inputmode=\"numeric\"></label><br><label>Lucky व्यवस्थापक पृष्ठ को सार्वजनिक HTTP पर उपलब्ध कराएँ? क्रेडेंशियल बिना एन्क्रिप्शन के भेजे जाते हैं। <select name=\"lucky_public\"><option value=\"0\" %s>नहीं (डिफ़ॉल्ट)</option><option value=\"1\" %s>हाँ (सर्वर टर्मिनल में अलग पुष्टि आवश्यक)</option></select></label><br><button>चयन लागू करें और इंस्टॉलर जारी रखें</button></form>",
   "remove_protocol": "<label><input type=\"checkbox\" name=\"remove_protocol\" value=\"%s\">स्थापित %s को हटाने की पुष्टि करें</label><br>",
   "malformed_selection": "चयन का प्रारूप गलत है",
@@ -26,6 +26,21 @@
   "certificate_fingerprint": "प्रमाणपत्र SHA256 फ़िंगरप्रिंट:",
   "setup_url": "सेटअप URL: %s://%s:%d/",
   "wildcard_note": "ऊपर दिए गए वाइल्डकार्ड पते को इस सर्वर के पहुँच योग्य IP से बदलें।",
-  "access_token": "एक बार उपयोग होने वाला एक्सेस टोकन (पृष्ठ में दर्ज करें, URL में कभी नहीं):",
-  "expires": "सेटअप विज़ार्ड %d सेकंड बाद समाप्त होगा।"
+  "access_token": "एक बार उपयोग वाला सेटअप पासवर्ड (पेज में दर्ज करें, URL में नहीं):",
+  "expires": "सेटअप विज़ार्ड %d सेकंड बाद समाप्त होगा।",
+  "first_run_form": "<h1>पहला सेटअप</h1><p>अभी इंस्टॉल होने वाले मॉड्यूल चुनें। बाकी मॉड्यूल बाद में नियंत्रण पैनल से इंस्टॉल कर सकते हैं।</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>मॉड्यूल</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>प्रॉक्सी प्रोटोकॉल (प्रॉक्सी नोड चुने जाने पर कम से कम एक चुनें)</h2><div class=\"wizard-choices\">%s</div></section><label>भाषा<select name=\"language\">%s</select></label><button>चुने हुए मॉड्यूल इंस्टॉल करें</button></form>",
+  "console_required": "ब्राउज़र सेटअप के लिए वेब कंसोल आवश्यक है।",
+  "selection_pending": "इंस्टॉलेशन शुरू हो रहा है। <a href=\"/\">प्रगति देखें</a>।",
+  "setup_progress": "इंस्टॉलेशन जारी है। थोड़ी देर में यह पेज रीफ़्रेश करें।",
+  "setup_ready": "सेटअप पूरा हुआ। <a href=\"%s\">नियंत्रण पैनल खोलें</a>। इंस्टॉलर टर्मिनल में दिखाया गया व्यवस्थापक पासवर्ड उपयोग करें।",
+  "setup_ready_terminal": "सेटअप पूरा हुआ। नियंत्रण पैनल का पता और पासवर्ड इंस्टॉलर टर्मिनल में दिखाए गए हैं।",
+  "setup_title": "vps-server सेटअप",
+  "show_password": "पासवर्ड दिखाएँ",
+  "hide_password": "पासवर्ड छिपाएँ",
+  "module_web": "वेब कंसोल और सार्वजनिक पेज",
+  "module_iperf3": "iperf3 परीक्षण विंडो",
+  "module_anytls": "AnyTLS प्रॉक्सी",
+  "module_proxy": "प्रॉक्सी नोड",
+  "module_frps": "FRPS सर्वर",
+  "module_lucky": "Lucky"
 }

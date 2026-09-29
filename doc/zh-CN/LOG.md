@@ -175,7 +175,34 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 
 ## 交接
 
-- 分支:`feat/node-management`,基于 `feat/ui-redesign`,跟踪正式 GitHub 仓库.未发现临时项目规则.
+- 控制台字体稳定性(2026-09-29):在 `release/v4.0.0` 上以系统 UI 字体组合替换可下载的 Inter/Noto Sans SC 正文字体,避免刷新时因缓存状态不同而改变字形与行宽.原字体文件仍保留供兼容使用,当前样式表不再请求它们.指定测试机把 `static/style.css` 和 `VERSION` 备份到 `/root/apps/.deploy-backups/vps-server-before-font-fix-20260929T145806Z.tar.gz`(权限 0600),仅接收样式表;本地,主机及局域网交付文件的 SHA-256 一致.局域网响应为 `text/css`,`Cache-Control: no-cache`,包含系统字体组合且无 font-face 规则;Login 返回 200.Web 与 `frpc@GZ` 保持运行,Web 仍在 `0.0.0.0:49903` 开机启用,部署标记仍是 `test-83064ca`.两项相关本地 HTTP 测试,Python 编译及 `git diff --check` 通过.本地没有浏览器引擎,真实浏览器刷新及设备特有的中文字体尺寸尚未验证.现有混合工作区若只提交此改动会带入无关变更.下一步:在真实浏览器反复检查冷,热缓存刷新,再将此样式与积累的 Web 改动整合成干净的测试候选版本.未发现临时项目规则.
+- FRPS 与 FRPC 页面拆分(2026-09-29):在 `release/v4.0.0` 上,启用后 Home 的 FRPS 与 FRPC 卡片分别进入 `/frps` 和 `/frpc`.FRPS 页显示服务状态,地址,遮蔽的端口及令牌和服务端控件;FRPC 页显示实例卡片和创建操作.既有客户端编辑器及 FRP POST 端点保留;编辑器 Back 返回 `/frpc`,服务端操作返回 `/frps`,旧 `/frp` 书签跳转 `/frpc`(旧编辑链接跳转 `/frps?edit=server`).本地专项检查通过 216 项,跳过 8 项,Python 编译及 `git diff --check` 通过.测试机先把 `app.py` 和 `VERSION` 备份到 `/root/apps/.deploy-backups/vps-server-before-frp-pages-20260929T145204Z.tar.gz`,只更新 Web 应用;部署与本地应用 SHA-256 一致.已登录会话分别请求两个新页面均返回 200,且不显示对方控件;`/frp` 跳转 `/frpc`,客户端编辑器 Back 链接到 `/frpc`,Home 的 FRPC 链接也已核对.此主机 FRPS 目前停用,因此 Home 卡片仍按先前要求进入本地化关闭页面,直至重新启用.Web 与 `frpc@GZ` 保持运行且开机启用;GZ 配置通过 `frpc verify`.主机仍显示带补丁的 `test-83064ca`;混合工作区无法在不暂存无关变更的情况下单独提交.真实浏览器布局,重启持久性和新版候选版本仍未验证.下一步:将积累的 Web 改动整合成干净的候选提交并按新测试版本重新部署,再用真实浏览器检查两页.未发现临时项目规则.
+- 关闭页面,快速开关及新增 FRPC 代理修复(2026-09-29):在 `release/v4.0.0` 上,已停用功能的路径转到本地化关闭页面,未安装模块仍保留管理入口.浏览器表单阻止重复提交;服务器串行受理任务,任务运行时返回 Home 或 Modules.POST 响应关闭 HTTP 连接,避免未读取的被拒绝请求正文与下一次请求拼接.运行中的 Web 进程应用 Port forward 标志,避免重启及会话失效.FRPC 的结构化新增操作不再读取只供编辑使用的索引.本地专项检查通过 215 项,跳过 8 项,Python 编译通过.测试机备份至 `/root/apps/.deploy-backups/vps-server-before-closed-frpc-20260929T143127Z.tar.gz` 后接收指定范围的 Web,辅助程序及语言包补丁;Web 与 `frpc@GZ` 运行正常.已登录会话快速提交两次端口转发开关,均收到带 `Connection: close` 的 302;已停用路径跳转 `/closed?module=portfwd`,本地化页面返回 200,同一会话仍有效.测试后恢复原先关闭的端口转发状态.用户要求的 `GZ` TCP 代理 `tcp-14319` 将远程端口 14319 映射到 `127.0.0.1:44671`;`frpc verify` 通过,服务日志报告代理启动成功,远程端口与本地目标均可建立 TCP 连接.此热修复叠加在 `test-83064ca` 上,主机仍显示该标记;当前源码含其他未完成工作,本次变更尚未提交.浏览器视觉及远程端到端应用行为未检查.下一步:处理现有工作区后将热修复整合为干净候选提交,更新版本并重新部署;在浏览器核对客户端行为.未发现临时项目规则.
+- 页面切换动画测试部署(2026-09-29):把提交 `83064ca` 的路由动画移除补丁应用到测试机已安装的 `test-1810c3d` Web 文件,候选版本 `test-83064ca` 部署在 `/root/apps/vps-server`.主机产物由已安装版本加补丁组成;仓库仍有无关未提交工作.权限 0600 的恢复归档 `/root/apps/.deploy-backups/vps-server-before-route-removal-20260929T1350Z.tar.gz` 通过文件列表检查,传输候选文件的 SHA-256 一致.首次启动检查早于监听器就绪,自动回滚恢复原文件与运行中的服务;第二次等待就绪后成功.Web 在 HTTPS `0.0.0.0:49903` 运行且开机启用;工作站访问 Login 和样式表返回 200,访问已删除脚本返回 404.已登录会话打开 Home,Settings 及中文 Changelog,显示 `test-83064ca`,无路由脚本和 Appearance 开关,并有候选版本移除说明;退出后访问 Settings 跳转 Login.部署的应用,CSS,LOG 摘要与候选版本一致,原 Web 密码摘要未变,近期 Web 日志无 traceback 或 error.部署前本地测试通过 338 项,跳过 8 项.本地 Playwright 缺少 Chrome,浏览器 Back/Forward 和真实手机尚未验证;未重启主机.下一步:在可用设备检查这些浏览器路径,再继续独立的 `release/v4.0.0` 工作.未发现临时项目规则.
+- 移除页面切换动画(2026-09-29):在 `release/v4.0.0` 上移除路由动画脚本,自动 View Transitions 样式,Appearance Beta 开关及不用的译文.普通链接,调整窗口大小,主题及局部控件反馈仍保留.这是所有者在多次视觉问题后明确要求的变更.共用 Web UI 规则现允许所有者要求某应用省略该功能,并要求检查导航和鉴权.Python 编译,Git 空白,文档格式及本地链接检查通过;当前工作区测试通过 338 项,跳过 8 项.本地 HTTP 会话检查了登录,Home,Settings,Changelog,Back 链接,脚本和开关不存在,已删除脚本返回 404,退出后重访 Settings 跳转 Login.环境缺少 Playwright Chrome,无法检查浏览器 Back/Forward.在这个源码检查点,测试机尚未更新;后续部署已在上方记录.Back/Forward 仍需配备 Chrome 的浏览器验证.未发现临时项目规则.
+- 修正 FRPC 模块安装判断(2026-09-29):在 `main` 上,旧 Modules 页面把空的 `/etc/frp` 实例列表误认为客户端未安装,且不给安装操作.源码现在以 FRPC 可执行文件和 systemd 模板判断安装;两者存在时显示 `Installed, no server instances` 和创建实例,否则提供安装或卸载.安装任务使用固定校验和的 v0.71.0 客户端资源,创建模板但不启动连接;卸载停止实例,备份 TOML 文件并保留原文件.八种界面语言包及 FRP 入口页跟随此状态.专项安装/卸载夹具保留了客户端配置;完整测试通过 337 项,跳过 8 项.将 `test-1810c3d` 源码和完整安装载荷部署至测试机 `/root/apps/vps-server` 前,在 `/root/apps/.deploy-backups/vps-server-before-frpc-module-20260929T131815Z.tar.gz` 创建权限 0600 且已验证的备份.传输及部署后的应用,辅助程序,客户端,模板 SHA-256 一致.Login GET 以新测试标记返回 200;已登录中文 Modules GET 返回 200,FRPC 卡片显示已安装但无实例,以及卸载和创建实例.Web 在 HTTPS 端口 49903 运行且开机启用.FRPS 于 13:19 已停止并停用,在 13:20 重启 Web 后仍保持该状态;没有运行中的 FRPC 实例.密码与 FRPS 配置摘要未变.FRPC 安装/卸载已用本地资源在测试中验证,因测试机已有二进制和模板而未在主机执行;重启持久性未验证.下一步:创建所需 FRPC 服务器实例,或在没有 FRPC 的可丢弃主机执行安装.未发现临时项目规则.
+- FRPC 与模块化 Home 测试部署(2026-09-29):基于 `test-c086709`,以 `572b913`,`380d7f3`,`c9363f6`,`7e365b9` 提交 UI 和辅助程序改动,并将 `test-7e365b9` 部署至测试机 `/root/apps/vps-server`.FRPC 卡片点击遮蔽值可显示 IP,具有独立的测试/编辑操作,名称旁的主题色开关和需确认的删除.实例名对应 `frpc-xx.toml` 后缀并可重命名;编辑时载入已保存的服务器 IP,端口,令牌,保持三项等宽信息,以“服务器端口”标注代理 `remotePort` 并解释字段.代理节点编辑时载入当前端口和凭据,新建节点可切换为取消;中文月份单位为 `月`,密码显示和时间单位控件已对齐.原生下拉选择使用参考列表框交互.Home 正好有九张卡片,FRPS/FRPC 开关独立,AnyTLS 归于 Proxy nodes.Modules 从 Security 移至普通 Settings,支持安装/卸载的模块显示操作和 root 任务日志.部署前测试机曾独立改为 Web `3.0.0`,当时 FRPS 运行,两个 FRPC 实例停用;部署保留这些状态.权限 0600 的恢复归档 `/root/apps/.deploy-backups/vps-server-before-ui-20260929T113503Z.tar.gz` 通过列表检查.两次传输 SHA-256 一致;最终部署的应用,辅助程序,样式表,下拉脚本和中文语言包与本地源码摘要一致.Web 密码及 FRPS/FRPC 配置摘要未变.Web 监听 HTTPS 49903,Login GET 返回 200 并显示 `test-7e365b9`.Chromium 在 390/1440 px 验证无横向溢出,普通会话可访问 Modules,九张 Home 卡片,FRPC IP 显示及删除确认,`gz` 临时登录测试成功,服务器编辑值及桌面等宽信息,键盘下拉选择,悬停提示,节点编辑值,新建节点取消,中文 `天/月/年`,时间输入和密码显示对齐.关闭 Recent visitors 后路径返回 404,随后恢复;停用采集时跳过 HTTP 写入及 TCP 采样,并有回归测试.测试机关闭期间一次 Login 请求和六秒轮询前后访客数均为 16999,之后恢复启用标志;Modules 显示任务日志.本地测试通过 334 项,跳过 8 项,Python/JavaScript 语法和空白检查通过.FRPC 真实重命名/删除,可选模块安装/卸载,代理流量,真实设备和重启持久性未验证,这些操作会改变活动数据或服务.下一步:端到端测试预定代理映射,并在可丢弃主机安装可选模块,再验证重启持久性.未发现临时项目规则.
+- FRPC 卡片改进及测试部署(2026-09-29):先部署 `d09835d`,再以本地化代理标题修复 `c086709` 作为最终 `test-c086709` 部署至测试机 `/root/apps/vps-server`.移除重复的 FRPC 连接模板和高级 TOML 编辑器;实例页面按需显示已保存的 IP 和令牌,每条代理的类型及本地 IP/端口和远程端口,只有点击编辑才打开字段.中文代理区标题改用名词,不再使用计数后缀.保存返回同一实例页.普通已登录会话可操作 FRP,Security Settings 仍要求最近一次管理员密码验证.连接测试以已保存的服务器地址,端口,令牌另行执行不带代理的 FRPC 登录.部署前,权限 0600 的备份 `/root/apps/.deploy-backups/vps-server-before-frpc-refine-20260929.tar.gz` 通过归档验证;首次传输 SHA-256 与三个部署源码摘要一致.标题修复前后完整测试均通过 331 项,跳过 8 项;Python/JavaScript 语法,文档格式,本地链接,多语言结构和空白检查通过,仅余既有导航警告及五个待人工核对的外部链接.Chromium 在 390/1440 px 确认无横向溢出,可显示遮蔽 IP/令牌,每张代理卡片显示四项信息,无高级编辑器,原值保存返回 `/frp/client/edit?name=gz&msg=done`.真实连接测试显示 `gz` 已连接,`local` 未连接(目标是刻意停止的本机 FRPS);`gz` 日志确认保存后登录且两条代理启动.Web,`frpc@gz`,`frpc@local` 运行;FRPS 部署前已停用,保持不变.Web 密码,FRPS 及两个 FRPC 配置摘要未变.Web 仍监听 49903.重启持久性,编辑后的代理流量和错误令牌真实测试未验证.下一步:可行时测试所需映射的流量和开机持久性.未发现临时项目规则.
+- FRPC 代理类型后续修改及最终测试部署(2026-09-29):将 `a2c1264` 作为 `test-a2c1264` 部署至测试机 `/root/apps/vps-server`.字段编辑器现可选择 TCP 或 UDP,结构化解析器和写入器保留其类型.传输归档通过 SHA-256 对照.权限 0600 的备份 `/root/apps/.deploy-backups/vps-server-before-frp-udp-20260929.tar.gz` 保存原 Web 代码及文档,另有更早的完整 FRP 面板恢复归档.Python 编译及全部 330 项测试通过,8 项跳过;英文文档,本地链接,多语言及差异检查通过,仅余既有导航警告和外部链接待核对.Chromium 在 390 px 显示部署的 `test-a2c1264`,既有代理行内编辑器中的 TCP/UDP 选择器,且无横向溢出.局域网 HTTPS Login 返回 200,Web 与 FRPS 端口可建立 TCP 连接.Web,FRPS,`frpc@gz`,`frpc@local` 保持运行且开机启用;Web 密码及 FRPS,两个 FRPC 配置摘要未变,近期 Web 日志无 error 或 traceback.此次 UI 验收没有修改代理映射.开机启动,真实 UDP 转发及新编辑映射的流量未验证.下一步:用字段编辑器新增或修改所需映射并测试实际流量,条件允许时验证开机持久性.未发现临时项目规则.
+- FRP 面板测试部署(2026-09-29):将 `672f2e7` 作为 `test-672f2e7` 部署至测试机 `/root/apps/vps-server`.权限 0600 的恢复归档 `/root/apps/.deploy-backups/vps-server-before-frp-panel-20260929.tar.gz` 保存旧 Web 文件,FRP 配置和端口登记.最终传输归档通过 SHA-256 对照,部署的应用,FRP 辅助程序及编辑脚本摘要与本地源码一致.Web 密码,两个既有 FRPC 配置及 FRPS 配置摘要未变.最终检查时 Web,FRPS,`frpc@gz`,`frpc@local` 均运行且开机启用;Web 在 HTTPS `0.0.0.0:49903`,FRPS 在端口 7000 监听.工作站可连接 TCP 49903,7000,80,443.Login 返回 200,已登录 FRP 页面显示 `test-672f2e7`,两张客户端卡片均显示已连接.Chromium 在 390 px 检查遮蔽 IP,显示/隐藏,行内服务器字段,代理卡片,中文标签及无横向溢出.受保护的 FRPS 开关先关闭再开启,本机 FRPC 重新连接.近期 Web 日志无 error 或 traceback.全部自动化测试通过,8 项跳过;Python/JavaScript 语法,多语言,英文文档格式,本地链接及空白检查通过;既有文档警告和五个外部链接仍需人工核对.未执行重启,真实远端设备 FRPC 编辑或端到端代理流量测试.下一步:用字段编辑器配置所需代理映射并验证流量,再在可行时测试重启持久性.未发现临时项目规则.
+- FRP 面板工作(2026-09-29):FRPS 现有带颜色的运行状态,受保护的开关和行内端口/令牌编辑器.每个本机 FRPC 实例是一张目标卡片,显示可按需揭示的遮蔽服务器 IP,以及由已建立 TCP 套接字判定的连接状态.受保护的编辑器提供服务器 IP,端口,令牌及各代理 TCP 字段的新增,编辑,删除;字段编辑器不能表示的配置仍可使用高级 TOML.八种 Web 语言包保留字面 `token` 标签.首次部署的真实测试发现 `ss` 对端列索引错误;后续修复及专项回归测试已纠正.Chromium 在 390 px 验证两张卡片均已连接,遮蔽 IP 可显示/隐藏,字段显示无横向溢出.最后一轮 UI 改进明确了 FRPC 服务器编辑器标签,添加删除代理确认,并将密码字段行为加入 FRPC 编辑器.最终测试部署见上方.未发现临时项目规则.
+- 文档补充(2026-09-29):README 现说明 FRPC TCP 代理的 `remotePort` 也须在当前启用的主机防火墙及云安全组中放行.控制台会登记识别到的同机端口分配,但不修改云防火墙规则.本次补充未改动服务或配置.更早的 FRP 测试部署及尚待进行的设备级检查紧接下方记录.未发现临时项目规则.
+- FRP 测试部署(2026-09-29):将已提交源码 `3dd9d3d` 作为 `test-3dd9d3d` 部署至测试机 `/root/apps/vps-server`,替换 Web 入口,FRP 辅助程序,样式,编辑脚本,八种 Web 语言包,英文文档和保留的安装源码.权限 0600 的归档 `/root/apps/.deploy-backups/vps-server-before-frp-ui-20260929T054018Z.tar.gz` 保存旧应用,FRP 配置,节点状态,Web unit 和端口登记.传输源码归档通过 SHA-256 验证,部署后的应用,辅助程序和编辑脚本摘要与提交一致.Web 密码,原有 `frpc@gz` 配置及节点清单摘要未变.最终检查时 Web,FRPS,AnyTLS,proxy,node-meter,`frpc@gz`,新增 `frpc@local` 运行;Web,FRPS 及两个 FRPC unit 已启用开机启动.未重启主机.
+- FRP 真实检查:控制台 Login 显示 `test-3dd9d3d`;已登录 FRP 页,服务器编辑器,客户端编辑器及受保护配置端点均返回 HTTP 200.FRP 和编辑器初始 HTML 不含令牌或既有 FRPC 配置.FRPS 原值保存成功;临时将端口从 7000 改至空闲的 7001 后 TCP 可连接,再保存恢复 7000;最终监听器与 `~/apps/PORTS.md` 只记录 7000.控制台创建了不含代理映射的 `frpc@local`,配置仅 root 可读;`frpc verify` 通过,日志报告成功登录本机 FRPS,控制台停止/启动操作有效.原有 `frpc@gz` 保持运行.FRPS 局域网 TCP 和公开 HTTP/HTTPS 页面及控制台 Login 均可访问.Chromium 在 390 px 检查部署后的简体中文 FRP 及客户端编辑页,无横向溢出,配置需主动载入,退出后 Back 返回 Login.其他设备上的既有客户端映射,真实 FRP 转发及重启持久性未验证.下一步:通过受保护的 FRPC 编辑器添加所需 `[[proxies]]` 映射,并从预定远端设备测试流量;可行时测试重启启动.未发现临时项目规则.
+- FRP 配置工作(2026-09-29):在指定局域网测试机 `/root/apps/vps-server` 安装现有的 `vps-server` FRPS 模块,使用此前空闲且已登记的 `0.0.0.0:7000/tcp`.安装前在 `/root/apps/.deploy-backups/vps-server-before-frps-20260929T051811Z.tar.gz` 建立权限 0600 的应用及配置归档.之后 FRPS,Web,AnyTLS,proxy,node-meter 运行正常;FRPS 和原有 `frpc@gz` 实例开机启用.工作站从局域网连通 FRPS.FRPC `0.71.0` 及三条既有代理已安装运行,目标服务器及映射未改变.其配置权限由 0644 收紧至 0600.FRPS 自行生成令牌,本文未记录.未重启主机,也未测试 FRPC 连接新 FRPS.
+- 当前源码工作:已登录 FRP 页面可在最近一次管理员验证后打开 FRPS 端口/令牌编辑器,以及本机 FRPC TOML 编辑器.既有 FRPC 内容仅在明确点击后载入.保存使用临时 root 辅助程序,`frpc verify`,固定实例名格式,对已识别的同机监听端口进行登记检查,并在验证或服务失败时回滚.可启动/停止实例;其他设备的客户端不在控制台范围内.已安装 Web 源码尚未更新此 UI.检查:自动化测试通过 327 项,跳过 8 项;Shell,Python,JavaScript 语法,本地化结构,文档格式与本地链接,差异空白均通过.本地 Chromium 在 390 px 无横向溢出,编辑内容只在点击控件后载入.下一步:以测试标记部署此源码,在主机验证受保护表单及 FRPC 实例流程,再记录结果.未发现临时项目规则.
+- 干净重装测试机(2026-09-29):在指定局域网测试机停止并移除旧 Web,AnyTLS,proxy,node-meter 服务及其应用状态.新安装通过检查后,删除旧 `/opt/vps-server` 目录及 `/root/apps/.deploy-backups`;按要求删除临时,仅 root 可读的恢复归档,主机上不再保留旧应用数据备份.主机级 BBR 设置及其他应用不变.将本地 `main` 提交 `fb077d3` 作为 `test-fb077d3` 安装到 `/root/apps/vps-server`,新建 Web,AnyTLS 和四个代理节点,node-meter 随之启动.新控制台密码,证书和端口在主机生成,本文未记录.控制台监听 `0.0.0.0:46681`,公开页面使用 `0.0.0.0:80` 和 `:443`.安装前检查八个主机端口并登记到 `/root/apps/PORTS.md`.FRPS,Lucky,iperf3 未被选中.
+- 重装检查:传输前本地自动化测试通过 323 项,跳过 8 项.传输源码归档 SHA-256 一致,安装的 Web 入口摘要与本地源码一致,主机报告 `test-fb077d3`.最终检查时 Web,AnyTLS,proxy,node-meter 运行且开机启用.登记的八个 TCP 端口均可从局域网连接.公开 HTTP,自签名 HTTPS 页面及控制台 Login 均返回 200.使用新密码登录后,Dashboard,Settings,代理节点和中文 Changelog 均返回 HTTP 200.节点清单有五个新节点;近期服务日志无 error 或 traceback.主机重启,客户端代理流量和另一台真实设备访问未验证.下一步:从预定客户端检查新控制台及节点连接,必要时测试重启持久性.未发现临时项目规则.
+- 当前首次启动及模块工作(2026-09-29):全新交互安装在随机,已登记的端口打开短时 HTTPS 设置页,并在本机终端打印随机访问密码.页面选择模块和代理协议;安装成功后显示控制台链接.已安装控制台保留 root 持有,与版本匹配的安装载荷.Security Settings 现链接到受保护的 Modules 页面,可后续安装遗漏模块,或启用/停用已安装模块.停用 Web 只关闭其公开页面,控制台继续可用.模块操作使用固定允许列表,CSRF 令牌,最近一次管理员密码验证,串行 root 辅助程序和可见任务状态.应用目录默认是 root 账户的 `apps/vps-server`.此次源码工作未改动测试机文件或服务.
+- 本次工作检查:自动化测试通过 323 项,跳过 8 项.本地 Chromium 在 390 px 确认首次设置表单,设置密码显示控件,按选择显示代理协议,以及受保护 Modules 页面均无横向溢出.Shell,Python,JavaScript 语法,本地化结构,文档格式和本地链接,源码空白均已检查.未发现临时项目规则.全新设备安装,目标主机上的 systemd 任务,真实软件包安装,重启及设备级网络访问尚未验证.下一步:备份后将此源码安装到指定测试机,用真实 systemd unit 测试一个遗漏模块的安装及启用/停用流程.
+- 测试部署(2026-09-29):将源码 `598a386` 作为 `test-598a386` 安装到指定局域网测试机的标准应用目录.旧 `dev-2c0e4d7` Web 文件及应用目录数据保存在目录外权限 0600 的归档;外部节点清单不在归档或复制范围内.管理员密码与安装状态文件保持逐字节一致.主机 Git 工作区已有本地改动,未重置.只停止并重启 Web 服务.随后 Web,proxy,node-meter,AnyTLS 运行且开机启用,公开 80/443 及原控制台监听器仍在.传输清单和已安装 Web 入口摘要与源码候选一致.未实际重启主机.
+- 测试部署检查:传输前自动化测试通过 315 项,跳过 8 项;最终源码调整后再次通过专项候选版本测试.安装前后软件包清单校验和通过,暂存的 Python 入口可编译.局域网 Login 与公开页面的 HTTP 请求返回 200;主机公开 HTTP 和自签名 HTTPS 页面返回 200.已登录 HTTP 请求打开 Dashboard,FRPS/FRPC,Changelog,Settings;登录前和退出后访问受保护页面均重定向.应用内 Changelog 标题和 Login 标记均显示 `test-598a386`,测试说明包括 FRP 改动.Chromium 在局域网以 390 px 打开 Dashboard,FRP,Settings,Changelog,无横向溢出.该主机未安装 FRPS,FRP 页显示未安装状态;实时客户端连接数据未验证.近期 Web 日志无 error 或 traceback.真实手机显示,重启,真实策略流量及名单设备 IP 准入未验证.
+- 检查期间的并行节点活动:多次节点控件应用操作使外部节点清单从原运行配置变为零节点,proxy 与 AnyTLS 因此正常停止.稍后读取发现一个节点,AnyTLS 重新运行.Web 部署及冒烟检查没有发送节点管理请求.操作员决定保留当前节点状态,未尝试恢复备份.proxy 与 AnyTLS 状态取决于当前启用的节点,检查期间可能变化.
+- 较早的检查行动:在测试机查看更新后的界面,尤其是 FRP 空状态与页面动态效果开关.后续模块管理实现记录在上方.
+- 当前工作(2026-09-29):只读 FRPS/FRPC 控制台页面汇集本机 FRPS 服务信息,网卡地址及可按需显示和复制的 FRPC 连接模板.Dashboard 链接到此页;已登录页眉仅有 Home,Changelog,Settings,Sign out,子页面有 Back.普通及安全设置采用分区导航,以独立操作进入受保护页面.各页在共用项目框架中使用不同的标签符号.Appearance 提供可选的 Beta 页面切换动画,调整窗口大小的动效独立.受保护页面进入浏览器历史缓存前会隐藏,退出后重访须重新向服务器请求.服务器不声称能观察远端设备的 FRPC 进程.另一个带独立模块启用/停用及安装选择的 Web 设置页列在 DESIGN 待办中,与现有安装向导不同.
+- 源码改动检查点:自动化测试通过 314 项,跳过 8 项;Python 编译,JavaScript 语法及 Git 空白检查通过.文档格式和本地链接零错误;仍有三项既有中日韩导航警告及五个外部 URL.多语言静态检查零错误.干净导出的版本化与新源码通过项目结构检查;当前工作区仍报告 Limitations 记载的五个忽略运行文件.本地 Chromium 验证 Dashboard 至 FRP 导航,明确的 Back,浏览器 Back/Forward,FRP 遮蔽值,桌面及 390 px 无横向溢出,Settings 分区导航,以及退出后 Back 经新服务器请求返回 Login.模拟 iPhone 用户代理时页面动画默认关闭,可明确开启.真实 iOS/Android 尚未测试;后续主机部署记录在上方.
+- 下一步:在指定测试机检查 FRP 页面及页面动画,包括真实移动浏览器.未来 Web 设置页仍是设计待办,尚未实现.未发现临时项目规则.
+- 分支:`main`,跟踪正式 GitHub 仓库.未发现临时项目规则.
 - 已完成:节点编辑器将连接密钥标为“密码”;“流量与周期”展开时按钮保持原位.每个节点可独立限制上传和下载速度,达到 GiB 流量上限后可选择双向限速 1 Mbps 或停止使用,并可按自定天数,月数或年数重置周期流量.可选有效期到期后停止使用.第一版状态读取时升级到第二版,保留节点 ID,用量和流量上限;旧的绝对到期时间会清除,避免原先限速被解释为停止使用.IP 免密按钮始终显示;未获准的地址点击后,会提示先用密码登录,再到设置中添加内网 IP.修改免密设置仍需密码登录. 每个受管节点的“导入 Clash Meta”左侧现有复制按钮,复制的是局域网订阅 URL.节点卡片按宽度自动排成 1 至 6 列,宽屏最多 6 列;窄卡片中的信息会改为上下排列.
 - 检查:308 项自动化测试通过(8 项跳过);Python 编译及差异空白检查通过.Chromium 在测试机上检查未获准 IP 的提示及桌面,390 px 宽度的节点表单;流量编辑按钮展开和收起后位置不变.nft 在只检查模式下接受新的双向限速和流量上限阻断规则.尚未逐一验证各策略下的真实流量. 测试机已有 3 个节点,另在浏览器中临时复制 3 张卡片用于布局检查,没有新增真实节点.Chromium 确认在 390,900,1200,1440,1920,2560 px 时依次显示 1 至 6 列;3840 px 仍为 6 列,没有横向溢出,并确认复制了节点的局域网订阅 URL.
 - 部署:指定测试机曾在标准应用目录运行上一候选版本;旧运行文件和节点状态已在仓库外备份.节点状态此前已迁移到第二版.2026-09-27 的检查确认 Web,代理,节点流量计量服务量和 AnyTLS 服务均在运行并已启用开机启动.尚未实际重启主机.
@@ -200,11 +227,42 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - 此对齐的部署:指定的测试主机从标准应用程序目录运行 `dev-abe8f0d`.以前的运行时应用程序,样式,主题脚本,目录,文档和版本以模式 0600 备份在该目录之外.部署的根 `app.py` 和源副本,样式,主题脚本,目录和文档现在与此修订版匹配.仅重新启动了Web服务;持久数据和访问设置未更改. LAN 登录响应包括新的主题选择,模式引导和版本,并提供主题脚本. Web,代理,节点流量计量服务和 AnyTLS 处于活动状态并启用启动;控制台保留在其现有的侦听器上.未执行实际的重新启动和实时策略传输.
 - 正式发布(2026-09-28):操作人员报告功能测试通过并明确请求大版本发布. `v3.0.0` 在正式公开仓库的 `main` 分支上标记 `4e26aea` ; GitHub 版本发布,标记的源导出到标准同级快照,完整的 Changelog 同步到现有的 `My Projects/vps-server` Notion 子页面. 存储库描述已更新. 三个超过 10 MB 的可执行 blob 与 `v2.0.0` 没有变化; 不需要新的大 blob 或发布资产. 测试主机仍保留之前部署的开发版本; 本次发布未升级测试机.
 - 检查和剩余工作:通过了 311 项自动化测试(跳过 8 项); shell 和 Python 语法,依赖项哈希,32 份文档的格式,多语言结构,本地链接,干净导出项目结构,diff 空白,最终存档的 `3.0.0` 版本,远程 `main` 和标记目标,发布状态,快照文件哈希和Notion 父页面/标题/内容全部通过. 现有的四个文件警告涉及英语导航中的语言名称. 在此版本准备过程中,并未独立见证实际的主机重启,真实手机上的 Clash Meta 导入,通过每项策略的实时传输以及名单内设备的 IP 免密访问. 下一步行动:在可行时验证目标上的这些行为; 没有进一步的发布步骤待处理.
+- 当前 Web UI 规范对齐(2026-09-28):登录页页眉把控制台品牌名再次作为 Home 链接.登录卡片沿用共用尺寸,页脚放入 Changelog 版本链接和登录前语言选择器.登录,安全验证及改密,受管及旧版节点表单中的密码默认遮蔽,均有独立且可访问的显示/隐藏按钮.旧登录专用可见性脚本由共用脚本取代.未新增依赖.
+- 检查:自动化测试通过 311 项,跳过 8 项;Python 编译,JavaScript 语法及差异空白检查通过.Chromium 验证 390 和 195 CSS px 的登录页无横向溢出,语言菜单及切换到简体中文,显示密码后值和焦点仍保留.安全设置密码字段在本地夹具中分别检查.此次 UI 对齐未改动指定测试机.尚待完成的真实检查为主机重启,真实手机 Android Clash 导入,各策略流量及名单设备 IP 准入.下一步:收到要求时部署到指定测试机,并在条件允许时完成这些真实检查.
+- 测试部署(2026-09-28):将 `c312456` 的 Web UI 作为 `dev-c312456` 部署至指定局域网测试机的标准应用目录.先在应用目录外以权限 0600 备份旧 Web 文件,再替换根目录与源码 Web 入口,样式表,密码控件脚本,版本标记及英文项目文档.移除旧的登录专用脚本,仅重启 `vps-server-web.service`.节点状态,访客数据及原 Web 密码不变.之后 Web,proxy,node-meter,AnyTLS 运行;Web 开机启用,仍监听 `0.0.0.0:31080`.本地与部署源码摘要一致.工作站访问 Login,新脚本,样式表及 favicon 均返回 HTTP 200;登录 HTML 报告 `dev-c312456`,Chromium 检查 390 px 登录布局.近期 Web 日志无错误.未重启主机,也未登录检查节点表单.下一步:取得操作员视觉反馈并修正发现的问题;上述其他真实检查仍待完成.
+- 当前版本及 Changelog 工作:开发版本现把本文中整理的 `v3.0.0` 之后的说明显示在正式发布历史上方,标题使用已部署的版本标记.其他界面语言为只有英文的测试说明加标签,同时保留已本地化的正式发布条目.点击登录页版本链接后,通过密码验证会返回 Changelog.`v3.0.0` 标签和 Release 未变;这是开发版本.
+- 检查:自动化测试通过 313 项,跳过 8 项,包括版本链接返回及开发说明显示;文档格式,本地链接及多语言结构均零错误.Python 编译及差异空白检查通过.此时指定测试机仍运行 `dev-c312456`.下一步:以匹配已提交源码的标记部署此改动,经局域网核对登录版本和已登录 Changelog,再记录主机结果.
+- 版本及 Changelog 测试部署(2026-09-28):在指定局域网测试机把 `2c0e4d7` 安装为 `dev-2c0e4d7`,先在应用目录外用权限 0600 的备份保留原 Web 入口,文档,语言包及版本标记.仅重启 Web;节点状态,访客数据和原 Web 密码不变.之后 Web,proxy,node-meter,AnyTLS 运行;Web 开机启用,仍监听 `0.0.0.0:31080`.工作站访问 Login 返回 HTTP 200,报告 `dev-2c0e4d7`.主机上的已登录请求确认中文 Changelog 在本地化 `v3.0.0` 条目上方显示当前测试说明,且不含 Handoff.登录版本链接通过密码验证后返回 Changelog.部署源码及语言包摘要与提交一致,近期 Web 日志无错误.未重启主机.下一步:与操作员检查更新页面;较早的真实节点,Clash 与 IP 准入检查仍待完成.
+
 ## 变更日志
 
 <a id="vps-changelog"></a>
 
 此处仅列出标记的版本.以下条目保留了完整的以前的变更日志历史记录并记录了当前的发布内容.
+
+### v4.0.0 — 2026-09-29
+
+#### 新增
+
+- 通过带一次性密码的临时 HTTPS 监听器,在浏览器中完成首次设置,选择模块,语言,认证方式和端口.安装后的控制台可在 Settings 安装或移除可选模块,并显示任务状态和日志.
+- 可创建,重命名,编辑,启用,停用,测试及删除本机 FRPC 实例.编辑器支持简单的令牌认证 TCP/UDP 代理,用 `frpc` 验证修改,应用失败时恢复旧配置.FRPC 可独立于 FRPS 安装;其带固定校验和的客户端二进制文件作为 `frpc-0.71.0-linux-amd64` Release 资源分发.
+- Home 分别提供 FRPS 和 FRPC 入口及页面.已停用功能的页面会转到本地化的“页面已关闭”页面.
+
+#### 变更
+
+- Home 将九项主要功能显示为带独立开关的卡片.模块管理移至普通 Settings;Security Settings 仍受最近一次管理员密码验证保护.
+- FRPC 和代理节点卡片的编辑,测试,显示及确认控件更加清楚.编辑实例时,未修改的服务器地址和令牌保持原值;代理字段区分本地端口与服务器端口.
+- 登录页与 Settings 导航,页面图标,密码控件,主题选项及响应式布局遵循当前控制台设计.正文使用系统字体,以维持刷新时的文字尺寸.根据操作员反馈移除页面切换动画;调整窗口大小时的动效仍保留.
+- 端口转发开关由运行中的 Web 进程协调规则,无需重启控制台.重复提交模块操作会返回页面;被拒绝的 POST 请求会正确关闭连接,避免把后续请求误解析.
+
+#### 修复
+
+- 新增 FRPC 代理不再要求仅用于编辑或删除代理的索引.功能停用时停止访客采集;重新打开代理节点控件时保留已保存的值.
+
+#### 验证和限制
+
+- 本地测试通过 341 项,跳过 8 项.指定测试机检查了已登录路径,FRPS/FRPC 页面分离,模块开关,关闭页面跳转,FRPC 配置验证,以及用户要求的远程端口 14319 TCP 代理.操作员认为当前刷新效果可以接受.测试机目前仍运行已打补丁的测试版本;发布此正式源码标签本身不会升级该安装.
+- 真实移动设备,重启后的持久性,从最终标签在全新主机完整安装,以及所有真实代理或转发策略组合尚未验证.此前发布的三个大型可执行文件与 v3.0.0 相同.FRPC 客户端是新增的 16,593,080 字节 Release 资源,SHA-256 为 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`;安装程序在使用前验证该摘要.
 
 ### v3.0.0 — 2026-09-28
 
@@ -397,4 +455,37 @@ v2.0.0 包含实验性的 frps 和 Lucky 安装路径.它们的行为尚未在�
 - `abe8f0d` feat(web): align appearance with current theme standard
 - `2d624db` docs(log): record appearance deployment
 - `4e26aea` chore(release): prepare v3.0.0 content
-- (this commit) docs(log): record v3.0.0 publication
+- `444924c` docs(log): record v3.0.0 publication
+- `c312456` fix(web): align login and password controls with current standard
+- `25f1f9e` docs(log): record Web UI test deployment
+- `2c0e4d7` feat(web): show current test build updates
+- `4d0db36` docs(log): record version and Changelog deployment
+- `95ca649` feat(web): align navigation and add FRP information
+- `598a386` fix(web): display test candidate version and notes
+- `5559417` docs(log): record FRP test deployment
+- `9f4ab98` docs(log): clarify concurrent node state
+- `fb077d3` feat(setup): add first-run and later module installation
+- `728ce0b` docs(log): record clean test-host reinstall
+- `3dd9d3d` feat(frp): manage server and local client configuration
+- `efbb4e9` docs(log): record FRP test deployment
+- `7d3e0fc` docs(frp): clarify remote port firewall access
+- `a73c5a8` feat(frp): add inline controls and client cards
+- `a113855` fix(frp): read established socket peer correctly
+- `672f2e7` fix(frp): finish client editor controls
+- `d76e6b1` docs(log): record FRP panel test deployment
+- `a2c1264` feat(frp): allow TCP and UDP proxy types
+- `605a5b6` docs(log): record final FRP panel deployment
+- `d09835d` feat(frp): streamline client cards and verify connections
+- `0d4b60e` docs(log): record FRPC refinement and live checks
+- `c086709` fix(frp): use a proper proxy section heading
+- `0708020` docs(log): record final FRPC card refinement deployment
+- `572b913` feat(console): refine FRPC controls and modular home
+- `380d7f3` fix(ui): align access controls and improve module state writes
+- `c9363f6` fix(ui): center password reveal and unify server port labels
+- `2cb98a7` docs(log): record modular Home deployment and checks
+- `7e365b9` fix(web): stop visitor collection when disabled
+- `3cc5c8c` docs(log): record final visitor switch verification
+- `1810c3d` fix(frpc): add independent client installation controls
+- `83064ca` fix(web): remove page transition animation
+- `8733548` docs(log): record route-animation test deployment
+- (this commit) chore(release): publish v4.0.0 source and translations

@@ -31,6 +31,7 @@ metadata:
 | घटक / संसाधन | संस्करण / हैश | स्रोत | दर्ज लाइसेंस | उपयोग | श्रेय / मूल लाइसेंस पथ | समीक्षा योग्य रिलीज़ दायित्व | सत्यापन तारीख |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | अपस्ट्रीम लाइसेंस के अनुसार Apache-2.0 | साथ वितरित frps executable | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | शामिल Apache-2.0 लाइसेंस बनाए रखें; आधिकारिक बाइनरी आर्काइव में NOTICE फ़ाइल नहीं थी | 2026-09-27: आर्काइव, बाइनरी और लाइसेंस मेल खाते थे |
+| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | अपस्ट्रीम लाइसेंस के अनुसार Apache-2.0 | अलग GitHub Release एसेट `frpc-0.71.0-linux-amd64`, जिसकी स्थापना से पहले पुष्टि की जाती है | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | स्रोत के साथ वही अपस्ट्रीम लाइसेंस वितरित करें और एसेट का चेकसम सुरक्षित रखें | 2026-09-29: क्लाइंट बाइनरी दर्ज अपस्ट्रीम आर्काइव सदस्य से मेल खाती थी |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | अपस्ट्रीम लाइसेंस के अनुसार MIT | साथ वितरित Lucky executable | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | शामिल MIT कॉपीराइट और लाइसेंस सूचना रखें | 2026-09-27: आर्काइव, बाइनरी और लाइसेंस मेल खाते थे |
 | sing-box | `v1.13.14`; संशोधन `25a600db24f7680ad9806ce5427bd0ab8afe1114`; बाइनरी SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL संस्करण 3 या बाद का, साथ में upstream की नाम-संबंधी शर्त (सूचना के अनुसार) | साथ वितरित निष्पादन फ़ाइल, anytls और proxy दोनों के लिए | [upstream सूचना][local-link-002]; [GPL का पूरा पाठ][local-link-003] | अनुरूप स्रोत लिंक और अपस्ट्रीम नाम/संबद्धता शर्त बनाए रखें | 2026-09-27: आर्काइव, बाइनरी, लाइसेंस और टैग संशोधन मेल खाते थे |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | अपस्ट्रीम लाइसेंस के अनुसार LGPL-3.0 | साथ वितरित ब्राउज़र इंजन | [मूल LGPL पाठ][local-link-006] और [GPL पाठ][local-link-007] | लाइसेंस पाठ और अपस्ट्रीम स्रोत उपलब्ध रखें | 2026-09-27: दो टैग फ़ाइलें और लाइसेंस मेल खाते थे |
@@ -130,7 +131,7 @@ MIT कॉपीराइट और लाइसेंस सूचना क्
 
 ---
 
-कोई तृतीय-पक्ष फ़ॉन्ट, आइकन, छवि, डेटासेट या मॉडल वज़न शामिल नहीं है। रनटाइम पर सेवा कोई बाहर जाने वाला अनुरोध नहीं करती; एकमात्र वैकल्पिक बाहरी कॉल स्थापना के दौरान सार्वजनिक-IP खोज है, जो विफल होने पर केवल चेतावनी देती है।
+साथ वितरित तृतीय-पक्ष फ़ॉन्ट और आइकन ऊपर की तालिका में सूचीबद्ध हैं। कोई तृतीय-पक्ष छवि डेटासेट या मॉडल वज़न शामिल नहीं हैं। स्थापना के दौरान चेकसम से सत्यापित FRPC क्लाइंट एसेट डाउनलोड किया जा सकता है और वैकल्पिक रूप से सार्वजनिक IP पता देखा जा सकता है; IP पता खोजने में विफलता होने पर केवल चेतावनी दी जाती है।
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE

@@ -10,7 +10,7 @@ esac
 CATALOG_ROOT="${VPSSRV_CATALOG_ROOT:-}"
 if [ -z "$CATALOG_ROOT" ]; then
   if [ -d "$SCRIPT_DIR/../../lang/frps" ]; then CATALOG_ROOT="$SCRIPT_DIR/../../lang"
-  else CATALOG_ROOT="${PREFIX:-/opt/vps-server}/lang"; fi
+  else CATALOG_ROOT="${PREFIX:-/root/apps/vps-server}/lang"; fi
 fi
 msg() {
   local key="$1"; shift
@@ -28,7 +28,7 @@ raw_msg() {
 [ "$(id -u)" -eq 0 ] || { msg root_required >&2; exit 1; }
 # The installer copies deploy/frps/ to PREFIX/frps/ before invoking it.
 # Resolve trailing slashes, '..', and symlinks in an existing install prefix.
-PREFIX_DIR="$(cd "${PREFIX:-/opt/vps-server}" 2>/dev/null && pwd -P || :)"
+PREFIX_DIR="$(cd "${PREFIX:-/root/apps/vps-server}" 2>/dev/null && pwd -P || :)"
 if [ "$SCRIPT_DIR" = "$PREFIX_DIR/frps" ]; then
   BIN="$SCRIPT_DIR/../vendor/frp/frps"
 else
@@ -45,7 +45,7 @@ trap 'rm -rf -- "$STAGE"' EXIT
 for key in existing_invalid existing_invalid_detail invalid_bind invalid_token reserved_check forward_check port_conflict port_unavailable; do
   export "FRPS_MSG_${key^^}=$(raw_msg "$key")"
 done
-PORT="$(python3 - "$CONFIG" "${FRPS_BIND_PORT:-}" "${FRPS_TOKEN:-}" "${PREFIX:-/opt/vps-server}" "$STAGE/config" <<'PY'
+PORT="$(python3 - "$CONFIG" "${FRPS_BIND_PORT:-}" "${FRPS_TOKEN:-}" "${PREFIX:-/root/apps/vps-server}" "$STAGE/config" <<'PY'
 import json, os, pathlib, re, secrets, socket, subprocess, sys
 def err(key, *args):
     message = os.environ["FRPS_MSG_" + key.upper()]

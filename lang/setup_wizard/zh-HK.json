@@ -1,5 +1,5 @@
 {
-  "access_page": "<h1>進入安裝程式</h1><form method=\"post\" action=\"/login\"><label>存取權杖<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>進入</button></form>",
+  "access_page": "<h1>進入安裝程式</h1><form method=\"post\" action=\"/login\"><label>設定密碼<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>進入</button></form>",
   "setup_form": "<h1>選擇安裝設定</h1><p>已安裝版本:%s;現有模組:%s.選擇「保留」會沿用已記錄的設定及節點憑證.從安裝選項移除模組不會自動卸載;請明確確認要從本次安裝選項移除的模組.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><h2>模組</h2>%s<h2>代理協議</h2>%s<label>現有設定 <select name=\"policy\"><option value=\"preserve\">保留</option><option value=\"reconfigure\">重新設定(會刪除原有設定)</option></select></label><br><label>輸入 DELETE 以確認重新設定或移除模組: <input name=\"confirm\"></label><br><p>取消勾選已安裝的代理協議會刪除其設定及憑證.請逐項確認移除:</p>%s<label>控制台密碼保護 <select name=\"auth\"><option value=\"1\" %s>開啟</option><option value=\"0\" %s>關閉</option></select></label><br><label>公開頁面 <select name=\"public\"><option value=\"1\" %s>開啟</option><option value=\"0\" %s>關閉</option></select></label><br><label>控制台連接埠(留空則沿用現有連接埠或隨機產生) <input name=\"port\" inputmode=\"numeric\"></label><br><label>語言 <select name=\"language\">%s</select></label><br><label>Lucky 管理連接埠(預設 16601) <input name=\"lucky_port\" value=\"%s\" inputmode=\"numeric\"></label><br><label>透過公開 HTTP 開放 Lucky 管理介面?憑證會以未加密方式傳送. <select name=\"lucky_public\"><option value=\"0\" %s>否(預設)</option><option value=\"1\" %s>是(仍須在伺服器終端另行確認)</option></select></label><br><button>套用選擇並繼續安裝</button></form>",
   "remove_protocol": "<label><input type=\"checkbox\" name=\"remove_protocol\" value=\"%s\">確認移除已安裝的 %s</label><br>",
   "malformed_selection": "選項格式錯誤",
@@ -26,6 +26,21 @@
   "certificate_fingerprint": "證書 SHA256 指紋:",
   "setup_url": "設定網址:%s://%s:%d/",
   "wildcard_note": "請將上方的通配地址換成這部伺服器可連接的 IP.",
-  "access_token": "一次性存取權杖(請在頁面輸入,切勿放入 URL):",
-  "expires": "設定精靈將於 %d 秒後失效."
+  "access_token": "一次性設定密碼（在頁面輸入，勿放進網址）：",
+  "expires": "設定精靈將於 %d 秒後失效.",
+  "first_run_form": "<h1>首次設定</h1><p>選擇現在要安裝的模組。其他模組之後可在控制面板安裝。</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>模組</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>代理協定（選擇代理節點時至少選一種）</h2><div class=\"wizard-choices\">%s</div></section><label>語言<select name=\"language\">%s</select></label><button>安裝所選模組</button></form>",
+  "console_required": "瀏覽器初始化必須安裝網頁控制台。",
+  "selection_pending": "即將開始安裝。<a href=\"/\">查看進度</a>。",
+  "setup_progress": "正在安裝。請稍後重新整理此頁。",
+  "setup_ready": "設定完成。<a href=\"%s\">進入控制面板</a>。請使用安裝終端顯示的管理員密碼。",
+  "setup_ready_terminal": "設定完成。控制面板網址及密碼顯示在安裝終端。",
+  "setup_title": "vps-server 設定",
+  "show_password": "顯示密碼",
+  "hide_password": "隱藏密碼",
+  "module_web": "網頁控制台及公開連線頁",
+  "module_iperf3": "iperf3 測試視窗",
+  "module_anytls": "AnyTLS 代理",
+  "module_proxy": "代理節點",
+  "module_frps": "FRPS 伺服器",
+  "module_lucky": "Lucky"
 }

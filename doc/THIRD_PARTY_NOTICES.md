@@ -38,6 +38,7 @@ reproducible system dependency closure.
 | Component / resource | Version / hash | Source | License as recorded | How used | Attribution / original license path | Release obligations to review | Verified on |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frps executable | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | Keep the included Apache-2.0 license; no NOTICE file was in the official binary archive | 2026-09-27: archive, binary, and license matched |
+| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Separate `frpc-0.71.0-linux-amd64` GitHub Release asset, verified before installation | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | Distribute the same upstream license with the source and retain the asset checksum | 2026-09-29: client binary matched the recorded upstream archive member |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per upstream license | Bundled Lucky executable | [included license](../third_party/lucky/LICENSE); [artifact record](../third_party/lucky/component.txt) | Keep the included MIT copyright and license notice | 2026-09-27: archive, binary, and license matched |
 | sing-box | `v1.13.14`; revision `25a600db24f7680ad9806ce5427bd0ab8afe1114`; binary SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL version 3 or later plus upstream naming condition (as stated in notice) | Vendored executable, shared by anytls and proxy | [upstream notice][local-link-002]; [GPL full text][local-link-003] | Keep corresponding source links and upstream name/association condition | 2026-09-27: archive, binary, license, and tag revision matched |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 per upstream license | Vendored browser engine | [original LGPL text][local-link-006] and [GPL text][local-link-007] | Keep license text and upstream source available | 2026-09-27: two tag files and license matched |
@@ -173,10 +174,10 @@ repository and its provenance matters for updates:
 
 ---
 
-No third-party fonts, icons, images, datasets, or model weights are included.
-At runtime the service makes no outbound request; the only optional outbound
-call is a public-IP lookup during installation, which degrades to a warning
-if it fails.
+The bundled third-party fonts and icons are listed in the table above. No
+third-party image datasets or model weights are included. Installation can
+download the checksum-pinned FRPC client asset and optionally look up the
+public IP address; the latter degrades to a warning if it fails.
 
 [local-link-001]: ../config/dependencies.lock.json
 [local-link-002]: ../third_party/sing-box/LICENSE

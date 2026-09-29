@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Short-lived installer-only selection listener; never runs installation actions."""
 import argparse
+from contextlib import contextmanager
+from datetime import date
+import fcntl
 import base64
 import hashlib
 import hmac
 import html
 import json
 import os
+import re
 import secrets
 import signal
+import socket
 import ssl
 import subprocess
 import tempfile
@@ -19,6 +24,9 @@ from pathlib import Path
 
 LANGUAGE_TAGS = {'en': 'en', 'zh_cn': 'zh-CN', 'zh_tw': 'zh-TW', 'zh_hk': 'zh-HK',
                  'hi': 'hi', 'es': 'es', 'ar': 'ar', 'fr': 'fr'}
+LANGUAGE_NAMES = {'en': 'English', 'zh_cn': '简体中文', 'zh_tw': '繁體中文',
+                  'zh_hk': '繁體中文（香港）', 'hi': 'हिन्दी', 'es': 'Español',
+                  'ar': 'العربية', 'fr': 'Français'}
 CATALOG_DIR = Path(__file__).resolve().parents[2] / 'lang' / 'setup_wizard'
 CATALOGS = {code: json.loads((CATALOG_DIR / f'{tag}.json').read_text(encoding='utf-8'))
             for code, tag in LANGUAGE_TAGS.items()}
@@ -51,6 +59,8 @@ def validate(form, previous, installed, previous_protocols='', lucky_defaults=('
     chosen = modules.split(',')
     if ('iperf3' in chosen and 'web' not in chosen) or (('proxy' in chosen) != bool(protocols)):
         raise ValueError(_t('incompatible_modules', language))
+    if not installed and 'web' not in chosen:
+        raise ValueError(_t('console_required', language))
     policy = form.get('policy', ['preserve'])[0]
     if policy not in ('preserve', 'reconfigure'):
         raise ValueError(_t('invalid_upgrade_policy', language))
@@ -82,21 +92,42 @@ WIZARD_CSS = """
 * { box-sizing:border-box; }body { margin:0; min-height:100vh; padding:clamp(1rem,4vw,3rem); background:var(--bg); color:var(--fg); font:16px/1.55 system-ui,-apple-system,'Segoe UI',sans-serif; }
 main { max-width:52rem; margin:0 auto; padding:clamp(1.25rem,4vw,2.5rem); border:1px solid var(--border); border-radius:10px; background:white; box-shadow:0 10px 32px rgba(23,45,52,.06); }
 h1 { margin:0 0 .6rem; font-size:clamp(1.5rem,3vw,2rem); letter-spacing:-.03em; line-height:1.25; }h2 { margin:1.75rem 0 .75rem; padding-bottom:.45rem; border-bottom:1px solid var(--border); font-size:1.08rem; }
-p { color:var(--muted); }form { display:block; }form > br { display:none; }label { display:block; margin:.45rem 0; color:var(--fg); }label:has(input[type=checkbox]) { display:flex; align-items:center; gap:.65rem; min-height:2.6rem; padding:.45rem .65rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+p { color:var(--muted); }form { display:block; }form > br { display:none; }label { display:block; margin:.45rem 0; color:var(--fg); }label:has(input[type=checkbox]) { display:flex; align-items:center; gap:.65rem; min-height:2.75rem; padding:.45rem .65rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; }
 input,select { display:block; width:100%; min-height:2.75rem; margin-top:.3rem; padding:.55rem .7rem; border:1px solid var(--border); border-radius:8px; background:white; color:var(--fg); font:inherit; }input[type=checkbox] { width:1rem; min-height:0; margin:0; accent-color:var(--accent); }
 button { min-height:2.75rem; margin-top:1rem; padding:.6rem 1rem; border:1px solid var(--accent); border-radius:8px; background:var(--accent); color:white; font:600 .9rem system-ui,sans-serif; cursor:pointer; }button:hover { filter:brightness(1.12); }a { color:var(--accent); }:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
 @media (max-width:35rem) { main { padding:1.2rem; } }
+.wizard-choices { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap:.45rem; }
+.wizard-choices br { display:none; }
+.wizard-choices label:has(input[type=checkbox]) { margin:0; }
+.wizard-password-toggle { min-height:2.75rem; margin:.5rem 0 0; border-color:var(--border); background:white; color:var(--accent); }
 """
 
 
-def wizard_document(body, language):
+def wizard_document(body, language, nonce=''):
     favicon = base64.b64encode((Path(__file__).resolve().parents[2] / 'static' / 'favicon.svg').read_bytes()).decode('ascii')
     tag = LANGUAGE_TAGS.get(language, 'en')
     direction = ' dir="rtl"' if language == 'ar' else ''
     return (f'<!doctype html><html lang="{tag}"{direction}><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>{html.escape(_t("setup_title", language))}</title>'
             f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{favicon}">'
-            f'<style>{WIZARD_CSS}</style></head><body><main>{body}</main></body></html>')
+            f'<style>{WIZARD_CSS}</style></head><body><main>{body}</main>'
+            f'<script nonce="{nonce}">'
+            f'const field=document.querySelector("input[type=password]");'
+            f'if(field){{const button=document.createElement("button");button.type="button";'
+            f'button.className="wizard-password-toggle";'
+            f'const show={json.dumps(_t("show_password", language))},hide={json.dumps(_t("hide_password", language))};'
+            f'button.textContent=show;button.setAttribute("aria-label",show);'
+            f'button.setAttribute("aria-pressed","false");field.closest("label").after(button);'
+            f'button.addEventListener("click",()=>{{const visible=field.type==="text";'
+            f'field.type=visible?"password":"text";button.textContent=visible?show:hide;'
+            f'button.setAttribute("aria-label",visible?show:hide);'
+            f'button.setAttribute("aria-pressed",String(!visible));}});}}'
+            f'const proxy=document.querySelector("input[name=module][value=proxy]");'
+            f'const protocols=document.querySelector("[data-proxy-protocols]");'
+            f'if(proxy&&protocols){{const sync=()=>{{protocols.hidden=!proxy.checked;}};'
+            f'proxy.addEventListener("change",sync);sync();}}'
+            f'</script></body></html>')
 
 
 class Wizard(HTTPServer):
@@ -116,6 +147,7 @@ class Wizard(HTTPServer):
         self.result = None
         self.timeout = 0.2
         self.tls_context = None
+        self.ready_file = None
 
     def get_request(self):
         connection, address = self.socket.accept()
@@ -133,19 +165,96 @@ class Wizard(HTTPServer):
             self.handle_request()
         return self.result
 
+    def serve_completion(self):
+        self.expires = time.monotonic() + 1800
+        ready_since = None
+        while time.monotonic() < self.expires:
+            if self.ready_file.is_file():
+                if ready_since is None:
+                    ready_since = time.monotonic()
+                elif time.monotonic() - ready_since > 90:
+                    break
+            self.handle_request()
+
+
+@contextmanager
+def reserved_listener(bind, port, apps_root, *wizard_args):
+    """Bind first, register before serving, and release on every exit path."""
+    if not apps_root:
+        with Wizard((bind, port), *wizard_args) as server:
+            yield server
+        return
+    root = Path(apps_root)
+    root.mkdir(parents=True, exist_ok=True)
+    registry = root / 'PORTS.md'
+    header = '| Host Port | Project / Service | Bind Address | Registration Date |\n| --- | --- | --- | --- |\n'
+    lock_file = root / '.ports.lock'
+    with lock_file.open('a+b') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        content = registry.read_text() if registry.exists() else header
+        if not content.startswith(header):
+            raise ValueError('Invalid port registry')
+        rows = content[len(header):].splitlines()
+        used = set()
+        for row in rows:
+            match = re.fullmatch(r'\|\s*(\d{1,5})\s*\|\s*[^|]+\|\s*[^|]+\|\s*\d{4}-\d{2}-\d{2}\s*\|', row)
+            if not match or int(match[1]) in used:
+                raise ValueError('Invalid port registry row')
+            used.add(int(match[1]))
+        candidates = ([port] if port else [20000 + secrets.randbelow(40000) for _ in range(100)])
+        server = None
+        for candidate in candidates:
+            if candidate in used:
+                continue
+            try:
+                # A temporary TCP listener still owns a host-port number; do
+                # not reuse a UDP assignment already active on that number.
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+                    udp.bind(('0.0.0.0', candidate))
+                server = Wizard((bind, candidate), *wizard_args)
+                break
+            except OSError:
+                if port:
+                    raise
+        if server is None:
+            raise OSError('No setup port available')
+        assigned = server.server_address[1]
+        row = f'| {assigned} | vps-server setup | {bind} | {date.today().isoformat()} |'
+        stage = registry.with_name('.PORTS.setup.tmp')
+        try:
+            stage.write_text(header + ''.join(item + '\n' for item in rows if item.strip()) + row + '\n')
+            os.replace(stage, registry)
+        except BaseException:
+            server.server_close()
+            stage.unlink(missing_ok=True)
+            raise
+    try:
+        with server:
+            yield server
+    finally:
+        with lock_file.open('a+b') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if registry.is_file():
+                lines = registry.read_text().splitlines(keepends=True)
+                remaining = [line for line in lines[2:] if line.strip() != row]
+                stage = registry.with_name('.PORTS.setup.tmp')
+                stage.write_text(''.join(lines[:2] + remaining))
+                os.replace(stage, registry)
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass  # No request path, token, cookie or form data in logs.
 
     def reply(self, status, body, cookie=None):
-        content = wizard_document(body, self.server.defaults[2]).encode('utf-8')
+        nonce = secrets.token_urlsafe(16)
+        content = wizard_document(body, self.server.defaults[2], nonce).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(content)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'self'")
+        self.send_header('Content-Security-Policy',
+                         f"default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'nonce-{nonce}'; form-action 'self'")
         if cookie:
             self.send_header('Set-Cookie', cookie)
         self.end_headers()
@@ -157,13 +266,24 @@ class Handler(BaseHTTPRequestHandler):
             hmac.compare_digest(c, 'wizard=' + self.server.session) for c in cookies)
 
     def do_GET(self):
-        if self.path != '/' or time.monotonic() >= self.server.expires or self.server.result is not None:
+        if self.path != '/' or time.monotonic() >= self.server.expires:
             return self.reply(404, _t('unavailable', self.server.defaults[2]))
         if not self.authorized():
             return self.reply(200, _t('access_page', self.server.defaults[2]))
+        if self.server.result is not None:
+            if self.server.ready_file and self.server.ready_file.is_file():
+                url = self.server.ready_file.read_text().strip()
+                if url.startswith(('http://', 'https://')):
+                    body = _t('setup_ready', self.server.defaults[2]) % html.escape(url, quote=True)
+                else:
+                    body = _t('setup_ready_terminal', self.server.defaults[2])
+            else:
+                body = _t('setup_progress', self.server.defaults[2])
+            return self.reply(200, body)
         previous = self.server.previous if self.server.installed else 'web,iperf3'
         module_inputs = ''.join('<label><input type="checkbox" name="module" value="%s" %s>%s</label><br>' %
-                                (m, 'checked' if m in previous.split(',') else '', m) for m in MODULES)
+                                (m, 'checked' if m in previous.split(',') else '',
+                                 html.escape(_t('module_' + m, self.server.defaults[2]))) for m in MODULES)
         protocol_inputs = ''.join('<label><input type="checkbox" name="protocol" value="%s" %s>%s</label><br>' %
                                   (p, 'checked' if p in self.server.previous_protocols.split(',') else '', p) for p in PROTOCOLS)
         removal_inputs = ''.join(
@@ -171,15 +291,21 @@ class Handler(BaseHTTPRequestHandler):
             for p in PROTOCOLS if p in self.server.previous_protocols.split(','))
         # Checkbox lists are sent separately; only known names are accepted by POST.
         auth, public, language = self.server.defaults
-        language_options = ''.join('<option %s>%s</option>' % ('selected' if language == lang else '', lang) for lang in LANGUAGES)
-        body = _t('setup_form', language) % (
-                    self.server.installed, html.escape(previous), self.server.csrf, module_inputs, protocol_inputs, removal_inputs,
-                    'selected' if auth == '1' else '', 'selected' if auth == '0' else '',
-                    'selected' if public == '1' else '', 'selected' if public == '0' else '',
-                    language_options,
-                    html.escape(self.server.lucky_defaults[0]),
-                    'selected' if self.server.lucky_defaults[1] == '0' else '',
-                    'selected' if self.server.lucky_defaults[1] == '1' else '')
+        language_options = ''.join('<option value="%s" %s>%s</option>' %
+                                   (lang, 'selected' if language == lang else '', LANGUAGE_NAMES[lang])
+                                   for lang in LANGUAGES)
+        if self.server.installed:
+            body = _t('setup_form', language) % (
+                        self.server.installed, html.escape(previous), self.server.csrf, module_inputs, protocol_inputs, removal_inputs,
+                        'selected' if auth == '1' else '', 'selected' if auth == '0' else '',
+                        'selected' if public == '1' else '', 'selected' if public == '0' else '',
+                        language_options,
+                        html.escape(self.server.lucky_defaults[0]),
+                        'selected' if self.server.lucky_defaults[1] == '0' else '',
+                        'selected' if self.server.lucky_defaults[1] == '1' else '')
+        else:
+            body = _t('first_run_form', language) % (self.server.csrf, module_inputs,
+                                                    protocol_inputs, language_options)
         self.reply(200, body)
 
     def do_POST(self):
@@ -217,9 +343,11 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as exc:
             return self.reply(400, html.escape(str(exc)))
         self.server.result = selection
-        self.server.session = None
+        if self.server.ready_file is None:
+            self.server.session = None
         self.server.csrf = ''
-        self.reply(200, _t('selection_accepted', self.server.defaults[2]))
+        key = 'selection_pending' if self.server.ready_file is not None else 'selection_accepted'
+        self.reply(200, _t(key, self.server.defaults[2]))
 
 
 def main():
@@ -235,9 +363,11 @@ def main():
     parser.add_argument('--installed', action='store_true')
     parser.add_argument('--lucky-config', default='')
     parser.add_argument('--result', required=True)
+    parser.add_argument('--ready-file', default='')
+    parser.add_argument('--apps-root', default='')
     parser.add_argument('--timeout', type=int, default=300)
     args = parser.parse_args()
-    if not 1 <= args.port <= 65535 or not 1 <= args.timeout <= 900:
+    if not 0 <= args.port <= 65535 or not 1 <= args.timeout <= 900:
         parser.error(_t('invalid_port_timeout', args.language_default))
     if not args.public and args.bind not in ('127.0.0.1', '::1'):
         parser.error(_t('bind_requires_https', args.language_default))
@@ -262,8 +392,10 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     with tempfile.TemporaryDirectory(prefix='vpssrv-wizard-') as temp:
-        with Wizard((args.bind, args.port), args.previous, args.installed, args.timeout,
-                    previous_protocols, (args.auth_default, args.public_default, args.language_default), lucky_defaults) as server:
+        with reserved_listener(args.bind, args.port, args.apps_root, args.previous, args.installed, args.timeout,
+                               previous_protocols, (args.auth_default, args.public_default, args.language_default), lucky_defaults) as server:
+            if args.ready_file:
+                server.ready_file = Path(args.ready_file)
             if args.public:
                 cert, key = os.path.join(temp, 'cert.pem'), os.path.join(temp, 'key.pem')
                 subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
@@ -275,7 +407,7 @@ def main():
                 server.tls_context = context
                 der = ssl.PEM_cert_to_DER_cert(open(cert, encoding='ascii').read())
                 print(_t('certificate_fingerprint', args.language_default), hashlib.sha256(der).hexdigest(), flush=True)
-            print(_t('setup_url', args.language_default) % ('https' if args.public else 'http', args.bind, args.port), flush=True)
+            print(_t('setup_url', args.language_default) % ('https' if args.public else 'http', args.bind, server.server_address[1]), flush=True)
             if args.bind in ('0.0.0.0', '::'):
                 print(_t('wildcard_note', args.language_default), flush=True)
             print(_t('access_token', args.language_default), server.token, flush=True)
@@ -284,8 +416,15 @@ def main():
             if selected is None:
                 raise SystemExit('Wizard expired or interrupted; no installation performed')
             # All fields have been reduced to fixed choices or decimal digits. No shell evaluation.
-            with open(args.result, 'x', encoding='ascii') as output:
+            temporary_result = args.result + '.tmp'
+            with open(temporary_result, 'x', encoding='ascii') as output:
                 output.write('\n'.join(selected) + '\n')
+            os.replace(temporary_result, args.result)
+            if server.ready_file is not None:
+                server.serve_completion()
+    if args.ready_file:
+        import shutil
+        shutil.rmtree(Path(args.ready_file).parent, ignore_errors=True)
 
 
 if __name__ == '__main__':

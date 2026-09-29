@@ -38,6 +38,8 @@ metadata:
 
 web,iperf3,anytls,proxy,frps 和 Lucky 六個模組均可於安裝時選用.frps 和 Lucky 仍屬實驗性模組;本版本尚未在真實主機完成其行為驗收.
 
+經過身份驗證的 FRPS 頁面顯示本機服務狀態,網卡地址和連接設置;令牌及端口在用户要求顯示前保持遮蔽.FRPS 端口和令牌可直接編輯,服務可開啓或關閉.獨立的 FRPC 頁面以卡片列出本機客户端實例,遮蔽目標 IP,並根據已建立的 TCP 套接字顯示連接狀態.“測試連接”會使用保存的服務器地址,端口和令牌另行執行一次 FRPC 登錄.實例頁面按需顯示 IP 或令牌,編輯前也會列出每條 TCP/UDP 代理的類型,本地 IP,本地端口和遠程端口.保存後留在同一實例頁面,驗證配置文件,失敗時恢復原配置.這些 FRP 操作使用已登錄會話;修改密碼,IP 免密等安全設置操作才要求最近一次管理員密碼驗證.字段編輯器只處理簡單的令牌認證 TCP/UDP 配置,不會修改其無法表示的 FRPC TOML.此控制枱不監測其他設備上的 FRPC 實例.模塊頁面分別檢查本機 FRPC 可執行文件和 `frpc@.service` 模板,而不是用是否存在實例配置判斷安裝狀態.缺少其中任一文件時提供“安裝”;FRPC 已安裝但沒有實例時提供“創建實例”鏈接.安裝使用經過校驗和驗證的 FRPC v0.71.0 發行資源,不會自行建立連接或監聽端口.模塊日誌記錄下載和驗證結果.離線安裝時,先下載 [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64) (16,593,080 字節;SHA-256:`f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`),放到 `~/apps/vps-server/vendor/frp/frpc`,再選擇“安裝”.安裝任務對下載或手動放入的文件執行相同的摘要校驗.卸載時會停止本機 FRPC 實例,在 `data/` 下備份其配置,並保留配置文件供日後重新安裝.
+
 **不屬於目標:**不提供 ACME 或網域名稱(443 刻意使用自簽憑證);不持續執行 iperf3;不提供反向代理或容器;公開頁面絕不披露主機名稱,核心,運行時間,服務清單或代理參數.本項目不取代 `vps-webserver` 或 `Anytsl-Serve`;兩者維持獨立維護,其程式碼在此以隨附副本形式提供,並非納入取代.
 
 ## 要求
@@ -54,7 +56,7 @@ web,iperf3,anytls,proxy,frps 和 Lucky 六個模組均可於安裝時選用.frps
 一行快速安裝(最新發佈標籤,不設定變數):
 
 ```bash
-git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 逐步安裝及設定:
@@ -62,13 +64,24 @@ git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.gi
 ```bash
 # 複製發佈標籤;預設分支可能包含尚未發佈的變更.
 # 列出發佈標籤: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # 可選;每個變數都有可用預設值
 bash deploy/install.sh
 ```
 
-`deploy/install.sh` 會詢問要安裝的模組,介面語言,是否以密碼保護控制台,以及使用哪些連接埠.v3.0.0 標籤包含六個可選模組;frps 和 Lucky 屬實驗性模組.
+`deploy/install.sh` 會詢問要安裝的模組,介面語言,是否以密碼保護控制台,以及使用哪些連接埠.v4.0.0 標籤包含六個可選模組;frps 和 Lucky 屬實驗性模組.
+
+### 首次設置
+
+以下設置流程包含在 v4.0.0 中.在全新 Debian 或 Ubuntu 系統上,從終端以 root 身份克隆發行標籤並運行 `bash deploy/install.sh`.應用默認安裝在 root 賬户的 `~/apps/vps-server`;可通過 `PREFIX` 選擇其他目錄.
+
+安裝程序會在隨機可用端口上打開臨時 HTTPS 設置頁,並在終端打印其 URL,證書指紋和一次性隨機設置密碼.若五分鐘內未作選擇,頁面便會過期.登錄設置頁選擇要安裝的模塊;通過瀏覽器設置時必須選擇 Web 控制枱.僅在選擇代理節點後才詢問代理協議.提交後刷新設置頁可查看進度.安裝完成且主機有可用的網卡地址時,頁面會鏈接到控制枱;否則使用終端打印的地址.終端還會打印持久有效的控制枱密碼和地址;一次性設置密碼不能用於登錄控制枱.完成後的寬限期結束時,臨時監聽器會關閉並釋放端口.
+
+在控制枱打開 **Settings → Modules**.普通已登錄會話可管理這些運行功能;Security Settings 仍要求密碼驗證.模塊列表包括 Speed test,iperf3,Proxy nodes,FRPS,FRPC,Port forward,Recent visitors,Changelog 和 Settings.僅可獨立安裝的功能顯示“安裝”或“卸載”.卸載前,輔助程序會將私有配置歸檔到 `$PREFIX/data`;模塊頁面可查看最近任務的輸出.可選模塊從 `$PREFIX/installer-source` 下與版本匹配的文件安裝.除 Settings 外,Home 的每張卡片都有獨立開關.Proxy nodes 開關同時控制 AnyTLS 和其他代理協議,保留節點記錄;沒有已啓用節點時不會啓動服務.FRPC 開關重新開啓時只恢復關閉前運行的實例.關閉端口轉發會保留規則,重新開啓時再次應用已啓用規則.安裝以獨立的 systemd 任務運行,可能短暫重啓 Web 服務.若無法訪問設置端口,可使用 `VPSSRV_SETUP_PUBLIC=0` 配合本地 SSH 隧道,或通過 `VPSSRV_SETUP_PORT` 選擇允許使用的端口.
+
+主機安裝 FRPC 後,可從 Home 打開 **FRPS** 或 **FRPC** 卡片.
+**Edit FRPS** 可修改綁定端口和令牌;字段留空則保留當前值.修改後還須更新連接此 FRPS 服務器的 FRPC 實例.本機 FRPC 卡片有獨立的“測試連接”“編輯”和需確認的“刪除”控件;點擊卡片空白處不會觸發操作.啓動開關位於實例名旁.打開“編輯”可重命名實例,或就地修改服務器和代理映射.點擊遮蔽的 IP,端口或令牌可顯示其值;打開“編輯服務器”會載入已保存的值.“測試連接”使用已保存的值執行一次臨時登錄,不會啓動或更改受管實例.保存時使用 `frpc verify` 驗證,重啓正在運行的實例,然後返回同一實例頁面.新實例首次有效保存後會啓用.頁面也可在不刪除配置的情況下啓動或停止已有實例.修改本機 FRPC 實例不會影響其他設備上的客户端.TCP 代理的 `remotePort` 必須在當前啓用的主機防火牆和雲安全組中放行;編輯器會登記同一主機上的端口分配,但不會修改雲防火牆規則.
 
 **再次執行會原地升級.** 程式偵測既有安裝,讓操作員選擇保留設定,並只詢問舊版本未有的設定;每項附有預設值,按 Enter 即可接受.控制台密碼,持久保存的連接埠,憑證,訪客紀錄,anytls 節點憑證,以及所有已安裝代理協定的連接埠及憑證都會保留.如要重新回答設定問題,在升級提問時回答 `n`.
 

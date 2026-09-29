@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-PREFIX="${PREFIX:-/opt/vps-server}"
+PREFIX="${PREFIX:-/root/apps/vps-server}"
 SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 ANYTLS_SERVICE="vps-server-anytls.service"

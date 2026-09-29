@@ -17,6 +17,30 @@
     if (closer) closer.closest('dialog')?.close();
   });
 
+  document.querySelectorAll('[data-node-edit-id]').forEach((details) => {
+    details.addEventListener('toggle', async () => {
+      const port = details.querySelector('[data-node-edit-port]');
+      const credential = details.querySelector('[data-node-edit-credential]');
+      if (!details.open) { port.value = ''; credential.value = ''; return; }
+      try {
+        const id = encodeURIComponent(details.dataset.nodeEditId);
+        const values = await Promise.all(['port', 'credential'].map(async (field) => {
+          const response = await fetch(`/proxy/private-value?id=${id}&field=${field}`,
+            { credentials: 'same-origin', cache: 'no-store' });
+          if (!response.ok) throw new Error('value unavailable');
+          return (await response.json()).value;
+        }));
+        if (details.open) { port.value = values[0]; credential.value = values[1]; }
+      } catch (_) { port.value = ''; credential.value = ''; }
+    });
+  });
+  window.addEventListener('pagehide', () => {
+    document.querySelectorAll('[data-node-edit-id]').forEach((details) => {
+      details.querySelector('[data-node-edit-port]').value = '';
+      details.querySelector('[data-node-edit-credential]').value = '';
+    });
+  });
+
   const createForm = document.querySelector('[data-node-create]');
   if (!createForm) return;
   const sniField = createForm.querySelector('[data-sni-field]');

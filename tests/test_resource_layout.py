@@ -87,6 +87,8 @@ class ResourceLayoutTest(unittest.TestCase):
             (inplace / "src/web").mkdir(parents=True)
             (inplace / "src/web/app.py").write_text("new app")
             (inplace / "src/web/node_config.py").write_text("new helper")
+            (inplace / "src/web/module_manager.py").write_text("new module helper")
+            (inplace / "src/web/frp_control.py").write_text("new frp helper")
             for modules in ("anytls", "web proxy"):
                 with self.subTest(inplace=modules):
                     subprocess.run(["bash", "-e", "-c", stage], env={
@@ -101,6 +103,8 @@ class ResourceLayoutTest(unittest.TestCase):
                     if "web" in modules:
                         self.assertEqual((inplace / "app.py").read_text(), "new app")
                         self.assertEqual((inplace / "node_config.py").read_text(), "new helper")
+                        self.assertEqual((inplace / "module_manager.py").read_text(), "new module helper")
+                        self.assertEqual((inplace / "frp_control.py").read_text(), "new frp helper")
                     else:
                         self.assertEqual((inplace / "app.py").read_text(), "keep")
 

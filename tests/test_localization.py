@@ -20,7 +20,7 @@ class LocalizationTest(unittest.TestCase):
         catalogs = {tag: json.loads((CATALOG_DIR / f"{tag}.json").read_text(encoding="utf-8"))
                     for tag in TAGS}
         english = catalogs["en"]
-        self.assertEqual(len(english), 328)
+        self.assertEqual(len(english), 405)
         formatter = string.Formatter()
         def fields(value):
             return {field for _, field, _, _ in formatter.parse(value) if field is not None}
@@ -50,7 +50,7 @@ class LocalizationTest(unittest.TestCase):
         catalogs = {tag: json.loads((catalog_dir / f"{tag}.json").read_text(encoding="utf-8"))
                     for tag in TAGS}
         english = catalogs["en"]
-        self.assertEqual(len(english), 29)
+        self.assertEqual(len(english), 44)
         for tag, catalog in catalogs.items():
             with self.subTest(tag=tag):
                 self.assertEqual(list(catalog), list(english))

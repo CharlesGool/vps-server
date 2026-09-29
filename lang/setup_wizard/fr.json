@@ -1,5 +1,5 @@
 {
-  "access_page": "<h1>Accès à l’installateur</h1><form method=\"post\" action=\"/login\"><label>Jeton d’accès<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>Entrer</button></form>",
+  "access_page": "<h1>Accès à l’installateur</h1><form method=\"post\" action=\"/login\"><label>Mot de passe de configuration<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>Entrer</button></form>",
   "setup_form": "<h1>Choix de la configuration</h1><p>Installé : %s ; modules existants : %s. Le choix Conserver garde les paramètres enregistrés et les identifiants du nœud. Les modules retirés ne sont pas désinstallés ; confirmez explicitement leur retrait de la sélection à installer.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><h2>Modules</h2>%s<h2>Protocoles proxy</h2>%s<label>Configuration existante <select name=\"policy\"><option value=\"preserve\">Conserver</option><option value=\"reconfigure\">Reconfigurer (destructif)</option></select></label><br><label>Saisissez DELETE pour confirmer une reconfiguration ou le retrait d’un module : <input name=\"confirm\"></label><br><p>Décocher un protocole proxy installé supprime sa configuration et ses identifiants. Confirmez chaque suppression :</p>%s<label>Protection de la console par mot de passe <select name=\"auth\"><option value=\"1\" %s>Activée</option><option value=\"0\" %s>Désactivée</option></select></label><br><label>Page publique <select name=\"public\"><option value=\"1\" %s>Activée</option><option value=\"0\" %s>Désactivée</option></select></label><br><label>Port de la console (vide = port actuel ou aléatoire) <input name=\"port\" inputmode=\"numeric\"></label><br><label>Langue <select name=\"language\">%s</select></label><br><label>Port d’administration Lucky (16601 par défaut) <input name=\"lucky_port\" value=\"%s\" inputmode=\"numeric\"></label><br><label>Exposer l’administration Lucky via HTTP public ? Les identifiants sont transmis sans chiffrement. <select name=\"lucky_public\"><option value=\"0\" %s>Non (par défaut)</option><option value=\"1\" %s>Oui (confirmation distincte requise dans le terminal du serveur)</option></select></label><br><button>Appliquer la sélection et poursuivre l’installation</button></form>",
   "remove_protocol": "<label><input type=\"checkbox\" name=\"remove_protocol\" value=\"%s\">Confirmer le retrait du protocole installé %s</label><br>",
   "malformed_selection": "Sélection mal formée",
@@ -26,6 +26,21 @@
   "certificate_fingerprint": "Empreinte SHA256 du certificat :",
   "setup_url": "URL de configuration : %s://%s:%d/",
   "wildcard_note": "Remplacez l’adresse générique ci-dessus par une adresse IP accessible de ce serveur.",
-  "access_token": "Jeton d’accès à usage unique (à saisir sur la page, jamais dans l’URL) :",
-  "expires": "L’assistant expire après %d secondes."
+  "access_token": "Mot de passe temporaire de configuration (à saisir dans la page, jamais dans l’URL) :",
+  "expires": "L’assistant expire après %d secondes.",
+  "first_run_form": "<h1>Première configuration</h1><p>Choisissez les modules à installer maintenant. Vous pourrez installer les autres plus tard depuis la console.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>Modules</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>Protocoles proxy (choisissez-en au moins un si les nœuds proxy sont sélectionnés)</h2><div class=\"wizard-choices\">%s</div></section><label>Langue<select name=\"language\">%s</select></label><button>Installer les modules sélectionnés</button></form>",
+  "console_required": "La console Web est nécessaire pour la configuration dans le navigateur.",
+  "selection_pending": "L’installation démarre. <a href=\"/\">Voir la progression</a>.",
+  "setup_progress": "Installation en cours. Actualisez cette page dans un instant.",
+  "setup_ready": "Configuration terminée. <a href=\"%s\">Ouvrir la console</a>. Utilisez le mot de passe administrateur affiché dans le terminal.",
+  "setup_ready_terminal": "Configuration terminée. L’adresse et le mot de passe de la console sont affichés dans le terminal.",
+  "setup_title": "Configuration de vps-server",
+  "show_password": "Afficher le mot de passe",
+  "hide_password": "Masquer le mot de passe",
+  "module_web": "Console Web et page publique",
+  "module_iperf3": "Fenêtre de test iperf3",
+  "module_anytls": "Proxy AnyTLS",
+  "module_proxy": "Nœuds proxy",
+  "module_frps": "Serveur FRPS",
+  "module_lucky": "Lucky"
 }

@@ -31,6 +31,7 @@ metadata:
 | 組件/資源 | 版本/雜湊 | 來源 | 已記錄授權 | 用途 | 署名/原始授權路徑 | 待審查發佈義務 | 核實日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0,依上游授權 | 隨附的 frps 可執行檔 | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | 保留隨附的 Apache-2.0 授權;官方二進制壓縮檔內沒有 NOTICE 文件 | 2026-09-27:壓縮檔,執行檔及授權文件相符 |
+| frpc | `v0.71.0`;二進制文件 SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | 上游許可證為 Apache-2.0 | 獨立提供的 `frpc-0.71.0-linux-amd64` GitHub Release 資源,安裝前驗證 | [隨附許可證](../../third_party/frp/LICENSE);[資源記錄](../../third_party/frp/component.txt) | 隨源碼分發相同的上游許可證,並保留資源校驗和 | 2026-09-29:客户端二進制文件與記錄的上游歸檔成員一致 |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT,依上游授權 | 隨附的 Lucky 可執行檔 | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | 保留隨附的 MIT 版權與授權聲明 | 2026-09-27:壓縮檔,執行檔及授權文件相符 |
 | sing-box | `v1.13.14`;修訂 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;執行檔 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更新版,加上上游命名條件(依聲明記錄) | anytls 和 proxy 共用的隨附執行檔 | [上游聲明][local-link-002];[GPL 全文][local-link-003] | 保留對應原始碼連結及上游名稱/關聯條件 | 2026-09-27:壓縮檔,執行檔,授權文件及標籤修訂相符 |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依上游授權 | 隨附瀏覽器引擎 | [原始 LGPL 條文][local-link-006]及[GPL 條文][local-link-007] | 保留授權條文並確保上游原始碼可取得 | 2026-09-27:兩個標籤檔案及授權文件相符 |
@@ -130,7 +131,7 @@ MIT 版權及授權聲明與用戶端函式庫一同隨附.
 
 ---
 
-不包含第三方字型,圖示,圖片,資料集或模型權重.服務執行時不會向外發送請求;唯一可選的對外呼叫是安裝期間查詢公開 IP,失敗時只顯示警告.
+隨附的第三方字體和圖標列於上表.沒有包含第三方圖像數據集或模型權重.安裝程序可以下載經固定校驗和驗證的 FRPC 客户端資源,也可以選擇查詢公網 IP 地址;查詢失敗時僅顯示警告.
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE

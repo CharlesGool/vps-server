@@ -43,6 +43,7 @@ os.environ["VPSSRV_CONSOLE_TLS"] = "0"  # the shared fixture drives plain HTTP; 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.web import app  # noqa: E402  (import must follow env setup above)
+import frp_control  # noqa: E402
 
 
 class IpAllowlistTest(unittest.TestCase):
@@ -130,6 +131,73 @@ class ConsoleTest(unittest.TestCase):
         jar = SimpleCookie()
         jar.load(cookie_header)
         return jar["session"].value
+
+    def test_module_manager_uses_ordinary_session_but_checks_csrf(self):
+        ordinary = app.create_session()
+        elevated = app.create_session(security_verified=True)
+        try:
+            conn = self.connect()
+            conn.request("GET", "/settings/modules", headers={"Cookie": f"session={ordinary}"})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+            conn.close()
+            conn = self.connect()
+            conn.request("GET", "/settings/modules", headers={"Cookie": f"session={elevated}"})
+            response = conn.getresponse()
+            body = response.read().decode()
+            self.assertEqual(response.status, 200)
+            self.assertIn('Modules', body)
+            self.assertIn('action="/settings/modules/action"', body)
+            self.assertEqual(body.count('class="module-card"'), 9)
+            self.assertNotIn('<h2>AnyTLS</h2>', body)
+            self.assertNotIn('<h2>Lucky</h2>', body)
+            conn.close()
+            conn = self.connect()
+            conn.request("GET", "/", headers={"Cookie": f"session={ordinary}"})
+            dashboard = conn.getresponse().read().decode()
+            conn.close()
+            self.assertEqual(dashboard.count('class="tile" data-module='), 9)
+            self.assertEqual(dashboard.count('role="switch"'), 8)
+            self.assertNotIn('href="/settings/modules"', dashboard)
+            body = urlencode({"module": "frps", "action": "install", "csrf": "invalid"})
+            conn = self.connect()
+            conn.request("POST", "/settings/modules/action", body,
+                         {"Cookie": f"session={elevated}", "Content-Type": "application/x-www-form-urlencoded"})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 403)
+            response.read()
+            conn.close()
+        finally:
+            app.destroy_session(ordinary)
+            app.destroy_session(elevated)
+
+    def test_frpc_module_shows_install_only_when_program_or_unit_is_missing(self):
+        session = app.create_session()
+        try:
+            for installed, expected_action in (({'web'}, 'install'), ({'web', 'frpc'}, 'uninstall')):
+                with self.subTest(expected_action=expected_action), \
+                     patch.object(app, 'installed_modules', return_value=installed), \
+                     patch.object(app, 'frpc_names', return_value=[]):
+                    conn = self.connect()
+                    conn.request('GET', '/settings/modules?lang=en',
+                                 headers={'Cookie': f'session={session}'})
+                    response = conn.getresponse()
+                    body = response.read().decode()
+                    conn.close()
+                    self.assertEqual(response.status, 200)
+                    card = re.search(r'<section class="module-card"><div><h2>FRPC</h2>(.*?)</section>',
+                                     body, re.S)
+                    self.assertIsNotNone(card)
+                    self.assertIn(f'name="action" value="{expected_action}"', card[0])
+                    if expected_action == 'install':
+                        self.assertIn('Not installed', card[0])
+                        self.assertNotIn('href="/frp/client/edit"', card[0])
+                    else:
+                        self.assertIn('Installed, no server instances', card[0])
+                        self.assertIn('href="/frp/client/edit"', card[0])
+        finally:
+            app.destroy_session(session)
 
     def test_login_page_has_accessible_password_control(self):
         conn = self.connect()
@@ -617,14 +685,14 @@ class ConsoleTest(unittest.TestCase):
             conn.close()
             cookie = self.login()
             conn = self.connect()
-            conn.request('GET', '/frp', headers={'Cookie': 'session=' + cookie})
+            conn.request('GET', '/frps', headers={'Cookie': 'session=' + cookie})
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             self.assertEqual(response.getheader('Cache-Control'), 'no-store')
             body = response.read()
             self.assertNotIn(b'test-frps-secret', body)
             self.assertNotIn(b'7000', body)
-            self.assertIn(b'FRPC client', body)
+            self.assertNotIn(b'FRPC client', body)
             self.assertIn(b'/static/favicon-frp.svg', body)
             conn.close()
             conn = self.connect()
@@ -641,16 +709,6 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(json.loads(response.read())['value'], 'test-frps-secret')
             conn.close()
-            conn = self.connect()
-            conn.request('GET', '/proxy/private-value?id=frps&field=frpc-config',
-                         headers={'Cookie': 'session=' + cookie})
-            response = conn.getresponse()
-            self.assertEqual(response.status, 200)
-            client_config = json.loads(response.read())['value']
-            self.assertIn('serverPort = 7000', client_config)
-            self.assertIn('auth.token = "test-frps-secret"', client_config)
-            self.assertIn('serverAddr = "<server-ip>"', client_config)
-            conn.close()
             with patch.object(app, 'AUTH_ENABLED', False):
                 conn = self.connect()
                 conn.request('GET', '/frps')
@@ -662,13 +720,130 @@ class ConsoleTest(unittest.TestCase):
         cookie = self.login()
         with patch.object(app, 'FRPS_CONFIG', Path(TEST_DATA_DIR) / 'missing-frps.toml'):
             conn = self.connect()
-            conn.request('GET', '/frp', headers={'Cookie': 'session=' + cookie})
+            conn.request('GET', '/frps', headers={'Cookie': 'session=' + cookie})
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             body = response.read()
             self.assertIn(b'FRPS is not installed', body)
             self.assertNotIn(b'data-private-field="frpc-config"', body)
             conn.close()
+
+    def test_frps_and_frpc_have_separate_pages(self):
+        cookie = self.login()
+        config = Path(TEST_DATA_DIR) / 'separate-frps.toml'
+        config.write_text('bindAddr = "0.0.0.0"\nbindPort = 7000\nauth.token = "separate-secret"\n')
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(app, 'FRPS_CONFIG', config), \
+             patch.object(frp_control, 'CLIENT_DIR', Path(directory)):
+            (Path(directory) / 'frpc-demo.toml').write_text(
+                frp_control.build_client('203.0.113.42', 7000, 'client-secret', []))
+            for path, expected, excluded in (('/frps', 'FRPS server', 'frp-target-card'),
+                                             ('/frpc', 'FRPC client', 'frps-inline-token')):
+                conn = self.connect()
+                conn.request('GET', path + '?lang=en', headers={'Cookie': 'session=' + cookie})
+                response = conn.getresponse()
+                body = response.read().decode()
+                conn.close()
+                self.assertEqual(response.status, 200)
+                self.assertIn(expected, body)
+                self.assertNotIn(excluded, body)
+            conn = self.connect()
+            conn.request('GET', '/frp', headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 302)
+            self.assertEqual(response.getheader('Location'), '/frpc')
+            response.read()
+            conn.close()
+
+    def test_frpc_editor_uses_ordinary_session_and_reveals_token_on_request(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(frp_control, 'CLIENT_DIR', Path(directory)):
+            config = Path(directory) / 'frpc-demo.toml'
+            config.write_text('serverAddr = "203.0.113.42"\nserverPort = 7000\n'
+                              'auth.method = "token"\nauth.token = "private-example-token"\n'
+                              '[[proxies]]\nname = "web"\ntype = "tcp"\nlocalIP = "127.0.0.1"\n'
+                              'localPort = 8080\nremotePort = 18080\n')
+            ordinary = app.create_session()
+            try:
+                def request(path, cookie):
+                    conn = self.connect()
+                    conn.request('GET', path, headers={'Cookie': 'session=' + cookie})
+                    response = conn.getresponse()
+                    result = response.status, response.getheader('Location'), response.read().decode()
+                    conn.close()
+                    return result
+                status, _, editor = request('/frp/client/edit?name=demo', ordinary)
+                self.assertEqual(status, 200)
+                self.assertNotIn('private-example-token', editor)
+                self.assertIn('frp-fact-reveal', editor)
+                self.assertIn('18080', editor)
+                self.assertNotIn('frp-advanced', editor)
+                status, _, value = request('/frp/client/value?name=demo&field=token', ordinary)
+                self.assertEqual(status, 200)
+                self.assertIn('private-example-token', json.loads(value)['value'])
+                self.assertEqual(request('/frp/client/value?name=demo&field=token', '')[0], 302)
+                status, _, overview = request('/frpc', ordinary)
+                self.assertEqual(status, 200)
+                self.assertIn('demo', overview)
+                self.assertNotIn('private-example-token', overview)
+                self.assertIn('frp-target-card', overview)
+                self.assertIn('frp-card-ip', overview)
+                self.assertNotIn('frp-reveal-ip', overview)
+                self.assertIn('frp-test-connection', overview)
+                csrf = app.access_csrf_token(ordinary, 'frp:test:demo')
+                with patch.object(app, 'frpc_test_connection', return_value=True):
+                    conn = self.connect()
+                    body = urlencode({'name': 'demo', 'csrf': csrf})
+                    conn.request('POST', '/frp/client/test', body=body,
+                                 headers={'Cookie': 'session=' + ordinary,
+                                          'Content-Type': 'application/x-www-form-urlencoded'})
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 200)
+                    self.assertTrue(json.loads(response.read())['connected'])
+                    conn.close()
+                from subprocess import CompletedProcess
+                save = urlencode({'name': 'demo', 'section': 'server', 'server': '203.0.113.42',
+                                  'port': '7000', 'token': '',
+                                  'csrf': app.access_csrf_token(ordinary, 'frp:structured:demo')})
+                with patch.object(app, 'FRP_CONTROL_HELPER', Path(__file__).resolve().parents[1] / 'src/web/frp_control.py'), \
+                     patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                     patch.object(app.subprocess, 'run', return_value=CompletedProcess([], 0)):
+                    conn = self.connect()
+                    conn.request('POST', '/frp/client/structured', body=save,
+                                 headers={'Cookie': 'session=' + ordinary,
+                                          'Content-Type': 'application/x-www-form-urlencoded'})
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 302)
+                    self.assertEqual(response.getheader('Location'),
+                                     '/frp/client/edit?name=demo&msg=done')
+                    response.read()
+                    conn.close()
+            finally:
+                app.destroy_session(ordinary)
+
+    def test_frpc_connection_uses_peer_column_of_established_socket(self):
+        from subprocess import CompletedProcess
+        def command(argv, **kwargs):
+            if argv[0] == 'systemctl':
+                return CompletedProcess(argv, 0, '12345\n', '')
+            return CompletedProcess(argv, 0,
+                                    '0 0 192.0.2.10:33772 203.0.113.42:7000 users:(("frpc",pid=12345,fd=5))\n', '')
+        with patch.object(app.subprocess, 'run', side_effect=command):
+            self.assertTrue(app.frpc_connected('demo', '203.0.113.42', 7000))
+            self.assertFalse(app.frpc_connected('demo', '203.0.113.42', 7001))
+
+    def test_frpc_connection_probe_requires_successful_login_log(self):
+        from subprocess import TimeoutExpired
+        config = {'serverAddr': '203.0.113.42', 'serverPort': 7000,
+                  'auth': {'method': 'token', 'token': 'private-token'}, 'proxies': []}
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(app, 'FRPC_BINARY', Path(directory) / 'frpc'), \
+             patch.object(app, 'frpc_structured', return_value=config), \
+             patch.object(app.subprocess, 'run') as run:
+            app.FRPC_BINARY.touch()
+            run.side_effect = TimeoutExpired('frpc', 7, output=b'login to server success')
+            self.assertTrue(app.frpc_test_connection('demo'))
+            run.side_effect = TimeoutExpired('frpc', 7, output=b'login to the server failed')
+            self.assertFalse(app.frpc_test_connection('demo'))
 
     def test_lucky_credentials_only_on_authenticated_console(self):
         config = Path(TEST_DATA_DIR) / 'lucky.json'
@@ -746,7 +921,8 @@ class ConsoleTest(unittest.TestCase):
         self.assertLess(nav.rfind('href="/"'), nav.rfind('href="/changelog"'))
         self.assertNotIn('href="/speedtest"', nav)
         self.assertIn('href="/speedtest"', body)
-        self.assertIn('href="/frp"', body)
+        self.assertIn('href="/frps"', body)
+        self.assertIn('href="/frpc"', body)
         self.assertIn('/static/auth-history.js', body)
         self.assertIn('aria-current="page" href="/"', nav)
         conn.close()
@@ -987,7 +1163,7 @@ class ConsoleTest(unittest.TestCase):
             # STATIC_FILES are computed from the deployment, not patched here.
             prefix = Path(directory)
             shutil.copy2(repo_static.parent / "src" / "web" / "app.py", prefix / "app.py")
-            for module in ("node_accounting", "node_inventory", "node_state"):
+            for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "frp_control"):
                 shutil.copy2(repo_static.parent / "src" / "web" / f"{module}.py", prefix / f"{module}.py")
             shutil.copytree(repo_static, prefix / "static")
             shutil.copytree(repo_static.parent / "lang", prefix / "lang")
@@ -1042,6 +1218,13 @@ finally:
         self.assertGreaterEqual(rows[0]["hits"], 3)
         self.assertEqual(rows[0]["last_path"], "/c")
         self.assertEqual(rows[0]["last_status"], 302)
+
+    def test_disabling_visitors_stops_http_and_tcp_recording(self):
+        ip = "192.0.2.211"
+        with patch.object(app, "module_feature_enabled", return_value=False):
+            app.log_visit(ip, "GET", "/hidden", 200)
+            app.record_connections({ip: {"ports": {443}, "inbound": True}})
+        self.assertFalse(any(row["ip"] == ip for row in app.recent_visitors()))
 
     def test_visitor_log_trims_to_max_unique_ips(self):
         for i in range(app.MAX_VISITOR_ROWS + 5):
@@ -1266,7 +1449,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         response.read()
         conn.close()
 
-    def test_development_updates_are_visible_without_handoff_details(self):
+    def test_release_changelog_omits_old_development_updates(self):
         self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
         session = self.login()
         with patch.object(app, "VERSION", "dev-test123"), patch.object(app, "VERSION_LABEL", "dev-test123"):
@@ -1276,13 +1459,13 @@ class ChangelogAndVersionTest(unittest.TestCase):
             body = response.read().decode()
             conn.close()
         self.assertEqual(response.status, 200)
-        self.assertIn("<h2>dev-test123</h2>", body)
-        self.assertIn("The login page uses the shared project header.", body)
-        self.assertIn(app.STRINGS["zh_cn"]["development_fallback"], body)
+        self.assertNotIn("<h2>dev-test123</h2>", body)
+        self.assertNotIn("The login page uses the shared project header.", body)
+        self.assertNotIn(app.STRINGS["zh_cn"]["development_fallback"], body)
         self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
         self.assertNotIn("Test deployment (2026-09-28)", body)
 
-    def test_test_candidate_shows_its_exact_identifier_and_notes(self):
+    def test_test_candidate_shows_its_identifier_without_stale_notes(self):
         self.require_log_files("doc/LOG.md")
         self.assertEqual(app.display_version("test-95ca649"), "test-95ca649")
         self.assertEqual(app.display_version("3.0.0"), "v3.0.0")
@@ -1294,8 +1477,9 @@ class ChangelogAndVersionTest(unittest.TestCase):
             body = response.read().decode()
             conn.close()
         self.assertEqual(response.status, 200)
-        self.assertIn("<h2>test-95ca649</h2>", body)
-        self.assertIn("The FRPS / FRPC page shows local server details", body)
+        self.assertIn("test-95ca649", body)
+        self.assertNotIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("v4.0.0", body)
 
     def test_changelog_markdown_is_escaped_not_injected(self):
         # LOG.md is author-controlled, but rendering must still escape tags.
@@ -1617,7 +1801,7 @@ class AuthDisabledTest(unittest.TestCase):
         config = Path(TEST_DATA_DIR) / 'frps-off.toml'
         config.write_text('bindPort = 7000\nauth.token = "auth-off-frps-secret"\n')
         with patch.object(app, 'FRPS_CONFIG', config):
-            for path in ('/', '/frps', '/frp'):
+            for path in ('/', '/frps', '/frp', '/frp/client/config?name=demo'):
                 conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=10)
                 conn.request('GET', path)
                 resp = conn.getresponse()
@@ -1892,7 +2076,7 @@ class ProbePageTest(unittest.TestCase):
         config = Path(TEST_DATA_DIR) / 'frps-public.toml'
         config.write_text('bindPort = 7000\nauth.token = "public-frps-secret"\n')
         with patch.object(app, 'FRPS_CONFIG', config):
-            for path in ('/', '/frps', '/frp'):
+            for path in ('/', '/frps', '/frp', '/frp/client/config?name=demo'):
                 response, body = self.get(path)
                 self.assertNotIn('public-frps-secret', body)
                 if path != '/':
@@ -2322,14 +2506,13 @@ class AnytlsPageTest(unittest.TestCase):
         finally:
             app._run_quiet = original
 
-    def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
+    def test_dashboard_keeps_proxy_card_available_for_installation(self):
         _, body = self.get("/")
         self.assertIn('href="/proxy"', body)
 
         app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
         _, body = self.get("/")
-        self.assertNotIn('href="/proxy"', body,
-                         "a link that can only say 'not installed' is worse than none")
+        self.assertIn('href="/proxy"', body)
 
     def test_page_is_graceful_when_not_installed(self):
         app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
@@ -2645,7 +2828,7 @@ class ProxyPageTest(unittest.TestCase):
                        "/static/qrcode-render.js"):
             self.assertNotIn(f'<script src="{script}"', body)
 
-    def test_nav_and_dashboard_offer_the_page_only_when_installed(self):
+    def test_dashboard_keeps_proxy_card_available_for_installation(self):
         _, body = self.get("/")
         self.assertIn('href="/proxy"', body)
 
@@ -2658,10 +2841,7 @@ class ProxyPageTest(unittest.TestCase):
         app.ANYTLS_CONFIG = Path("/nonexistent/config.json")
         try:
             _, body = self.get("/")
-            self.assertNotIn(
-                'href="/proxy"', body,
-                "a link that can only say 'not installed' is worse than none",
-            )
+            self.assertIn('href="/proxy"', body)
         finally:
             app.ANYTLS_CONFIG = original_anytls_config
 

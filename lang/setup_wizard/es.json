@@ -1,5 +1,5 @@
 {
-  "access_page": "<h1>Acceso al instalador</h1><form method=\"post\" action=\"/login\"><label>Token de acceso<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>Entrar</button></form>",
+  "access_page": "<h1>Acceso al instalador</h1><form method=\"post\" action=\"/login\"><label>Contraseña de configuración<input name=\"token\" type=\"password\" autocomplete=\"off\" required></label><button>Entrar</button></form>",
   "setup_form": "<h1>Selección de configuración</h1><p>Versión instalada: %s; módulos existentes: %s. Conservar mantiene los ajustes registrados y las credenciales de los nodos. Los módulos retirados de la selección no se desinstalan; confirma expresamente su retirada del conjunto de instalación seleccionado.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><h2>Módulos</h2>%s<h2>Protocolos proxy</h2>%s<label>Configuración existente <select name=\"policy\"><option value=\"preserve\">Conservar</option><option value=\"reconfigure\">Reconfigurar (destructivo)</option></select></label><br><label>Escribe DELETE para confirmar la reconfiguración o retirada de un módulo: <input name=\"confirm\"></label><br><p>Desmarcar un protocolo proxy instalado elimina su configuración y credenciales. Confirma cada retirada:</p>%s<label>Protección de la consola con contraseña <select name=\"auth\"><option value=\"1\" %s>Activada</option><option value=\"0\" %s>Desactivada</option></select></label><br><label>Página pública <select name=\"public\"><option value=\"1\" %s>Activada</option><option value=\"0\" %s>Desactivada</option></select></label><br><label>Puerto de consola (vacío = existente o aleatorio) <input name=\"port\" inputmode=\"numeric\"></label><br><label>Idioma <select name=\"language\">%s</select></label><br><label>Puerto de administración de Lucky (predeterminado: 16601) <input name=\"lucky_port\" value=\"%s\" inputmode=\"numeric\"></label><br><label>¿Exponer la administración de Lucky por HTTP público? Las credenciales se transmiten sin cifrar. <select name=\"lucky_public\"><option value=\"0\" %s>No (predeterminado)</option><option value=\"1\" %s>Sí (requiere una confirmación adicional en la terminal del servidor)</option></select></label><br><button>Aplicar selección y continuar la instalación</button></form>",
   "remove_protocol": "<label><input type=\"checkbox\" name=\"remove_protocol\" value=\"%s\">Confirmar la retirada del protocolo %s instalado</label><br>",
   "malformed_selection": "Selección mal formada",
@@ -26,6 +26,21 @@
   "certificate_fingerprint": "Huella SHA256 del certificado:",
   "setup_url": "URL de configuración: %s://%s:%d/",
   "wildcard_note": "Sustituye la dirección comodín anterior por la IP accesible de este servidor.",
-  "access_token": "Token de acceso de un solo uso (introdúcelo en la página, nunca en la URL):",
-  "expires": "El asistente caduca después de %d segundos."
+  "access_token": "Contraseña temporal de configuración (introdúzcala en la página, nunca en la URL):",
+  "expires": "El asistente caduca después de %d segundos.",
+  "first_run_form": "<h1>Configuración inicial</h1><p>Elija qué módulos instalar ahora. Podrá instalar los demás más tarde desde el panel.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>Módulos</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>Protocolos proxy (elija al menos uno si selecciona nodos proxy)</h2><div class=\"wizard-choices\">%s</div></section><label>Idioma<select name=\"language\">%s</select></label><button>Instalar módulos seleccionados</button></form>",
+  "console_required": "La consola web es necesaria para la configuración desde el navegador.",
+  "selection_pending": "La instalación está comenzando. <a href=\"/\">Ver progreso</a>.",
+  "setup_progress": "Instalación en curso. Actualice esta página en breve.",
+  "setup_ready": "Configuración terminada. <a href=\"%s\">Abrir el panel</a>. Use la contraseña de administrador mostrada en la terminal.",
+  "setup_ready_terminal": "Configuración terminada. La dirección y contraseña del panel se muestran en la terminal.",
+  "setup_title": "Configuración de vps-server",
+  "show_password": "Mostrar contraseña",
+  "hide_password": "Ocultar contraseña",
+  "module_web": "Consola web y página pública",
+  "module_iperf3": "Ventana de prueba iperf3",
+  "module_anytls": "Proxy AnyTLS",
+  "module_proxy": "Nodos proxy",
+  "module_frps": "Servidor FRPS",
+  "module_lucky": "Lucky"
 }

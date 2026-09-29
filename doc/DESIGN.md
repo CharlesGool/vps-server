@@ -61,8 +61,24 @@ describe the four previously documented modules.
 
 - [x] 2026-09-19 Per-node traffic accounting and data caps: the five proxy protocols track upload/download independently. The original 1 Mbps response to a cap and the monthly or one-time reset passed live-host tests on 2026-09-27. The current branch adds separate upload/download speed caps, a choice of 1 Mbps throttling or blocking after the traffic cap, recurring cycles measured in days, calendar months or years, and an optional validity duration that blocks traffic on expiry. The new policy rules and state migration have automated checks; the current test host has verified the UI and migration, while live transfer through every policy combination remains unverified.
 - [x] 2026-09-19 Browser-based first-run setup: this checkout uses a short-lived setup wizard in `tools/setup_wizard/setup_wizard.py` when the interactive installer has no `VPSSRV_MODULES` value. It collects language, modules, ports, and authentication choices; the shell installer performs the selected actions only after validating the result. This checkout has not been accepted on a real host.
-- [x] 2026-09-22 Provide read-only FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device, and no client installer or connected-proxy inventory is included.
-- [ ] Add a persistent Web setup and module-management page after this FRP information view. Let the operator freely enable or disable each module and choose whether to install it. Specify dependencies, effect on existing configuration and data, authentication, and safe service transitions before implementation. The existing short-lived first-run wizard only selects modules during installation; it does not provide this later management flow.
+- [x] 2026-09-22 Provide FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device.
+- [x] 2026-09-29 Manage host-local FRP configuration. A signed-in operator can change the FRPS bind port and token, edit and verify local FRPC instances, and start or stop those instances without recent administrator-password verification. The instance page reveals saved IP and token values only on request. A transient root helper performs fixed operations outside the Web unit's read-only system sandbox. It reserves changed local listener ports in `~/apps/PORTS.md` before starting them, releases ended assignments, restores the previous configuration on validation or service failure, and does not modify FRPC instances on other devices. The Modules page now installs a checksum-pinned FRPC binary and `frpc@.service` template separately from FRPS; it determines installation from those files, rather than from the presence of an instance configuration. Uninstall stops instances and retains their configurations.
+- [x] 2026-09-29 Present FRPS and local FRPC controls as operator cards. FRPS uses the node page's inline edit pattern and a service switch. Each FRPC instance has a masked target IP, socket-derived connection indicator, and a separate Test connection action that makes a proxy-free FRPC login with saved credentials. Its page shows the server fields and every proxy's type, local IP, local port, and remote port; editing opens only after the operator chooses Edit, and saving returns to that instance. The field editor accepts only simple token-authenticated TCP/UDP configuration it can represent and leaves unsupported TOML unchanged. A target card represents a host-local instance, and the initial connection indicator requires an established socket owned by that instance's systemd main process to its configured server and port.
+
+FRPC card review, 2026-09-29: the four operator screenshots showed the old connection template, masked facts without a direct reveal, an advanced TOML panel, and a server card without a test action. Chromium on the deployed `test-d09835d` build at 390 and 1440 CSS px checked the instance list, masked and revealed server facts, collapsed and open Edit controls, proxy facts, connection-test states, and a save returning to the same instance. The redundant panels are absent, both reveals load on request, all four proxy facts are visible, and neither viewport has horizontal overflow. The interface retains the project's existing card styling; real mobile hardware and proxy traffic were outside this browser review.
+- [x] 2026-09-29 Extend first-run setup and add protected module management. A fresh interactive install opens a random temporary HTTPS port, prints a one-time setup password, and requires the Web console in its browser selection. After submission, the page shows installation progress and links to the control panel when healthy. The later Settings → Security → Modules page can install an omitted module from the installed, version-matched source payload or enable and disable an installed module. A transient systemd job runs the original installer outside the Web service; its module choices preserve previously installed modules and credentials. Systemd service switches retain configuration; the Web switch affects only the public page so the control panel remains reachable. The first-run flow and later installation are covered by local tests and browser checks, but have not yet been accepted on a clean host.
+
+The first-run listener reserves its random port in `~/apps/PORTS.md` before it
+serves requests, and releases that entry when it closes. The temporary setup
+password admits one browser session and is discarded after the module choice.
+The later module page requires the same short-lived administrator verification
+as other Security Settings. It submits only fixed module names and actions to
+a separate privileged systemd job. The job records progress outside the Web
+service, allowing a Web restart during installation. Disabling a proxy module
+does not remove its nodes or credentials; disabled units remain stopped when
+node controls are used. The iperf3 and public-page switches restart the Web
+service to apply their listener changes. Neither switch removes the control
+panel, which remains available for later changes.
 - [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
 - [x] Complete live-host acceptance of the node controls: display numbers stay contiguous after deletion and restart at 1 when all nodes are removed, while hidden UUIDs preserve identity; names, ports, credentials, and TLS SNI are editable; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. Each node can be disabled without deleting its configuration or traffic record and re-enabled on the same port. The controls passed live-host tests on 2026-09-27.
 - [x] Redesign the full Web UI with one accessible design system across the console, public reachability page, and setup wizard. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
@@ -301,8 +317,8 @@ expiry dates are cleared so their former 1 Mbps meaning cannot silently become
 a block, while identities, counters, caps and schedules remain intact. Adding or deleting a node
 changes the sing-box config, inventory, firewall and nft accounting under one
 lock, with rollback on failure. Newly created TLS nodes get their own
-self-signed certificate. The console uses `font-display: optional` for its
-bundled fonts to avoid a late font swap after first paint.
+self-signed certificate. The console uses a local system font stack so its
+text metrics stay consistent from the first paint through page refreshes.
 
 The console's `/proxy` page renders one section per installed node —
 port, UUID or password (whichever the protocol uses), the shared SNI (read
@@ -492,7 +508,7 @@ The installer does not perform an outbound public-IP lookup.
 
 | Path | Provided by | Purpose |
 |---|---|---|
-| `$PREFIX` | installer, default `/opt/vps-server` | Code, static assets, persisted port files |
+| `$PREFIX` | installer, default `~/apps/vps-server` for the root account | Code, static assets, persisted port files |
 | `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, private-IP allowlist `login-access.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
@@ -509,7 +525,7 @@ reconfigure another.
 
 | Variable | Meaning | Default | Required |
 |---|---|---|---|
-| `PREFIX` | Install root. Passed to `install.sh`/`uninstall.sh`, **not** read from `.env` — the path is needed before there is an install to read a `.env` from | `/opt/vps-server` | no |
+| `PREFIX` | Install root. Passed to `install.sh`/`uninstall.sh`, **not** read from `.env` — the path is needed before there is an install to read a `.env` from | root home `apps/vps-server` | no |
 | `VPSSRV_DATA_DIR` | SQLite + session secret | `$PREFIX/data` | no |
 | `VPSSRV_HOST` | Bind address for all listeners | `0.0.0.0` | no |
 | `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
@@ -577,6 +593,23 @@ exists to avoid.
 
 The visitor database, `portfwd.json` (enabled forwarding rules), and
 `login-access.json` (private-IP allowlist) persist under `$VPSSRV_DATA_DIR`.
+The signed-in Settings page owns the nine-item operational module list.
+Optional installs and uninstalls run through the serialized root helper;
+`data/module-job.json` exposes its state and `data/module-job.log` contains
+the latest installer output, including package-manager failures. Uninstalls
+archive current module configuration under `data/` before removing it.
+Home keeps one switch for each function except Settings. Built-in feature
+flags persist under `data/`; the Port forward flag is reconciled by the running
+Web process so its saved rules are withdrawn or reapplied without invalidating
+console sessions. Disabled feature routes lead to a localized closed page.
+Module action forms accept one submission per page load, and concurrent jobs
+return to the requesting page. The FRPC group
+flag saves the names of running instances before stopping them and restores
+only those instances when re-enabled. The Proxy nodes group controls the
+AnyTLS and proxy units while the node inventory stays intact.
+Home opens FRPS at `/frps` and the FRPC instance list at `/frpc`; the client
+editor remains under `/frp/client/edit`. The former combined `/frp` route
+redirects to the FRPC list for existing bookmarks.
 The console password, selected port, web certificates and
 `.install-state` live under `$PREFIX`; the sing-box module configs and their
 certificates live in `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`.

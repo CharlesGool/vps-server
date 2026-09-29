@@ -82,11 +82,33 @@ See [current state and acceptance limits][local-link-001].
 The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
 and Lucky remain experimental; their behavior has not been accepted on a real
 host for this version.
-The authenticated FRPS / FRPC page shows the local FRPS service, interface
+The authenticated FRPS page shows the local server service, interface
 addresses, and connection settings, with its token and port masked until
-requested. It also provides a copyable FRPC connection template. FRPC runs
-on another device, so this page does not report that device's live status or
-install its client.
+requested. The FRPS port and token can be edited in place and its service can
+be switched on or off. The separate FRPC page lists local client instances as cards with
+a masked IP and a connection indicator based on its established TCP socket.
+Its Test connection button makes a separate FRPC login using the saved server,
+port, and token. The instance page reveals the IP or token on request and
+shows each TCP/UDP proxy's type, local IP, local port, and remote port before
+editing. Saves keep the operator on the instance page, verify the file, and
+roll back on failure. These FRP actions use the signed-in session; recent
+administrator-password verification is reserved for Security Settings actions
+such as password and password-free IP changes. The field editor accepts simple
+token-authenticated TCP/UDP configurations only; it does not alter unsupported
+FRPC TOML. FRPC instances on other devices remain outside this console's live
+status. The Modules page checks the local FRPC executable and
+`frpc@.service` template separately from server-instance configurations. It
+offers Install if either executable or template is absent, and shows a Create
+instance link when FRPC is installed with no instances. Install uses the
+checksum-verified FRPC v0.71.0 release asset and creates no connection or listener.
+The module log records its download and verification. For an offline install,
+download [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64)
+(16,593,080 bytes; SHA-256
+`f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`)
+and place it at `~/apps/vps-server/vendor/frp/frpc` before choosing Install.
+The install job checks the same digest for a downloaded or manually placed file.
+Uninstall stops local FRPC instances, backs up their configurations under
+`data/`, and retains the configuration files for later reinstallation.
 
 **Non-goals:** no ACME or domain names (443 is self-signed on purpose); no
 always-on iperf3; no reverse proxy or containers; the public page never reveals
@@ -111,7 +133,7 @@ maintained, and their code is vendored here rather than absorbed.
 One-line quick install (latest release tag, no configuration variables):
 
 ```bash
-git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 Step by step, with configuration:
@@ -119,15 +141,70 @@ Step by step, with configuration:
 ```bash
 # Clone a release tag; the default branch can contain unpublished changes.
 # List release tags: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v3.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env   # optional — every variable has a working default
 bash deploy/install.sh
 ```
 
 `deploy/install.sh` asks which modules to install, the interface language,
-whether to password-protect the console, and which ports to use. The v3.0.0
+whether to password-protect the console, and which ports to use. The v4.0.0
 tag includes all six selectable modules; frps and Lucky are experimental.
+
+### First setup
+
+The setup flow below is included in v4.0.0. On a new Debian or Ubuntu installation,
+clone the release tag and run `bash deploy/install.sh` as root from a terminal. The
+default application directory is the root account's `~/apps/vps-server`;
+`PREFIX` can select another directory.
+
+The installer opens a temporary HTTPS setup page on a random available port
+and prints its URL, certificate fingerprint, and one-time random setup password
+in the terminal. The page expires after five minutes if no selection is made.
+Sign in there and choose the modules to install; the Web console is required
+for browser setup. Proxy protocols are asked only when proxy nodes are selected.
+After submission, refresh the setup page to see progress. When installation
+finishes and the host has a usable interface address, it links to the control
+panel; otherwise use the address printed in the terminal. The terminal prints
+the persistent control-panel password and address; the one-time setup password
+does not log in to the control panel. The temporary listener closes and
+releases its port after the completion grace period.
+
+From the control panel, open **Settings → Modules**. An ordinary signed-in
+session can manage these operational functions; password verification remains
+required for Security Settings. The module list contains Speed test, iperf3,
+Proxy nodes, FRPS, FRPC, Port forward, Recent visitors, Changelog, and Settings.
+Only separately installable functions show Install or Uninstall. Before
+uninstalling one, the helper stores a private configuration archive under
+`$PREFIX/data`; the latest job output is visible on the Modules page. Optional
+modules install from version-matched files under `$PREFIX/installer-source`.
+Every Home card except Settings has its own switch. The Proxy nodes switch
+controls both AnyTLS and the other proxy protocols; it keeps node records and
+does not start a service with zero enabled nodes. The FRPC switch restores
+instances that were running before it was turned off. Port forwarding keeps
+saved rules when switched off and reapplies enabled rules when switched on.
+An installation runs as an independent systemd job and can briefly restart
+the Web service. If the setup port is unreachable,
+use `VPSSRV_SETUP_PUBLIC=0` with a local SSH tunnel or choose a permitted port
+with `VPSSRV_SETUP_PORT`.
+
+For a host with FRPC installed, open the **FRPS** or **FRPC** card from Home.
+**Edit FRPS** changes its bind port and token; a blank field keeps its current
+value. Updating these values requires updating FRPC instances that connect to
+this FRPS server. A local FRPC card has separate Test connection, Edit, and
+confirmed Delete controls; clicking its background does nothing. Its start
+switch sits beside the instance name. Open Edit to rename the instance or
+change its server and proxy mappings in place. Click a masked IP, port, or
+token to reveal it; opening Edit server loads the saved values. Test
+connection performs a temporary login with the saved values; it does not start
+or change the managed instance. Save validates with `frpc verify` and restarts
+an active instance, then returns to the same instance page. New instances are
+enabled after their first valid save. The page can also start or stop an
+existing instance without deleting its configuration. Changes to local FRPC
+instances do not alter clients on other devices. For a TCP proxy,
+allow its `remotePort` in any active host firewall and cloud security group;
+the editor registers same-host port assignments but does not change cloud
+firewall rules.
 
 **Re-running it upgrades in place.** It detects an existing install, offers to
 keep its configuration, and only asks about settings the installed version did

@@ -14,7 +14,7 @@ import time
 import unittest
 from urllib.parse import urlencode
 
-from tools.setup_wizard.setup_wizard import Wizard, validate
+from tools.setup_wizard.setup_wizard import Wizard, reserved_listener, validate
 
 
 class WizardTests(unittest.TestCase):
@@ -111,6 +111,44 @@ class WizardTests(unittest.TestCase):
         self.assertFalse(self.thread.is_alive())
         self.assertIsNone(self.server.result)
 
+    def test_first_run_requires_console_and_shows_only_selected_modules(self):
+        self.server.installed = False
+        self.server.previous = ''
+        cookie = self.login()
+        page = self.request('GET', '/', cookie=cookie)[1]
+        self.assertIn('First setup', page)
+        self.assertIn('value="web" checked', page)
+        self.assertNotIn('Existing configuration', page)
+        fields = {'csrf': self.server.csrf, 'module': ['web', 'frps'],
+                  'policy': 'preserve', 'auth': '1', 'public': '1'}
+        self.assertEqual(self.request('POST', '/apply', fields, cookie)[0], 200)
+        self.assertEqual(self.server.result[0], 'web,frps')
+
+    def test_first_run_can_open_completed_console_link(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ready = Path(directory) / 'ready'
+            self.server.ready_file = ready
+            self.server.installed = False
+            self.server.previous = ''
+            self.server.previous_protocols = ''
+            cookie = self.login()
+            fields = {'csrf': self.server.csrf, 'module': ['web'], 'policy': 'preserve'}
+            self.assertEqual(self.request('POST', '/apply', fields, cookie)[0], 200)
+            self.thread.join(timeout=2)
+            self.assertFalse(self.thread.is_alive())
+            completion = threading.Thread(target=self.server.serve_completion)
+            completion.start()
+            try:
+                self.assertIn('Installation in progress', self.request('GET', '/', cookie=cookie)[1])
+                ready.write_text('http://192.168.1.20:31234/\n')
+                page = self.request('GET', '/', cookie=cookie)[1]
+                self.assertIn('href="http://192.168.1.20:31234/"', page)
+                self.assertNotIn('192.168.1.20:31234', self.request('GET', '/')[1])
+            finally:
+                self.server.expires = 0
+                completion.join(timeout=2)
+                self.assertFalse(completion.is_alive())
+
     def test_live_port_collision_rejected(self):
         with self.assertRaises(OSError):
             Wizard(('127.0.0.1', self.port))
@@ -171,9 +209,32 @@ class FrpsInstallerTests(unittest.TestCase):
 
 class FrpsWizardTests(unittest.TestCase):
     def test_frps_selected_without_client_or_web(self):
-        self.assertEqual(validate({'modules': ['frps']}, '', False)[0], 'frps')
+        self.assertRaisesRegex(ValueError, 'Web console', validate,
+                               {'modules': ['frps']}, '', False)
+        self.assertEqual(validate({'modules': ['web,frps']}, '', False)[0], 'web,frps')
         self.assertRaisesRegex(ValueError, 'DELETE', validate,
                                {'modules': ['web']}, 'web,frps', True)
+
+
+class SetupPortTests(unittest.TestCase):
+    def test_random_setup_port_is_registered_only_while_listening(self):
+        with tempfile.TemporaryDirectory() as directory:
+            registry = Path(directory) / 'PORTS.md'
+            with reserved_listener('127.0.0.1', 0, directory) as server:
+                port = server.server_address[1]
+                self.assertGreaterEqual(port, 20000)
+                self.assertLess(port, 60000)
+                self.assertIn(f'| {port} | vps-server setup | 127.0.0.1 |', registry.read_text())
+            self.assertNotIn(f'| {port} |', registry.read_text())
+
+    def test_setup_port_rejects_active_udp_assignment(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as held:
+            held.bind(('0.0.0.0', 0))
+            port = held.getsockname()[1]
+            with self.assertRaises(OSError):
+                with reserved_listener('127.0.0.1', port, directory):
+                    pass
 
 
 class InstallerNonTtyTests(unittest.TestCase):

@@ -26,6 +26,21 @@
   "certificate_fingerprint": "بصمة الشهادة SHA256:",
   "setup_url": "رابط الإعداد: %s://%s:%d/",
   "wildcard_note": "استبدل العنوان العام أعلاه بعنوان IP يمكن الوصول إليه لهذا الخادم.",
-  "access_token": "رمز وصول لمرة واحدة (أدخله في الصفحة، وليس في الرابط URL):",
-  "expires": "تنتهي صلاحية معالج الإعداد بعد %d ثانية."
+  "access_token": "كلمة مرور إعداد لمرة واحدة (أدخلها في الصفحة، وليس في الرابط):",
+  "expires": "تنتهي صلاحية معالج الإعداد بعد %d ثانية.",
+  "first_run_form": "<h1>الإعداد الأولي</h1><p>اختر الوحدات التي تريد تثبيتها الآن. يمكنك تثبيت الباقي لاحقًا من لوحة التحكم.</p><form method=\"post\" action=\"/apply\"><input type=\"hidden\" name=\"csrf\" value=\"%s\"><input type=\"hidden\" name=\"policy\" value=\"preserve\"><input type=\"hidden\" name=\"auth\" value=\"1\"><input type=\"hidden\" name=\"public\" value=\"1\"><h2>الوحدات</h2><div class=\"wizard-choices\">%s</div><section data-proxy-protocols><h2>بروتوكولات الوكيل (اختر واحدًا على الأقل عند اختيار عقد الوكيل)</h2><div class=\"wizard-choices\">%s</div></section><label>اللغة<select name=\"language\">%s</select></label><button>تثبيت الوحدات المحددة</button></form>",
+  "console_required": "لوحة الويب مطلوبة للإعداد عبر المتصفح.",
+  "selection_pending": "يبدأ التثبيت الآن. <a href=\"/\">عرض التقدم</a>.",
+  "setup_progress": "التثبيت جارٍ. حدّث هذه الصفحة بعد قليل.",
+  "setup_ready": "اكتمل الإعداد. <a href=\"%s\">افتح لوحة التحكم</a>. استخدم كلمة مرور المدير المعروضة في الطرفية.",
+  "setup_ready_terminal": "اكتمل الإعداد. يظهر عنوان لوحة التحكم وكلمة المرور في طرفية التثبيت.",
+  "setup_title": "إعداد vps-server",
+  "show_password": "إظهار كلمة المرور",
+  "hide_password": "إخفاء كلمة المرور",
+  "module_web": "لوحة الويب والصفحة العامة",
+  "module_iperf3": "نافذة اختبار iperf3",
+  "module_anytls": "وكيل AnyTLS",
+  "module_proxy": "عقد الوكيل",
+  "module_frps": "خادم FRPS",
+  "module_lucky": "Lucky"
 }

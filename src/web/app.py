@@ -19,6 +19,7 @@ Standard-library only (see doc/LOG.md#decisions). Run with `python3 app.py`.
 """
 
 import base64
+import fcntl
 import hmac
 import html
 import http.cookies
@@ -69,6 +70,14 @@ if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_f
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
+from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
+from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
+from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
+from module_manager import installed_modules, save_status as save_module_status
+from module_manager import status_path as module_status_path
+from frp_control import (client_names as frpc_names, client_path as frpc_path,
+                         client_summary as frpc_summary, structured_client as frpc_structured,
+                         build_client as frpc_build)
 
 
 def _read_version():
@@ -180,7 +189,9 @@ TLS_KEY = os.environ.get("VPSSRV_TLS_KEY", "")
 # redirecting port 80 would destroy the very thing being measured — whether 80
 # itself is reachable — by turning a successful plain-HTTP fetch into a hop to
 # a port that may well be blocked.
-PUBLIC_ENABLED = os.environ.get("VPSSRV_PUBLIC_ENABLE", "1") == "1"
+PUBLIC_MODULE_SWITCH = BASE_DIR / "data" / "web-public-enabled"
+PUBLIC_ENABLED = (PUBLIC_MODULE_SWITCH.read_text().strip() == "1" if PUBLIC_MODULE_SWITCH.exists()
+                  else os.environ.get("VPSSRV_PUBLIC_ENABLE", "1") == "1")
 PUBLIC_HTTP_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTP_PORT", "80"))
 PUBLIC_HTTPS_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTPS_PORT", "443"))
 
@@ -221,7 +232,9 @@ LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30")
 # unauthenticated public `iperf3 -s` lets any stranger saturate the uplink for
 # as long as they like, and nothing about the host surfaces that it is
 # happening. See doc/LOG.md#decisions (2026-09-12).
-IPERF_ENABLED = os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1"
+IPERF_MODULE_SWITCH = BASE_DIR / "data" / "iperf3-enabled"
+IPERF_ENABLED = (IPERF_MODULE_SWITCH.read_text().strip() == "1" if IPERF_MODULE_SWITCH.exists()
+                 else os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1")
 IPERF_PORT = int(os.environ.get("VPSSRV_IPERF_PORT", "5201"))
 IPERF_PORT_FILE = DATA_DIR / "iperf-port.txt"
 IPERF_DEFAULT_MINUTES = int(os.environ.get("VPSSRV_IPERF_DEFAULT_MINUTES", "10"))
@@ -231,7 +244,11 @@ IPERF_MAX_MINUTES = int(os.environ.get("VPSSRV_IPERF_MAX_MINUTES", "60"))
 # timed loan of the uplink — it is meant to still be there after a restart or
 # a reboot. See PortForwardManager for how that is reconciled with rules
 # living in the kernel, which remembers nothing on its own.
-PORTFWD_ENABLED = os.environ.get("VPSSRV_PORTFWD_ENABLE", "1") == "1"
+PORTFWD_ALLOWED = os.environ.get("VPSSRV_PORTFWD_ENABLE", "1") == "1"
+
+
+def portfwd_enabled():
+    return PORTFWD_ALLOWED and module_feature_enabled(BASE_DIR, "portfwd")
 PORTFWD_MAX_RULES = int(os.environ.get("VPSSRV_PORTFWD_MAX_RULES", "20"))
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -477,6 +494,25 @@ def _run_quiet(cmd):
         ).returncode == 0
     except OSError:
         return False
+
+
+def module_states(installed=None):
+    installed = installed if installed is not None else installed_modules(BASE_DIR)
+    states = {
+        "speedtest": module_feature_enabled(BASE_DIR, "speedtest"),
+        "iperf3": "iperf3" in installed and IPERF_ENABLED,
+        "proxy_nodes": any(_run_quiet(["systemctl", "is-enabled", "--quiet", MANAGED_UNITS[item]])
+                           for item in ("proxy", "anytls") if item in installed),
+        "frps": "frps" in installed and _run_quiet(
+            ["systemctl", "is-enabled", "--quiet", MANAGED_UNITS["frps"]]),
+        "frpc": any(_run_quiet(["systemctl", "is-active", "--quiet", f"frpc@{name}.service"])
+                    for name in frpc_names()),
+        "portfwd": portfwd_enabled(),
+        "visitors": module_feature_enabled(BASE_DIR, "visitors"),
+        "changelog": module_feature_enabled(BASE_DIR, "changelog"),
+    }
+    states["frp"] = states["frps"] or states["frpc"]
+    return states
 
 
 def firewall_backend():
@@ -854,7 +890,7 @@ class PortForwardManager:
         return reserved
 
     def add(self, protocol, public_port, target_host, target_port, label):
-        if not PORTFWD_ENABLED:
+        if not portfwd_enabled():
             return None, "portfwd_module_disabled"
         with self._lock:
             if len(self._rules) >= self._max_rules:
@@ -938,6 +974,45 @@ class PortForwardManager:
 
 
 PORTFWD = PortForwardManager(PORTFWD_STATE_FILE, PORTFWD_MAX_RULES)
+PORTFWD_SWITCH_FILE = DATA_DIR / "portfwd-enabled"
+PORTFWD_APPLIED_FILE = DATA_DIR / "portfwd-applied.json"
+
+
+def portfwd_switch_revision():
+    try:
+        state = PORTFWD_SWITCH_FILE.stat()
+        return [state.st_ino, state.st_mtime_ns]
+    except FileNotFoundError:
+        return [0, 0]
+
+
+def publish_portfwd_state(enabled):
+    target = PORTFWD_APPLIED_FILE
+    temporary = target.with_suffix(".tmp")
+    revision = portfwd_switch_revision()
+    temporary.write_text(json.dumps({"enabled": enabled, "revision": revision}) + "\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, target)
+    return revision
+
+
+def watch_portfwd_switch(stop_event):
+    active = portfwd_enabled()
+    revision = publish_portfwd_state(active)
+    while not stop_event.wait(0.2):
+        desired = portfwd_enabled()
+        if desired != active:
+            try:
+                if desired:
+                    PORTFWD.load()
+                else:
+                    PORTFWD.shutdown()
+            except Exception as exc:
+                print(f"Port forward switch reconciliation failed: {exc}", file=sys.stderr)
+                continue
+            active = desired
+        if portfwd_switch_revision() != revision:
+            revision = publish_portfwd_state(active)
 
 # ---------------------------------------------------------------------------
 # anytls node, read-only
@@ -1267,6 +1342,8 @@ def proxy_nodes():
 
 FRPS_CONFIG = Path(os.environ.get('VPSSRV_FRPS_CONFIG', '/etc/vps-server-frps/frps.toml'))
 FRPS_SERVICE = 'vps-server-frps.service'
+FRPC_BINARY = Path(os.environ.get('VPSSRV_FRPC_BIN', '/usr/local/bin/frpc'))
+FRP_CONTROL_HELPER = BASE_DIR / 'frp_control.py'
 LUCKY_CONFIG = Path(os.environ.get('VPSSRV_LUCKY_CONFIG', '/etc/vps-server-lucky/config.json'))
 LUCKY_SERVICE = 'vps-server-lucky.service'
 
@@ -1290,13 +1367,75 @@ def frps_node():
         text = FRPS_CONFIG.read_text()
         fields = dict(re.findall(r'^([\w.]+)\s*=\s*(.+?)\s*$', text, re.M))
         port = int(fields['bindPort'])
-        token = fields['auth.token'].strip('"')
+        token = json.loads(fields['auth.token'])
         if not 1 <= port <= 65535 or not token:
             return None
         return {'address': fields.get('bindAddr', '"0.0.0.0"').strip('"'),
                 'port': port, 'token': token}
-    except (OSError, ValueError, KeyError):
+    except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+def frpc_connected(name, server, port):
+    """Check this instance's established TCP socket to its configured server."""
+    try:
+        pid_text = subprocess.run(['systemctl', 'show', '-P', 'MainPID', f'frpc@{name}.service'],
+                                  capture_output=True, text=True, timeout=3, check=True).stdout.strip()
+        pid = int(pid_text)
+        if pid <= 0 or not server or not port:
+            return False
+        output = subprocess.run(['ss', '-Htnp', 'state', 'established'], capture_output=True,
+                                text=True, timeout=3, check=True).stdout
+        destinations = {address[4][0] for address in socket.getaddrinfo(server, port, type=socket.SOCK_STREAM)}
+        for line in output.splitlines():
+            if f'pid={pid},' not in line:
+                continue
+            peer = line.split()[3].rsplit(':', 1)
+            if len(peer) == 2 and peer[1] == str(port) and peer[0].strip('[]') in destinations:
+                return True
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+        pass
+    return False
+
+
+_frpc_probe_lock = threading.Lock()
+
+
+def frpc_test_connection(name):
+    """Make a separate proxy-free FRPC login using the saved server credentials."""
+    if not _frpc_probe_lock.acquire(blocking=False):
+        return None
+    try:
+        config = frpc_structured(name)
+        if config is None or not FRPC_BINARY.is_file():
+            return False
+        content = frpc_build(config['serverAddr'], config['serverPort'], config['auth']['token'], [])
+        with tempfile.TemporaryDirectory(prefix='vps-frpc-probe-') as directory:
+            path = Path(directory) / 'frpc.toml'
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+                stream.write(content)
+            try:
+                result = subprocess.run([str(FRPC_BINARY), '-c', str(path)],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        timeout=7, check=False)
+                output = result.stdout or b''
+            except subprocess.TimeoutExpired as exc:
+                output = exc.stdout or b''
+        return b'login to server success' in output
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        return False
+    finally:
+        _frpc_probe_lock.release()
+
+
+def masked_frpc_ip(address):
+    try:
+        parsed = ipaddress.ip_address(address)
+        parts = str(parsed).split('.' if parsed.version == 4 else ':')
+        return '.'.join(parts[:2] + ['*', '*']) if parsed.version == 4 else ':'.join(parts[:4]) + ':…'
+    except ValueError:
+        return '••••••'
 
 
 def proxy_running():
@@ -1744,6 +1883,8 @@ def _trim(conn):
 
 
 def log_visit(ip, method, path, status):
+    if not module_feature_enabled(BASE_DIR, "visitors"):
+        return
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with _db_lock, sqlite3.connect(DB_FILE) as conn:
         conn.execute(
@@ -1769,7 +1910,7 @@ def record_connections(observations):
     `observations` maps an IP to {"ports": set, "inbound": bool}. These rows
     carry no method/path — the peer did not necessarily speak HTTP.
     """
-    if not observations:
+    if not observations or not module_feature_enabled(BASE_DIR, "visitors"):
         return
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with _db_lock, sqlite3.connect(DB_FILE) as conn:
@@ -1894,7 +2035,8 @@ def observed_connections():
 def connection_poller(stop_event):
     while not stop_event.is_set():
         try:
-            record_connections(observed_connections())
+            if module_feature_enabled(BASE_DIR, "visitors"):
+                record_connections(observed_connections())
         except Exception as exc:  # never let the poller take the server down
             print(_log_text('log_connection_poller', error=exc), file=sys.stderr)
         stop_event.wait(CONN_POLL_SECONDS)
@@ -2059,10 +2201,12 @@ def render_theme_menu(lang):
 def render_page(title, body, lang, active=None, show_nav=True, password_authenticated=False,
                 ip_authenticated=False, bare=False, back_href=None):
     t = STRINGS[lang]
-    favicon = ('login' if bare else 'security' if back_href == '/settings' else
+    favicon = ('login' if bare else 'modules' if title == t['modules_heading'] else
+               'security' if back_href == '/settings' else
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
                                     'visitors', 'changelog', 'settings') else
-               'frp' if title == t['frp_heading'] else 'lucky' if title == 'Lucky' else 'home')
+               'frp' if title in (t['frp_heading'], t['frps_heading'], t['frp_client_heading'])
+               or back_href in ('/frps', '/frpc') else 'lucky' if title == 'Lucky' else 'home')
     version_tag = f'<a class="version" href="/changelog">{html.escape(VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
@@ -2108,7 +2252,11 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
         """
     if show_nav and active != 'home':
         destination = back_href or '/'
-        destination_label = t['settings'] if destination == '/settings' else t['dashboard']
+        destination_label = (t['access_security'] if destination == '/settings/security' else
+                             t['settings'] if destination == '/settings' else
+                             t['frps_heading'] if destination == '/frps' else
+                             t['frp_client_heading'] if destination == '/frpc' else
+                             t['frp_heading'] if destination == '/frp' else t['dashboard'])
         body = (f'<a class="page-back" href="{html.escape(destination, quote=True)}">'
                 f'{html.escape(t["back_to"].format(destination=destination_label))}</a>' + body)
     history_guard = ('<script src="/static/auth-history.js"></script>'
@@ -2126,6 +2274,7 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/theme.js" defer></script>
 <script src="/static/password-fields.js" defer></script>
+<script src="/static/reference-select.js" defer></script>
 </head>
 <body{' class="login-page"' if bare else ''}>
 {nav}
@@ -2149,12 +2298,16 @@ STATIC_FILES = {
     "/static/password-fields.js": ("application/javascript", BASE_DIR / "static" / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
     "/static/settings-sections.js": ("application/javascript", BASE_DIR / "static" / "settings-sections.js"),
+    "/static/module-status.js": ("application/javascript", BASE_DIR / "static" / "module-status.js"),
+    "/static/module-controls.js": ("application/javascript", BASE_DIR / "static" / "module-controls.js"),
+    "/static/reference-select.js": ("application/javascript", BASE_DIR / "static" / "reference-select.js"),
+    "/static/frp-editor.js": ("application/javascript", BASE_DIR / "static" / "frp-editor.js"),
     "/static/layout-motion.js": ("application/javascript", BASE_DIR / "static" / "layout-motion.js"),
     "/static/auth-history.js": ("application/javascript", BASE_DIR / "static" / "auth-history.js"),
     "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", BASE_DIR / "static" / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "frp", "lucky", "login")},
+                    "changelog", "settings", "security", "modules", "frp", "lucky", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-700.woff2"),
@@ -2211,6 +2364,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     def send_response(self, code, message=None):
         self._last_status = code
         super().send_response(code, message)
+        if getattr(self, "_close_after_response", False):
+            self.send_header("Connection", "close")
 
     def end_headers(self):
         # Once the headers are out, the response is committed: anything that
@@ -2311,6 +2466,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         path = parsed.path
         self._last_status = 200
         self._body_started = False
+        # A rejected form can leave its POST body unread. Never parse those
+        # bytes as the next HTTP/1.1 request on the same connection.
+        self._close_after_response = method == "POST" and path != "/speedtest/empty"
+        if self._close_after_response:
+            self.close_connection = True
         try:
             self._route(method, path, parsed)
         except (BrokenPipeError, ConnectionResetError):
@@ -2374,20 +2534,45 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
 
+        page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
+                        "/portfwd": "portfwd", "/visitors": "visitors",
+                        "/changelog": "changelog"}
+        if method == "GET" and path in page_modules:
+            module = page_modules[path]
+            installed = installed_modules(BASE_DIR)
+            managed_present = (module == "iperf3" and "iperf3" in installed or
+                               module == "proxy_nodes" and bool({"proxy", "anytls"} & installed) or
+                               module == "frp" and (bool({"frps", "frpc"} & installed) or bool(frpc_names())))
+            if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
+                return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
+        if method == "GET" and path == "/closed":
+            return self.page_module_closed(lang, query_lang, parsed)
+        for feature, prefix in (("speedtest", "/speedtest"), ("visitors", "/visitors"),
+                                ("changelog", "/changelog"), ("portfwd", "/portfwd")):
+            enabled = portfwd_enabled() if feature == "portfwd" else module_feature_enabled(BASE_DIR, feature)
+            if path.startswith(prefix + "/") and not enabled:
+                return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+
         if path == "/settings/verify" and method == "GET":
-            return self.page_security_verify(lang)
+            next_page = parse_qs(parsed.query).get("next", [""])[0]
+            return self.page_security_verify(lang, next_page="frp" if next_page == "frp" else "")
         if path == "/settings/verify" and method == "POST":
             return self.handle_security_verify(lang)
         security_path = path == "/settings/security" or path in (
             "/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle", "/settings/password")
         if security_path and not security_settings_valid(self.get_cookie("session")):
             if method == "GET":
-                return self.redirect("/settings/verify", {"Cache-Control": "no-store"})
+                target = "/settings/verify?next=frp" if path.startswith("/frp/") else "/settings/verify"
+                return self.redirect(target, {"Cache-Control": "no-store"})
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         if method == "GET" and path == "/settings":
             return self.page_preferences(lang, query_lang)
         if method == "GET" and path == "/settings/security":
             return self.page_settings(lang, query_lang, parsed)
+        if method == "GET" and path == "/settings/modules":
+            return self.page_modules(lang, query_lang)
+        if method == "POST" and path == "/settings/modules/action":
+            return self.handle_module_action(lang)
         if method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle",
                                          "/settings/password"):
             return self.handle_settings_post(path)
@@ -2414,9 +2599,27 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if method == "GET" and path == "/lucky" and AUTH_ENABLED:
             return self.page_lucky(lang, query_lang)
         if method == "GET" and path == "/frps" and AUTH_ENABLED:
-            return self.redirect('/frp')
-        if method == "GET" and path == "/frp" and AUTH_ENABLED:
             return self.page_frps(lang, query_lang)
+        if method == "GET" and path == "/frpc" and AUTH_ENABLED:
+            return self.page_frpc(lang, query_lang)
+        if method == "GET" and path == "/frp" and AUTH_ENABLED:
+            target = '/frps?edit=server' if parse_qs(parsed.query).get('edit') == ['server'] else '/frpc'
+            return self.redirect(target, {'Cache-Control': 'no-store'})
+        if method == "GET" and path == "/frp/server/edit" and AUTH_ENABLED:
+            return self.page_frps_edit(lang)
+        if method == "GET" and path == "/frp/client/edit" and AUTH_ENABLED:
+            return self.page_frpc_edit(lang, parsed)
+        if method == "GET" and path == "/frp/client/address" and AUTH_ENABLED:
+            return self.frpc_address_value(parsed)
+        if method == "GET" and path == "/frp/client/value" and AUTH_ENABLED:
+            return self.frpc_private_value(parsed)
+        if method == "POST" and path == "/frp/client/test" and AUTH_ENABLED:
+            return self.handle_frpc_test()
+        if method == "POST" and path in ("/frp/server/save", "/frp/client/toggle",
+                                         "/frp/client/card-toggle", "/frp/client/rename",
+                                         "/frp/client/delete", "/frp/server/toggle",
+                                         "/frp/client/structured") and AUTH_ENABLED:
+            return self.handle_frp_edit(path, lang)
         if method == "GET" and path == "/proxy":
             if not AUTH_ENABLED:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
@@ -2566,7 +2769,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   f"Max-Age={SESSION_TTL_SECONDS}")
         return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
-    def page_security_verify(self, lang, error=None, status=200):
+    def page_security_verify(self, lang, error=None, status=200, next_page=""):
         t = STRINGS[lang]
         token = self.get_cookie("session")
         password_field = render_password_field(
@@ -2578,6 +2781,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           {f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ''}
           <form class="access-verify-form" method="post" action="/settings/verify" autocomplete="off">
             <input type="hidden" name="csrf" value="{access_csrf_token(token, 'verify')}">
+            <input type="hidden" name="next" value="{html.escape(next_page, quote=True)}">
             {password_field}
             <button type="submit">{html.escape(t['access_verify_button'])}</button>
           </form></section></div>'''
@@ -2597,27 +2801,31 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 raise ValueError
             form = parse_qs(self.rfile.read(length).decode("utf-8"),
                             keep_blank_values=True, strict_parsing=True)
-            if set(form) != {"csrf", "password"} or any(len(values) != 1 for values in form.values()):
+            if set(form) not in ({"csrf", "password"}, {"csrf", "password", "next"}) or any(len(values) != 1 for values in form.values()):
                 raise ValueError
         except (UnicodeError, ValueError):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if not hmac.compare_digest(form["csrf"][0], access_csrf_token(token, "verify")):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        next_page = form.get("next", [""])[0]
+        if next_page not in ("", "frp"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         ip = self.client_address[0]
         allowed, retry_after = LOGIN_LIMITER.check(ip)
         if not allowed:
             return self.page_security_verify(lang,
                                              error=STRINGS[lang]["login_locked"].format(seconds=retry_after),
-                                             status=429)
+                                             status=429, next_page=next_page)
         if not hmac.compare_digest(form["password"][0], ADMIN_PASSWORD):
             LOGIN_LIMITER.record_failure(ip)
-            return self.page_security_verify(lang, error=STRINGS[lang]["wrong_password"], status=401)
+            return self.page_security_verify(lang, error=STRINGS[lang]["wrong_password"], status=401, next_page=next_page)
         LOGIN_LIMITER.record_success(ip)
         destroy_session(token)
         new_token = create_session(security_verified=True)
         cookie = (f"session={new_token}; Path=/; HttpOnly; SameSite=Strict; "
                   f"Max-Age={SESSION_TTL_SECONDS}")
-        return self.redirect("/settings/security", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
+        return self.redirect("/frpc" if next_page == "frp" else "/settings/security",
+                             {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
     def handle_logout(self):
         token = self.get_cookie("session")
@@ -2651,6 +2859,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
           <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['settings'], quote=True)}">
             <a href="#settings-appearance" aria-current="location">{esc(t['theme_label'])}</a>
             <a href="#settings-language">{esc(t['login_language'])}</a>
+            <a href="#settings-modules">{esc(t['modules_heading'])}</a>
             <a href="#settings-security">{esc(t['access_security'])}</a>
           </nav><div class="settings-content">
             <section id="settings-appearance" class="card access-card preferences-card"><h2>{esc(t['theme_label'])}</h2>
@@ -2661,6 +2870,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             </section>
             <section id="settings-language" class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
+            </section>
+            <section id="settings-modules" class="card access-card preferences-card"><h2>{esc(t['modules_heading'])}</h2>
+              <p>{esc(t['modules_note'])}</p><a class="module-manage" href="/settings/modules">{esc(t['modules_manage'])}</a>
             </section>
             <section id="settings-security" class="card access-card preferences-card preferences-security-card">
               <span class="preferences-security-heading">{ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>
@@ -2790,67 +3002,219 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 key = "access_ip_error"
         return self.redirect(f"/settings/security?msg={key}", {"Cache-Control": "no-store"})
 
+    def page_modules(self, lang, query_lang):
+        t = STRINGS[lang]
+        esc = html.escape
+        token = self.get_cookie("session")
+        installed = installed_modules(BASE_DIR)
+        job = {}
+        try:
+            job = json.loads(module_status_path(BASE_DIR).read_text())
+        except (OSError, ValueError):
+            pass
+        busy = job.get("state") in ("queued", "running") and time.time() - job.get("at", 0) < 900
+        catalogue = (
+            ("speedtest", t["speedtest"], None),
+            ("iperf3", t["iperf"], "iperf3"),
+            ("proxy_nodes", t["proxy"], "proxy_nodes"),
+            ("frps", "FRPS", "frps"),
+            ("frpc", "FRPC", "frpc"),
+            ("portfwd", t["portfwd"], None),
+            ("visitors", t["visitors"], None),
+            ("changelog", t["changelog"], None),
+            ("settings", t["settings"], None),
+        )
+        cards = []
+        for module, title, installable in catalogue:
+            if module == "proxy_nodes":
+                present = {"proxy", "anytls"} <= installed
+                enabled = present and any(_run_quiet(["systemctl", "is-enabled", "--quiet", MANAGED_UNITS[item]])
+                                          for item in ("proxy", "anytls") if item in installed)
+            elif module == "frpc":
+                present = module in installed
+                names = frpc_names() if present else []
+                enabled = any(_run_quiet(["systemctl", "is-active", "--quiet", f"frpc@{name}.service"])
+                              for name in names)
+            elif module == "iperf3":
+                present = module in installed
+                enabled = present and IPERF_ENABLED
+            elif module == "frps":
+                present = module in installed
+                enabled = present and _run_quiet(["systemctl", "is-enabled", "--quiet", MANAGED_UNITS[module]])
+            elif module == "settings":
+                present = enabled = True
+            else:
+                present = True
+                enabled = module_feature_enabled(BASE_DIR, module)
+            status = (t["module_not_installed"] if not present else
+                      t["module_no_instances"] if module == "frpc" and not names else
+                      t["module_enabled"] if enabled else t["module_disabled"])
+            control = ""
+            if installable:
+                action = "uninstall" if present else "install"
+                label = t["module_uninstall"] if present else t["module_install"]
+                confirm = f' data-confirm="{esc(t["module_uninstall_confirm"].format(name=title), quote=True)}"' if present else ""
+                control = (f'<form method="post" action="/settings/modules/action">'
+                           f'<input type="hidden" name="module" value="{module}">'
+                           f'<input type="hidden" name="action" value="{action}">'
+                           f'<input type="hidden" name="csrf" value="{access_csrf_token(token, "module:" + module + ":" + action)}">'
+                           f'<button type="submit" class="{"danger" if present else ""}"{confirm} '
+                           f'{"disabled" if busy else ""}>{esc(label)}</button></form>')
+            if module == "frpc" and present and not names:
+                control += f'<a class="button-link" href="/frp/client/edit">{esc(t["frp_new_client"])}</a>'
+            cards.append(f'<section class="module-card"><div><h2>{esc(title)}</h2>'
+                         f'<p>{esc(status)}</p></div>{control}</section>')
+        notice = (f'<p class="module-notice" role="status">{esc(t["module_job_" + job["state"]])}: '
+                  f'{esc(t.get("module_" + job.get("module", ""), job.get("module", "").upper()))}</p>'
+                  if job.get("state") in ("queued", "running", "done", "failed") else "")
+        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy else ''
+        try:
+            log = module_log_path(BASE_DIR).read_text(encoding="utf-8", errors="replace")[-30000:]
+        except OSError:
+            log = ""
+        log_html = (f'<section class="module-log"><h2>{esc(t["module_log"])}</h2>'
+                    f'<pre role="log">{esc(log)}</pre></section>') if log else ""
+        body = (f'<div class="card module-page"><h1>{esc(t["modules_heading"])}</h1>'
+                f'<p>{esc(t["modules_note"])}</p>{notice}'
+                f'<div class="module-grid">{"".join(cards)}</div>{log_html}</div>'
+                f'<script src="/static/module-controls.js" defer></script>'
+                f'{refresh_script}')
+        return self.send_html(200, self.render_page(t["modules_heading"], body, lang,
+                                                    active="settings", back_href="/settings"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def handle_module_action(self, lang):
+        esc = html.escape
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+            if not 0 < length <= 1024:
+                raise ValueError
+            form = parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True)
+            if set(form) not in ({"module", "action", "csrf"}, {"module", "action", "csrf", "return"}) or any(len(v) != 1 for v in form.values()):
+                raise ValueError
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        module, action = form["module"][0], form["action"][0]
+        allowed = ("iperf3", "proxy_nodes", "frps", "frpc") if action in ("install", "uninstall") else (
+            "iperf3", "proxy_nodes", "frps", "frpc") + MANAGED_FEATURES
+        if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        expected = access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
+        if not hmac.compare_digest(form["csrf"][0], expected):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        destination = "/" if form.get("return", [""])[0] == "home" else "/settings/modules"
+        installed = installed_modules(BASE_DIR)
+        present = ({"proxy", "anytls"} <= installed if module == "proxy_nodes" else module in installed)
+        if action in ("install", "uninstall") and (action == "install") == present:
+            return self.redirect(destination, {"Cache-Control": "no-store"})
+        install_source = (BASE_DIR / "installer-source" / "deploy" / "systemd" / "frpc@.service" if module == "frpc" else
+                          BASE_DIR / "installer-source" / "deploy" / "install.sh")
+        if action == "install" and not install_source.is_file():
+            return self.send_html(503, esc(STRINGS[lang]["module_source_missing"]),
+                                  {"Cache-Control": "no-store"})
+        helper = BASE_DIR / "module_manager.py"
+        if not helper.is_file() or not shutil.which("systemd-run"):
+            return self.send_html(503, esc(STRINGS[lang]["module_source_missing"]),
+                                  {"Cache-Control": "no-store"})
+        command = ["systemd-run", "--collect", "--unit=vps-server-module-job",
+                   "/usr/bin/python3", str(helper), action, module, str(BASE_DIR)]
+        with (DATA_DIR / "module-request.lock").open("a+b") as request_lock:
+            fcntl.flock(request_lock, fcntl.LOCK_EX)
+            try:
+                job = json.loads(module_status_path(BASE_DIR).read_text())
+                if job.get("state") in ("queued", "running") and time.time() - job.get("at", 0) < 900:
+                    return self.redirect(destination, {"Cache-Control": "no-store"})
+            except (OSError, ValueError, TypeError):
+                pass
+            if module in MANAGED_FEATURES and action in ("enable", "disable"):
+                if module_feature_enabled(BASE_DIR, module) == (action == "enable"):
+                    return self.redirect(destination, {"Cache-Control": "no-store"})
+            save_module_status(BASE_DIR, module, "queued")
+            try:
+                result = subprocess.run(command, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=False)
+            except (OSError, subprocess.TimeoutExpired):
+                result = None
+            if result is None or result.returncode:
+                save_module_status(BASE_DIR, module, "failed")
+                return self.send_html(503, esc(STRINGS[lang]["module_job_failed"]),
+                                      {"Cache-Control": "no-store"})
+        return self.redirect(destination, {"Cache-Control": "no-store"})
+
+    def page_module_closed(self, lang, query_lang, parsed):
+        module = parse_qs(parsed.query).get("module", [""])[0]
+        destinations = {"speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
+                        "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "portfwd": "/portfwd",
+                        "visitors": "/visitors", "changelog": "/changelog"}
+        if module not in destinations:
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        if module_states()[module]:
+            return self.redirect(destinations[module], {"Cache-Control": "no-store"})
+        t = STRINGS[lang]
+        names = {"speedtest": t["speedtest"], "iperf3": t["iperf"],
+                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC",
+                 "frp": t["frp_heading"], "portfwd": t["portfwd"],
+                 "visitors": t["visitors"], "changelog": t["changelog"]}
+        body = (f'<div class="card access-card"><h1>{html.escape(t["module_closed_title"])}</h1>'
+                f'<p>{html.escape(t["module_closed_help"].format(name=names[module]))}</p></div>')
+        return self.send_html(200, self.render_page(t["module_closed_title"], body, lang,
+                                                    active="home", back_href="/"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
     # -- dashboard ---------------------------------------------------------
 
     def page_dashboard(self, lang, query_lang):
         t = STRINGS[lang]
-        iperf_tile = ""
-        if IPERF_ENABLED:
-            is_open, _ = IPERF_WINDOW.state()
-            iperf_tile = f"""
-            <a class="tile" href="/iperf">
-              <span class="tile-icon">{ui_icon('activity' if is_open else 'timer')}</span>
-              <span class="tile-label">{html.escape(t['iperf'])}</span>
-            </a>
-            """
-        # One tile for both: anytls and the proxy module live on the same
-        # /proxy page now (see page_proxy()'s docstring).
-        proxy_tile = ""
-        if anytls_installed() or proxy_installed():
-            proxy_tile = f"""
-            <a class="tile" href="/proxy">
-              <span class="tile-icon">{ui_icon("network")}</span>
-              <span class="tile-label">{html.escape(t['proxy'])}</span>
-            </a>
-            """
-        frp_tile = (f'<a class="tile" href="/frp"><span class="tile-icon">{ui_icon("radio")}</span>'
-                    f'<span class="tile-label">{html.escape(t["frp_heading"])}</span></a>') if AUTH_ENABLED else ''
-        lucky_tile = (f'<a class="tile" href="/lucky"><span class="tile-icon">{ui_icon("settings-2")}</span>'
-                      '<span class="tile-label">Lucky</span></a>') if AUTH_ENABLED and LUCKY_CONFIG.is_file() else ''
-        portfwd_tile = ""
-        if PORTFWD_ENABLED:
-            active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
-            portfwd_tile = f"""
-            <a class="tile" href="/portfwd">
-              <span class="tile-icon">{ui_icon('route')}</span>
-              <span class="tile-label">{html.escape(t['portfwd'])}</span>
-            </a>
-            """
-        body = f"""
-        <div class="card">
-          <h1>{html.escape(t['dashboard'])}</h1>
-          <div class="tiles">
-            <a class="tile" href="/speedtest">
-              <span class="tile-icon">{ui_icon("gauge")}</span>
-              <span class="tile-label">{html.escape(t['speedtest'])}</span>
-            </a>
-            {iperf_tile}
-            {proxy_tile}
-            {frp_tile}
-            {lucky_tile}
-            {portfwd_tile}
-            <a class="tile" href="/visitors">
-              <span class="tile-icon">{ui_icon("users-round")}</span>
-              <span class="tile-label">{html.escape(t['visitors'])}</span>
-            </a>
-            <a class="tile" href="/changelog">
-              <span class="tile-icon">{ui_icon("scroll-text")}</span>
-              <span class="tile-label">{html.escape(t['changelog'])}</span>
-            </a>
-            {f'<a class="tile" href="/settings"><span class="tile-icon">{ui_icon("settings-2")}</span><span class="tile-label">{html.escape(t["settings"])}</span></a>' if AUTH_ENABLED else ''}
-          </div>
-        </div>
-        """
+        esc = html.escape
+        installed = installed_modules(BASE_DIR)
+        states = module_states(installed)
+        items = (
+            ("speedtest", t["speedtest"], "/speedtest", "gauge", states["speedtest"]),
+            ("iperf3", t["iperf"], "/iperf", "activity", states["iperf3"]),
+            ("proxy_nodes", t["proxy"], "/proxy", "network", states["proxy_nodes"]),
+            ("frps", "FRPS", "/frps", "radio", states["frps"]),
+            ("frpc", "FRPC", "/frpc", "network", states["frpc"]),
+            ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
+            ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
+            ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
+            ("settings", t["settings"], "/settings", "settings-2", True),
+        )
+        try:
+            job = json.loads(module_status_path(BASE_DIR).read_text())
+            busy = job.get("state") in ("queued", "running") and time.time() - job.get("at", 0) < 900
+        except (OSError, ValueError, TypeError):
+            busy = False
+        tiles = []
+        for module, title, href, icon, enabled in items:
+            switch = ""
+            if module != "settings":
+                action = "disable" if enabled else "enable"
+                available = (module != "iperf3" or "iperf3" in installed) and (
+                    module != "proxy_nodes" or bool({"proxy", "anytls"} & installed)) and (
+                    module != "frps" or "frps" in installed) and (
+                    module != "frpc" or bool(frpc_names())) and (
+                    module != "portfwd" or PORTFWD_ALLOWED)
+                switch = (f'<form method="post" action="/settings/modules/action" class="tile-switch-form">'
+                          f'<input type="hidden" name="module" value="{module}">'
+                          f'<input type="hidden" name="action" value="{action}">'
+                          f'<input type="hidden" name="return" value="home">'
+                          f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)}">'
+                          f'<button type="submit" class="motion-switch" role="switch" aria-label="{esc(title + " " + (t["module_disable"] if enabled else t["module_enable"]), quote=True)}" '
+                          f'aria-checked="{str(bool(enabled)).lower()}" {"" if available and not busy else "disabled"}><span aria-hidden="true"></span></button></form>')
+            closed = not enabled and (module in MANAGED_FEATURES or
+                                      module == "iperf3" and "iperf3" in installed or
+                                      module == "proxy_nodes" and bool({"proxy", "anytls"} & installed) or
+                                      module in ("frps", "frpc") and module in installed)
+            tiles.append(f'<article class="tile" data-module="{module}"><div class="tile-top">'
+                         f'<span class="tile-icon">{ui_icon(icon)}</span>{switch}</div>'
+                         f'<a class="tile-label" href="{"/closed?module=" + module if closed else href}">{esc(title)}</a></article>')
+        notice = f'<p class="module-notice" role="status">{esc(t["module_job_running"])}</p>' if busy else ''
+        body = (f'<div class="card"><h1>{esc(t["home"])}</h1>{notice}'
+                f'<div class="tiles">{"".join(tiles)}</div></div>'
+                + '<script src="/static/module-controls.js" defer></script>'
+                + ('<script src="/static/module-status.js" defer></script>' if busy else ''))
         self.send_html(200, self.render_page(t['dashboard'], body, lang, active="home"),
                        self.maybe_lang_cookie(query_lang))
 
@@ -3168,7 +3532,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         rules_html = "".join(rows) if rows else f'<p class="muted">{html.escape(t["portfwd_none"])}</p>'
 
         add_form = ""
-        if PORTFWD_ENABLED:
+        if portfwd_enabled():
             add_form = f"""
             <div class="node-addr">
               <h2>{html.escape(t['portfwd_add'])}</h2>
@@ -3269,30 +3633,416 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         esc = html.escape
         if node is None:
             server = f'<p class="muted">{esc(t["frps_not_installed"])}</p>'
-            client = f'<p class="muted">{esc(t["frp_client_unavailable"])}</p>'
         else:
-            status = t['node_active'] if _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE]) else t['node_stopped']
+            running = _run_quiet(['systemctl', 'is-active', '--quiet', FRPS_SERVICE])
+            status = t['node_active'] if running else t['frp_not_running']
             addresses = address_entries(t)
             address_list = (f'<div class="frp-addresses"><h3>{esc(t["frp_addresses"])}</h3><ul>' +
                             ''.join(f'<li><span>{esc(label)}</span><code>{esc(address)}</code></li>'
                                     for label, address in addresses) + '</ul></div>') if addresses else ''
-            server = (f'<dl class="frp-facts"><div><dt>{esc(t["frps_status"])}</dt><dd>{esc(status)}</dd></div>'
+            toggle_action = 'disable' if running else 'enable'
+            toggle = (f'<form method="post" action="/frp/server/toggle" class="node-toggle-form">'
+                      f'<input type="hidden" name="action" value="{toggle_action}">'
+                      f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:server:" + toggle_action)}">'
+                      f'<button type="submit" class="node-toggle" role="switch" aria-checked="{str(running).lower()}" '
+                      f'aria-label="{esc(t["frp_stop_server"] if running else t["frp_start_server"], quote=True)}"><span></span></button></form>')
+            inline_token = render_password_field(t, 'frps-inline-token', t['frps_token'], 'token',
+                                                 'maxlength="128" autocomplete="new-password"')
+            edit = (f'<details class="node-inline-edit frp-inline-edit" {"open" if parse_qs(urlsplit(self.path).query).get("edit") == ["server"] else ""}><summary><span>{esc(t["frp_edit_server"])}</span>'
+                    f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/server/save" autocomplete="off">'
+                    f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:server")}">'
+                    f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" '
+                    f'placeholder="{esc(t["frp_port_keep"], quote=True)}"></label>'
+                    f'{inline_token}'
+                    f'<p class="muted small">{esc(t["frp_token_keep"])}</p><button type="submit">{esc(t["frp_save"])}</button>'
+                    f'</form></details>')
+            edit_entry = edit
+            server = (f'<div class="frp-status-line"><span class="proxy-node-status {"is-open" if running else "is-closed"}">{esc(status)}</span>{toggle}</div>'
+                      f'{edit_entry}'
+                      f'<dl class="frp-facts"><div><dt>{esc(t["frps_status"])}</dt><dd>{esc(status)}</dd></div>'
                       f'<div><dt>{esc(t["frps_bind"])}</dt><dd><code>{esc(node["address"])}</code></dd></div>'
                       f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t)}</dd></div>'
                       f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True)}</dd></div></dl>'
                       f'{address_list}')
-            client = (f'<p class="muted">{esc(t["frp_client_note"])}</p>'
-                      f'<p class="muted small">{esc(t["frp_address_note"])}</p>'
-                      f'<div class="frp-config"><span>{esc(t["frp_client_config"])}</span>'
-                      f'{self.private_value_control("frps", "frpc-config", t, copy=True)}</div>')
-        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frp_heading"])}</h1></div>'
-                f'<div class="frp-grid"><section class="card frp-card"><div class="frp-card-head">'
-                f'{ui_icon("server")}<h2>{esc(t["frps_heading"])}</h2></div>{server}</section>'
+        message = parse_qs(urlsplit(self.path).query).get("msg", [""])[0]
+        feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
+                    f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ("done", "failed") else ""
+        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frps_heading"])}</h1></div>{feedback}'
+                f'<section class="card frp-card"><div class="frp-card-head">{ui_icon("server")}'
+                f'<h2>{esc(t["frps_heading"])}</h2></div>{server}</section></div>'
+                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
+                '<script src="/static/password-fields.js"></script>')
+        return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def page_frpc(self, lang, query_lang):
+        t = STRINGS[lang]
+        esc = html.escape
+        clients = []
+        for name in frpc_names():
+            try:
+                item = frpc_summary(name)
+            except (OSError, ValueError):
+                continue
+            connected = frpc_connected(name, item['server'], item['port'])
+            running_client = _run_quiet(['systemctl', 'is-active', '--quiet', f'frpc@{name}.service'])
+            toggle_action = 'disable' if running_client else 'enable'
+            state = t['frp_connected'] if connected else t['frp_disconnected']
+            clients.append(f'<article class="frp-target-card"><div class="frp-target-head">'
+                           f'<strong class="frp-target-name">{esc(name)}</strong>'
+                           f'<form method="post" action="/frp/client/card-toggle" class="node-toggle-form">'
+                           f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
+                           f'<input type="hidden" name="action" value="{toggle_action}">'
+                           f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:toggle:" + name + ":" + toggle_action)}">'
+                           f'<button type="submit" class="node-toggle" role="switch" aria-checked="{str(running_client).lower()}" '
+                           f'aria-label="{esc(t["frp_stop_client"] if running_client else t["frp_start_client"], quote=True)}"><span aria-hidden="true"></span></button></form>'
+                           f'<span class="proxy-node-status {"is-open" if connected else "is-closed"}" '
+                           f'data-frpc-state aria-live="polite">{esc(state)}</span>'
+                           f'<button type="button" class="frp-test-connection" data-name="{esc(name, quote=True)}" '
+                           f'data-csrf="{access_csrf_token(self.get_cookie("session"), "frp:test:" + name)}" '
+                           f'data-testing="{esc(t["frp_testing"], quote=True)}" '
+                           f'data-connected="{esc(t["frp_connected"], quote=True)}" '
+                           f'data-disconnected="{esc(t["frp_disconnected"], quote=True)}" '
+                           f'data-failed="{esc(t["frp_test_failed"], quote=True)}">'
+                           f'{esc(t["frp_test_connection"])}</button>'
+                           f'<a class="button-link frp-card-edit" href="/frp/client/edit?name={quote(name)}">{esc(t["frp_edit_client_button"])}</a></div>'
+                           f'<div class="frp-target-meta"><button type="button" class="frp-fact-reveal frp-card-ip" '
+                           f'data-name="{esc(name, quote=True)}" data-field="server" '
+                           f'data-masked="{esc(masked_frpc_ip(item["server"]), quote=True)}" '
+                           f'data-show="{esc(t["login_show_password"], quote=True)}" '
+                           f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
+                           f'data-label="{esc(t["frp_server_ip"], quote=True)}" aria-pressed="false" '
+                           f'aria-label="{esc(t["login_show_password"] + " " + t["frp_server_ip"], quote=True)}">'
+                           f'<code>{esc(masked_frpc_ip(item["server"]))}</code></button></div>'
+                           f'<div class="frp-target-foot"><span class="muted small">{item["proxies"]} {esc(t["frp_proxies"])}</span>'
+                           f'<button type="button" class="node-action node-action-danger frp-client-delete-open" '
+                           f'data-dialog-open="frp-delete-{esc(name, quote=True)}">{esc(t["frp_delete_client"])}</button></div>'
+                           f'<dialog class="node-confirm-dialog" id="frp-delete-{esc(name, quote=True)}" '
+                           f'aria-labelledby="frp-delete-title-{esc(name, quote=True)}"><form method="post" action="/frp/client/delete">'
+                           f'<h3 id="frp-delete-title-{esc(name, quote=True)}">{esc(t["frp_delete_client"])}</h3>'
+                           f'<p>{esc(t["frp_delete_client_confirm"].format(name=name))}</p>'
+                           f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
+                           f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:delete:" + name)}">'
+                           f'<div class="node-dialog-actions"><button type="button" data-dialog-close>{esc(t["node_cancel"])}</button>'
+                           f'<button type="submit" class="danger">{esc(t["frp_delete_client"])}</button></div>'
+                           f'</form></dialog></article>')
+        client_list = ''.join(clients) if clients else f'<p class="muted">{esc(t["frp_no_clients"])}</p>'
+        client_installed = "frpc" in installed_modules(BASE_DIR)
+        availability = '' if client_installed else f'<p class="error">{esc(t["frp_client_binary_missing"])}</p>'
+        message = parse_qs(urlsplit(self.path).query).get('msg', [''])[0]
+        feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
+                    f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ('done', 'failed') else ''
+        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frp_client_heading"])}</h1></div>{feedback}'
                 f'<section class="card frp-card"><div class="frp-card-head">{ui_icon("network")}'
-                f'<h2>{esc(t["frp_client_heading"])}</h2></div>{client}</section></div></div>'
-                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
-        return self.send_html(200, self.render_page(t['frp_heading'], body, lang),
-                              {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
+                f'<h2>{esc(t["frp_client_heading"])}</h2></div>{availability}'
+                f'<h3>{esc(t["frp_instances"])}</h3>{client_list}'
+                f'<p><a class="button-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
+                f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a></p>'
+                '</section></div>'
+                '<script src="/static/frp-editor.js" defer></script>')
+        return self.send_html(200, self.render_page(t["frp_client_heading"], body, lang),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def page_frps_edit(self, lang):
+        return self.redirect('/frps?edit=server', {'Cache-Control': 'no-store'})
+
+    def page_frpc_edit(self, lang, parsed):
+        t, esc = STRINGS[lang], html.escape
+        name = parse_qs(parsed.query).get('name', [''])[0]
+        if not name and "frpc" not in installed_modules(BASE_DIR):
+            return self.redirect('/settings/modules', {'Cache-Control': 'no-store'})
+        if name:
+            try:
+                if not frpc_path(name).is_file() or frpc_path(name).is_symlink():
+                    raise ValueError
+            except (OSError, ValueError):
+                return self.send_html(404, 'FRPC instance missing', {'Cache-Control': 'no-store'})
+        structured = None
+        if name:
+            try:
+                structured = frpc_structured(name)
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+        rename = (f'<details class="node-inline-edit frp-rename"><summary><span>{esc(t["frp_rename_client"])}</span>'
+                  f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/client/rename">'
+                  f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
+                  f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:rename:" + name)}">'
+                  f'<label>{esc(t["frp_instance_name"])}<input name="newName" pattern="[A-Za-z0-9_-]{{1,32}}" '
+                  f'maxlength="32" value="{esc(name, quote=True)}" required></label>'
+                  f'<button type="submit">{esc(t["frp_save"])}</button></form></details>') if name else ''
+        message = parse_qs(parsed.query).get('msg', [''])[0]
+        feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
+                    f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ('done', 'failed') else ''
+        editor = (self.frpc_structured_editor(lang, name, structured) if structured else
+                  self.frpc_create_editor(lang) if not name else
+                  f'<p class="error">{esc(t["frp_unsupported_config"])}</p>')
+        body = (f'<div class="card wide frp-edit"><h1>{esc(name if name else t["frp_new_client"])}</h1>'
+                f'{rename}{feedback}<div class="frp-structured">{editor}</div></div>')
+        if name:
+            body += '<script src="/static/frp-editor.js" defer></script>'
+        body += '<script src="/static/password-fields.js"></script>'
+        return self.send_html(200, self.render_page(name if name else t['frp_new_client'], body, lang, back_href='/frpc'),
+                              {'Cache-Control': 'no-store'})
+
+    def frpc_structured_editor(self, lang, name, config):
+        t, esc = STRINGS[lang], html.escape
+        def hint(label_key, help_key, suffix):
+            ident = f'frp-help-{name}-{suffix}'
+            return (f'<span class="info-popover-wrap frp-info-wrap"><button type="button" '
+                    f'class="frp-info-trigger" aria-describedby="{esc(ident, quote=True)}" '
+                    f'aria-expanded="false">{esc(t[label_key])}</button>'
+                    f'<span class="info-popover" id="{esc(ident, quote=True)}" role="tooltip">'
+                    f'<strong>{esc(t[label_key])}</strong><p>{esc(t[help_key])}</p></span></span>')
+        def reveal(field, masked, label):
+            return (f'<button type="button" class="frp-fact-reveal" data-name="{esc(name, quote=True)}" '
+                    f'data-field="{field}" data-masked="{esc(masked, quote=True)}" '
+                    f'data-show="{esc(t["login_show_password"], quote=True)}" '
+                    f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
+                    f'data-label="{esc(label, quote=True)}" aria-pressed="false" '
+                    f'aria-label="{esc(t["login_show_password"] + " " + label, quote=True)}">'
+                    f'<code>{esc(masked)}</code></button>')
+        server_token_field = render_password_field(t, 'frpc-server-token', t['frps_token'], 'token',
+                                                   f'maxlength="128" autocomplete="new-password" data-load-token="{esc(name, quote=True)}"')
+        base = (f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
+                f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:structured:" + name)}">')
+        server = (f'<section class="frp-edit-section"><h2>{esc(t["frp_server_settings"])}</h2>'
+                  f'<details class="node-inline-edit"><summary><span>{esc(t["frp_edit_target"])}</span><span>{esc(t["node_cancel"])}</span></summary>'
+                  f'<form method="post" action="/frp/client/structured" autocomplete="off">{base}'
+                  f'<input type="hidden" name="section" value="server">'
+                  f'<label>{esc(t["frp_server_ip"])}<input name="server" data-load-address="{esc(name, quote=True)}" required></label>'
+                  f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" '
+                  f'data-load-port="{esc(name, quote=True)}" required></label>'
+                  f'{server_token_field}'
+                  f'<button type="submit">{esc(t["frp_save"])}</button>'
+                  f'</form></details><dl class="frp-facts frp-server-facts"><div><dt>{esc(t["frp_server_ip"])}</dt>'
+                  f'<dd>{reveal("server", masked_frpc_ip(config["serverAddr"]), t["frp_server_ip"])}</dd></div>'
+                  f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{reveal("port", "••••••", t["proxy_port"])}</dd></div>'
+                  f'<div><dt>{esc(t["frps_token"])}</dt><dd>{reveal("token", "••••••", t["frps_token"])}</dd></div></dl></section>')
+        proxy_fields = [('proxy_name', 'name', 'text'), ('proxy_type', 'type', 'text'),
+                        ('frp_local_ip', 'localIP', 'text'), ('frp_local_port', 'localPort', 'number'),
+                        ('frp_server_port', 'remotePort', 'number')]
+        help_keys = {'localIP': 'frp_local_ip_help', 'localPort': 'frp_local_port_help',
+                     'remotePort': 'frp_server_port_help'}
+        def fields(proxy, suffix):
+            result = []
+            for label, key, kind in proxy_fields:
+                if key == 'type':
+                    current = proxy.get('type', 'tcp')
+                    options = ''.join(f'<option value="{value}" {"selected" if current == value else ""}>{value.upper()}</option>'
+                                      for value in ('tcp', 'udp'))
+                    result.append(f'<label>{esc(t[label])}<select name="type">{options}</select></label>')
+                else:
+                    title = (hint(label, help_keys[key], f'{suffix}-{key}') if key in help_keys else
+                             f'<label for="frp-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>')
+                    result.append(f'<div class="frp-field">{title}'
+                                  f'<input id="frp-{esc(suffix, quote=True)}-{key}" name="{"proxyName" if key == "name" else key}" '
+                                  f'type="{kind}" aria-label="{esc(t[label], quote=True)}" '
+                                  f'value="{esc(str(proxy.get(key, "")), quote=True)}" required></div>')
+            return ''.join(result)
+        cards = []
+        for index, proxy in enumerate(config.get('proxies', [])):
+            cards.append(f'<section class="frp-proxy-card"><details class="node-inline-edit"><summary>'
+                         f'<span>{esc(t["frp_edit_proxy"])}</span><span>{esc(t["node_cancel"])}</span></summary>'
+                         f'<form method="post" action="/frp/client/structured">{base}'
+                         f'<input type="hidden" name="section" value="edit"><input type="hidden" name="index" value="{index}">'
+                         f'{fields(proxy, str(index))}<button type="submit">{esc(t["frp_save"])}</button></form></details>'
+                         f'<div class="frp-proxy-facts"><strong>{esc(proxy["name"])}</strong>'
+                         f'<dl class="frp-proxy-fields"><div><dt>{esc(t["proxy_type"])}</dt><dd>{esc(proxy["type"].upper())}</dd></div>'
+                         f'<div><dt>{hint("frp_local_ip", "frp_local_ip_help", f"fact-{index}-ip")}</dt><dd><code>{esc(proxy["localIP"])}</code></dd></div>'
+                         f'<div><dt>{hint("frp_local_port", "frp_local_port_help", f"fact-{index}-local-port")}</dt><dd>{proxy["localPort"]}</dd></div>'
+                         f'<div><dt>{hint("frp_server_port", "frp_server_port_help", f"fact-{index}-server-port")}</dt><dd>{proxy["remotePort"]}</dd></div></dl></div>'
+                         f'<form method="post" action="/frp/client/structured" class="frp-delete-form" data-confirm="{esc(t["frp_delete_confirm"], quote=True)}">{base}'
+                         f'<input type="hidden" name="section" value="delete"><input type="hidden" name="index" value="{index}">'
+                         f'<button type="submit" class="node-action">{esc(t["frp_delete_proxy"])}</button></form></section>')
+        empty = f'<p class="muted">{esc(t["frp_no_proxies"])}</p>' if not cards else ''
+        add = (f'<details class="node-inline-edit frp-add-proxy"><summary><span>{esc(t["frp_add_proxy"])}</span>'
+               f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/client/structured">{base}'
+               f'<input type="hidden" name="section" value="add">{fields({}, "new")}'
+               f'<button type="submit">{esc(t["frp_add_proxy"])}</button></form></details>')
+        return server + f'<section class="frp-edit-section"><h2>{esc(t["frp_proxy_list_heading"])}</h2>{"".join(cards)}{empty}{add}</section>'
+
+    def frpc_create_editor(self, lang):
+        t, esc = STRINGS[lang], html.escape
+        token_field = render_password_field(t, 'frpc-new-token', t['frps_token'], 'token',
+                                            'maxlength="128" required autocomplete="new-password"')
+        return (f'<section class="frp-edit-section"><h2>{esc(t["frp_server_settings"])}</h2>'
+                f'<form method="post" action="/frp/client/structured" autocomplete="off">'
+                f'<input type="hidden" name="section" value="create">'
+                f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:structured:new")}">'
+                f'<label>{esc(t["frp_instance_name"])}<input name="name" pattern="[A-Za-z0-9_-]{{1,32}}" maxlength="32" required></label>'
+                f'<label>{esc(t["frp_server_ip"])}<input name="server" required></label>'
+                f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" required></label>'
+                f'{token_field}<button type="submit">{esc(t["frp_new_client"])}</button></form></section>')
+
+    def frpc_address_value(self, parsed):
+        name = parse_qs(parsed.query).get('name', [''])[0]
+        try:
+            if frpc_path(name).is_symlink():
+                raise ValueError
+            address = frpc_summary(name)['server']
+            if not address:
+                raise ValueError
+        except (OSError, ValueError):
+            return self.send_html(404, 'FRPC instance missing', {'Cache-Control': 'no-store'})
+        body = json.dumps({'value': address}).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def frpc_private_value(self, parsed):
+        query = parse_qs(parsed.query)
+        if set(query) != {'name', 'field'} or any(len(values) != 1 for values in query.values()):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        name, field = query['name'][0], query['field'][0]
+        if field not in ('server', 'port', 'token'):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            if frpc_path(name).is_symlink():
+                raise ValueError
+            config = frpc_structured(name)
+            if config is None:
+                raise ValueError
+            value = (config['serverAddr'] if field == 'server' else
+                     str(config['serverPort']) if field == 'port' else config['auth']['token'])
+        except (OSError, ValueError, KeyError, TypeError):
+            return self.send_html(404, 'FRPC instance missing', {'Cache-Control': 'no-store'})
+        body = json.dumps({'value': value}).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def handle_frpc_test(self):
+        if self.headers.get('Content-Type', '').split(';', 1)[0].strip() != 'application/x-www-form-urlencoded':
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            length = int(self.headers.get('Content-Length', ''))
+            if not 0 < length <= 1024:
+                raise ValueError
+            form = parse_qs(self.rfile.read(length).decode('utf-8'), strict_parsing=True)
+            if set(form) != {'name', 'csrf'} or any(len(values) != 1 for values in form.values()):
+                raise ValueError
+            name = form['name'][0]
+            path = frpc_path(name)
+            if not path.is_file() or path.is_symlink():
+                raise ValueError
+        except (OSError, UnicodeError, ValueError):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        expected = access_csrf_token(self.get_cookie('session'), 'frp:test:' + name)
+        if not hmac.compare_digest(form['csrf'][0], expected):
+            return self.send_html(403, 'Forbidden', {'Cache-Control': 'no-store'})
+        connected = frpc_test_connection(name)
+        if connected is None:
+            return self.send_html(429, 'Connection test in progress', {'Cache-Control': 'no-store'})
+        body = json.dumps({'connected': connected}).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def handle_frp_edit(self, path, lang):
+        if self.headers.get('Content-Type', '').split(';', 1)[0].strip() != 'application/x-www-form-urlencoded':
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            length = int(self.headers.get('Content-Length', ''))
+            if not 0 < length <= 32768:
+                raise ValueError
+            form = parse_qs(self.rfile.read(length).decode('utf-8'), strict_parsing=True, keep_blank_values=True)
+            structured = path.endswith('client/structured')
+            section = form.get('section', [''])[0]
+            required = ({'csrf', 'port', 'token'} if path.endswith('server/save') else
+                        {'csrf', 'name', 'newName'} if path.endswith('client/rename') else
+                        {'csrf', 'name'} if path.endswith('client/delete') else
+                        {'csrf', 'name', 'section', 'server', 'port', 'token'} if structured and section in ('server', 'create') else
+                        {'csrf', 'name', 'section', 'index'} if structured and section == 'delete' else
+                        {'csrf', 'name', 'section', 'proxyName', 'type', 'localIP', 'localPort', 'remotePort'} if structured and section == 'add' else
+                        {'csrf', 'name', 'section', 'index', 'type', 'localIP', 'localPort', 'remotePort', 'proxyName'} if structured and section == 'edit' else
+                        {'csrf', 'action'} if path.endswith('server/toggle') else
+                        {'csrf', 'name', 'action'})
+            if set(form) != required or any(len(v) != 1 for v in form.values()):
+                raise ValueError
+            name = form.get('name', [''])[0]
+            if path.endswith('server/save'):
+                action = 'frp:server'
+                node = frps_node()
+                if node is None:
+                    raise ValueError
+                request = {'action': 'server', 'port': int(form['port'][0]) if form['port'][0] else node['port'],
+                           'token': form['token'][0] or node['token']}
+            elif path.endswith('client/rename'):
+                if not frpc_path(name).is_file() or frpc_path(name).is_symlink():
+                    raise ValueError
+                new_name = form['newName'][0]
+                frpc_path(new_name)
+                action = 'frp:rename:' + name
+                request = {'action': 'rename-client', 'name': name, 'new_name': new_name}
+            elif path.endswith('client/delete'):
+                if not frpc_path(name).is_file() or frpc_path(name).is_symlink():
+                    raise ValueError
+                action = 'frp:delete:' + name
+                request = {'action': 'delete-client', 'name': name}
+            elif structured:
+                if section not in ('server', 'add', 'edit', 'delete', 'create') or (section != 'create' and not frpc_path(name).is_file()):
+                    raise ValueError
+                action = 'frp:structured:' + (name if section != 'create' else 'new')
+                values = {'index': int(form['index'][0])} if section in ('edit', 'delete') else {}
+                if section in ('server', 'create'):
+                    values.update(server=form['server'][0], port=int(form['port'][0]), token=form['token'][0])
+                elif section != 'delete':
+                    values['proxy'] = {'name': form['proxyName'][0], 'type': form['type'][0],
+                                       'localIP': form['localIP'][0], 'localPort': int(form['localPort'][0]),
+                                       'remotePort': int(form['remotePort'][0])}
+                request = {'action': 'create-structured-client' if section == 'create' else 'structured-client',
+                           'name': name, 'section': section, 'values': values}
+            elif path.endswith('server/toggle'):
+                state = form['action'][0]
+                if state not in ('enable', 'disable') or frps_node() is None:
+                    raise ValueError
+                action = 'frp:server:' + state
+                request = {'action': 'server-' + state}
+            else:
+                state = form['action'][0]
+                if state not in ('enable', 'disable') or not frpc_path(name).is_file() or frpc_path(name).is_symlink():
+                    raise ValueError
+                action = 'frp:toggle:' + name + ':' + state
+                request = {'action': state, 'name': name}
+        except (UnicodeError, ValueError, OSError):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        if not hmac.compare_digest(form['csrf'][0], access_csrf_token(self.get_cookie('session'), action)):
+            return self.send_html(403, 'Forbidden', {'Cache-Control': 'no-store'})
+        if not FRP_CONTROL_HELPER.is_file():
+            return self.send_html(503, 'FRP helper unavailable', {'Cache-Control': 'no-store'})
+        direct = ['/usr/bin/python3', str(FRP_CONTROL_HELPER)]
+        systemd_run = shutil.which('systemd-run')
+        if not systemd_run and Path('/run/systemd/system').exists():
+            return self.send_html(503, 'FRP helper unavailable', {'Cache-Control': 'no-store'})
+        command = (['systemd-run', '--pipe', '--wait', '--collect', '--unit=vps-server-frp-control.service', *direct]
+                   if systemd_run else direct)
+        try:
+            result = subprocess.run(command, input=json.dumps(request).encode(),
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    timeout=180, check=False)
+        except subprocess.TimeoutExpired:
+            if systemd_run:
+                _run_quiet(['systemctl', 'stop', 'vps-server-frp-control.service'])
+            result = None
+        except OSError:
+            result = None
+        if path.endswith('client/rename') and result and result.returncode == 0:
+            name = new_name
+        target = ('/frp/client/edit?name=' + quote(name) if path in ('/frp/client/structured', '/frp/client/toggle', '/frp/client/rename') else
+                  '/frps' if path.startswith('/frp/server/') else '/frpc')
+        return self.redirect(target + ('&' if '?' in target else '?') + 'msg=' +
+                             ('done' if result and result.returncode == 0 else 'failed'),
+                             {'Cache-Control': 'no-store'})
 
     def page_proxy(self, lang, query_lang):
         """Show all installed proxy protocols in a single operator view."""
@@ -3538,13 +4288,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                     <input type="hidden" name="enabled" value="{'no' if node['enabled'] else 'yes'}">
                     <button type="submit" role="switch" aria-checked="{'true' if node['enabled'] else 'false'}" aria-label="{esc(toggle_label, quote=True)}" title="{esc(toggle_label, quote=True)}" class="node-toggle" ><span aria-hidden="true"></span></button>
                   </form></div></header>
-              <section class="node-connection"><details class="node-inline-edit"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
+              <section class="node-connection"><details class="node-inline-edit" data-node-edit-id="{identifier}"><summary><span>{esc(t['node_manage'])}</span><span>{esc(t['node_cancel'])}</span></summary>
                 <form method="post" action="/proxy/node/edit" autocomplete="off" class="node-inline-form">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
                   <div class="node-form-grid">
                     <label>{esc(t['node_name'])}<input name="name" maxlength="64" value="{esc(node['name'], quote=True)}" required></label>
-                    <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_keep_port'], quote=True)}"></label>
-                    <div class="node-form-field">{render_password_field(t, 'node-credential-' + identifier, t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_keep_credential'], quote=True) + '" autocomplete="new-password"')}</div>
+                    <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" data-node-edit-port placeholder="{esc(t['node_keep_port'], quote=True)}"></label>
+                    <div class="node-form-field">{render_password_field(t, 'node-credential-' + identifier, t['node_credential'], 'credential', 'value="" data-node-edit-credential placeholder="' + esc(t['node_keep_credential'], quote=True) + '" autocomplete="new-password"')}</div>
                     {sni_input}
                   </div><button type="submit">{esc(t['node_save_settings'])}</button>
                 </form>
@@ -3605,7 +4355,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         protocol_choices = "".join(f'<label class="node-radio"><input type="radio" name="protocol" value="{value}"'
                                    f'{" checked" if index == 0 else ""}><span>{esc(value)}</span></label>'
                                    for index, value in enumerate(protocols))
-        create = (f'''<details class="node-create"><summary>{esc(t['node_create'])}</summary>
+        create = (f'''<details class="node-create"><summary><span>{esc(t['node_create'])}</span><span>{esc(t['node_cancel'])}</span></summary>
           <form method="post" action="/proxy/node/create" data-node-create
                 data-credential-password="{esc(t['node_credential_password_hint'], quote=True)}"
                 data-credential-uuid="{esc(t['node_credential_uuid_hint'], quote=True)}"
@@ -3665,7 +4415,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         identifier = query.get('id', [''])[0]
         field = query.get('field', [''])[0]
-        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'frpc-config', 'share', 'cmd-default', 'cmd-reverse', 'cmd-udp', 'public-port', 'target-port', 'account'):
+        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-default', 'cmd-reverse', 'cmd-udp', 'public-port', 'target-port', 'account'):
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         try:
             if identifier == 'lucky' and field in ('port', 'account', 'credential'):
@@ -3683,15 +4433,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             elif identifier.startswith('forward-') and field in ('public-port', 'target-port'):
                 rule = next(item for item in PORTFWD.list_rules() if item['id'] == identifier[8:])
                 value = str(rule['public_port' if field == 'public-port' else 'target_port'])
-            elif identifier == 'frps' and field in ('port', 'credential', 'frpc-config'):
+            elif identifier == 'frps' and field in ('port', 'credential'):
                 node = frps_node()
                 if node is None:
                     raise ValueError('no frps node')
-                if field == 'frpc-config':
-                    value = (f'serverAddr = "<server-ip>"\nserverPort = {node["port"]}\n'
-                             f'auth.method = "token"\nauth.token = {json.dumps(node["token"])}')
-                else:
-                    value = str(node['port'] if field == 'port' else node['token'])
+                value = str(node['port'] if field == 'port' else node['token'])
             elif identifier.startswith('legacy-') and field in ('port', 'credential'):
                 protocol = identifier.removeprefix('legacy-')
                 node = (anytls_node() if protocol == 'anytls' else
@@ -4405,11 +5151,12 @@ def main():
         if IPERF_ENABLED and not shutil.which("iperf3"):
             print(_log_text('log_iperf_missing'), file=sys.stderr)
 
-        if PORTFWD_ENABLED:
+        if portfwd_enabled():
             PORTFWD.load()
             active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
+        threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
 
         console.serve_forever()
     except KeyboardInterrupt:
@@ -4427,7 +5174,7 @@ def main():
                 pass
         stop_event.set()
         IPERF_WINDOW.close()
-        if PORTFWD_ENABLED:
+        if portfwd_enabled():
             PORTFWD.shutdown()
         for s in servers:
             # shutdown() before server_close(): the public listeners are

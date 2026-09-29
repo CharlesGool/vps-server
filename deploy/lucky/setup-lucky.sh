@@ -10,7 +10,7 @@ esac
 CATALOG_ROOT="${VPSSRV_CATALOG_ROOT:-}"
 if [ -z "$CATALOG_ROOT" ]; then
   if [ -d "$SCRIPT_DIR/../../lang/lucky" ]; then CATALOG_ROOT="$SCRIPT_DIR/../../lang"
-  else CATALOG_ROOT="${PREFIX:-/opt/vps-server}/lang"; fi
+  else CATALOG_ROOT="${PREFIX:-/root/apps/vps-server}/lang"; fi
 fi
 msg() {
   local key="$1"; shift
@@ -31,7 +31,7 @@ for key in malformed_current malformed_overwrite invalid_admin_port cannot_rever
 done
 # The installer copies deploy/lucky/ to PREFIX/lucky/ before invoking it.
 # Resolve trailing slashes, '..', and symlinks in an existing install prefix.
-PREFIX_DIR="$(cd "${PREFIX:-/opt/vps-server}" 2>/dev/null && pwd -P || :)"
+PREFIX_DIR="$(cd "${PREFIX:-/root/apps/vps-server}" 2>/dev/null && pwd -P || :)"
 if [ "$SCRIPT_DIR" = "$PREFIX_DIR/lucky" ]; then
   BIN="$SCRIPT_DIR/../vendor/lucky/lucky"
 else
@@ -62,7 +62,7 @@ if [ "${LUCKY_PUBLIC_ADMIN:-0}" = 1 ]; then
 fi
 STAGE="$(mktemp -d)"; chmod 0700 "$STAGE"
 trap 'rm -rf -- "$STAGE"' EXIT
-PORT="$(python3 - "$CONFIG" "${LUCKY_ADMIN_PORT:-}" "${LUCKY_PUBLIC_ADMIN:-0}" "${PREFIX:-/opt/vps-server}" "$STAGE/config" <<'PY'
+PORT="$(python3 - "$CONFIG" "${LUCKY_ADMIN_PORT:-}" "${LUCKY_PUBLIC_ADMIN:-0}" "${PREFIX:-/root/apps/vps-server}" "$STAGE/config" <<'PY'
 import json, os, pathlib, re, secrets, socket, subprocess, sys
 config, requested, public, prefix, destination = sys.argv[1:]
 path = pathlib.Path(config)

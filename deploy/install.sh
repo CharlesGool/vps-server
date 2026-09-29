@@ -26,7 +26,9 @@
 
 set -euo pipefail
 
-PREFIX="${PREFIX:-/opt/vps-server}"
+ROOT_HOME="$(getent passwd 0 | cut -d: -f6)"
+ROOT_HOME="${ROOT_HOME:-/root}"
+PREFIX="${PREFIX:-$ROOT_HOME/apps/vps-server}"
 SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -375,12 +377,17 @@ if [ -z "${VPSSRV_MODULES:-}" ]; then
     die "$(msg noninteractive_modules)"
   fi
   WIZARD_ARGS=()
-  WIZARD_BIND="${VPSSRV_SETUP_BIND:-127.0.0.1}"
-  WIZARD_PORT="${VPSSRV_SETUP_PORT:-8765}"
-  if [ "${VPSSRV_SETUP_PUBLIC:-0}" = "1" ]; then
+  # A new host needs a reachable, short-lived first-run entrance. Upgrades
+  # stay loopback-only unless the operator explicitly opts in again.
+  if existing_install; then setup_public_default=0; else setup_public_default=1; fi
+  if [ "${VPSSRV_SETUP_PUBLIC:-$setup_public_default}" = "1" ]; then
+    WIZARD_BIND="${VPSSRV_SETUP_BIND:-0.0.0.0}"
     command -v openssl >/dev/null 2>&1 || die "$(msg public_requires_openssl)"
     WIZARD_ARGS+=(--public)
+  else
+    WIZARD_BIND="${VPSSRV_SETUP_BIND:-127.0.0.1}"
   fi
+  WIZARD_PORT="${VPSSRV_SETUP_PORT:-0}"
   if existing_install; then
     # Snapshot wizard defaults under the node lock, but release it before the
     # wizard starts its potentially long-running listener.
@@ -404,9 +411,23 @@ if [ -z "${VPSSRV_MODULES:-}" ]; then
   chmod 0700 "$WIZARD_DIR"
   # The child owns its listener and ephemeral certificate; the temporary
   # result is removed whether the listener succeeds, times out, or fails.
-  trap 'rm -rf -- "$WIZARD_DIR"' EXIT
-  python3 "$SRC_DIR/tools/setup_wizard/setup_wizard.py" --bind "$WIZARD_BIND" --port "$WIZARD_PORT" \
-    --result "$WIZARD_DIR/selection" "${WIZARD_ARGS[@]}" || die "$(msg wizard_failed)"
+  trap 'if [ -n "${WIZARD_PID:-}" ]; then kill "$WIZARD_PID" 2>/dev/null || true; fi; rm -rf -- "$WIZARD_DIR"' EXIT
+  if existing_install; then
+    python3 "$SRC_DIR/tools/setup_wizard/setup_wizard.py" --bind "$WIZARD_BIND" --port "$WIZARD_PORT" \
+      --apps-root "$ROOT_HOME/apps" \
+      --result "$WIZARD_DIR/selection" "${WIZARD_ARGS[@]}" || die "$(msg wizard_failed)"
+  else
+    # Keep the one-time authenticated page alive while the installer runs.
+    # It shows the console link once the services are healthy.
+    python3 "$SRC_DIR/tools/setup_wizard/setup_wizard.py" --bind "$WIZARD_BIND" --port "$WIZARD_PORT" \
+      --apps-root "$ROOT_HOME/apps" \
+      --result "$WIZARD_DIR/selection" --ready-file "$WIZARD_DIR/ready" "${WIZARD_ARGS[@]}" &
+    WIZARD_PID=$!
+    while [ ! -f "$WIZARD_DIR/selection" ]; do
+      kill -0 "$WIZARD_PID" 2>/dev/null || die "$(msg wizard_failed)"
+      sleep .2
+    done
+  fi
   mapfile -t WIZARD_SELECTION < "$WIZARD_DIR/selection"
   [ "${#WIZARD_SELECTION[@]}" -eq 9 ] || die "$(msg wizard_invalid)"
   export VPSSRV_MODULES="${WIZARD_SELECTION[0]}"
@@ -426,8 +447,10 @@ if [ -z "${VPSSRV_MODULES:-}" ]; then
   fi
   INSTALL_LANG="$VPSSRV_DEFAULT_LANG"
   INTERACTIVE=0
-  rm -rf -- "$WIZARD_DIR"
-  trap - EXIT
+  if [ -z "${WIZARD_PID:-}" ]; then
+    rm -rf -- "$WIZARD_DIR"
+    trap - EXIT
+  fi
 fi
 
 # Pass the selected locale to every module setup script, including module-only
@@ -843,6 +866,8 @@ copy_selected_files() {
     # copy, not the tracked implementation under src/web/.
     cp "$SRC_DIR/src/web/app.py" "$PREFIX/app.py"
     cp "$SRC_DIR/src/web/node_config.py" "$PREFIX/node_config.py"
+    cp "$SRC_DIR/src/web/module_manager.py" "$PREFIX/module_manager.py"
+    cp "$SRC_DIR/src/web/frp_control.py" "$PREFIX/frp_control.py"
   fi
   if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
     # Documentation required by /changelog and third-party notices.
@@ -880,6 +905,29 @@ copy_selected_files() {
     mkdir -p "$PREFIX/vendor/frp"
     cp "$SRC_DIR/third_party/frp/frps" "$SRC_DIR/third_party/frp/LICENSE" "$SRC_DIR/third_party/frp/component.txt" "$PREFIX/vendor/frp/"
   fi
+}
+
+# Keep a version-matched, root-owned installer payload so the control panel
+# can add an omitted module later without depending on the original clone.
+# The payload never contains runtime data, certificates, or credentials.
+prepare_module_source() {
+  has_module web || return 0
+  case "$SRC_DIR/" in "$PREFIX_ABS/installer-source/"*) return 0 ;; esac
+  [ "$SRC_DIR" != "$PREFIX_ABS" ] || return 0
+  local stage item
+  stage="$(mktemp -d "$PREFIX/.installer-source.XXXXXX")"
+  for item in src deploy tools lang static third_party config doc README.md LICENSE .env.example; do
+    [ -e "$SRC_DIR/$item" ] && cp -a "$SRC_DIR/$item" "$stage/$item"
+  done
+  printf '%s\n' "$NEW_VERSION" > "$stage/config/VERSION"
+  chown -R root:root "$stage"
+  chmod -R go-w "$stage"
+  rm -rf -- "$PREFIX/.installer-source-old"
+  if [ -d "$PREFIX/installer-source" ]; then
+    mv "$PREFIX/installer-source" "$PREFIX/.installer-source-old"
+  fi
+  mv "$stage" "$PREFIX/installer-source"
+  rm -rf -- "$PREFIX/.installer-source-old"
 }
 
 # anytls/proxy on their own: nothing below this point applies, since all of
@@ -1050,6 +1098,7 @@ mkdir -p "$PREFIX"
 # root binary when a sing-box module is selected.
 PREFIX_ABS="$(cd "$PREFIX" && pwd)"
 copy_selected_files
+prepare_module_source
 if has_module lucky; then
   PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
 fi
@@ -1244,3 +1293,12 @@ if [ "$PROXY_FAILED" = "1" ]; then
   exit 1
 fi
 install_node_meter || die "$(msg node_meter_failed)"
+if [ -n "${WIZARD_PID:-}" ]; then
+  if [ -n "$PORT" ] && [[ "$HOST" =~ ^[0-9.]+$ ]]; then
+    printf '%s://%s:%s/\n' "$SCHEME" "$HOST" "$PORT" > "$WIZARD_DIR/ready" || true
+  else
+    printf '%s\n' '-' > "$WIZARD_DIR/ready" || true
+  fi
+  # The wizard cleans its private directory after its completion grace period.
+  trap - EXIT
+fi

@@ -188,10 +188,10 @@ esac
         self.assertEqual(json.loads(self.config.read_text())['BaseConfigure']['AdminWebListenPort'], 16601)
 
     def test_wizard_selection(self):
-        self.assertEqual(validate({'modules': ['lucky']}, '', False)[-2:], ('16601', '0'))
+        self.assertEqual(validate({'modules': ['web,lucky']}, '', False)[-2:], ('16601', '0'))
         with self.assertRaisesRegex(ValueError, 'requires Lucky'):
             validate({'modules': ['web'], 'lucky_public': ['1']}, '', False)
-        self.assertEqual(validate({'modules': ['lucky'], 'lucky_public': ['1']}, '', False)[-1], '1')
+        self.assertEqual(validate({'modules': ['web,lucky'], 'lucky_public': ['1']}, '', False)[-1], '1')
 
 
 if __name__ == '__main__':

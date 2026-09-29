@@ -19,6 +19,8 @@ class InstallLayoutTests(unittest.TestCase):
             source.mkdir(parents=True)
             (source / "app.py").write_text("entry point\n")
             (source / "node_config.py").write_text("helper\n")
+            (source / "module_manager.py").write_text("module helper\n")
+            (source / "frp_control.py").write_text("frp helper\n")
             script = f'''set -euo pipefail
 SRC_DIR={prefix}
 PREFIX={prefix}
@@ -34,6 +36,8 @@ copy_selected_files
                            text=True)
             self.assertEqual((prefix / "app.py").read_text(), "entry point\n")
             self.assertEqual((prefix / "node_config.py").read_text(), "helper\n")
+            self.assertEqual((prefix / "module_manager.py").read_text(), "module helper\n")
+            self.assertEqual((prefix / "frp_control.py").read_text(), "frp helper\n")
 
 
 if __name__ == "__main__":

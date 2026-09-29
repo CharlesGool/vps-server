@@ -165,6 +165,8 @@ class HostBackend:
                               timeout=10).returncode == 0
 
     def restart(self, service):
+        if not self.enabled(service):
+            return
         subprocess.run(["systemctl", "restart", service], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
         if not self.active(service):
@@ -175,10 +177,16 @@ class HostBackend:
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
 
     def start(self, service):
+        if not self.enabled(service):
+            return
         subprocess.run(["systemctl", "start", service], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
         if not self.active(service):
             raise NodeControlError("node service did not become active")
+
+    def enabled(self, service):
+        return subprocess.run(["systemctl", "is-enabled", "--quiet", service],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
     def reconcile(self, *, state_path, config_paths):
         # The caller already owns LOCK_PATH. The node is stopped during a
@@ -199,6 +207,10 @@ class HostBackend:
         return None
 
     def firewall(self, port, opening, protocol="tcp"):
+        if opening and protocol in ("anytls", "vmess", "vless", "trojan", "shadowsocks"):
+            module = "anytls" if protocol == "anytls" else "proxy"
+            if not self.enabled(SERVICES[module]):
+                return
         backend = self._firewall()
         if backend is None:
             return
