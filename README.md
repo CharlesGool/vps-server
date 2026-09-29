@@ -136,13 +136,12 @@ One-line install from the updated work branch (the published `v4.0.0` tag still 
 git clone --branch release/v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
-Step by step, with configuration:
+Step by step:
 
 ```bash
 # Clone the updated work branch; the v4.0.0 tag still uses the browser wizard.
 git clone --branch release/v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
 bash deploy/install.sh
 ```
 
@@ -154,10 +153,11 @@ installed later from the console when a server connection is needed.
 
 ### First setup
 
-The setup flow below is included in v4.0.0. On a new Debian or Ubuntu installation,
-clone the release tag and run `bash deploy/install.sh` as root from a terminal. The
-default application directory is the root account's `~/apps/vps-server`;
-`PREFIX` can select another directory.
+The direct-install flow below is available on the `release/v4.0.0` work branch
+after commit `2cb606f`. On a new Debian or Ubuntu installation, clone that
+branch and run `bash deploy/install.sh` as root from a terminal. The published
+`v4.0.0` tag still starts the browser wizard. The default application directory
+is the root account's `~/apps/vps-server`; `PREFIX` can select another directory.
 
 The installer runs directly in the terminal. It installs all six server
 modules and prints the console URL and its persistent password when the Web
