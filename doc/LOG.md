@@ -228,6 +228,7 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
+- Test deployment preparation (2026-09-29): the designated LAN test host currently runs `dev-2c0e4d7` under the standard application directory, with Web, proxy, node-meter, and AnyTLS active and enabled. Its Git checkout has many pre-existing modified files; the deployment will update the installed Web files without resetting that checkout or changing node state. This candidate's public summary is: global Dashboard navigation and responsive Settings sections, distinct page icons, a read-only FRPS / FRPC information view with masked connection details, optional Beta page and resize motion, and a browser-history authorization guard. The new `test-<source revision>` stamp and in-app Changelog heading will be checked for agreement. Back up the previous Web files and state outside the application directory, then verify the listener, login, FRP page, version, Changelog, and remaining services. No host change has been made in this deployment turn yet.
 - Current work (2026-09-29): a read-only FRPS / FRPC console page groups local FRPS service details, interface addresses, and a revealable, copyable FRPC connection template. The Dashboard links to it; the authenticated header is limited to Home, Changelog, Settings, and Sign out, and child pages have a Back control. Ordinary and Security Settings use section navigation, with a separate action to enter the protected area. Each page has a distinct tab symbol in the shared project frame. Appearance offers an optional Beta page transition; responsive resize motion is separate. Protected pages hide before browser history caching and require a fresh server request when revisited after sign-out. The server does not claim to observe a remote FRPC process. A later Web setup page with independent module enable/disable and install choices is tracked in DESIGN, separate from the existing installation wizard.
 - Checks for current work: 314 automated tests passed (8 skipped); Python compilation, JavaScript syntax, and Git whitespace checks passed. Document formatting and local-link checks had zero errors; the existing three CJK-navigation warnings and five external URLs remain. Multilingual static checks passed with zero errors. Project structure passed on a clean export of versioned and new source files; the live checkout still reports the five ignored runtime entries documented under Limitations. Local Chromium verified Dashboard to FRP navigation, explicit Back, browser Back/Forward, FRP masked values, desktop and 390 px layouts without horizontal overflow, Settings section navigation, and sign-out followed by browser Back returning to Login after a fresh server request. An iPhone user-agent emulation starts page motion off and accepts explicit opt-in. Browser motion on real iOS and Android devices and deployment to the test host are not verified in this work.
 - Next action: review the FRP view and page motion on the designated test host, including a real mobile browser. The future Web setup page remains design backlog and is not implemented. No temporary project rules were found.
@@ -276,6 +277,7 @@ release.
 - Page-specific tab icons share the project frame and use the function's symbol.
 - The FRPS / FRPC page shows local server details and a copyable client connection template while keeping ports and tokens masked until requested.
 - Appearance now offers a Beta page-transition switch; the interface also animates responsive window reflow. Protected pages are rechecked on browser history return so sign-out does not expose a cached console view.
+- Test candidates show their `test-` identifier next to the project name and above their development notes in the Web Changelog.
 - The login page uses the shared project header. Its footer links the running version to Changelog and offers language selection before sign-in.
 - Login, administrator verification, password change, and proxy-node forms each provide an independent Show/Hide control that preserves entered text and focus.
 
@@ -579,4 +581,5 @@ The following entries preserve the Git commit subjects in chronological order. T
 - `25f1f9e` docs(log): record Web UI test deployment
 - `2c0e4d7` feat(web): show current test build updates
 - `4d0db36` docs(log): record version and Changelog deployment
-- (this commit) feat(web): align navigation and add FRP information
+- `95ca649` feat(web): align navigation and add FRP information
+- (this commit) fix(web): display test candidate version and notes

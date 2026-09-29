@@ -108,8 +108,12 @@ def _read_version():
     return value or "dev-unknown"
 
 
+def display_version(version):
+    return version if version.startswith(("dev-", "test-")) else f"v{version}"
+
+
 VERSION = _read_version()
-VERSION_LABEL = VERSION if VERSION.startswith("dev-") else f"v{VERSION}"
+VERSION_LABEL = display_version(VERSION)
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -1994,7 +1998,7 @@ def render_changelog(markdown):
             if "-->" not in stripped:
                 in_comment = True
             continue
-        if stripped.startswith(("### v", "### dev-")):
+        if stripped.startswith(("### v", "### dev-", "### test-")):
             started = True
             close_list()
             html_parts.append(f"<h2>{_inline_md(stripped[4:])}</h2>")
@@ -4092,7 +4096,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         source = path.read_text(encoding="utf-8") if path.exists() else ""
         section = changelog_section(source)
         development = ""
-        if VERSION.startswith("dev-"):
+        if VERSION.startswith(("dev-", "test-")):
             updates = development_updates_section(source)
             if not updates and path != BASE_DIR / "doc" / "LOG.md":
                 english = BASE_DIR / "doc" / "LOG.md"

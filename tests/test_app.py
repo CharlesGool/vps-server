@@ -1282,6 +1282,21 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
         self.assertNotIn("Test deployment (2026-09-28)", body)
 
+    def test_test_candidate_shows_its_exact_identifier_and_notes(self):
+        self.require_log_files("doc/LOG.md")
+        self.assertEqual(app.display_version("test-95ca649"), "test-95ca649")
+        self.assertEqual(app.display_version("3.0.0"), "v3.0.0")
+        session = self.login()
+        with patch.object(app, "VERSION", "test-95ca649"), patch.object(app, "VERSION_LABEL", "test-95ca649"):
+            conn = self.connect()
+            conn.request("GET", "/changelog", headers={"Cookie": f"session={session}"})
+            response = conn.getresponse()
+            body = response.read().decode()
+            conn.close()
+        self.assertEqual(response.status, 200)
+        self.assertIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("The FRPS / FRPC page shows local server details", body)
+
     def test_changelog_markdown_is_escaped_not_injected(self):
         # LOG.md is author-controlled, but rendering must still escape tags.
         out = app.render_changelog(
