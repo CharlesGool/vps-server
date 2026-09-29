@@ -2120,7 +2120,6 @@ def render_page(title, body, lang, active=None, show_nav=True, password_authenti
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(t['title'])}</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon-{favicon}.svg">
-<script src="/static/route-motion.js"></script>
 <script src="/static/layout-motion.js"></script>
 {history_guard}
 <script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
@@ -2150,7 +2149,6 @@ STATIC_FILES = {
     "/static/password-fields.js": ("application/javascript", BASE_DIR / "static" / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
     "/static/settings-sections.js": ("application/javascript", BASE_DIR / "static" / "settings-sections.js"),
-    "/static/route-motion.js": ("application/javascript", BASE_DIR / "static" / "route-motion.js"),
     "/static/layout-motion.js": ("application/javascript", BASE_DIR / "static" / "layout-motion.js"),
     "/static/auth-history.js": ("application/javascript", BASE_DIR / "static" / "auth-history.js"),
     "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
@@ -2660,10 +2658,6 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 <div class="preferences-choices" role="group" aria-label="{esc(t['appearance_mode'], quote=True)}">{modes}</div></div>
               <h3 class="preferences-group-title">{esc(t['theme_color'])}</h3>
               <div class="preferences-choices" role="group" aria-label="{esc(t['theme_color'], quote=True)}">{themes}</div>
-              <div class="preferences-motion"><div><h3>{esc(t['page_motion'])} <span class="badge">{esc(t['page_motion_beta'])}</span></h3>
-                <p class="muted small">{esc(t['page_motion_help'])}</p></div>
-                <button type="button" class="motion-switch" role="switch" aria-label="{esc(t['page_motion'], quote=True)}"
-                  aria-checked="false" data-page-motion-switch><span aria-hidden="true"></span></button></div>
             </section>
             <section id="settings-language" class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
