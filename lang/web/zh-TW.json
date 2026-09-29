@@ -329,7 +329,7 @@
   "access_ip_disabled": "已停用 IP 免密登入。",
   "modules_heading": "模組",
   "modules_manage": "管理模組",
-  "modules_note": "在此安裝或解除安裝選用功能。運行開關位於首頁卡片；安裝記錄顯示於下方。",
+  "modules_note": "在此安裝或解除安裝選用功能，並單獨開關公開連線頁。其他功能的開關位於首頁；安裝記錄顯示於下方。",
   "module_not_installed": "未安裝",
   "module_enabled": "已啟用",
   "module_disabled": "已停用",

@@ -329,7 +329,7 @@
   "access_ip_disabled": "Accès par IP désactivé.",
   "modules_heading": "Modules",
   "modules_manage": "Gérer les modules",
-  "modules_note": "Installez ou désinstallez les fonctions facultatives ici. Utilisez les interrupteurs de l’accueil pour les activer ou les arrêter. Le journal apparaît ci-dessous.",
+  "modules_note": "Installez ou désinstallez les fonctions facultatives ici et activez ou désactivez séparément la page publique de connectivité. Les autres interrupteurs sont sur l’accueil. Le journal apparaît ci-dessous.",
   "module_not_installed": "Non installé",
   "module_enabled": "Activé",
   "module_disabled": "Désactivé",

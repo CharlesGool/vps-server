@@ -687,7 +687,6 @@ copy_selected_files() {
 prepare_module_source() {
   has_module web || return 0
   case "$SRC_DIR/" in "$PREFIX_ABS/installer-source/"*) return 0 ;; esac
-  [ "$SRC_DIR" != "$PREFIX_ABS" ] || return 0
   local stage item
   stage="$(mktemp -d "$PREFIX/.installer-source.XXXXXX")"
   for item in src deploy tools lang static third_party config doc README.md LICENSE .env.example; do

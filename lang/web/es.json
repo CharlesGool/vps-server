@@ -329,7 +329,7 @@
   "access_ip_disabled": "Acceso por IP desactivado.",
   "modules_heading": "Módulos",
   "modules_manage": "Gestionar módulos",
-  "modules_note": "Instale o desinstale funciones opcionales aquí. Use los interruptores de Inicio para activarlas o detenerlas. El registro aparece abajo.",
+  "modules_note": "Instala o desinstala funciones opcionales aquí y controla por separado la página pública de acceso. Los demás interruptores están en Inicio. El registro aparece abajo.",
   "module_not_installed": "No instalado",
   "module_enabled": "Activado",
   "module_disabled": "Desactivado",

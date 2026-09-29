@@ -329,7 +329,7 @@
   "access_ip_disabled": "IP access disabled.",
   "modules_heading": "Modules",
   "modules_manage": "Manage modules",
-  "modules_note": "Install or uninstall optional features here. Use the switches on Home to start or stop them. Installation logs appear below.",
+  "modules_note": "Install or uninstall optional features here, and switch the public reachability page independently. Other switches are on Home. Installation logs appear below.",
   "module_not_installed": "Not installed",
   "module_enabled": "Enabled",
   "module_disabled": "Disabled",

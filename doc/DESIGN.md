@@ -589,7 +589,10 @@ exists to avoid.
 
 The visitor database, `portfwd.json` (enabled forwarding rules), and
 `login-access.json` (private-IP allowlist) persist under `$VPSSRV_DATA_DIR`.
-The signed-in Settings page owns the nine-item operational module list.
+The signed-in Settings page owns the ten-item operational module list. Its
+Public reachability page switch changes only the Web process's public
+listeners; the console remains available on its separate port. An in-place
+install also stages the version-matched source needed for later FRPC setup.
 Optional installs and uninstalls run through the serialized root helper;
 `data/module-job.json` exposes its state and `data/module-job.log` contains
 the latest installer output, including package-manager failures. Uninstalls

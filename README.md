@@ -168,13 +168,17 @@ addresses and service status before using them from another device.
 
 From the control panel, open **Settings → Modules**. An ordinary signed-in
 session can manage these operational functions; password verification remains
-required for Security Settings. The module list contains Speed test, iperf3,
+required for Security Settings. The module list contains the Public reachability
+page, Speed test, iperf3,
 Proxy nodes, FRPS, FRPC, Port forward, Recent visitors, Changelog, and Settings.
 Only separately installable functions show Install or Uninstall. Before
 uninstalling one, the helper stores a private configuration archive under
 `$PREFIX/data`; the latest job output is visible on the Modules page. Optional
-modules install from version-matched files under `$PREFIX/installer-source`.
-Every Home card except Settings has its own switch. The Proxy nodes switch
+modules install from version-matched files under `$PREFIX/installer-source`,
+including when the source checkout is also the install directory. The Public
+reachability page has its own switch on Modules; it controls ports 80 and 443
+without turning off the console. Every Home card except Settings has its own
+switch. The Proxy nodes switch
 controls both AnyTLS and the other proxy protocols; it keeps node records and
 does not start a service with zero enabled nodes. The FRPC switch restores
 instances that were running before it was turned off. Port forwarding keeps

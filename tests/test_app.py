@@ -149,7 +149,8 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertIn('Modules', body)
             self.assertIn('action="/settings/modules/action"', body)
-            self.assertEqual(body.count('class="module-card"'), 9)
+            self.assertEqual(body.count('class="module-card"'), 10)
+            self.assertIn('<h2>Public reachability page</h2>', body)
             self.assertNotIn('<h2>AnyTLS</h2>', body)
             self.assertNotIn('<h2>Lucky</h2>', body)
             conn.close()
@@ -171,6 +172,54 @@ class ConsoleTest(unittest.TestCase):
         finally:
             app.destroy_session(ordinary)
             app.destroy_session(elevated)
+
+    def test_public_page_has_independent_modules_switch(self):
+        session = app.create_session()
+        try:
+            for enabled, action in ((True, 'disable'), (False, 'enable')):
+                with self.subTest(enabled=enabled), \
+                     patch.object(app, 'PUBLIC_ENABLED', enabled), \
+                     patch.object(app, 'installed_modules', return_value={'web'}):
+                    conn = self.connect()
+                    conn.request('GET', '/settings/modules?lang=en',
+                                 headers={'Cookie': f'session={session}'})
+                    response = conn.getresponse()
+                    body = response.read().decode()
+                    conn.close()
+                    self.assertEqual(response.status, 200)
+                    card = re.search(r'<section class="module-card"><div><h2>Public reachability page</h2>(.*?)</section>', body, re.S)
+                    self.assertIsNotNone(card)
+                    self.assertIn(f'name="action" value="{action}"', card[0])
+                    self.assertIn(f'aria-checked="{str(enabled).lower()}"', card[0])
+        finally:
+            app.destroy_session(session)
+
+    def test_public_page_switch_submits_to_module_job(self):
+        session = app.create_session()
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                prefix = Path(directory)
+                (prefix / 'module_manager.py').write_text('')
+                token = app.access_csrf_token(session, 'module:web:disable')
+                body = urlencode({'module': 'web', 'action': 'disable', 'csrf': token})
+                with patch.object(app, 'BASE_DIR', prefix), \
+                     patch.object(app, 'installed_modules', return_value={'web'}), \
+                     patch.object(app, 'module_status_path', return_value=prefix / 'missing-job'), \
+                     patch.object(app, 'save_module_status') as save, \
+                     patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                     patch.object(app.subprocess, 'run', return_value=type('Result', (), {'returncode': 0})()) as run:
+                    conn = self.connect()
+                    conn.request('POST', '/settings/modules/action', body,
+                                 {'Cookie': f'session={session}',
+                                  'Content-Type': 'application/x-www-form-urlencoded'})
+                    response = conn.getresponse()
+                    response.read()
+                    conn.close()
+                self.assertEqual(response.status, 302)
+                save.assert_called_once_with(prefix, 'web', 'queued')
+                self.assertEqual(run.call_args.args[0][-3:], ['disable', 'web', str(prefix)])
+        finally:
+            app.destroy_session(session)
 
     def test_frpc_module_shows_install_only_when_program_or_unit_is_missing(self):
         session = app.create_session()

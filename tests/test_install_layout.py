@@ -10,6 +10,41 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallLayoutTests(unittest.TestCase):
+    def test_in_place_install_prepares_frpc_module_source_without_runtime_data(self):
+        installer = (ROOT / "deploy/install.sh").read_text()
+        function = installer.split("prepare_module_source() {", 1)[1].split("\n}\n", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            for relative in ("deploy/systemd/frpc@.service", "deploy/install.sh",
+                             "config/VERSION", "src/web/app.py", "third_party/frp/frps"):
+                path = prefix / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(relative)
+            (prefix / "admin_password.txt").write_text("private")
+            (prefix / "data").mkdir()
+            (prefix / "data/session").write_text("private")
+            script = f'''set -euo pipefail
+SRC_DIR={prefix}
+PREFIX={prefix}
+PREFIX_ABS={prefix}
+NEW_VERSION=dev-test
+has_module() {{ [ "$1" = web ]; }}
+chown() {{ :; }}
+prepare_module_source() {{{function}
+}}
+prepare_module_source
+'''
+            subprocess.run(["bash", "-c", script], check=True, capture_output=True, text=True)
+            payload = prefix / "installer-source"
+            self.assertEqual((payload / "deploy/systemd/frpc@.service").read_text(),
+                             "deploy/systemd/frpc@.service")
+            self.assertEqual((payload / "config/VERSION").read_text(), "dev-test\n")
+            self.assertFalse((payload / "admin_password.txt").exists())
+            self.assertFalse((payload / "data").exists())
+            self.assertEqual((prefix / "admin_password.txt").read_text(), "private")
+            subprocess.run(["bash", "-c", script], check=True, capture_output=True, text=True)
+            self.assertTrue((payload / "deploy/systemd/frpc@.service").is_file())
+
     def test_in_place_install_stages_frps_and_lucky_binaries(self):
         installer = (ROOT / "deploy/install.sh").read_text()
         function = installer.split("copy_selected_files() {", 1)[1].split("\n}\n", 1)[0]

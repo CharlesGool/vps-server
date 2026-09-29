@@ -21,6 +21,7 @@
 .module-card form { margin:0; }
 .module-card button { min-width:5.5rem; }
 .module-card button:disabled { opacity:.55; cursor:wait; }
+.module-card .motion-switch { min-width:3.4rem; }
 .module-card .danger { background:var(--error-solid); border-color:var(--error-solid); color:var(--on-error); }
 .module-log { margin-top:1.5rem; border-top:1px solid var(--card-border); padding-top:1rem; }
 .module-log h2 { font-size:1rem; }

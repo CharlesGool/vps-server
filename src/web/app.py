@@ -3014,6 +3014,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             pass
         busy = job.get("state") in ("queued", "running") and time.time() - job.get("at", 0) < 900
         catalogue = (
+            ("web", t["module_web"], None),
             ("speedtest", t["speedtest"], None),
             ("iperf3", t["iperf"], "iperf3"),
             ("proxy_nodes", t["proxy"], "proxy_nodes"),
@@ -3026,7 +3027,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         )
         cards = []
         for module, title, installable in catalogue:
-            if module == "proxy_nodes":
+            if module == "web":
+                present = module in installed
+                enabled = present and PUBLIC_ENABLED
+            elif module == "proxy_nodes":
                 present = {"proxy", "anytls"} <= installed
                 enabled = present and any(_run_quiet(["systemctl", "is-enabled", "--quiet", MANAGED_UNITS[item]])
                                           for item in ("proxy", "anytls") if item in installed)
@@ -3062,6 +3066,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                            f'{"disabled" if busy else ""}>{esc(label)}</button></form>')
             if module == "frpc" and present and not names:
                 control += f'<a class="button-link" href="/frp/client/edit">{esc(t["frp_new_client"])}</a>'
+            if module == "web" and present:
+                action = "disable" if enabled else "enable"
+                label = title + " " + (t["module_disable"] if enabled else t["module_enable"])
+                control = (f'<form method="post" action="/settings/modules/action">'
+                           f'<input type="hidden" name="module" value="web">'
+                           f'<input type="hidden" name="action" value="{action}">'
+                           f'<input type="hidden" name="csrf" value="{access_csrf_token(token, "module:web:" + action)}">'
+                           f'<button type="submit" class="motion-switch" role="switch" '
+                           f'aria-label="{esc(label, quote=True)}" aria-checked="{str(bool(enabled)).lower()}" '
+                           f'{"disabled" if busy else ""}><span aria-hidden="true"></span></button></form>')
             cards.append(f'<section class="module-card"><div><h2>{esc(title)}</h2>'
                          f'<p>{esc(status)}</p></div>{control}</section>')
         notice = (f'<p class="module-notice" role="status">{esc(t["module_job_" + job["state"]])}: '
@@ -3098,7 +3112,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
         allowed = ("iperf3", "proxy_nodes", "frps", "frpc") if action in ("install", "uninstall") else (
-            "iperf3", "proxy_nodes", "frps", "frpc") + MANAGED_FEATURES
+            "web", "iperf3", "proxy_nodes", "frps", "frpc") + MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
