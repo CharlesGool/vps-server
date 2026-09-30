@@ -10,6 +10,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallLayoutTests(unittest.TestCase):
+    def test_empty_proxy_config_is_valid_when_preserving_an_upgrade(self):
+        installer = (ROOT / "deploy/install.sh").read_text()
+        function = installer.split("preserve_proxy() {", 1)[1].split("\n}\n", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / 'proxy.json'
+            config.write_text('{"inbounds": []}')
+            script = f'''set -euo pipefail
+PROXY_CONFIG_PATH={config}
+msg() {{ :; }}
+preserve_proxy() {{{function}
+}}
+preserve_proxy
+'''
+            subprocess.run(['bash', '-c', script], check=True, capture_output=True, text=True)
+
     def test_in_place_install_prepares_frpc_module_source_without_runtime_data(self):
         installer = (ROOT / "deploy/install.sh").read_text()
         function = installer.split("prepare_module_source() {", 1)[1].split("\n}\n", 1)[0]

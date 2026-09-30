@@ -144,6 +144,8 @@ def switch_web_setting(path, enabled):
 def run_install(prefix, module):
     if module == "frpc":
         return install_frpc(prefix)
+    if module == "iperf3":
+        return install_iperf3(prefix)
     source = Path(prefix) / "installer-source" / "deploy" / "install.sh"
     if not source.is_file():
         raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
@@ -174,11 +176,48 @@ def run_install(prefix, module):
             subprocess.run(["systemctl", "start", "vps-server-web.service"], check=True, timeout=60)
     if module not in installed_modules(prefix):
         raise RuntimeError("module was not recorded as installed")
-    if module == "iperf3":
-        if not shutil.which("iperf3"):
-            raise RuntimeError("iperf3 package is unavailable")
-        flag = Path(prefix) / "data" / "iperf3-enabled"
-        switch_web_setting(flag, True)
+
+
+def install_iperf3(prefix):
+    """Add the distro package without rerunning setup for existing nodes."""
+    prefix = Path(prefix)
+    if "web" not in installed_modules(prefix):
+        raise RuntimeError("the console module is unavailable")
+    if "iperf3" in installed_modules(prefix):
+        raise RuntimeError("module already installed")
+    state = prefix / ".install-state"
+    if not state.is_file():
+        raise RuntimeError("installed-module record is unavailable")
+    lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if line.startswith("modules="):
+            modules = line.removeprefix("modules=").strip().split(",")
+            if "iperf3" not in modules:
+                modules.append("iperf3")
+            lines[index] = "modules=" + ",".join(modules) + "\n"
+            break
+    else:
+        raise RuntimeError("installed-module record has no modules field")
+    if not shutil.which("iperf3"):
+        env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+        for attempt in range(3):
+            subprocess.run(["apt-get", "update", "-qq"], env=env,
+                           stdout=sys.stdout, stderr=subprocess.STDOUT,
+                           check=False, timeout=300)
+            result = subprocess.run(["apt-get", "install", "-y", "-qq", "iperf3"], env=env,
+                                    stdout=sys.stdout, stderr=subprocess.STDOUT,
+                                    check=False, timeout=600)
+            if result.returncode == 0 and shutil.which("iperf3"):
+                break
+            if attempt < 2:
+                time.sleep(2)
+        else:
+            raise RuntimeError("iperf3 package installation failed; see apt output above")
+    switch_web_setting(prefix / "data" / "iperf3-enabled", True)
+    temp = state.with_suffix(".tmp")
+    temp.write_text("".join(lines), encoding="utf-8")
+    os.chmod(temp, state.stat().st_mode & 0o777)
+    os.replace(temp, state)
 
 
 def install_frpc(prefix):

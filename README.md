@@ -174,8 +174,10 @@ Proxy nodes, FRPS, FRPC, Port forward, Recent visitors, Changelog, and Settings.
 Only separately installable functions show Install or Uninstall. Before
 uninstalling one, the helper stores a private configuration archive under
 `$PREFIX/data`; the latest job output is visible on the Modules page. Optional
-modules install from version-matched files under `$PREFIX/installer-source`,
-including when the source checkout is also the install directory. The Public
+modules other than iperf3 install from version-matched files under
+`$PREFIX/installer-source`, including when the source checkout is also the
+install directory. iperf3 installs from the distro package manager without
+rerunning setup for existing proxy nodes. The Public
 reachability page has its own switch on Modules; it controls ports 80 and 443
 without turning off the console. Every Home card except Settings has its own
 switch. The Proxy nodes switch

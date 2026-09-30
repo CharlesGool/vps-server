@@ -3125,7 +3125,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return self.redirect(destination, {"Cache-Control": "no-store"})
         install_source = (BASE_DIR / "installer-source" / "deploy" / "systemd" / "frpc@.service" if module == "frpc" else
                           BASE_DIR / "installer-source" / "deploy" / "install.sh")
-        if action == "install" and not install_source.is_file():
+        if action == "install" and module != "iperf3" and not install_source.is_file():
             return self.send_html(503, esc(STRINGS[lang]["module_source_missing"]),
                                   {"Cache-Control": "no-store"})
         helper = BASE_DIR / "module_manager.py"

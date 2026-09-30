@@ -237,7 +237,10 @@ print("PROXY_PROTOCOLS=%s" % ",".join(types))' "$PROXY_CONFIG_PATH" 2>/dev/null 
     key="${kv%%=*}"; val="${kv#*=}"
     export "$key=$val"
   done <<< "$out"
-  [ -n "${PROXY_PROTOCOLS:-}" ] && msg upgrade_proxy_kept "$PROXY_PROTOCOLS"
+  if [ -n "${PROXY_PROTOCOLS:-}" ]; then
+    msg upgrade_proxy_kept "$PROXY_PROTOCOLS"
+  fi
+  return 0
 }
 
 default_for() {

@@ -122,6 +122,35 @@ class ModuleManagerTests(unittest.TestCase):
             self.assertEqual(installer[0][1]['env']['PREFIX'], str(prefix))
             self.assertEqual(installer[0][1]['stdin'], module_manager.subprocess.DEVNULL)
 
+    def test_iperf3_install_preserves_other_modules_and_node_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            (prefix / 'app.py').write_text('web')
+            (prefix / 'data').mkdir()
+            state = prefix / '.install-state'
+            state.write_text('version=3.0.0\nmodules=web,anytls,proxy,frps\nvars=old\n')
+            node = prefix / 'data/node.json'
+            node.write_text('{"credential":"unchanged"}')
+            commands = []
+
+            def run(command, **_kwargs):
+                commands.append(command)
+                return type('Result', (), {'returncode': 0})()
+
+            with patch.object(module_manager, 'installed_modules', side_effect=[{'web'}, {'web'}]), \
+                 patch.object(module_manager.shutil, 'which', side_effect=[None, '/usr/bin/iperf3']), \
+                 patch.object(module_manager.subprocess, 'run', side_effect=run):
+                module_manager.run_install(prefix, 'iperf3')
+            self.assertEqual(node.read_text(), '{"credential":"unchanged"}')
+            self.assertEqual(state.read_text(),
+                             'version=3.0.0\nmodules=web,anytls,proxy,frps,iperf3\nvars=old\n')
+            self.assertEqual((prefix / 'data/iperf3-enabled').read_text(), '1\n')
+            self.assertEqual(commands, [
+                ['apt-get', 'update', '-qq'],
+                ['apt-get', 'install', '-y', '-qq', 'iperf3'],
+                ['systemctl', 'restart', 'vps-server-web.service'],
+            ])
+
     def test_public_page_switch_keeps_web_service_running(self):
         with tempfile.TemporaryDirectory() as directory:
             prefix = Path(directory)
