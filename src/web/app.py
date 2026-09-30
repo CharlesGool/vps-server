@@ -76,6 +76,7 @@ from module_manager import feature_enabled as module_feature_enabled, log_path a
 from module_manager import installed_modules, save_status as save_module_status
 from module_manager import status_path as module_status_path
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
+                         client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
                          build_client as frpc_build)
 
@@ -505,7 +506,7 @@ def module_states(installed=None):
                            for item in ("proxy", "anytls") if item in installed),
         "frps": "frps" in installed and _run_quiet(
             ["systemctl", "is-enabled", "--quiet", MANAGED_UNITS["frps"]]),
-        "frpc": any(_run_quiet(["systemctl", "is-active", "--quiet", f"frpc@{name}.service"])
+        "frpc": any(_run_quiet(["systemctl", "is-active", "--quiet", frpc_unit(name)])
                     for name in frpc_names()),
         "portfwd": portfwd_enabled(),
         "visitors": module_feature_enabled(BASE_DIR, "visitors"),
@@ -1379,7 +1380,7 @@ def frps_node():
 def frpc_connected(name, server, port):
     """Check this instance's established TCP socket to its configured server."""
     try:
-        pid_text = subprocess.run(['systemctl', 'show', '-P', 'MainPID', f'frpc@{name}.service'],
+        pid_text = subprocess.run(['systemctl', 'show', '-P', 'MainPID', frpc_unit(name)],
                                   capture_output=True, text=True, timeout=3, check=True).stdout.strip()
         pid = int(pid_text)
         if pid <= 0 or not server or not port:
@@ -3037,7 +3038,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             elif module == "frpc":
                 present = module in installed
                 names = frpc_names() if present else []
-                enabled = any(_run_quiet(["systemctl", "is-active", "--quiet", f"frpc@{name}.service"])
+                enabled = any(_run_quiet(["systemctl", "is-active", "--quiet", frpc_unit(name)])
                               for name in names)
             elif module == "iperf3":
                 present = module in installed
@@ -3699,7 +3700,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             except (OSError, ValueError):
                 continue
             connected = frpc_connected(name, item['server'], item['port'])
-            running_client = _run_quiet(['systemctl', 'is-active', '--quiet', f'frpc@{name}.service'])
+            running_client = _run_quiet(['systemctl', 'is-active', '--quiet', frpc_unit(name)])
             toggle_action = 'disable' if running_client else 'enable'
             state = t['frp_connected'] if connected else t['frp_disconnected']
             clients.append(f'<article class="frp-target-card"><div class="frp-target-head">'
@@ -3781,7 +3782,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                   f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/client/rename">'
                   f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
                   f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:rename:" + name)}">'
-                  f'<label>{esc(t["frp_instance_name"])}<input name="newName" pattern="[A-Za-z0-9_-]{{1,32}}" '
+                  f'<label>{esc(t["frp_instance_name"])}<input name="newName" '
                   f'maxlength="32" value="{esc(name, quote=True)}" required></label>'
                   f'<button type="submit">{esc(t["frp_save"])}</button></form></details>') if name else ''
         message = parse_qs(parsed.query).get('msg', [''])[0]
@@ -3883,7 +3884,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 f'<form method="post" action="/frp/client/structured" autocomplete="off">'
                 f'<input type="hidden" name="section" value="create">'
                 f'<input type="hidden" name="csrf" value="{access_csrf_token(self.get_cookie("session"), "frp:structured:new")}">'
-                f'<label>{esc(t["frp_instance_name"])}<input name="name" pattern="[A-Za-z0-9_-]{{1,32}}" maxlength="32" required></label>'
+                f'<label>{esc(t["frp_instance_name"])}<input name="name" maxlength="32" required></label>'
                 f'<label>{esc(t["frp_server_ip"])}<input name="server" required></label>'
                 f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" required></label>'
                 f'{token_field}<button type="submit">{esc(t["frp_new_client"])}</button></form></section>')
@@ -4006,6 +4007,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             elif structured:
                 if section not in ('server', 'add', 'edit', 'delete', 'create') or (section != 'create' and not frpc_path(name).is_file()):
                     raise ValueError
+                if section == 'create':
+                    frpc_path(name)
                 action = 'frp:structured:' + (name if section != 'create' else 'new')
                 values = {'index': int(form['index'][0])} if section in ('edit', 'delete') else {}
                 if section in ('server', 'create'):
@@ -4050,12 +4053,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             result = None
         except OSError:
             result = None
-        if path.endswith('client/rename') and result and result.returncode == 0:
+        succeeded = bool(result and result.returncode == 0)
+        if structured and section == 'create' and succeeded:
+            succeeded = frpc_path(name).is_file() and not frpc_path(name).is_symlink()
+        if path.endswith('client/rename') and succeeded:
             name = new_name
-        target = ('/frp/client/edit?name=' + quote(name) if path in ('/frp/client/structured', '/frp/client/toggle', '/frp/client/rename') else
+        target = ('/frp/client/edit' if structured and section == 'create' and not succeeded else
+                  '/frp/client/edit?name=' + quote(name) if path in ('/frp/client/structured', '/frp/client/toggle', '/frp/client/rename') else
                   '/frps' if path.startswith('/frp/server/') else '/frpc')
         return self.redirect(target + ('&' if '?' in target else '?') + 'msg=' +
-                             ('done' if result and result.returncode == 0 else 'failed'),
+                             ('done' if succeeded else 'failed'),
                              {'Cache-Control': 'no-store'})
 
     def page_proxy(self, lang, query_lang):

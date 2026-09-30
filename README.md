@@ -91,9 +91,12 @@ Its Test connection button makes a separate FRPC login using the saved server,
 port, and token. The instance page reveals the IP or token on request and
 shows each TCP/UDP proxy's type, local IP, local port, and remote port before
 editing. Saves keep the operator on the instance page, verify the file, and
-roll back on failure. These FRP actions use the signed-in session; recent
-administrator-password verification is reserved for Security Settings actions
-such as password and password-free IP changes. The field editor accepts simple
+roll back on failure. FRPC instance names may use Unicode letters and numbers,
+hyphens, and underscores, up to 32 characters. The name remains the suffix of
+its `/etc/frp/frpc-<name>.toml` configuration file. These FRP actions use the
+signed-in session; recent administrator-password verification is reserved for
+Security Settings actions such as password and password-free IP changes. The
+field editor accepts simple
 token-authenticated TCP/UDP configurations only; it does not alter unsupported
 FRPC TOML. FRPC instances on other devices remain outside this console's live
 status. The Modules page checks the local FRPC executable and

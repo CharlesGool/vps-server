@@ -609,6 +609,13 @@ AnyTLS and proxy units while the node inventory stays intact.
 Home opens FRPS at `/frps` and the FRPC instance list at `/frpc`; the client
 editor remains under `/frp/client/edit`. The former combined `/frp` route
 redirects to the FRPC list for existing bookmarks.
+FRPC instance names allow normalized Unicode letters and numbers plus `_` and
+`-`, up to 32 characters. The canonical configuration keeps that name in
+`/etc/frp/frpc-<name>.toml`. Existing ASCII names keep their systemd unit names;
+Unicode names use a stable ASCII unit name and a root-owned configuration
+symlink because the `frpc@.service` template expands `%i` into its config path.
+The client list excludes these aliases. Creating, renaming, or deleting an
+instance maintains its alias, and a failed create removes both files.
 The console password, selected port, web certificates and
 `.install-state` live under `$PREFIX`; the sing-box module configs and their
 certificates live in `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`.

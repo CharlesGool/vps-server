@@ -880,6 +880,29 @@ class ConsoleTest(unittest.TestCase):
             self.assertTrue(app.frpc_connected('demo', '203.0.113.42', 7000))
             self.assertFalse(app.frpc_connected('demo', '203.0.113.42', 7001))
 
+    def test_failed_unicode_frpc_creation_returns_to_new_instance_form(self):
+        from subprocess import CompletedProcess
+        session = app.create_session()
+        try:
+            body = urlencode({'name': '示例-一', 'section': 'create',
+                              'server': '203.0.113.42', 'port': '7000',
+                              'token': 'example-token',
+                              'csrf': app.access_csrf_token(session, 'frp:structured:new')})
+            with patch.object(app, 'FRP_CONTROL_HELPER', Path(__file__).resolve().parents[1] / 'src/web/frp_control.py'), \
+                 patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                 patch.object(app.subprocess, 'run', return_value=CompletedProcess([], 1)):
+                conn = self.connect()
+                conn.request('POST', '/frp/client/structured', body=body,
+                             headers={'Cookie': 'session=' + session,
+                                      'Content-Type': 'application/x-www-form-urlencoded'})
+                response = conn.getresponse()
+                self.assertEqual(response.status, 302)
+                self.assertEqual(response.getheader('Location'), '/frp/client/edit?msg=failed')
+                response.read()
+                conn.close()
+        finally:
+            app.destroy_session(session)
+
     def test_frpc_connection_probe_requires_successful_login_log(self):
         from subprocess import TimeoutExpired
         config = {'serverAddr': '203.0.113.42', 'serverPort': 7000,

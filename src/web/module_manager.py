@@ -18,6 +18,11 @@ import tarfile
 import time
 from urllib.request import Request, urlopen
 
+try:
+    from .frp_control import client_names as frpc_names, client_unit as frpc_unit
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from frp_control import client_names as frpc_names, client_unit as frpc_unit
+
 
 MODULES = ("web", "iperf3", "anytls", "proxy", "frps", "lucky")
 STANDALONE_MODULES = ("frpc",)
@@ -301,8 +306,7 @@ def run_toggle(prefix, module, enabled):
     if module == "frpc":
         if not frpc_installed():
             raise RuntimeError("FRPC is not installed")
-        configs = sorted(FRPC_CONFIG_DIR.glob("frpc-*.toml"))
-        names = [p.stem.removeprefix("frpc-") for p in configs if p.is_file() and not p.is_symlink()]
+        names = frpc_names(FRPC_CONFIG_DIR)
         if enabled and not names:
             raise RuntimeError("Create an FRPC server instance before enabling it")
         state = Path(prefix) / "data" / "frpc-group-active.json"
@@ -310,16 +314,16 @@ def run_toggle(prefix, module, enabled):
             saved = json.loads(state.read_text()) if state.is_file() else names
             for name in names:
                 if name in saved:
-                    subprocess.run(["systemctl", "enable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+                    subprocess.run(["systemctl", "enable", "--now", frpc_unit(name)], check=True, timeout=60)
             state.unlink(missing_ok=True)
         else:
             active = [name for name in names if subprocess.run(
-                ["systemctl", "is-active", "--quiet", f"frpc@{name}.service"],
+                ["systemctl", "is-active", "--quiet", frpc_unit(name)],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0]
             state.write_text(json.dumps(active) + "\n")
             os.chmod(state, 0o600)
             for name in names:
-                subprocess.run(["systemctl", "disable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+                subprocess.run(["systemctl", "disable", "--now", frpc_unit(name)], check=True, timeout=60)
         return
     if module == "proxy_nodes":
         present = installed_modules(prefix) & {"proxy", "anytls"}
@@ -441,7 +445,7 @@ def uninstall_frpc(prefix):
     if not template.is_file() or FRPC_UNIT.read_bytes() != template.read_bytes():
         raise RuntimeError("FRPC service template changed; refusing to remove it")
     configs = sorted(FRPC_CONFIG_DIR.glob("frpc-*.toml"))
-    names = [p.stem.removeprefix("frpc-") for p in configs if p.is_file() and not p.is_symlink()]
+    names = frpc_names(FRPC_CONFIG_DIR)
     archive = Path(prefix) / "data" / f"module-backup-frpc-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         for config in configs:
@@ -450,7 +454,7 @@ def uninstall_frpc(prefix):
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
     for name in names:
-        subprocess.run(["systemctl", "disable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+        subprocess.run(["systemctl", "disable", "--now", frpc_unit(name)], check=True, timeout=60)
     FRPC_UNIT.unlink()
     try:
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
