@@ -228,8 +228,10 @@ These checked items are the former backlog's dated implementation and verificati
 
 ## Handoff
 
-- Release candidate: `v4.1.0-test.1` from the public `main` ancestry, containing the reviewed Web, module, FRP, iperf3, Singbox, and installer changes. A fresh installation of this exact tag has not yet been tested. The previous test-host installation was removed with its application data so the operator can check the clean-install path. The original development branch is local and is not the publication branch.
-- Before publication: verify the complete source, run the relevant suite and checks, review third-party blobs and public metadata, then push the candidate branch and tag, create the prerelease, and export a snapshot. No deployment is planned in this release task. No temporary project rules were found.
+- Current branch: `release/v4.1.0-test.1`; the tagged source commit is `cb64de9`. GitHub `main` and the release branch were pushed to that commit, annotated tag `v4.1.0-test.1` resolves to it, and the public GitHub prerelease is published. The immutable source snapshot is `snapshots/v4.1.0-test.1` (288 archived files, matching commit and version). This publication did not deploy to the cleared test host.
+- Completed: published the modular Web console, direct Web-only first install, optional module controls, FRP/iperf3 improvements, independent public listener switches, and the full-uninstall exit fix. README and Chinese install guidance use the exact tag. Application version and in-app Development Updates match the tag.
+- Checks: 377 local tests passed with 8 skipped; Shell syntax, Python compilation, CSS build, bundled dependency hashes, changed-document format (0 errors), changed-document local links (0 errors), source whitespace, and public diff review passed. Repository-wide multilingual validation still reports 183 historical documentation coverage errors; the structure checker also reports historical translated-document/layout errors. Fresh installation of this exact tag, reboot persistence, and every proxy traffic combination remain unverified.
+- Remaining work and next action: the operator will clone `v4.1.0-test.1` on the cleared test host and run a fresh install. Record the actual installer output, Web access, module install behavior, and any defects before considering a formal 4.1.0 release. No temporary project rules were found.
 
 ### Earlier published handoff
 
