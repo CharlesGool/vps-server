@@ -8,11 +8,10 @@ can be reused with another application context.
 class ChangelogMixin:
     def page_changelog(self, lang, query_lang):
         t = self.context.STRINGS[lang]
-        # Follow the UI language. If the translation is missing (it lags the
-        # English file between releases), fall back rather than show nothing —
-        # but say which file is actually on screen.
+        # Follow the UI language and make a missing translation visible.
         localized = self.context.CHANGELOG_PATHS.get(lang)
-        path = localized if localized and localized.exists() else self.context.BASE_DIR / "doc" / "LOG.md"
+        fallback = self.context.BASE_DIR / "doc" / "en" / "CHANGELOG.md"
+        path = localized if localized and localized.exists() else fallback
         notice = ""
         if localized and path != localized:
             notice = f'<p class="muted small">{self.context.html.escape(t["changelog_fallback"])}</p>'
@@ -20,9 +19,10 @@ class ChangelogMixin:
         source = path.read_text(encoding="utf-8") if path.exists() else ""
         section = self.context.changelog_section(source)
         development = ""
-        if self.context.VERSION.startswith(("dev-", "test-")) or "-test." in self.context.VERSION:
-            updates = self.context.development_updates_section(source)
-            if not updates and path != self.context.BASE_DIR / "doc" / "LOG.md":
+        if self.context.VERSION.startswith(("dev-", "test-")):
+            log_path = self.context.BASE_DIR / "doc" / "en" / "LOG.md"
+            updates = self.context.development_updates_section(log_path.read_text(encoding="utf-8")) if log_path.exists() else None
+            if not updates and path != fallback:
                 english = self.context.BASE_DIR / "doc" / "LOG.md"
                 updates = self.context.development_updates_section(english.read_text(encoding="utf-8")) if english.exists() else None
                 if updates:

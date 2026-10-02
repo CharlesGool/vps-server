@@ -463,8 +463,5 @@
   "console_port_invalid": "1024 से 65535 के बीच खाली पोर्ट दर्ज करें।",
   "console_port_error": "पोर्ट नहीं बदला जा सका। पुराना पता उपलब्ध है।",
   "console_port_open_new": "नया पता खोलें",
-  "console_port_return_old": "पुराने पते पर लौटें",
-  "iperf_cmd_default": "डिफ़ॉल्ट (थ्रूपुट + विलंबता)",
-  "iperf_cmd_reverse": "विपरीत दिशा (आपकी मशीन पर डाउनलोड)",
-  "iperf_cmd_udp": "UDP (जिटर और पैकेट हानि भी मापता है)"
+  "console_port_return_old": "पुराने पते पर लौटें"
 }

@@ -133,7 +133,7 @@ def ui_icon(context, name):
     if name not in context._UI_ICON_NAMES:
         raise ValueError("unknown UI icon")
     if name not in context._UI_ICON_CACHE:
-        source = (context.BASE_DIR / "static" / "icons" / "lucide" / f"{name}.svg").read_text(encoding="utf-8")
+        source = (context.STATIC_DIR / "icons" / "lucide" / f"{name}.svg").read_text(encoding="utf-8")
         context._UI_ICON_CACHE[name] = source.replace("<svg", '<svg class="ui-icon" aria-hidden="true" focusable="false"', 1)
     return context._UI_ICON_CACHE[name]
 

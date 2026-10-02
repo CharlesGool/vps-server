@@ -43,7 +43,7 @@ class PublicMixin:
                 body = self._page().encode("utf-8")
                 self._send(200, body, "text/html; charset=utf-8", send_body)
             elif path == "/favicon.ico":
-                self._send(200, (self.context.BASE_DIR / "static" / "favicon.svg").read_bytes(), "image/svg+xml", send_body)
+                self._send(200, (self.context.STATIC_DIR / "favicon.svg").read_bytes(), "image/svg+xml", send_body)
             else:
                 self._send(404, b"not found\n", "text/plain; charset=utf-8", send_body)
         except (BrokenPipeError, ConnectionResetError):

@@ -463,8 +463,5 @@
   "console_port_invalid": "請輸入 1024 到 65535 之間未被佔用的連接埠。",
   "console_port_error": "無法修改連接埠。原地址仍可使用。",
   "console_port_open_new": "開啟新地址",
-  "console_port_return_old": "返回原地址",
-  "iperf_cmd_default": "預設（吞吐量 + 延遲）",
-  "iperf_cmd_reverse": "反方向（下載到你的機器）",
-  "iperf_cmd_udp": "UDP（附帶抖動和封包遺失）"
+  "console_port_return_old": "返回原地址"
 }

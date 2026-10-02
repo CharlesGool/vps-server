@@ -1471,7 +1471,7 @@ class ConsoleTest(unittest.TestCase):
             "/static/qrcode.js": "qrcode/qrcode.js",
             "/static/qrcode-utf8.js": "qrcode/qrcode-utf8.js",
         }
-        repo_static = Path(__file__).resolve().parents[1] / "static"
+        repo_static = Path(__file__).resolve().parents[1] / "src/web/static"
         for url, relative in paths.items():
             self.assertEqual(app.STATIC_FILES[url][1], repo_static / "third_party" / relative)
             self.assertTrue(app.STATIC_FILES[url][1].is_file())
@@ -1487,12 +1487,12 @@ class ConsoleTest(unittest.TestCase):
             # A fresh process imports the copied app.py, so its BASE_DIR and
             # STATIC_FILES are computed from the deployment, not patched here.
             prefix = Path(directory)
-            shutil.copy2(repo_static.parent / "src" / "web" / "app.py", prefix / "app.py")
+            shutil.copy2(repo_static.parents[2] / "src" / "web" / "app.py", prefix / "app.py")
             for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "console_port", "frp_control"):
-                shutil.copy2(repo_static.parent / "src" / "web" / f"{module}.py", prefix / f"{module}.py")
-            shutil.copytree(repo_static.parent / "src" / "web" / "features", prefix / "features")
+                shutil.copy2(repo_static.parents[2] / "src" / "web" / f"{module}.py", prefix / f"{module}.py")
+            shutil.copytree(repo_static.parents[2] / "src" / "web" / "features", prefix / "features")
             shutil.copytree(repo_static, prefix / "static")
-            shutil.copytree(repo_static.parent / "lang", prefix / "lang")
+            shutil.copytree(repo_static.parents[2] / "lang", prefix / "lang")
             check = '''import app, http.client, json, threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -1502,7 +1502,7 @@ thread = threading.Thread(target=server.serve_forever, daemon=True)
 thread.start()
 try:
     for url, relative in paths.items():
-        expected = app.BASE_DIR / "static" / "third_party" / relative
+        expected = app.STATIC_DIR / "third_party" / relative
         assert app.STATIC_FILES[url][1] == expected, url
         conn = http.client.HTTPConnection("127.0.0.1", server.server_port)
         conn.request("GET", url)
@@ -1660,7 +1660,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
                 self.assertNotIn("locates the current section", body)
 
     def test_changelog_page_renders_current_version_section(self):
-        self.require_log_files("doc/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog", headers={"Cookie": f"session={session}"})
@@ -1672,7 +1672,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         conn.close()
 
     def test_changelog_follows_language_toggle(self):
-        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md", "doc/CHANGELOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=zh_cn", headers={"Cookie": f"session={session}"})
@@ -1680,12 +1680,12 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertEqual(resp.status, 200)
         body = resp.read().decode()
         conn.close()
-        self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/LOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/en/CHANGELOG.md"), body)
         self.assertNotIn(app.STRINGS["zh_cn"]["changelog_fallback"], body)
 
     def test_changelog_traditional_chinese(self):
-        self.require_log_files("doc/LOG.md", "doc/zh-TW/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md", "doc/zh-TW/CHANGELOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=zh_tw", headers={"Cookie": f"session={session}"})
@@ -1694,12 +1694,12 @@ class ChangelogAndVersionTest(unittest.TestCase):
         body = resp.read().decode()
         conn.close()
         self.assertIn("<h2>", body, "zh_tw changelog headings were not rendered")
-        self.assertIn(self.changelog_sentinel("doc/zh-TW/LOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/LOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/zh-TW/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/en/CHANGELOG.md"), body)
         self.assertNotIn(app.STRINGS["zh_tw"]["changelog_fallback"], body)
 
     def test_changelog_fallback_notice_when_translation_missing(self):
-        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md", "doc/zh-TW/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md", "doc/CHANGELOG.md", "doc/zh-TW/CHANGELOG.md")
         session = self.login()
         for lang in ("zh_cn", "zh_tw"):
             with self.subTest(lang=lang):
@@ -1712,8 +1712,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
                     resp = conn.getresponse()
                     body = resp.read().decode()
                     conn.close()
-                    self.assertIn(self.changelog_sentinel("doc/LOG.md"), body)
-                    self.assertNotIn(self.changelog_sentinel(f"doc/{'zh-CN' if lang == 'zh_cn' else 'zh-TW'}/LOG.md"), body)
+                    self.assertIn(self.changelog_sentinel("doc/en/CHANGELOG.md"), body)
+                    self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md" if lang == "zh_cn" else "doc/zh-TW/CHANGELOG.md"), body)
                     self.assertIn(app.STRINGS[lang]["changelog_fallback"], body)
                 finally:
                     app.CHANGELOG_PATHS[lang] = original
@@ -1738,15 +1738,15 @@ class ChangelogAndVersionTest(unittest.TestCase):
                 app.CHANGELOG_PATHS["zh_cn"] = original
 
     def test_changelog_english_by_default(self):
-        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md", "doc/zh-TW/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md", "doc/CHANGELOG.md", "doc/zh-TW/CHANGELOG.md")
         session = self.login()
         conn = self.connect()
         conn.request("GET", "/changelog?lang=en", headers={"Cookie": f"session={session}"})
         body = conn.getresponse().read().decode()
         conn.close()
-        self.assertIn(self.changelog_sentinel("doc/LOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
-        self.assertNotIn(self.changelog_sentinel("doc/zh-TW/LOG.md"), body)
+        self.assertIn(self.changelog_sentinel("doc/en/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
+        self.assertNotIn(self.changelog_sentinel("doc/zh-TW/CHANGELOG.md"), body)
 
     def test_changelog_requires_login(self):
         conn = self.connect()
@@ -1775,8 +1775,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
         response.read()
         conn.close()
 
-    def test_development_changelog_shows_current_updates_without_old_notes(self):
-        self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
+    def test_development_changelog_shows_formal_notes_without_old_draft(self):
+        self.require_log_files("doc/CHANGELOG.md")
         session = self.login()
         with patch.object(app, "VERSION", "dev-test123"), patch.object(app, "VERSION_LABEL", "dev-test123"):
             conn = self.connect()
@@ -1785,15 +1785,12 @@ class ChangelogAndVersionTest(unittest.TestCase):
             body = response.read().decode()
             conn.close()
         self.assertEqual(response.status, 200)
-        self.assertIn("<h2>dev-test123</h2>", body)
-        self.assertIn("全新安装改为终端安装", body)
-        self.assertNotIn("The login page uses the shared project header.", body)
-        self.assertNotIn(app.STRINGS["zh_cn"]["development_fallback"], body)
-        self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
+        self.assertNotIn("<h2>dev-test123</h2>", body)
+        self.assertIn(self.changelog_sentinel("doc/CHANGELOG.md"), body)
         self.assertNotIn("Test deployment (2026-09-28)", body)
 
     def test_test_candidate_shows_its_identifier_without_stale_notes(self):
-        self.require_log_files("doc/LOG.md")
+        self.require_log_files("doc/en/CHANGELOG.md")
         self.assertEqual(app.display_version("test-95ca649"), "test-95ca649")
         self.assertEqual(app.display_version("3.0.0"), "v3.0.0")
         session = self.login()
@@ -1805,20 +1802,9 @@ class ChangelogAndVersionTest(unittest.TestCase):
             conn.close()
         self.assertEqual(response.status, 200)
         self.assertIn("test-95ca649", body)
-        self.assertIn("<h2>test-95ca649</h2>", body)
-        self.assertIn("changes fresh setup to a terminal installer", body)
-        self.assertIn("v4.0.0", body)
-
-    def test_semver_prerelease_shows_candidate_notes(self):
-        self.require_log_files("doc/LOG.md")
-        session = self.login()
-        with patch.object(app, "VERSION", "4.1.0-test.1"), patch.object(app, "VERSION_LABEL", "v4.1.0-test.1"):
-            conn = self.connect()
-            conn.request("GET", "/changelog", headers={"Cookie": f"session={session}"})
-            body = conn.getresponse().read().decode()
-            conn.close()
-        self.assertIn("<h2>v4.1.0-test.1</h2>", body)
-        self.assertIn("changes fresh setup to a terminal installer", body)
+        self.assertNotIn("<h2>test-95ca649</h2>", body)
+        self.assertIn(self.changelog_sentinel("doc/en/CHANGELOG.md"), body)
+        self.assertIn("v5.0.0", body)
 
     def test_changelog_markdown_is_escaped_not_injected(self):
         # LOG.md is author-controlled, but rendering must still escape tags.
@@ -1867,14 +1853,14 @@ class ChangelogAndVersionTest(unittest.TestCase):
         self.assertIsNone(app.changelog_section("## Changelog\n\n## Decisions\n- no release\n"))
         self.assertIsNone(app.changelog_section("## Changelog\nnotes without a version\n"))
 
-    def test_installer_copies_log_not_legacy_changelog(self):
+    def test_installer_copies_current_changelog_and_not_historical_log_translations(self):
         installer = Path("deploy/install.sh").read_text()
         items = re.search(r'^    local doc_items="([^\"]+)"', installer, re.MULTILINE)
         self.assertIsNotNone(items)
         self.assertIn("doc/LOG.md", items.group(1))
-        self.assertIn("doc/zh-CN/LOG.md", items.group(1))
-        self.assertIn("doc/zh-TW/LOG.md", items.group(1))
-        self.assertNotIn("doc/CHANGELOG.md", items.group(1))
+        self.assertIn("doc/CHANGELOG.md", items.group(1))
+        self.assertIn("doc/zh-TW/CHANGELOG.md", items.group(1))
+        self.assertNotIn("doc/zh-TW/LOG.md", items.group(1))
 
 
 class ConnectionTrackingTest(unittest.TestCase):
@@ -3808,22 +3794,17 @@ class InstallerContractTest(unittest.TestCase):
                 self.assertIn(var, text, f"{var} is not read anywhere in app.py")
 
     def test_version_file_agrees_with_latest_log_release(self):
-        if not (self.ROOT / "doc" / "LOG.md").is_file():
-            self.skipTest("LOG.md is omitted from the code-only test checkout")
-        # The UI reads VERSION; LOG is the sole release-history source.
+        if not (self.ROOT / "doc" / "CHANGELOG.md").is_file():
+            self.skipTest("CHANGELOG.md is omitted from the code-only test checkout")
+        # The UI reads VERSION; CHANGELOG is the sole release-history source.
         # Unreleased branch work must not appear as a newer tagged release.
         version = (self.ROOT / "config/VERSION").read_text().strip()
-        section = app.changelog_section((self.ROOT / "doc" / "LOG.md").read_text())
+        section = app.changelog_section((self.ROOT / "doc" / "CHANGELOG.md").read_text())
         self.assertIsNotNone(section)
         latest = re.search(r"^### (v[^ ]+) [—-] \d{4}-\d{2}-\d{2}$", section, re.M)
-        self.assertIsNotNone(latest, "LOG has no dated release heading")
-        if "-test." in version:
-            updates = app.development_updates_section((self.ROOT / "doc" / "LOG.md").read_text())
-            self.assertIsNotNone(updates, "a prerelease needs candidate notes")
-            self.assertIn(f"v{version}", updates)
-        else:
-            self.assertEqual(f"v{version}", latest.group(1),
-                             "VERSION and LOG name different latest releases")
+        self.assertIsNotNone(latest, "CHANGELOG has no dated release heading")
+        self.assertEqual(f"v{version}", latest.group(1),
+                         "VERSION and CHANGELOG name different latest releases")
 
     def test_version_is_not_a_constant_in_the_source(self):
         # webui.md §1: the displayed version must come from the real tag, so
@@ -3883,7 +3864,7 @@ class StylesheetTest(unittest.TestCase):
     other colour scheme.
     """
 
-    CSS = Path(__file__).resolve().parent.parent / "static" / "style.css"
+    CSS = Path(__file__).resolve().parent.parent / "src/web/static" / "style.css"
 
     def component_rules(self):
         """style.css with the :root and light-override blocks removed."""

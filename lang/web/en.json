@@ -463,8 +463,5 @@
   "console_port_invalid": "Enter an unused port from 1024 to 65535.",
   "console_port_error": "Could not change the port. The original address is still available.",
   "console_port_open_new": "Open new address",
-  "console_port_return_old": "Return to original address",
-  "iperf_cmd_default": "Default (throughput + latency)",
-  "iperf_cmd_reverse": "Reverse (download to your machine)",
-  "iperf_cmd_udp": "UDP (adds jitter and packet loss)"
+  "console_port_return_old": "Return to original address"
 }

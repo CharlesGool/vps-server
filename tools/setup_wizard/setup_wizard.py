@@ -104,7 +104,7 @@ button { min-height:2.75rem; margin-top:1rem; padding:.6rem 1rem; border:1px sol
 
 
 def wizard_document(body, language, nonce=''):
-    favicon = base64.b64encode((Path(__file__).resolve().parents[2] / 'static' / 'favicon.svg').read_bytes()).decode('ascii')
+    favicon = base64.b64encode((Path(__file__).resolve().parents[2] / 'src/web/static' / 'favicon.svg').read_bytes()).decode('ascii')
     tag = LANGUAGE_TAGS.get(language, 'en')
     direction = ' dir="rtl"' if language == 'ar' else ''
     return (f'<!doctype html><html lang="{tag}"{direction}><head><meta charset="utf-8">'

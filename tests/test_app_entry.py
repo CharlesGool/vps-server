@@ -45,7 +45,7 @@ app._read_proc_net = old
             shutil.copytree(ROOT / "lang", prefix / "lang")
             (prefix / "static").mkdir()
             (prefix / "static/styles").mkdir()
-            shutil.copy2(ROOT / "static/styles/public.css", prefix / "static/styles/public.css")
+            shutil.copy2(ROOT / "src/web/static/styles/public.css", prefix / "static/styles/public.css")
             (prefix / "doc").mkdir()
             env = os.environ.copy()
             for key in ("VPSSRV_DEFAULT_LANG", "VPSSRV_DATA_DIR", "VPSSRV_PASSWORD_FILE",
@@ -57,7 +57,7 @@ assert app.BASE_DIR == root
 assert app.VERSION == "deployed-version"
 assert app.DEFAULT_LANG == "zh_tw"
 assert app.DATA_DIR == root / "data"
-assert app.CHANGELOG_PATHS["zh_tw"] == root / "doc/zh-TW/LOG.md"
+assert app.CHANGELOG_PATHS["zh_tw"] == root / "doc/zh-TW/CHANGELOG.md"
 assert app.STATIC_FILES["/static/style.css"][1] == root / "static/style.css"
 '''
             result = subprocess.run([sys.executable, "-c", check], cwd=prefix, env=env,

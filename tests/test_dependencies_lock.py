@@ -18,9 +18,9 @@ class DependencyLockTest(unittest.TestCase):
         artifacts = json.loads(lock.read_text(encoding="utf-8"))["artifacts"]
         self.assertEqual({item["path"] for item in artifacts}, {
             "third_party/sing-box/sing-box", "third_party/lucky/lucky", "third_party/frp/frps",
-            "static/third_party/librespeed/speedtest.js",
-            "static/third_party/librespeed/speedtest_worker.js",
-            "static/third_party/qrcode/qrcode.js", "static/third_party/qrcode/qrcode-utf8.js",
+            "src/web/static/third_party/librespeed/speedtest.js",
+            "src/web/static/third_party/librespeed/speedtest_worker.js",
+            "src/web/static/third_party/qrcode/qrcode.js", "src/web/static/third_party/qrcode/qrcode-utf8.js",
         })
         self.assertEqual(ROOT, root)
         with redirect_stdout(StringIO()):

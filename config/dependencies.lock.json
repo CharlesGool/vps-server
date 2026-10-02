@@ -31,7 +31,7 @@
       "version": "v6.2.1",
       "upstream": "https://github.com/librespeed/speedtest",
       "recorded_upstream_revision": null,
-      "path": "static/third_party/librespeed/speedtest.js",
+      "path": "src/web/static/third_party/librespeed/speedtest.js",
       "sha256": "dc6fd7f01809f8898e1b2208fd03716d764543254654eaddc775a0b38cbccc39"
     },
     {
@@ -39,7 +39,7 @@
       "version": "v6.2.1",
       "upstream": "https://github.com/librespeed/speedtest",
       "recorded_upstream_revision": null,
-      "path": "static/third_party/librespeed/speedtest_worker.js",
+      "path": "src/web/static/third_party/librespeed/speedtest_worker.js",
       "sha256": "3dc577e830a7255eacd9335865af9c4a77ca1d7c115e8bfc7e1717d2c4ed08d0"
     },
     {
@@ -47,7 +47,7 @@
       "version": "js2.0.4",
       "upstream": "https://github.com/kazuhikoarase/qrcode-generator",
       "recorded_upstream_revision": "83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8",
-      "path": "static/third_party/qrcode/qrcode.js",
+      "path": "src/web/static/third_party/qrcode/qrcode.js",
       "sha256": "79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c"
     },
     {
@@ -55,7 +55,7 @@
       "version": "js2.0.4",
       "upstream": "https://github.com/kazuhikoarase/qrcode-generator",
       "recorded_upstream_revision": "83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8",
-      "path": "static/third_party/qrcode/qrcode-utf8.js",
+      "path": "src/web/static/third_party/qrcode/qrcode-utf8.js",
       "sha256": "e522d64003b332e29271fdce4993ed3ae2934c8947f41654bd324ddcfa2de301"
     }
   ],

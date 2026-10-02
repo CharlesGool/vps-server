@@ -463,8 +463,5 @@
   "console_port_invalid": "请输入 1024 到 65535 之间未被占用的端口。",
   "console_port_error": "无法修改端口。原地址仍可使用。",
   "console_port_open_new": "打开新地址",
-  "console_port_return_old": "返回原地址",
-  "iperf_cmd_default": "默认（吞吐量 + 延迟）",
-  "iperf_cmd_reverse": "反方向（下载到你的机器）",
-  "iperf_cmd_udp": "UDP（附带抖动和丢包）"
+  "console_port_return_old": "返回原地址"
 }

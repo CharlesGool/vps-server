@@ -463,8 +463,5 @@
   "console_port_invalid": "أدخل منفذًا شاغرًا بين 1024 و65535.",
   "console_port_error": "تعذّر تغيير المنفذ. لا يزال العنوان القديم متاحًا.",
   "console_port_open_new": "فتح العنوان الجديد",
-  "console_port_return_old": "العودة إلى العنوان القديم",
-  "iperf_cmd_default": "الافتراضي (معدل النقل + زمن الاستجابة)",
-  "iperf_cmd_reverse": "الاتجاه المعاكس (تنزيل إلى جهازك)",
-  "iperf_cmd_udp": "UDP (يضيف التذبذب وفقد الحزم)"
+  "console_port_return_old": "العودة إلى العنوان القديم"
 }

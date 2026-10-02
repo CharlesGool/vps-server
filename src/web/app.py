@@ -68,6 +68,9 @@ if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_f
     BASE_DIR = BASE_DIR.parent.parent
 # The same modules live beside app.py after installation and under src/web in
 # a checkout. Keep their imports independent of the caller's working directory.
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if not STATIC_DIR.is_dir():
+    STATIC_DIR = BASE_DIR / "static"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
@@ -867,49 +870,50 @@ def save_server_label(value):
 
 
 CHANGELOG_PATHS = {
-    code: BASE_DIR / "doc" / tag / "LOG.md"
-    for code, tag in (("zh_cn", "zh-CN"), ("zh_tw", "zh-TW"),
+    code: BASE_DIR / "doc" / (tag or "") / "CHANGELOG.md"
+    for code, tag in (("en", "en"), ("zh_cn", None), ("zh_tw", "zh-TW"),
                       ("zh_hk", "zh-HK"), ("hi", "hi"), ("es", "es"),
                       ("ar", "ar"), ("fr", "fr"))
 }
+CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
-    "/static/style.css": ("text/css", BASE_DIR / "static" / "style.css"),
-    "/static/theme.js": ("application/javascript", BASE_DIR / "static" / "theme.js"),
-    "/static/password-fields.js": ("application/javascript", BASE_DIR / "static" / "password-fields.js"),
-    "/static/access-settings.js": ("application/javascript", BASE_DIR / "static" / "access-settings.js"),
-    "/static/settings-sections.js": ("application/javascript", BASE_DIR / "static" / "settings-sections.js"),
-    "/static/module-status.js": ("application/javascript", BASE_DIR / "static" / "module-status.js"),
-    "/static/module-controls.js": ("application/javascript", BASE_DIR / "static" / "module-controls.js"),
-    "/static/reference-select.js": ("application/javascript", BASE_DIR / "static" / "reference-select.js"),
-    "/static/frp-editor.js": ("application/javascript", BASE_DIR / "static" / "frp-editor.js"),
-    "/static/layout-motion.js": ("application/javascript", BASE_DIR / "static" / "layout-motion.js"),
-    "/static/auth-history.js": ("application/javascript", BASE_DIR / "static" / "auth-history.js"),
-    "/favicon.ico": ("image/svg+xml", BASE_DIR / "static" / "favicon.svg"),
-    **{f"/static/favicon-{page}.svg": ("image/svg+xml", BASE_DIR / "static" / f"favicon-{page}.svg")
+    "/static/style.css": ("text/css", STATIC_DIR / "style.css"),
+    "/static/theme.js": ("application/javascript", STATIC_DIR / "theme.js"),
+    "/static/password-fields.js": ("application/javascript", STATIC_DIR / "password-fields.js"),
+    "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
+    "/static/settings-sections.js": ("application/javascript", STATIC_DIR / "settings-sections.js"),
+    "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
+    "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
+    "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
+    "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
+    "/static/layout-motion.js": ("application/javascript", STATIC_DIR / "layout-motion.js"),
+    "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
+    "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
+    **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
                     "changelog", "settings", "security", "modules", "frp", "lucky", "login")},
-    "/static/fonts/inter-latin-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-400.woff2"),
-    "/static/fonts/inter-latin-600.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-600.woff2"),
-    "/static/fonts/inter-latin-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "inter-latin-700.woff2"),
-    "/static/fonts/noto-sans-sc-400.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "noto-sans-sc-400.woff2"),
-    "/static/fonts/noto-sans-sc-700.woff2": ("font/woff2", BASE_DIR / "static" / "fonts" / "noto-sans-sc-700.woff2"),
-    "/static/speedtest.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "librespeed" / "speedtest.js"),
-    "/static/speedtest-ui.js": ("application/javascript", BASE_DIR / "static" / "speedtest-ui.js"),
-    "/static/visitors.js": ("application/javascript", BASE_DIR / "static" / "visitors.js"),
-    "/static/copy.js": ("application/javascript", BASE_DIR / "static" / "copy.js"),
-    "/static/private-values.js": ("application/javascript", BASE_DIR / "static" / "private-values.js"),
-    "/static/node-controls.js": ("application/javascript", BASE_DIR / "static" / "node-controls.js"),
-    "/static/qrcode.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode.js"),
-    "/static/qrcode-utf8.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "qrcode" / "qrcode-utf8.js"),
-    "/static/qrcode-render.js": ("application/javascript", BASE_DIR / "static" / "qrcode-render.js"),
-    "/static/iperf-countdown.js": ("application/javascript", BASE_DIR / "static" / "iperf-countdown.js"),
+    "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
+    "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
+    "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
+    "/static/fonts/noto-sans-sc-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "noto-sans-sc-400.woff2"),
+    "/static/fonts/noto-sans-sc-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "noto-sans-sc-700.woff2"),
+    "/static/speedtest.js": ("application/javascript", STATIC_DIR / "third_party" / "librespeed" / "speedtest.js"),
+    "/static/speedtest-ui.js": ("application/javascript", STATIC_DIR / "speedtest-ui.js"),
+    "/static/visitors.js": ("application/javascript", STATIC_DIR / "visitors.js"),
+    "/static/copy.js": ("application/javascript", STATIC_DIR / "copy.js"),
+    "/static/private-values.js": ("application/javascript", STATIC_DIR / "private-values.js"),
+    "/static/node-controls.js": ("application/javascript", STATIC_DIR / "node-controls.js"),
+    "/static/qrcode.js": ("application/javascript", STATIC_DIR / "third_party" / "qrcode" / "qrcode.js"),
+    "/static/qrcode-utf8.js": ("application/javascript", STATIC_DIR / "third_party" / "qrcode" / "qrcode-utf8.js"),
+    "/static/qrcode-render.js": ("application/javascript", STATIC_DIR / "qrcode-render.js"),
+    "/static/iperf-countdown.js": ("application/javascript", STATIC_DIR / "iperf-countdown.js"),
     # speedtest.js spawns `new Worker("speedtest_worker.js?r=...")`. That call
     # runs in the *page's* context, so the browser resolves it relative to the
     # page URL (/speedtest), not relative to /static/speedtest.js — it lands
     # on /speedtest_worker.js, not /static/speedtest_worker.js. Serving it at
     # both paths sidesteps relying on that resolution quirk.
-    "/speedtest_worker.js": ("application/javascript", BASE_DIR / "static" / "third_party" / "librespeed" / "speedtest_worker.js"),
+    "/speedtest_worker.js": ("application/javascript", STATIC_DIR / "third_party" / "librespeed" / "speedtest_worker.js"),
 }
 
 # ---------------------------------------------------------------------------
@@ -1260,7 +1264,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 # has no file-serving route at all.
 # ---------------------------------------------------------------------------
 
-PROBE_CSS = (BASE_DIR / "static/styles/public.css").read_text()
+PROBE_CSS = (STATIC_DIR / "styles/public.css").read_text()
 
 class ProbeHandler(PublicMixin, BaseHTTPRequestHandler):
     """The unauthenticated page on 80 and 443."""

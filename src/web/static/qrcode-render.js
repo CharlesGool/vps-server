@@ -1,6 +1,6 @@
 // Renders every [data-qr-text] element as a scannable QR code, using the
-// vendored kazuhikoarase/qrcode-generator (static/third_party/qrcode/qrcode.js +
-// static/third_party/qrcode/qrcode-utf8.js
+// vendored kazuhikoarase/qrcode-generator (src/web/static/third_party/qrcode/qrcode.js +
+// src/web/static/third_party/qrcode/qrcode-utf8.js
 // for multi-byte text such as a Chinese interface's "LAN-eth0" label).
 // Own code, not part of the vendored library — see doc/THIRD_PARTY_NOTICES.md.
 (function () {

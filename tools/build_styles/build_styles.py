@@ -13,7 +13,7 @@ PARTS = (
 
 
 def build():
-    return "".join((ROOT / "static/styles" / f"{name}.css").read_text()
+    return "".join((ROOT / "src/web/static/styles" / f"{name}.css").read_text()
                    for name in PARTS)
 
 
@@ -21,11 +21,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    target = ROOT / "static/style.css"
+    target = ROOT / "src/web/static/style.css"
     content = build()
     if args.check:
         if target.read_text() != content:
-            parser.exit(1, "static/style.css is out of date; run tools/build_styles.py\n")
+            parser.exit(1, "src/web/static/style.css is out of date; run tools/build_styles.py\n")
     else:
         target.write_text(content)
 

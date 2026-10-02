@@ -648,7 +648,7 @@ copy_selected_files() {
     has_module lucky && copy_items="$copy_items lucky"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in systemd|anytls|proxy|frps|lucky) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in static) source="$SRC_DIR/src/web/static" ;; systemd|anytls|proxy|frps|lucky) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
@@ -669,9 +669,11 @@ copy_selected_files() {
   fi
   if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
     # Documentation required by /changelog and third-party notices.
-    local doc_items="doc/LOG.md doc/THIRD_PARTY_NOTICES.md
-                     doc/zh-CN/LOG.md doc/zh-TW/LOG.md doc/zh-HK/LOG.md
-                     doc/hi/LOG.md doc/es/LOG.md doc/ar/LOG.md doc/fr/LOG.md"
+    local doc_items="doc/LOG.md doc/CHANGELOG.md doc/THIRD_PARTY_NOTICES.md
+                     doc/en/LOG.md doc/en/CHANGELOG.md
+                     doc/zh-TW/CHANGELOG.md doc/zh-HK/CHANGELOG.md
+                     doc/hi/CHANGELOG.md doc/es/CHANGELOG.md
+                     doc/ar/CHANGELOG.md doc/fr/CHANGELOG.md"
     for item in $doc_items; do
       [ -e "$SRC_DIR/$item" ] || continue
       mkdir -p "$PREFIX/$(dirname "$item")"
@@ -713,7 +715,7 @@ prepare_module_source() {
   case "$SRC_DIR/" in "$PREFIX_ABS/installer-source/"*) return 0 ;; esac
   local stage item
   stage="$(mktemp -d "$PREFIX/.installer-source.XXXXXX")"
-  for item in src deploy tools lang static third_party config doc README.md LICENSE .env.example; do
+  for item in src deploy tools lang third_party config doc README.md LICENSE .env.example; do
     [ -e "$SRC_DIR/$item" ] && cp -a "$SRC_DIR/$item" "$stage/$item"
   done
   printf '%s\n' "$NEW_VERSION" > "$stage/config/VERSION"

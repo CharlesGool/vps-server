@@ -59,7 +59,7 @@ class ResourceLayoutTest(unittest.TestCase):
                         self.assertEqual(cli.returncode, 2)
                         self.assertIn("usage: node_config.py", cli.stderr)
                         self.assertEqual((prefix / "static/third_party/librespeed/speedtest.js").read_bytes(),
-                                         (ROOT / "static/third_party/librespeed/speedtest.js").read_bytes())
+                                         (ROOT / "src/web/static/third_party/librespeed/speedtest.js").read_bytes())
                     else:
                         self.assertEqual((prefix / "app.py").read_text(), "existing app")
                     self.assertTrue((prefix / "lang/installer/en.sh").is_file())

@@ -463,8 +463,5 @@
   "console_port_invalid": "Saisissez un port libre entre 1024 et 65535.",
   "console_port_error": "Impossible de changer le port. L’ancienne adresse reste disponible.",
   "console_port_open_new": "Ouvrir la nouvelle adresse",
-  "console_port_return_old": "Revenir à l’ancienne adresse",
-  "iperf_cmd_default": "Par défaut (débit + latence)",
-  "iperf_cmd_reverse": "Sens inverse (téléchargement vers votre machine)",
-  "iperf_cmd_udp": "UDP (ajoute la gigue et les pertes de paquets)"
+  "console_port_return_old": "Revenir à l’ancienne adresse"
 }
