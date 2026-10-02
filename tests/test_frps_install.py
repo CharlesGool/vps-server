@@ -148,7 +148,7 @@ class FrpsSafetyTests(unittest.TestCase):
         self.assertFalse((self.root / 'new-install').exists())
         self.assertFalse((self.root / 'calls').exists())
 
-    def test_prompted_console_port_conflict_fails_before_install_changes(self):
+    def test_explicit_console_port_conflict_fails_before_install_changes(self):
         install_root = self.root / 'checkout'
         (install_root / 'deploy').mkdir(parents=True)
         shutil.copytree(ROOT / 'lang/installer', install_root / 'lang/installer')
@@ -167,7 +167,7 @@ class FrpsSafetyTests(unittest.TestCase):
                                        env=dict({k: v for k, v in self.env.items()
                                                  if k not in ('VPSSRV_CONSOLE_PORT', 'VPSSRV_CONSOLE_PORT_FILE')},
                                                 VPSSRV_MODULES='web', VPSSRV_PUBLIC_ENABLE='0',
-                                                VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
+                                                VPSSRV_CONSOLE_PORT='18751', VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
                                                 PREFIX=str(self.root / 'new-install')),
                                        stdin=slave, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, preexec_fn=controlling_tty)
@@ -180,7 +180,7 @@ class FrpsSafetyTests(unittest.TestCase):
         self.assertFalse((self.root / 'new-install').exists())
         self.assertFalse((self.root / 'calls').exists())
 
-    def test_prompted_frps_collision_with_active_public_web_does_not_stop_service(self):
+    def test_explicit_frps_collision_with_active_public_web_does_not_stop_service(self):
         install_root = self.root / 'checkout'
         (install_root / 'deploy').mkdir(parents=True)
         shutil.copytree(ROOT / 'lang/installer', install_root / 'lang/installer')
@@ -204,7 +204,7 @@ class FrpsSafetyTests(unittest.TestCase):
                                        env=dict({k: v for k, v in self.env.items()
                                                  if k not in ('VPSSRV_CONSOLE_PORT', 'VPSSRV_CONSOLE_PORT_FILE')},
                                                 VPSSRV_MODULES='web', VPSSRV_PUBLIC_ENABLE='1',
-                                                VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
+                                                VPSSRV_CONSOLE_PORT='18751', VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
                                                 PREFIX=str(self.root / 'new-install')),
                                        stdin=slave, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, preexec_fn=controlling_tty)
@@ -217,7 +217,7 @@ class FrpsSafetyTests(unittest.TestCase):
         self.assertFalse((self.root / 'new-install').exists())
         self.assertFalse((self.root / 'calls').exists(), 'must not stop or probe active web service')
 
-    def test_prompted_lucky_collision_with_active_public_web_does_not_stop_service(self):
+    def test_explicit_lucky_collision_with_active_public_web_does_not_stop_service(self):
         install_root = self.root / 'checkout'
         (install_root / 'deploy').mkdir(parents=True)
         shutil.copytree(ROOT / 'lang/installer', install_root / 'lang/installer')
@@ -240,7 +240,7 @@ class FrpsSafetyTests(unittest.TestCase):
                 env=dict({k: v for k, v in self.env.items()
                           if k not in ('VPSSRV_CONSOLE_PORT', 'VPSSRV_CONSOLE_PORT_FILE')},
                          VPSSRV_MODULES='web', VPSSRV_PUBLIC_ENABLE='1',
-                         VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
+                         VPSSRV_CONSOLE_PORT='18751', VPSSRV_AUTH='0', VPSSRV_DEFAULT_LANG='en',
                          PREFIX=str(self.root / 'new-install')),
                 stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 preexec_fn=controlling_tty)

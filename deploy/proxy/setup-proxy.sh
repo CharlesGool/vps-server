@@ -72,6 +72,7 @@ msg(){
 }
 
 C_G="\033[32m"; C_R="\033[31m"; C_C="\033[36m"; C_0="\033[0m"
+if [[ ${NO_COLOR:-} == 1 ]]; then C_G=""; C_R=""; C_C=""; C_0=""; fi
 log(){ echo -e "${C_C}[*]${C_0} $*"; }
 ok(){  echo -e "${C_G}[OK]${C_0} $*"; }
 err(){ echo -e "${C_R}[ERR]${C_0} $*" >&2; }
@@ -99,17 +100,17 @@ install_deps(){
   local log_file attempt
   log_file="$(mktemp)"
   for attempt in 1 2 3; do
-    if apt-get update -y >"$log_file" 2>&1; then break; fi
+    if apt-get update -y 2>&1 | tee "$log_file"; then break; fi
     if [[ $attempt -eq 3 ]]; then
       err "$(msg apt_update_failed)"
-      cat "$log_file" >&2; rm -f "$log_file"; exit 1
+      rm -f "$log_file"; exit 1
     fi
     log "$(msg apt_retry "$attempt")"
     sleep 2
   done
-  if ! apt-get install -y "${missing[@]}" >"$log_file" 2>&1; then
+  if ! apt-get install -y "${missing[@]}" 2>&1 | tee "$log_file"; then
     err "$(msg deps_failed "${missing[*]}")"
-    cat "$log_file" >&2; rm -f "$log_file"; exit 1
+    rm -f "$log_file"; exit 1
   fi
   rm -f "$log_file"
   ok "$(msg deps_ready)"
@@ -395,6 +396,9 @@ WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
   systemctl enable "${SERVICE_NAME}" >/dev/null 2>&1
+  if [[ ${VPSSRV_DEFER_NODE_START:-0} == 1 ]]; then
+    return 0
+  fi
   systemctl restart "${SERVICE_NAME}"
   sleep 1
   if systemctl is-active --quiet "${SERVICE_NAME}"; then
@@ -663,6 +667,18 @@ reset(){
   print_result
 }
 
+install_without_nodes(){
+  mkdir -p "$INSTALL_DIR"
+  if [[ ! -f "$INSTALL_DIR/config.json" ]]; then
+    cat > "$INSTALL_DIR/config.json" <<'JSON'
+{"log":{"level":"info","timestamp":true},"inbounds":[],"outbounds":[{"type":"direct","tag":"direct"},{"type":"block","tag":"block"}],"route":{"final":"direct"}}
+JSON
+  fi
+  "$BIN_PATH" check -c "$INSTALL_DIR/config.json"
+  setup_service
+  ok "$(msg config_written "$INSTALL_DIR/config.json" "")"
+}
+
 main(){
   case "${1:-}" in
     uninstall|--uninstall|-u) uninstall; exit 0 ;;
@@ -681,6 +697,11 @@ main(){
   fi
   install_deps
   install_singbox
+  if [[ ${VPSSRV_EMPTY_NODE_INSTALL:-0} == 1 ]]; then
+    install_without_nodes
+    enable_bbr
+    return
+  fi
   apply_node
   enable_bbr
   print_result

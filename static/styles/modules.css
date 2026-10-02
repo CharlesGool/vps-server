@@ -1,0 +1,14 @@
+.module-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr)); gap:.8rem; margin-top:1.4rem; }
+.module-card { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.8rem; padding:1rem; border:1px solid var(--card-border); border-radius:10px; background:var(--surface-2); }
+.module-card h2 { margin:0; font-size:1rem; }
+.module-card p { margin:.25rem 0 0; color:var(--muted); }
+.module-card form { margin:0; }
+.module-card button { min-width:5.5rem; }
+.module-card button:disabled { opacity:.55; cursor:wait; }
+.module-card .motion-switch { min-width:3.4rem; }
+.module-card .danger { background:var(--error-solid); border-color:var(--error-solid); color:var(--on-error); }
+.module-log { margin-top:1.5rem; border-top:1px solid var(--card-border); padding-top:1rem; }
+.module-log h2 { font-size:1rem; }
+.module-log pre { max-height:24rem; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
+.module-notice { padding:.75rem 1rem; border-radius:8px; background:var(--surface-2); }
+.module-manage { display:inline-flex; align-items:center; min-height:2.75rem; padding:.55rem 1rem; border:1px solid var(--accent); border-radius:8px; background:var(--accent); color:var(--on-accent); font-weight:600; text-decoration:none; }

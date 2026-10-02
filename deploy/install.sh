@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install vps-server. Six selectable modules:
+# Install vps-server. A fresh install starts with the management console only.
 #
 #   web      the public reachability page on 80/443 plus the private console
 #   iperf3   the distro iperf3 package, so the console can open a test window
@@ -9,17 +9,13 @@
 #   frps     offline FRP server (amd64 only)
 #   lucky    offline DDNS and reverse-proxy admin (amd64 only)
 #
-#   sudo bash deploy/install.sh                             # interactive
+#   sudo bash deploy/install.sh                             # console only
 #   sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
 #   sudo VPSSRV_MODULES=web VPSSRV_PUBLIC_ENABLE=0 bash deploy/install.sh   # console only
 #   sudo PREFIX=/srv/vpssrv bash deploy/install.sh
 #
-# Asks, in this order: the UI language (which this installer's own output then
-# switches to), which modules to install, whether to password-protect the
-# console (and if so, random or operator-chosen password), and which console
-# port to use. Every question is skippable by pre-setting the matching
-# VPSSRV_DEFAULT_LANG / VPSSRV_MODULES / VPSSRV_AUTH / VPSSRV_CONSOLE_PORT —
-# unattended installs (`curl | bash`, no TTY) must set VPSSRV_MODULES.
+# Installation uses safe defaults without a browser or terminal questions.
+# VPSSRV_MODULES and other environment values may override those defaults.
 #
 # Re-running is safe: it refreshes the program files and restarts the service,
 # leaving admin_password.txt, console_port.txt, certs/ and data/ alone.
@@ -33,15 +29,14 @@ SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Modules, comma-separated. anytls is not in the default set: it is a proxy,
-# and nobody should end up running one because they held down Enter.
-DEFAULT_MODULES="web,iperf3"
+# Modules, comma-separated. An explicit VPSSRV_MODULES value still supports
+# targeted module jobs and installations with fewer services.
+DEFAULT_MODULES="web"
 
 PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
 INTERACTIVE=0
-[ -t 0 ] && INTERACTIVE=1
 
 has_module() {
   case ",${MODULES}," in *",$1,"*) return 0 ;; esac
@@ -242,7 +237,10 @@ print("PROXY_PROTOCOLS=%s" % ",".join(types))' "$PROXY_CONFIG_PATH" 2>/dev/null 
     key="${kv%%=*}"; val="${kv#*=}"
     export "$key=$val"
   done <<< "$out"
-  [ -n "${PROXY_PROTOCOLS:-}" ] && msg upgrade_proxy_kept "$PROXY_PROTOCOLS"
+  if [ -n "${PROXY_PROTOCOLS:-}" ]; then
+    msg upgrade_proxy_kept "$PROXY_PROTOCOLS"
+  fi
+  return 0
 }
 
 default_for() {
@@ -330,132 +328,20 @@ msg() {
 # substitution strips msg's trailing newline, so put it back here.
 die() { printf '%s%s\n' "$(msg error_prefix)" "$*" >&2; exit 1; }
 
-# ---------------------------------------------------------------------------
-# 1. Language — asked first, because everything below is printed in it.
-#    The question itself is trilingual for obvious reasons.
-# ---------------------------------------------------------------------------
-# An existing install already answered this. Adopt its answer before anything
-# prints, so the upgrade question below comes out in the language the operator
-# chose last time instead of reverting to English on every upgrade.
-if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
-  PREV_LANG="$(unit_env VPSSRV_DEFAULT_LANG)"
-  case "$PREV_LANG" in
-    en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) VPSSRV_DEFAULT_LANG="$PREV_LANG"; INSTALL_LANG="$PREV_LANG" ;;
-  esac
-fi
-
-if [ -z "${VPSSRV_DEFAULT_LANG:-}" ] && [ "$INTERACTIVE" = "1" ] && [ -n "${VPSSRV_MODULES:-}" ]; then
-  msg language_menu
-  # printf rather than `read -p`: bash only renders a -p prompt when stdin is
-  # a terminal, and every other prompt below goes through msg()/printf.
-  msg language_choice
-  read -r lang_choice </dev/tty || lang_choice="1"
-  case "$lang_choice" in
-    2) VPSSRV_DEFAULT_LANG=zh_cn ;;
-    3) VPSSRV_DEFAULT_LANG=zh_tw ;;
-    4) VPSSRV_DEFAULT_LANG=zh_hk ;;
-    5) VPSSRV_DEFAULT_LANG=hi ;;
-    6) VPSSRV_DEFAULT_LANG=es ;;
-    7) VPSSRV_DEFAULT_LANG=ar ;;
-    8) VPSSRV_DEFAULT_LANG=fr ;;
-    *) VPSSRV_DEFAULT_LANG=en ;;
-  esac
-  INSTALL_LANG="$VPSSRV_DEFAULT_LANG"
-  echo
-fi
-
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
 
-# The wizard is a separate, temporary listener. Do not run any installation
-# action until it has returned a validated selection. VPSSRV_MODULES keeps the
-# existing unattended path, including its upgrade preservation behavior.
-WIZARD_POLICY=""
-if [ -z "${VPSSRV_MODULES:-}" ]; then
-  if [ "$INTERACTIVE" != "1" ]; then
-    die "$(msg noninteractive_modules)"
-  fi
-  WIZARD_ARGS=()
-  # A new host needs a reachable, short-lived first-run entrance. Upgrades
-  # stay loopback-only unless the operator explicitly opts in again.
-  if existing_install; then setup_public_default=0; else setup_public_default=1; fi
-  if [ "${VPSSRV_SETUP_PUBLIC:-$setup_public_default}" = "1" ]; then
-    WIZARD_BIND="${VPSSRV_SETUP_BIND:-0.0.0.0}"
-    command -v openssl >/dev/null 2>&1 || die "$(msg public_requires_openssl)"
-    WIZARD_ARGS+=(--public)
-  else
-    WIZARD_BIND="${VPSSRV_SETUP_BIND:-127.0.0.1}"
-  fi
-  WIZARD_PORT="${VPSSRV_SETUP_PORT:-0}"
-  if existing_install; then
-    # Snapshot wizard defaults under the node lock, but release it before the
-    # wizard starts its potentially long-running listener.
-    if [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
-      exec {node_lock}>/etc/vps-server-node.lock
-      flock -x "$node_lock"
-      load_previous
-      exec {node_lock}>&-
-    else
-      load_previous
-    fi
-    WIZARD_ARGS+=(--installed --previous "$PREV_MODULES" --proxy-config "$PROXY_CONFIG_PATH" --lucky-config /etc/vps-server-lucky/config.json)
-    WIZARD_AUTH="$(unit_env VPSSRV_AUTH)"
-    WIZARD_PUBLIC="$(unit_env VPSSRV_PUBLIC_ENABLE)"
-    WIZARD_LANG="$(unit_env VPSSRV_DEFAULT_LANG)"
-    case "$WIZARD_AUTH" in 0|1) WIZARD_ARGS+=(--auth-default "$WIZARD_AUTH") ;; esac
-    case "$WIZARD_PUBLIC" in 0|1) WIZARD_ARGS+=(--public-default "$WIZARD_PUBLIC") ;; esac
-    case "$WIZARD_LANG" in en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) WIZARD_ARGS+=(--language-default "$WIZARD_LANG") ;; esac
-  fi
-  WIZARD_DIR="$(mktemp -d)"
-  chmod 0700 "$WIZARD_DIR"
-  # The child owns its listener and ephemeral certificate; the temporary
-  # result is removed whether the listener succeeds, times out, or fails.
-  trap 'if [ -n "${WIZARD_PID:-}" ]; then kill "$WIZARD_PID" 2>/dev/null || true; fi; rm -rf -- "$WIZARD_DIR"' EXIT
-  if existing_install; then
-    python3 "$SRC_DIR/tools/setup_wizard/setup_wizard.py" --bind "$WIZARD_BIND" --port "$WIZARD_PORT" \
-      --apps-root "$ROOT_HOME/apps" \
-      --result "$WIZARD_DIR/selection" "${WIZARD_ARGS[@]}" || die "$(msg wizard_failed)"
-  else
-    # Keep the one-time authenticated page alive while the installer runs.
-    # It shows the console link once the services are healthy.
-    python3 "$SRC_DIR/tools/setup_wizard/setup_wizard.py" --bind "$WIZARD_BIND" --port "$WIZARD_PORT" \
-      --apps-root "$ROOT_HOME/apps" \
-      --result "$WIZARD_DIR/selection" --ready-file "$WIZARD_DIR/ready" "${WIZARD_ARGS[@]}" &
-    WIZARD_PID=$!
-    while [ ! -f "$WIZARD_DIR/selection" ]; do
-      kill -0 "$WIZARD_PID" 2>/dev/null || die "$(msg wizard_failed)"
-      sleep .2
-    done
-  fi
-  mapfile -t WIZARD_SELECTION < "$WIZARD_DIR/selection"
-  [ "${#WIZARD_SELECTION[@]}" -eq 9 ] || die "$(msg wizard_invalid)"
-  export VPSSRV_MODULES="${WIZARD_SELECTION[0]}"
-  WIZARD_PROTOCOLS="${WIZARD_SELECTION[1]}"
-  WIZARD_POLICY="${WIZARD_SELECTION[2]}"
-  export VPSSRV_AUTH="${WIZARD_SELECTION[3]}"
-  export VPSSRV_PUBLIC_ENABLE="${WIZARD_SELECTION[4]}"
-  if [ -n "${WIZARD_SELECTION[5]}" ]; then export VPSSRV_CONSOLE_PORT="${WIZARD_SELECTION[5]}"; fi
-  export VPSSRV_DEFAULT_LANG="${WIZARD_SELECTION[6]}"
-  export LUCKY_ADMIN_PORT="${WIZARD_SELECTION[7]}"
-  export LUCKY_PUBLIC_ADMIN="${WIZARD_SELECTION[8]}"
-  if [ "$LUCKY_PUBLIC_ADMIN" = 1 ]; then
-    msg lucky_public_warning >&2
-    msg lucky_public_confirm_prompt >&2
-    read -r LUCKY_PUBLIC_CONFIRM </dev/tty || die "$(msg lucky_public_confirm_required)"
-    export LUCKY_PUBLIC_CONFIRM
-  fi
-  INSTALL_LANG="$VPSSRV_DEFAULT_LANG"
-  INTERACTIVE=0
-  if [ -z "${WIZARD_PID:-}" ]; then
-    rm -rf -- "$WIZARD_DIR"
-    trap - EXIT
-  fi
+# Reuse the installed language unless this run explicitly selects another.
+if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
+  PREV_LANG="$(unit_env VPSSRV_DEFAULT_LANG)"
+  case "$PREV_LANG" in
+    en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) INSTALL_LANG="$PREV_LANG" ;;
+  esac
 fi
-
-# Pass the selected locale to every module setup script, including module-only
-# installs and values chosen by the interactive language menu.
+# Pass the selected locale to every module setup script.
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
+MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
 
 # ---------------------------------------------------------------------------
 # 1a. An existing install, if there is one.
@@ -465,7 +351,7 @@ export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
 # (which would deadlock against the parent's flock).
 # Existing node configs may be read even when only web was requested.
 # An existing web-only install without node configs needs no node lock.
-case ",${VPSSRV_MODULES:-}," in
+case ",$MODULES," in
   *,anytls,*|*,proxy,*) need_node_lock=1 ;;
   *)
     if existing_install && { [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; }; then
@@ -479,32 +365,22 @@ if [ "$need_node_lock" = 1 ]; then
   flock -x "$node_lock"
 fi
 if existing_install; then
-  if [ -z "$WIZARD_POLICY" ]; then load_previous; fi
+  load_previous
+  # A routine upgrade keeps the modules already chosen on this host. Fresh
+  # installs use the console-only default unless the caller selects modules.
+  if [ -z "${VPSSRV_MODULES:-}" ]; then MODULES="$PREV_MODULES"; fi
   msg found_install "${PREV_VERSION:-?}" "$PREV_MODULES"
-  if [ -n "$WIZARD_POLICY" ]; then
-    if [ "$WIZARD_POLICY" = "preserve" ]; then UPGRADE=1; else UPGRADE=0; fi
-  elif [ "$INTERACTIVE" = "1" ]; then
-    msg ask_upgrade "$NEW_VERSION"
-    read -r upgrade_answer </dev/tty || upgrade_answer="y"
-    case "$upgrade_answer" in
-      [nN]*) UPGRADE=0 ;;
-      *) UPGRADE=1 ;;
-    esac
-  else
-    # Unattended runs upgrade. Silently reconfiguring a host that is already
-    # set up is the more destructive of the two defaults, and `curl | bash`
-    # cannot be asked.
-    UPGRADE=1
-  fi
-  if [ "$UPGRADE" = "1" ]; then
-    apply_previous
-    preserve_anytls
-    preserve_proxy
-  else
-    msg reconfigure
-  fi
+  UPGRADE=1
+  apply_previous
+  preserve_anytls
+  preserve_proxy
 fi
-if [ -n "$WIZARD_POLICY" ]; then export PROXY_PROTOCOLS="$WIZARD_PROTOCOLS"; fi
+
+if [ "$UPGRADE" = "0" ]; then
+  # The public reachability page is optional; only the random-port console
+  # answers on a fresh install until the operator enables other features.
+  export VPSSRV_PUBLIC_ENABLE="${VPSSRV_PUBLIC_ENABLE:-0}"
+fi
 
 # Re-derived here, because apply_previous may have just supplied the values
 # these are computed from. Left at their top-of-script values they keep the
@@ -514,7 +390,7 @@ if [ -n "$WIZARD_POLICY" ]; then export PROXY_PROTOCOLS="$WIZARD_PROTOCOLS"; fi
 PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
-# Check final configuration after wizard selection and upgrade preservation.
+# Check final configuration after upgrade preservation.
 if { [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] || [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; } \
    && ! command -v openssl >/dev/null 2>&1; then
   die "$(msg no_openssl)"
@@ -523,96 +399,6 @@ fi
 # ---------------------------------------------------------------------------
 # 1b. Modules.
 # ---------------------------------------------------------------------------
-MODULES="${VPSSRV_MODULES:-}"
-if [ -z "$MODULES" ] && [ "$UPGRADE" = "1" ]; then
-  MODULES="$PREV_MODULES"   # upgrading means the same modules, not a re-pick
-fi
-if [ -z "$MODULES" ]; then
-  if [ "$INTERACTIVE" = "1" ]; then
-    msg mod_head
-
-    msg ask_module_web
-    read -r ans </dev/tty || ans="y"
-    case "$ans" in [nN]*) want_web=0 ;; *) want_web=1 ;; esac
-
-    # No point asking about the iperf3 console button when there will be no
-    # console — see the "iperf3 needs web" check just below this block.
-    want_iperf3=0
-    if [ "$want_web" = "1" ]; then
-      msg ask_module_iperf3
-      read -r ans </dev/tty || ans="y"
-      case "$ans" in [nN]*) want_iperf3=0 ;; *) want_iperf3=1 ;; esac
-    fi
-
-    # Defaults to no, unlike the other two: it is a proxy, and nobody should
-    # end up running one because they held down Enter.
-    msg ask_module_anytls
-    read -r ans </dev/tty || ans="n"
-    case "$ans" in [yY]*) want_anytls=1 ;; *) want_anytls=0 ;; esac
-
-    # Same "defaults to no" reasoning as anytls above. Unlike anytls, this
-    # module wraps four independently-selectable protocols rather than one —
-    # so a "yes" here leads into a second, nested round of y/n questions,
-    # each defaulting to yes (once someone has opted into "a proxy module",
-    # picking a subset of its protocols is the normal case, not the
-    # exception anytls's own top-level question guards against).
-    msg ask_module_proxy
-    read -r ans </dev/tty || ans="n"
-    case "$ans" in [yY]*) want_proxy=1 ;; *) want_proxy=0 ;; esac
-    PROXY_PROTOCOLS_PICKED=""
-    if [ "$want_proxy" = "1" ]; then
-      msg proxy_protocols_head
-      for proto in vmess vless trojan shadowsocks; do
-        msg "ask_proxy_$proto"
-        read -r ans </dev/tty || ans="y"
-        case "$ans" in
-          [nN]*) ;;
-          *) PROXY_PROTOCOLS_PICKED="${PROXY_PROTOCOLS_PICKED:+$PROXY_PROTOCOLS_PICKED,}$proto" ;;
-        esac
-      done
-      if [ -z "$PROXY_PROTOCOLS_PICKED" ]; then
-        msg proxy_none_selected
-        want_proxy=0   # said "yes" to the module, then "no" to every protocol
-      else
-        export PROXY_PROTOCOLS="$PROXY_PROTOCOLS_PICKED"
-      fi
-    fi
-
-    msg ask_module_frps
-    read -r ans </dev/tty || ans="n"
-    case "$ans" in [yY]*) want_frps=1 ;; *) want_frps=0 ;; esac
-
-    msg ask_module_lucky
-    read -r ans </dev/tty || ans="n"
-    case "$ans" in [yY]*) want_lucky=1 ;; *) want_lucky=0 ;; esac
-    if [ "$want_lucky" = 1 ]; then
-      msg ask_lucky_port
-      read -r LUCKY_ADMIN_PORT </dev/tty || LUCKY_ADMIN_PORT=""
-      export LUCKY_ADMIN_PORT="${LUCKY_ADMIN_PORT:-16601}"
-      msg ask_lucky_public
-      read -r ans </dev/tty || ans="n"
-      case "$ans" in
-        [yY]*)
-          msg lucky_http_warning >&2
-          msg lucky_http_confirm_prompt
-          read -r LUCKY_PUBLIC_CONFIRM </dev/tty || LUCKY_PUBLIC_CONFIRM=""
-          [ "$LUCKY_PUBLIC_CONFIRM" = 'I ACCEPT PUBLIC HTTP' ] || die "$(msg lucky_explicit_confirm)"
-          export LUCKY_PUBLIC_ADMIN=1 LUCKY_PUBLIC_CONFIRM ;;
-        *) export LUCKY_PUBLIC_ADMIN=0 ;;
-      esac
-    fi
-    MODULES=""
-    [ "$want_lucky" = "1" ] && MODULES="lucky"
-    [ "$want_frps" = "1" ] && MODULES="${MODULES:+$MODULES,}frps"
-    [ "$want_web" = "1" ] && MODULES="${MODULES:+$MODULES,}web"
-    [ "$want_iperf3" = "1" ] && MODULES="${MODULES:+$MODULES,}iperf3"
-    [ "$want_anytls" = "1" ] && MODULES="${MODULES:+$MODULES,}anytls"
-    [ "$want_proxy" = "1" ] && MODULES="${MODULES:+$MODULES,}proxy"
-    [ -n "$MODULES" ] || MODULES="$DEFAULT_MODULES"   # answered no to everything
-  else
-    MODULES="$DEFAULT_MODULES"
-  fi
-fi
 msg modules_are "$MODULES"
 
 # iperf3 is a console button; without the web module there is no console to
@@ -664,26 +450,28 @@ install_iperf3() {
   done
 
   msg iperf_failed
-  return 0   # a missing iperf3 disables one console button, not the install
+  return 1
 }
 
 install_anytls() {
   msg anytls_start
   # Once node identity and limits exist, the UI owns edits. Re-running the
   # legacy setup script would replace per-node TLS paths and desync state.
-  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$ANYTLS_CONFIG_PATH" ]; then
+  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$ANYTLS_CONFIG_PATH" ] &&
+     [ -f /etc/systemd/system/vps-server-anytls.service ]; then
     return 0
   fi
   # Its own script owns everything anytls: deps, binary, config, unit,
   # firewall, BBR, and the client-config summary it prints at the end.
   ANYTLS_PORT="${ANYTLS_PORT:-}" ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-}" \
   SNI="${SNI:-www.bing.com}" \
-  VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/anytls/setup-anytls.sh"
+  VPSSRV_NODE_LOCK_FD="${node_lock:-}" VPSSRV_DEFER_NODE_START=1 VPSSRV_EMPTY_NODE_INSTALL=1 bash "$PREFIX/anytls/setup-anytls.sh"
 }
 
 install_proxy() {
   msg proxy_start "${PROXY_PROTOCOLS:-vmess,vless,trojan,shadowsocks}"
-  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$PROXY_CONFIG_PATH" ]; then
+  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$PROXY_CONFIG_PATH" ] &&
+     [ -f /etc/systemd/system/vps-server-proxy.service ]; then
     return 0
   fi
   # Same shape as install_anytls(): its own script owns deps, the shared
@@ -696,11 +484,14 @@ install_proxy() {
   PROXY_VLESS_PORT="${PROXY_VLESS_PORT:-}" PROXY_VLESS_UUID="${PROXY_VLESS_UUID:-}" \
   PROXY_TROJAN_PORT="${PROXY_TROJAN_PORT:-}" PROXY_TROJAN_PASSWORD="${PROXY_TROJAN_PASSWORD:-}" \
   PROXY_SS_PORT="${PROXY_SS_PORT:-}" PROXY_SS_PASSWORD="${PROXY_SS_PASSWORD:-}" \
-  VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/proxy/setup-proxy.sh"
+  VPSSRV_NODE_LOCK_FD="${node_lock:-}" VPSSRV_DEFER_NODE_START=1 VPSSRV_EMPTY_NODE_INSTALL=1 bash "$PREFIX/proxy/setup-proxy.sh"
 }
 
 install_node_meter() {
-  [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ] || return 0
+  if ! has_module anytls && ! has_module proxy; then
+    systemctl disable --now vps-server-node-meter.service >/dev/null 2>&1 || true
+    return 0
+  fi
   # The installer held the node lock while preserving and applying legacy
   # configs. Release it before init or starting the notify-type meter unit.
   if [ -n "${node_lock:-}" ]; then
@@ -712,8 +503,8 @@ install_node_meter() {
   fi
   /usr/bin/python3 "$PREFIX/node_control.py" init || return 1
   local was_anytls=0 was_proxy=0
-  systemctl is-active --quiet vps-server-anytls.service && was_anytls=1 || true
-  systemctl is-active --quiet vps-server-proxy.service && was_proxy=1 || true
+  systemctl is-enabled --quiet vps-server-anytls.service && was_anytls=1 || true
+  systemctl is-enabled --quiet vps-server-proxy.service && was_proxy=1 || true
   mkdir -p /etc/systemd/system/vps-server-anytls.service.d \
            /etc/systemd/system/vps-server-proxy.service.d
   for unit in vps-server-anytls vps-server-proxy; do
@@ -757,6 +548,9 @@ EOF
 check_frps_console_collision() {
 if has_module web && [ -f /etc/vps-server-frps/frps.toml ]; then
   console_candidate="${VPSSRV_CONSOLE_PORT:-}"
+  if [ -f "$PREFIX/data/console-port-override" ]; then
+    console_candidate="$(tr -d '[:space:]' < "$PREFIX/data/console-port-override")"
+  fi
   console_file="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
   if [ -z "$console_candidate" ] && [ -f "$console_file" ]; then
     console_candidate="$(tr -d '[:space:]' < "$console_file")"
@@ -867,7 +661,11 @@ copy_selected_files() {
     cp "$SRC_DIR/src/web/app.py" "$PREFIX/app.py"
     cp "$SRC_DIR/src/web/node_config.py" "$PREFIX/node_config.py"
     cp "$SRC_DIR/src/web/module_manager.py" "$PREFIX/module_manager.py"
+    cp "$SRC_DIR/src/web/console_port.py" "$PREFIX/console_port.py"
     cp "$SRC_DIR/src/web/frp_control.py" "$PREFIX/frp_control.py"
+    # Feature handlers form one versioned unit with the flat Web entry point.
+    rm -rf "${PREFIX:?}/features"
+    cp -r "$SRC_DIR/src/web/features" "$PREFIX/features"
   fi
   if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
     # Documentation required by /changelog and third-party notices.
@@ -897,11 +695,11 @@ copy_selected_files() {
       fi
     done
   fi
-  if has_module lucky && [ "$SRC_DIR" != "$prefix_abs" ]; then
+  if has_module lucky; then
     mkdir -p "$PREFIX/vendor/lucky"
     cp "$SRC_DIR/third_party/lucky/lucky" "$SRC_DIR/third_party/lucky/LICENSE" "$SRC_DIR/third_party/lucky/component.txt" "$PREFIX/vendor/lucky/"
   fi
-  if has_module frps && [ "$SRC_DIR" != "$prefix_abs" ]; then
+  if has_module frps; then
     mkdir -p "$PREFIX/vendor/frp"
     cp "$SRC_DIR/third_party/frp/frps" "$SRC_DIR/third_party/frp/LICENSE" "$SRC_DIR/third_party/frp/component.txt" "$PREFIX/vendor/frp/"
   fi
@@ -913,7 +711,6 @@ copy_selected_files() {
 prepare_module_source() {
   has_module web || return 0
   case "$SRC_DIR/" in "$PREFIX_ABS/installer-source/"*) return 0 ;; esac
-  [ "$SRC_DIR" != "$PREFIX_ABS" ] || return 0
   local stage item
   stage="$(mktemp -d "$PREFIX/.installer-source.XXXXXX")"
   for item in src deploy tools lang static third_party config doc README.md LICENSE .env.example; do
@@ -934,6 +731,9 @@ prepare_module_source() {
 # it exists to install and configure the Python service.
 if ! has_module web; then
   copy_selected_files
+  if has_module anytls || has_module proxy; then
+    systemctl stop vps-server-anytls.service vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
+  fi
   ANYTLS_FAILED=0
   if has_module anytls; then
     install_anytls || ANYTLS_FAILED=1
@@ -949,7 +749,10 @@ if ! has_module web; then
   msg to_remove "$PREFIX" "$SERVICE_NAME"
   [ "$ANYTLS_FAILED" = "0" ] || { msg anytls_failed >&2; exit 1; }
   [ "$PROXY_FAILED" = "0" ] || { msg proxy_failed >&2; exit 1; }
-  install_node_meter || die "$(msg node_meter_failed)"
+  install_node_meter || {
+    journalctl -u vps-server-node-meter.service -n 40 --no-pager >&2 || true
+    die "$(msg node_meter_failed)"
+  }
   [ "$FRPS_FAILED" = "0" ] || die "$(msg frps_install_failed)"
   if has_module lucky; then
     PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
@@ -1042,6 +845,9 @@ check_frps_console_collision
 # Resolve the console choice after the prompt and before probing/stopping web.
 if has_module web && [ -f /etc/vps-server-lucky/config.json ]; then
   console_candidate="${VPSSRV_CONSOLE_PORT:-}"
+  if [ -f "$PREFIX/data/console-port-override" ]; then
+    console_candidate="$(tr -d '[:space:]' < "$PREFIX/data/console-port-override")"
+  fi
   console_file="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
   if [ -z "$console_candidate" ] && [ -f "$console_file" ]; then
     console_candidate="$(tr -d '[:space:]' < "$console_file")"
@@ -1093,6 +899,14 @@ fi
 
 msg installing "$PREFIX"
 mkdir -p "$PREFIX"
+if [ "$UPGRADE" = "0" ] && has_module web; then
+  mkdir -p "$PREFIX/data"
+  chmod 700 "$PREFIX/data"
+  for feature in speedtest portfwd visitors; do
+    printf '0\n' > "$PREFIX/data/$feature-enabled"
+    chmod 600 "$PREFIX/data/$feature-enabled"
+  done
+fi
 
 # In-place upgrades skip same-source directory copies but still install the
 # root binary when a sing-box module is selected.
@@ -1148,7 +962,9 @@ ProtectSystem=strict
 ReadWritePaths=$PREFIX"
 fi
 
-has_module iperf3 && install_iperf3
+if has_module iperf3; then
+  install_iperf3 || exit 1
+fi
 
 msg writing_unit "$UNIT_PATH"
 cat > "$UNIT_PATH" <<EOF
@@ -1185,14 +1001,21 @@ PORT_FILE="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
 if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 # VPSSRV_CONSOLE_PORT, if set, was carried into the unit verbatim. Otherwise app.py
 # picked a random port on this first start and persisted it to PORT_FILE.
-PORT="${VPSSRV_CONSOLE_PORT:-}"
+PORT=""
+if [ -f "$PREFIX/data/console-port-override" ]; then
+  PORT="$(cat "$PREFIX/data/console-port-override")"
+else
+  PORT="${VPSSRV_CONSOLE_PORT:-}"
+fi
 if [ -z "$PORT" ] && [ -f "$PORT_FILE" ]; then
   PORT="$(cat "$PORT_FILE")"
 fi
-
-# Written only once the service is confirmed healthy, so a failed install does
-# not leave behind a record claiming it succeeded.
-write_state
+if has_module web && [ -n "$PORT" ]; then
+  python3 "$PREFIX/console_port.py" register "$PREFIX" "$PORT" "$SERVICE_NAME.service" || {
+    systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
+    die "$(msg port_busy "$PORT" "$PORT")"
+  }
+fi
 
 # The summary used to print a literal "<this-server>" and leave the operator to
 # substitute it by hand. Read the real addresses instead. `ip route get` reports
@@ -1273,6 +1096,9 @@ fi
 # is printed, and with a non-zero exit that makes the already-installed and
 # already-running web module look like it failed too. That is exactly what
 # happened on the first anytls install attempt. Same reasoning applies to proxy.
+if has_module anytls || has_module proxy; then
+  systemctl stop vps-server-anytls.service vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
+fi
 ANYTLS_FAILED=0
 if has_module anytls; then
   install_anytls || ANYTLS_FAILED=1
@@ -1292,13 +1118,8 @@ if [ "$PROXY_FAILED" = "1" ]; then
   msg proxy_failed >&2
   exit 1
 fi
-install_node_meter || die "$(msg node_meter_failed)"
-if [ -n "${WIZARD_PID:-}" ]; then
-  if [ -n "$PORT" ] && [[ "$HOST" =~ ^[0-9.]+$ ]]; then
-    printf '%s://%s:%s/\n' "$SCHEME" "$HOST" "$PORT" > "$WIZARD_DIR/ready" || true
-  else
-    printf '%s\n' '-' > "$WIZARD_DIR/ready" || true
-  fi
-  # The wizard cleans its private directory after its completion grace period.
-  trap - EXIT
-fi
+install_node_meter || {
+  journalctl -u vps-server-node-meter.service -n 40 --no-pager >&2 || true
+  die "$(msg node_meter_failed)"
+}
+write_state

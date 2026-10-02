@@ -18,11 +18,22 @@ import tarfile
 import time
 from urllib.request import Request, urlopen
 
+try:
+    from .node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
+except ImportError:
+    from node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
+
+try:
+    from .frp_control import client_names as frpc_names, client_unit as frpc_unit
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from frp_control import client_names as frpc_names, client_unit as frpc_unit
+
 
 MODULES = ("web", "iperf3", "anytls", "proxy", "frps", "lucky")
 STANDALONE_MODULES = ("frpc",)
-FEATURES = ("speedtest", "portfwd", "visitors", "changelog")
+FEATURES = ("speedtest", "portfwd", "visitors")
 GROUPS = ("proxy_nodes", "frpc")
+PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {
     "anytls": "vps-server-anytls.service",
     "proxy": "vps-server-proxy.service",
@@ -39,6 +50,16 @@ FRPC_ASSET_URL = ("https://github.com/CharlesGool/vps-server/releases/download/"
 
 def frpc_installed():
     return FRPC_BINARY.is_file() and FRPC_UNIT.is_file()
+
+
+def frpc_group_enabled(prefix):
+    """The module switch is independent of its individual instance units."""
+    data = Path(prefix) / "data"
+    flag = data / "frpc-group-enabled"
+    if flag.is_file():
+        return flag.read_text().strip() == "1"
+    # Older deployments only wrote this file when the group was switched off.
+    return not (data / "frpc-group-active.json").exists()
 
 
 def installed_modules(prefix):
@@ -75,6 +96,16 @@ def feature_enabled(prefix, feature):
         raise ValueError("unknown feature")
     flag = Path(prefix) / "data" / f"{feature}-enabled"
     return not flag.is_file() or flag.read_text().strip() != "0"
+
+
+def public_listener_enabled(prefix, listener, default=True):
+    if listener not in PUBLIC_LISTENERS:
+        raise ValueError("unknown public listener")
+    flag = Path(prefix) / "data" / f"{listener.replace('_', '-')}-enabled"
+    if flag.is_file():
+        return flag.read_text().strip() == "1"
+    legacy = Path(prefix) / "data" / "web-public-enabled"
+    return legacy.read_text().strip() == "1" if legacy.is_file() else default
 
 
 def set_feature(prefix, feature, enabled):
@@ -116,13 +147,39 @@ def wait_portfwd_applied(prefix, enabled, flag):
     raise RuntimeError("Web did not apply the port forwarding switch")
 
 
-def save_status(prefix, module, state):
+def save_status(prefix, module, state, **details):
     target = status_path(prefix)
     target.parent.mkdir(parents=True, exist_ok=True)
     temp = target.with_suffix(".tmp")
-    temp.write_text(json.dumps({"module": module, "state": state, "at": int(time.time())}) + "\n")
+    temp.write_text(json.dumps({"module": module, "state": state, "at": int(time.time()), **details}) + "\n")
     os.chmod(temp, 0o600)
     os.replace(temp, target)
+
+
+class PublicPortOccupied(RuntimeError):
+    def __init__(self, port):
+        self.port = port
+        super().__init__(f"Port {port} is already in use")
+
+
+def wait_public_listener_applied(prefix, listener, enabled, old_pid):
+    status_file = Path(prefix) / "data" / "public-listeners.json"
+    name = "http" if listener == "web_http" else "https"
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        try:
+            status = json.loads(status_file.read_text())
+            item = status[name]
+            if status["pid"] != old_pid and item["enabled"] == enabled:
+                if enabled and not item["bound"]:
+                    if item.get("reason") == "occupied":
+                        raise PublicPortOccupied(item["port"])
+                    raise RuntimeError(f"Port {item['port']} could not start")
+                return
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        time.sleep(0.1)
+    raise RuntimeError("Web did not report the public listener state")
 
 
 def switch_web_setting(path, enabled):
@@ -141,22 +198,81 @@ def switch_web_setting(path, enabled):
         raise
 
 
+def switch_public_listener(prefix, listener, enabled):
+    path = Path(prefix) / "data" / f"{listener.replace('_', '-')}-enabled"
+    status_file = Path(prefix) / "data" / "public-listeners.json"
+    try:
+        old_pid = json.loads(status_file.read_text()).get("pid")
+    except (OSError, ValueError, TypeError):
+        old_pid = None
+    previous = path.read_bytes() if path.exists() else None
+    path.write_text("1\n" if enabled else "0\n")
+    os.chmod(path, 0o600)
+    try:
+        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
+        wait_public_listener_applied(prefix, listener, enabled, old_pid)
+    except (OSError, subprocess.SubprocessError, RuntimeError):
+        if previous is None:
+            path.unlink(missing_ok=True)
+        else:
+            path.write_bytes(previous)
+            os.chmod(path, 0o600)
+        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=False, timeout=60)
+        raise
+
+
+def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
+                            lock_path=Path("/etc/vps-server-node.lock")):
+    """Discard inventory entries left by a previously removed node module.
+
+    Preserve the original inventory before changing it. Configurations of
+    still-installed modules remain protected by the normal inventory checks.
+    """
+    state_path = Path(state_path)
+    with Path(lock_path).open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        inventory = read_inventory(state_path=state_path, check_installed=False)
+        if inventory is None:
+            return
+        kept = [node for node in inventory["nodes"] if
+                ("anytls" if node["protocol"] == "anytls" else "proxy") in installed]
+        if len(kept) == len(inventory["nodes"]):
+            return
+        backup = Path(prefix) / "data" / f"node-inventory-before-reinstall-{time.time_ns()}.json"
+        backup.write_bytes(state_path.read_bytes())
+        os.chmod(backup, 0o600)
+        inventory["nodes"] = kept
+        write_inventory(inventory, state_path=state_path)
+        print(f"Preserved removed node inventory: {backup}", flush=True)
+
+
 def run_install(prefix, module):
     if module == "frpc":
         return install_frpc(prefix)
+    if module == "iperf3":
+        return install_iperf3(prefix)
+    if module == "frps":
+        return install_frps(prefix)
+    requested = {"proxy", "anytls"} if module == "proxy_nodes" else {module}
     source = Path(prefix) / "installer-source" / "deploy" / "install.sh"
     if not source.is_file():
         raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
     installed = installed_modules(prefix)
     if "web" not in installed:
         raise RuntimeError("the console module is unavailable")
-    if module in installed:
+    if requested <= installed:
         raise RuntimeError("module already installed")
-    selected = [item for item in MODULES if item in installed or item == module]
+    if requested & {"proxy", "anytls"}:
+        if not ({"proxy", "anytls"} & installed):
+            subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
+                           check=False, timeout=60)
+        reconcile_removed_nodes(prefix, installed)
+    selected = [item for item in MODULES if item in installed or item in requested]
     disabled = [item for item in installed if item in UNITS and
                 subprocess.run(["systemctl", "is-enabled", "--quiet", UNITS[item]],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0]
-    env = dict(os.environ, PREFIX=str(prefix), VPSSRV_MODULES=','.join(selected))
+    env = dict(os.environ, PREFIX=str(prefix), VPSSRV_MODULES=','.join(selected),
+               TERM="dumb", NO_COLOR="1", DEBIAN_FRONTEND="noninteractive")
     env.pop("VPSSRV_SETUP_PUBLIC", None)
     # The installer owns package dependencies, node inventory, service units,
     # preservation of all prior credentials, and the installed-module record.
@@ -172,13 +288,81 @@ def run_install(prefix, module):
         if subprocess.run(["systemctl", "is-active", "--quiet", "vps-server-web.service"],
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
             subprocess.run(["systemctl", "start", "vps-server-web.service"], check=True, timeout=60)
-    if module not in installed_modules(prefix):
+    if not requested <= installed_modules(prefix):
         raise RuntimeError("module was not recorded as installed")
-    if module == "iperf3":
-        if not shutil.which("iperf3"):
-            raise RuntimeError("iperf3 package is unavailable")
-        flag = Path(prefix) / "data" / "iperf3-enabled"
-        switch_web_setting(flag, True)
+
+
+def install_iperf3(prefix):
+    """Add the distro package without rerunning setup for existing nodes."""
+    prefix = Path(prefix)
+    if "web" not in installed_modules(prefix):
+        raise RuntimeError("the console module is unavailable")
+    if "iperf3" in installed_modules(prefix):
+        raise RuntimeError("module already installed")
+    state = prefix / ".install-state"
+    if not state.is_file():
+        raise RuntimeError("installed-module record is unavailable")
+    lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if line.startswith("modules="):
+            modules = line.removeprefix("modules=").strip().split(",")
+            if "iperf3" not in modules:
+                modules.append("iperf3")
+            lines[index] = "modules=" + ",".join(modules) + "\n"
+            break
+    else:
+        raise RuntimeError("installed-module record has no modules field")
+    if not shutil.which("iperf3"):
+        env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+        for attempt in range(3):
+            subprocess.run(["apt-get", "update"], env=env,
+                           stdout=sys.stdout, stderr=subprocess.STDOUT,
+                           check=False, timeout=300)
+            result = subprocess.run(["apt-get", "install", "-y", "iperf3"], env=env,
+                                    stdout=sys.stdout, stderr=subprocess.STDOUT,
+                                    check=False, timeout=600)
+            if result.returncode == 0 and shutil.which("iperf3"):
+                break
+            if attempt < 2:
+                time.sleep(2)
+        else:
+            raise RuntimeError("iperf3 package installation failed; see apt output above")
+    switch_web_setting(prefix / "data" / "iperf3-enabled", True)
+    temp = state.with_suffix(".tmp")
+    temp.write_text("".join(lines), encoding="utf-8")
+    os.chmod(temp, state.stat().st_mode & 0o777)
+    os.replace(temp, state)
+
+
+def install_frps(prefix):
+    """Install FRPS without touching unrelated node services or credentials."""
+    prefix = Path(prefix)
+    if "web" not in installed_modules(prefix):
+        raise RuntimeError("the console module is unavailable")
+    if "frps" in installed_modules(prefix):
+        raise RuntimeError("module already installed")
+    source = prefix / "installer-source" / "deploy" / "frps" / "setup-frps.sh"
+    if not source.is_file():
+        raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
+    env = dict(os.environ, PREFIX=str(prefix), TERM="dumb", NO_COLOR="1")
+    subprocess.run(["/usr/bin/bash", str(source)], env=env,
+                   stdin=subprocess.DEVNULL, stdout=sys.stdout, stderr=subprocess.STDOUT,
+                   check=True, timeout=300)
+    state = prefix / ".install-state"
+    lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if line.startswith("modules="):
+            selected = set(line.removeprefix("modules=").strip().split(",")) | {"frps"}
+            lines[index] = "modules=" + ",".join(item for item in MODULES if item in selected) + "\n"
+            break
+    else:
+        raise RuntimeError("installed-module record has no modules field")
+    staged = state.with_suffix(".tmp")
+    staged.write_text("".join(lines), encoding="utf-8")
+    os.chmod(staged, state.stat().st_mode & 0o777)
+    os.replace(staged, state)
+    if "frps" not in installed_modules(prefix):
+        raise RuntimeError("FRPS service was not recorded as installed")
 
 
 def install_frpc(prefix):
@@ -259,28 +443,37 @@ def download_frpc(prefix):
 
 
 def run_toggle(prefix, module, enabled):
+    if module in PUBLIC_LISTENERS:
+        if "web" not in installed_modules(prefix):
+            raise RuntimeError("the console module is unavailable")
+        # Let the console return its redirect before the Web unit restarts.
+        time.sleep(2)
+        switch_public_listener(prefix, module, enabled)
+        return
     if module == "frpc":
         if not frpc_installed():
             raise RuntimeError("FRPC is not installed")
-        configs = sorted(FRPC_CONFIG_DIR.glob("frpc-*.toml"))
-        names = [p.stem.removeprefix("frpc-") for p in configs if p.is_file() and not p.is_symlink()]
-        if enabled and not names:
-            raise RuntimeError("Create an FRPC server instance before enabling it")
+        names = frpc_names(FRPC_CONFIG_DIR)
         state = Path(prefix) / "data" / "frpc-group-active.json"
+        flag = Path(prefix) / "data" / "frpc-group-enabled"
         if enabled:
-            saved = json.loads(state.read_text()) if state.is_file() else names
+            saved = json.loads(state.read_text()) if state.is_file() else []
             for name in names:
                 if name in saved:
-                    subprocess.run(["systemctl", "enable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+                    subprocess.run(["systemctl", "enable", "--now", frpc_unit(name)], check=True, timeout=60)
             state.unlink(missing_ok=True)
+            flag.write_text("1\n")
+            os.chmod(flag, 0o600)
         else:
             active = [name for name in names if subprocess.run(
-                ["systemctl", "is-active", "--quiet", f"frpc@{name}.service"],
+                ["systemctl", "is-active", "--quiet", frpc_unit(name)],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0]
             state.write_text(json.dumps(active) + "\n")
             os.chmod(state, 0o600)
             for name in names:
-                subprocess.run(["systemctl", "disable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+                subprocess.run(["systemctl", "disable", "--now", frpc_unit(name)], check=True, timeout=60)
+            flag.write_text("0\n")
+            os.chmod(flag, 0o600)
         return
     if module == "proxy_nodes":
         present = installed_modules(prefix) & {"proxy", "anytls"}
@@ -295,10 +488,6 @@ def run_toggle(prefix, module, enabled):
         return
     if module not in installed_modules(prefix):
         raise RuntimeError("module is not installed")
-    if module == "web":
-        target = Path(prefix) / "data" / "web-public-enabled"
-        switch_web_setting(target, enabled)
-        return
     if module == "iperf3":
         target = Path(prefix) / "data" / "iperf3-enabled"
         switch_web_setting(target, enabled)
@@ -351,6 +540,10 @@ def run_uninstall(prefix, module):
             path = Path(paths[item]) if item in paths else None
             if path and path.exists():
                 output.add(path, arcname=f"etc/{path.name}")
+        if module == "proxy_nodes":
+            state_path = Path("/etc/vps-server-nodes/state.json")
+            if state_path.is_file():
+                output.add(state_path, arcname="etc/vps-server-nodes/state.json")
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
     if module == "iperf3":
@@ -358,11 +551,17 @@ def run_uninstall(prefix, module):
                        stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=900)
         switch_web_setting(Path(prefix) / "data" / "iperf3-enabled", False)
     elif module == "proxy_nodes":
+        subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
+                       check=False, timeout=60)
         for item in ("proxy", "anytls"):
             if item in targets:
                 script = Path(prefix) / item / f"setup-{item}.sh"
                 subprocess.run(["/usr/bin/bash", str(script), "uninstall"],
                                stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=180)
+        reconcile_removed_nodes(prefix, present - targets)
+        if not ({"proxy", "anytls"} & (present - targets)):
+            subprocess.run(["systemctl", "disable", "--now", "vps-server-node-meter.service"],
+                           check=False, timeout=60)
     elif module == "frps":
         subprocess.run(["systemctl", "disable", "--now", UNITS["frps"]], check=True, timeout=60)
         owner = Path("/etc/vps-server-frps/firewall-owned")
@@ -379,7 +578,7 @@ def run_uninstall(prefix, module):
                     owner.unlink()
         Path(f"/etc/systemd/system/{UNITS['frps']}").unlink(missing_ok=True)
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
-        Path("/etc/vps-server-frps/frps.toml").unlink(missing_ok=True)
+        # Keep bind port and token so a later reinstall can restore clients.
         Path("/usr/local/bin/frps-vps-server").unlink(missing_ok=True)
     state = Path(prefix) / ".install-state"
     lines = state.read_text().splitlines()
@@ -400,7 +599,7 @@ def uninstall_frpc(prefix):
     if not template.is_file() or FRPC_UNIT.read_bytes() != template.read_bytes():
         raise RuntimeError("FRPC service template changed; refusing to remove it")
     configs = sorted(FRPC_CONFIG_DIR.glob("frpc-*.toml"))
-    names = [p.stem.removeprefix("frpc-") for p in configs if p.is_file() and not p.is_symlink()]
+    names = frpc_names(FRPC_CONFIG_DIR)
     archive = Path(prefix) / "data" / f"module-backup-frpc-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         for config in configs:
@@ -409,7 +608,7 @@ def uninstall_frpc(prefix):
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
     for name in names:
-        subprocess.run(["systemctl", "disable", "--now", f"frpc@{name}.service"], check=True, timeout=60)
+        subprocess.run(["systemctl", "disable", "--now", frpc_unit(name)], check=True, timeout=60)
     FRPC_UNIT.unlink()
     try:
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
@@ -428,9 +627,11 @@ def uninstall_frpc(prefix):
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS:
+    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS:
         raise SystemExit("invalid module action")
     action, module, prefix = argv
+    if module in PUBLIC_LISTENERS and action not in ("enable", "disable"):
+        raise SystemExit("invalid public listener action")
     prefix = str(Path(prefix).resolve(strict=True))
     if os.geteuid() != 0 or not (Path(prefix) / ".install-state").is_file():
         raise SystemExit("root and an installed console are required")
@@ -441,25 +642,25 @@ def main(argv=None):
         log = log_path(prefix)
         with log.open("w", encoding="utf-8", buffering=1) as output, redirect_stdout(output), redirect_stderr(output):
             os.chmod(log, 0o600)
-            save_status(prefix, module, "running")
+            save_status(prefix, module, "running", action=action)
             print(f"{action} {module}", flush=True)
             try:
                 if action == "install":
-                    if module == "proxy_nodes":
-                        for item in ("proxy", "anytls"):
-                            if item not in installed_modules(prefix):
-                                run_install(prefix, item)
-                    else:
-                        run_install(prefix, module)
+                    run_install(prefix, module)
                 elif action == "uninstall":
                     run_uninstall(prefix, module)
                 else:
                     run_toggle(prefix, module, action == "enable")
+            except PublicPortOccupied as exc:
+                print(f"Error: {exc}", flush=True)
+                save_status(prefix, module, "failed", action=action,
+                            reason="port_occupied", port=exc.port)
+                raise SystemExit(1)
             except (OSError, RuntimeError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
                 print(f"Error: {exc}", flush=True)
-                save_status(prefix, module, "failed")
+                save_status(prefix, module, "failed", action=action)
                 raise SystemExit(1)
-            save_status(prefix, module, "done")
+            save_status(prefix, module, "done", action=action)
 
 
 if __name__ == "__main__":

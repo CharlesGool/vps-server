@@ -46,7 +46,7 @@ case "$key" in
   modules_are) fmt='模組：%s\n' ;;
   port_busy) fmt='連接埠 %s 已被其他程序佔用。\n請先釋放連接埠，或透過 VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT 更改連接埠，\n亦可設定 VPSSRV_PUBLIC_ENABLE=0 跳過公開頁面。查看佔用情況：\n  ss -lntp "( sport = :%s )"\n' ;;
   iperf_installing) fmt='正在從發行版套件庫安裝 iperf3 ...\n' ;;
-  iperf_failed) fmt='iperf3 安裝失敗（詳見上方 apt 輸出）。在控制台開啟測試時段時會顯示提示；你亦可執行 apt install iperf3 手動安裝。\n' ;;
+  iperf_failed) fmt='iperf3 安裝失敗（詳見上方 apt 輸出）。安裝已停止；請修復套件來源後重新執行腳本。\n' ;;
   anytls_arch) fmt='anytls 模組需要 x86-64，這部主機是 %s，因此跳過 —— 隨儲存庫提供的 sing-box 二進制檔案無法在此架構執行。\n' ;;
   proxy_arch) fmt='proxy 模組需要 x86-64，這部主機是 %s，因此跳過 —— 隨儲存庫提供的 sing-box 二進制檔案無法在此架構執行。\n' ;;
   iperf_web_required) fmt='沒有 web 模組，單獨安裝 iperf3 模組並無作用 —— 只有控制台能開關測試時段。請在 VPSSRV_MODULES 加入 web，或移除 iperf3。\n' ;;

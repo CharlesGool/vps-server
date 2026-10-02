@@ -46,7 +46,7 @@ case "$key" in
   modules_are) fmt='模块：%s\n' ;;
   port_busy) fmt='端口 %s 已被其他进程占用。\n先腾出来，或用 VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT 换端口，\n或设 VPSSRV_PUBLIC_ENABLE=0 跳过公开页。查占用：\n  ss -lntp "( sport = :%s )"\n' ;;
   iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
-  iperf_failed) fmt='iperf3 安装失败（apt 输出见上）。请求开窗口时控制台会提示；可手动安装：apt install iperf3\n' ;;
+  iperf_failed) fmt='iperf3 安装失败（apt 输出见上）。安装已停止；请修复软件源后重新运行脚本。\n' ;;
   anytls_arch) fmt='anytls 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   proxy_arch) fmt='proxy 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   iperf_web_required) fmt='iperf3 模块离开 web 模块单独安装没有任何作用 —— 只有控制台能打开/关闭它的窗口。请在 VPSSRV_MODULES 里加上 web，或者去掉 iperf3。\n' ;;

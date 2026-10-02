@@ -1,0 +1,32 @@
+.app-login-header { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; min-height: 72px; padding: 12px 24px; border-bottom: 1px solid var(--card-border); background: var(--card-bg); }
+.app-login-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--fg); font-size: 1rem; font-weight: 700; text-decoration: none; }
+.app-login-brand .ui-icon { width: 40px; height: 40px; color: var(--accent); }
+.login-page main.app-login-main { max-width: none; min-height: calc(100dvh - 72px); padding: 32px 24px; align-items: center; }
+.login-shell { display: grid; place-items: center; width: 100%; }
+.login-panel.app-login-card { width: min(100%, 480px); padding: 32px; border: 1px solid var(--card-border); border-radius: 16px; background: var(--card-bg); box-shadow: var(--shadow); }
+.login-mark { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 1.5rem; border-radius: 12px; background: var(--surface-2); color: var(--accent); }
+.login-mark .ui-icon { width: 28px; height: 28px; }
+.login-panel h1 { margin: 0 0 .6rem; font-size: clamp(2rem, 6vw, 3rem); }
+.login-intro { margin: 0 0 2rem; color: var(--muted); }
+.login-language-field { margin-left: auto; color: var(--fg); font-size: .9rem; }
+.login-language-menu { position: relative; }
+.login-language-menu summary { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .45rem .75rem; border: 1px solid var(--card-border); border-radius: 8px; color: var(--fg); background: var(--card-bg); font-size: .88rem; cursor: pointer; list-style: none; }
+.login-language-menu summary::-webkit-details-marker { display: none; }
+.login-language-menu summary::after { content: '⌄'; color: var(--muted); }
+.login-language-menu .language-options { inset-inline-start: auto; inset-inline-end: 0; top: auto; bottom: calc(100% + .4rem); max-height: min(17rem, 60dvh); overflow: auto; }
+.login-form label { margin-bottom: .45rem; color: var(--fg); font-size: .9rem; }
+.login-form input { min-height: 3.2rem; border-radius: 10px; }
+.password-field { position: relative; min-width: 0; }
+.password-label { margin-bottom: .35rem; }
+.password-field input, .node-form-grid .password-field input { margin-top: 0; padding-inline-end: 6rem; }
+.password-toggle { position: absolute; inset-inline-end: .25rem; top: 50%; transform: translateY(-50%); min-width: 44px; min-height: 2.35rem; margin: 0; padding: .3rem .55rem; border: 0; background: var(--surface-2); color: var(--accent-strong); font-size: .82rem; }
+.password-toggle:hover { background: var(--surface-2); }
+.password-field .password-toggle { margin: 0; }
+.access-card form > .password-field { margin-bottom: 1rem; }
+.login-submit, .login-ip-form button { width: 100%; min-height: 3.2rem; border-radius: 10px; font-size: 1rem; }
+.login-submit { margin-top: 1.35rem; }
+.login-ip-form { margin-top: .85rem; }
+.login-ip-form button { border-color: var(--card-border); background: var(--card-bg); color: var(--fg); }
+.login-ip-form button:hover { background: var(--surface-2); }
+.login-footer.app-login-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.login-version { margin-right: auto; color: var(--accent-strong); font-size: .82rem; }

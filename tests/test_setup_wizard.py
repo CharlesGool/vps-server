@@ -238,28 +238,12 @@ class SetupPortTests(unittest.TestCase):
 
 
 class InstallerNonTtyTests(unittest.TestCase):
-    def test_missing_modules_fails_before_starting_wizard_or_install(self):
+    def test_missing_modules_uses_all_server_modules_without_wizard(self):
         installer = Path(__file__).resolve().parents[1] / 'deploy/install.sh'
-        with tempfile.TemporaryDirectory() as directory:
-            marker = Path(directory) / 'called'
-            # id is the only privileged preflight; if this test runs without
-            # root, spoof its uid check without allowing installation actions.
-            fake_id = Path(directory) / 'id'
-            fake_id.write_text('#!/bin/sh\n[ "$1" = -u ] && { echo 0; exit 0; }\nexit 1\n')
-            fake_id.chmod(0o755)
-            fake_python = Path(directory) / 'python3'
-            fake_python.write_text('#!/bin/sh\nprintf called > "$MARKER"\nexit 1\n')
-            fake_python.chmod(0o755)
-            env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'],
-                       PREFIX=directory + '/install', MARKER=str(marker))
-            env.pop('VPSSRV_MODULES', None)
-            result = subprocess.run(['bash', str(installer)], stdin=subprocess.DEVNULL,
-                                    capture_output=True, text=True, env=env, timeout=3)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn('Non-interactive installation requires VPSSRV_MODULES', result.stderr)
-            self.assertIn('VPSSRV_MODULES=web,iperf3', result.stderr)
-            self.assertFalse(marker.exists())
-            self.assertFalse((Path(directory) / 'install').exists())
+        source = installer.read_text()
+        self.assertIn('DEFAULT_MODULES="web"', source)
+        self.assertIn('MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"', source)
+        self.assertNotIn('setup_wizard.py', source)
 
 
 class PublicTlsTests(unittest.TestCase):

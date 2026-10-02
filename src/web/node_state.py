@@ -13,7 +13,10 @@ import stat
 import tempfile
 import uuid
 
-from node_inventory import InvalidInventory, import_legacy, migrate_inventory, validate_inventory
+try:
+    from .node_inventory import InvalidInventory, import_legacy, migrate_inventory, validate_inventory
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from node_inventory import InvalidInventory, import_legacy, migrate_inventory, validate_inventory
 
 
 STATE_PATH = Path("/etc/vps-server-nodes/state.json")

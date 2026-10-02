@@ -1,0 +1,2 @@
+.error, .notice, .iperf-state { margin: 0 0 1rem; padding: .7rem .9rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--surface-2); color: var(--fg-2); }
+.error { color: var(--error-strong); border-color: var(--error); }.notice { color: var(--accent-strong); }.iperf-state.is-open { color: var(--success); }.iperf-state.is-closed { color: var(--muted); }

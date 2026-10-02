@@ -1,6 +1,7 @@
 """Privileged FRP edits. Requests arrive on stdin from a transient systemd unit."""
 
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import tempfile
 import ipaddress
 from datetime import date
 import time
+import unicodedata
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -24,22 +26,68 @@ CLIENT_UNIT = Path(os.environ.get("VPSSRV_FRPC_UNIT", "/etc/systemd/system/frpc@
 SERVER_SETUP = APP_DIR / "frps" / "setup-frps.sh"
 REGISTRY = APP_DIR.parent / "PORTS.md"
 LOCK = APP_DIR.parent / ".ports.lock"
-NAME = re.compile(r"[a-zA-Z0-9_-]{1,32}\Z")
+ASCII_NAME = re.compile(r"[a-zA-Z0-9_-]{1,32}\Z")
 HEADER = "| Host Port | Project / Service | Bind Address | Registration Date |\n| --- | --- | --- | --- |\n"
 ROW = re.compile(r"\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d\d-\d\d)\s*\|")
 
 
+def valid_client_name(name):
+    return (isinstance(name, str) and 1 <= len(name) <= 32 and
+            unicodedata.normalize("NFC", name) == name and
+            all(char in "_-" or unicodedata.category(char)[0] in "LN" for char in name))
+
+
 def client_path(name):
-    if not isinstance(name, str) or not NAME.fullmatch(name):
+    if not valid_client_name(name):
         raise ValueError("invalid instance name")
     return CLIENT_DIR / ("frpc-" + name + ".toml")
 
 
-def client_names():
-    if not CLIENT_DIR.is_dir():
+def client_unit(name):
+    """Keep legacy ASCII units; map Unicode names to a stable ASCII instance."""
+    client_path(name)
+    if ASCII_NAME.fullmatch(name):
+        return f"frpc@{name}.service"
+    suffix = hashlib.sha256(name.encode("utf-8")).hexdigest()[:24]
+    return f"frpc@u-{suffix}.service"
+
+
+def client_alias(name):
+    """The existing systemd template uses %i, so Unicode needs an ASCII alias."""
+    unit = client_unit(name)
+    if ASCII_NAME.fullmatch(name):
+        return None
+    instance = unit.removeprefix("frpc@").removesuffix(".service")
+    return CLIENT_DIR / f"frpc-{instance}.toml"
+
+
+def _ensure_client_alias(name):
+    alias = client_alias(name)
+    if alias is None:
+        return False
+    target = client_path(name).name
+    if alias.is_symlink():
+        if os.readlink(alias) == target:
+            return False
+        raise ValueError("FRPC alias occupied")
+    if alias.exists():
+        raise ValueError("FRPC alias occupied")
+    alias.symlink_to(target)
+    return True
+
+
+def _remove_client_alias(name):
+    alias = client_alias(name)
+    if alias is not None and alias.is_symlink() and os.readlink(alias) == client_path(name).name:
+        alias.unlink()
+
+
+def client_names(directory=None):
+    directory = Path(directory) if directory is not None else CLIENT_DIR
+    if not directory.is_dir():
         return []
-    return sorted(p.name[5:-5] for p in CLIENT_DIR.glob("frpc-*.toml")
-                  if NAME.fullmatch(p.name[5:-5]) and not p.is_symlink())
+    return sorted(p.name[5:-5] for p in directory.glob("frpc-*.toml")
+                  if valid_client_name(p.name[5:-5]) and p.is_file() and not p.is_symlink())
 
 
 def client_summary(name):
@@ -317,13 +365,15 @@ def save_client(name, content):
         old = path.read_text(encoding="utf-8") if path.exists() else None
         old_ports = _local_client_ports(old) if old else set()
         new_ports = _local_client_ports(content)
-        unit = f"frpc@{name}.service"
+        unit = client_unit(name)
         was_active = subprocess.run(["systemctl", "is-active", "--quiet", unit]).returncode == 0
         was_enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", unit]).returncode == 0
         _write_private(path, content)
+        alias_created = False
         try:
             subprocess.run([str(CLIENT_BIN), "verify", "-c", str(path)], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+            alias_created = _ensure_client_alias(name)
             if old is None or was_active:
                 _reserve_client_ports(name, new_ports, old_ports if was_active else set())
             if old is None:
@@ -335,6 +385,8 @@ def save_client(name, content):
             if old is None or was_active:
                 subprocess.run(["systemctl", "is-active", "--quiet", unit], check=True)
         except BaseException:
+            if alias_created:
+                _remove_client_alias(name)
             if old is None or was_active:
                 _release_client_ports(name, new_ports - (old_ports if was_active else set()))
             if old is None:
@@ -358,7 +410,7 @@ def toggle_client(name, enable):
     path = client_path(name)
     if not path.is_file() or path.is_symlink():
         raise ValueError("FRPC instance missing")
-    unit = f"frpc@{name}.service"
+    unit = client_unit(name)
     with LOCK.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         ports = _local_client_ports(path.read_text(encoding="utf-8"))
@@ -382,7 +434,7 @@ def rename_client(name, new_name):
         return
     if not old_path.is_file() or old_path.is_symlink() or new_path.exists() or new_path.is_symlink():
         raise ValueError("FRPC instance missing or destination occupied")
-    old_unit, new_unit = f"frpc@{name}.service", f"frpc@{new_name}.service"
+    old_unit, new_unit = client_unit(name), client_unit(new_name)
     with LOCK.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if not old_path.is_file() or old_path.is_symlink() or new_path.exists() or new_path.is_symlink():
@@ -391,10 +443,12 @@ def rename_client(name, new_name):
         was_active = subprocess.run(["systemctl", "is-active", "--quiet", old_unit]).returncode == 0
         was_enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", old_unit]).returncode == 0
         moved = False
+        new_alias_created = False
         try:
             subprocess.run(["systemctl", "disable", "--now", old_unit], check=True, timeout=60)
             os.replace(old_path, new_path)
             moved = True
+            new_alias_created = _ensure_client_alias(new_name)
             _save_rows([(port, "vps-server frpc " + new_name if owner == "vps-server frpc " + name else owner,
                          bind, recorded) for port, owner, bind, recorded in rows])
             if was_enabled:
@@ -402,8 +456,11 @@ def rename_client(name, new_name):
             if was_active:
                 subprocess.run(["systemctl", "start", new_unit], check=True, timeout=60)
                 subprocess.run(["systemctl", "is-active", "--quiet", new_unit], check=True)
+            _remove_client_alias(name)
         except BaseException:
             subprocess.run(["systemctl", "disable", "--now", new_unit], check=False, timeout=60)
+            if new_alias_created:
+                _remove_client_alias(new_name)
             if moved:
                 os.replace(new_path, old_path)
             _save_rows(rows)
@@ -419,7 +476,7 @@ def delete_client(name):
     path = client_path(name)
     if not path.is_file() or path.is_symlink():
         raise ValueError("FRPC instance missing")
-    unit = f"frpc@{name}.service"
+    unit = client_unit(name)
     with LOCK.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if not path.is_file() or path.is_symlink():
@@ -434,6 +491,7 @@ def delete_client(name):
             os.replace(path, archive)
             moved = True
             _save_rows([row for row in rows if row[1] != "vps-server frpc " + name])
+            _remove_client_alias(name)
         except BaseException:
             if moved:
                 os.replace(archive, path)

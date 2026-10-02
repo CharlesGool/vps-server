@@ -37,12 +37,15 @@ app._read_proc_net = old
         with tempfile.TemporaryDirectory() as directory:
             prefix = Path(directory)
             shutil.copy2(ROOT / "src/web/app.py", prefix / "app.py")
-            for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "frp_control"):
+            for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "console_port", "frp_control"):
                 shutil.copy2(ROOT / "src/web" / f"{module}.py", prefix / f"{module}.py")
+            shutil.copytree(ROOT / "src/web/features", prefix / "features")
             (prefix / "VERSION").write_text("deployed-version\n")
             (prefix / ".env").write_text("VPSSRV_DEFAULT_LANG=zh_tw\n")
             shutil.copytree(ROOT / "lang", prefix / "lang")
             (prefix / "static").mkdir()
+            (prefix / "static/styles").mkdir()
+            shutil.copy2(ROOT / "static/styles/public.css", prefix / "static/styles/public.css")
             (prefix / "doc").mkdir()
             env = os.environ.copy()
             for key in ("VPSSRV_DEFAULT_LANG", "VPSSRV_DATA_DIR", "VPSSRV_PASSWORD_FILE",

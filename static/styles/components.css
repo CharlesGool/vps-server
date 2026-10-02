@@ -1,0 +1,3 @@
+main:has(.managed-node-grid) { max-width: 135rem; }
+.card { width: 100%; max-width: 44rem; padding: clamp(1.25rem, 3vw, 2rem); border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-bg); box-shadow: var(--shadow); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

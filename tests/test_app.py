@@ -149,7 +149,9 @@ class ConsoleTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertIn('Modules', body)
             self.assertIn('action="/settings/modules/action"', body)
-            self.assertEqual(body.count('class="module-card"'), 9)
+            self.assertEqual(body.count('class="module-card"'), 4)
+            self.assertNotIn('<h2>HTTP page</h2>', body)
+            self.assertNotIn('<h2>HTTPS page</h2>', body)
             self.assertNotIn('<h2>AnyTLS</h2>', body)
             self.assertNotIn('<h2>Lucky</h2>', body)
             conn.close()
@@ -157,9 +159,10 @@ class ConsoleTest(unittest.TestCase):
             conn.request("GET", "/", headers={"Cookie": f"session={ordinary}"})
             dashboard = conn.getresponse().read().decode()
             conn.close()
-            self.assertEqual(dashboard.count('class="tile" data-module='), 9)
-            self.assertEqual(dashboard.count('role="switch"'), 8)
-            self.assertNotIn('href="/settings/modules"', dashboard)
+            self.assertEqual(dashboard.count('data-module='), 11)
+            self.assertEqual(dashboard.count('role="switch"'), 9)
+            self.assertIn('data-module="web_http"', dashboard)
+            self.assertIn('data-module="web_https"', dashboard)
             body = urlencode({"module": "frps", "action": "install", "csrf": "invalid"})
             conn = self.connect()
             conn.request("POST", "/settings/modules/action", body,
@@ -171,6 +174,163 @@ class ConsoleTest(unittest.TestCase):
         finally:
             app.destroy_session(ordinary)
             app.destroy_session(elevated)
+
+    def test_changelog_is_always_available_without_a_switch(self):
+        session = app.create_session()
+        try:
+            self.assertTrue(app.module_states()["changelog"])
+            for path, pattern in (
+                ('/', r'<article class="tile" data-module="changelog">(.*?)</article>'),
+            ):
+                conn = self.connect()
+                conn.request('GET', path, headers={'Cookie': f'session={session}'})
+                response = conn.getresponse()
+                body = response.read().decode()
+                conn.close()
+                self.assertEqual(response.status, 200)
+                card = re.search(pattern, body, re.S)
+                self.assertIsNotNone(card)
+                self.assertNotIn('role="switch"', card[0])
+                self.assertNotIn('name="module" value="changelog"', card[0])
+
+            body = urlencode({'module': 'changelog', 'action': 'disable',
+                              'csrf': app.access_csrf_token(session, 'module:changelog:disable')})
+            conn = self.connect()
+            conn.request('POST', '/settings/modules/action', body,
+                         {'Cookie': f'session={session}',
+                          'Content-Type': 'application/x-www-form-urlencoded'})
+            response = conn.getresponse()
+            response.read()
+            conn.close()
+            self.assertEqual(response.status, 400)
+        finally:
+            app.destroy_session(session)
+
+    def test_public_page_has_separate_http_and_https_switches(self):
+        session = app.create_session()
+        try:
+            for http_enabled, https_enabled in ((True, False), (False, True)):
+                with self.subTest(http=http_enabled, https=https_enabled), \
+                     patch.object(app, 'PUBLIC_HTTP_ENABLED', http_enabled), \
+                     patch.object(app, 'PUBLIC_HTTPS_ENABLED', https_enabled), \
+                     patch.object(app, 'installed_modules', return_value={'web'}):
+                    conn = self.connect()
+                    conn.request('GET', '/settings/modules?lang=en',
+                                 headers={'Cookie': f'session={session}'})
+                    response = conn.getresponse()
+                    body = response.read().decode()
+                    conn.close()
+                    self.assertEqual(response.status, 200)
+                    self.assertNotIn('name="module" value="web_http"', body)
+                    self.assertNotIn('name="module" value="web_https"', body)
+                    conn = self.connect()
+                    conn.request('GET', '/?lang=en', headers={'Cookie': f'session={session}'})
+                    response = conn.getresponse()
+                    dashboard = response.read().decode()
+                    conn.close()
+                    self.assertEqual(response.status, 200)
+                    for module, enabled in (('web_http', http_enabled), ('web_https', https_enabled)):
+                        tile = re.search(r'<article class="tile tile-public" data-module="' + module + r'">.*?</article>', dashboard, re.S)
+                        self.assertIsNotNone(tile)
+                        self.assertIn(f'aria-checked="{str(enabled).lower()}"', tile[0])
+                        destination = ('/public/' + ('http' if module == 'web_http' else 'https')
+                                       if enabled else '/closed?module=' + module)
+                        self.assertIn(f'href="{destination}"', tile[0])
+                        conn = self.connect()
+                        conn.request('GET', '/public/' + ('http' if module == 'web_http' else 'https'),
+                                     headers={'Cookie': f'session={session}'})
+                        response = conn.getresponse()
+                        self.assertEqual(response.status, 302)
+                        self.assertEqual(response.getheader('Location'),
+                                         ('http://127.0.0.1/' if module == 'web_http' else 'https://127.0.0.1/')
+                                         if enabled else '/closed?module=' + module)
+                        response.read()
+                        conn.close()
+        finally:
+            app.destroy_session(session)
+
+    def test_public_page_switch_submits_to_module_job(self):
+        session = app.create_session()
+        try:
+            conn = self.connect()
+            conn.request('GET', '/settings?lang=en',
+                         headers={'Cookie': f'session={session}'})
+            response = conn.getresponse()
+            page = response.read().decode()
+            conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertIn('action="/settings/console-port"', page)
+            with tempfile.TemporaryDirectory() as directory:
+                prefix = Path(directory)
+                (prefix / 'module_manager.py').write_text('')
+                token = app.access_csrf_token(session, 'module:web_http:disable')
+                body = urlencode({'module': 'web_http', 'action': 'disable', 'csrf': token})
+                with patch.object(app, 'BASE_DIR', prefix), \
+                     patch.object(app, 'installed_modules', return_value={'web'}), \
+                     patch.object(app, 'module_status_path', return_value=prefix / 'missing-job'), \
+                     patch.object(app, 'save_module_status') as save, \
+                     patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                     patch.object(app.subprocess, 'run', return_value=type('Result', (), {'returncode': 0})()) as run:
+                    conn = self.connect()
+                    conn.request('POST', '/settings/modules/action', body,
+                                 {'Cookie': f'session={session}',
+                                  'Content-Type': 'application/x-www-form-urlencoded'})
+                    response = conn.getresponse()
+                    response.read()
+                    conn.close()
+                self.assertEqual(response.status, 302)
+                save.assert_called_once_with(prefix, 'web_http', 'queued', action='disable')
+                self.assertEqual(run.call_args.args[0][-3:], ['disable', 'web_http', str(prefix)])
+        finally:
+            app.destroy_session(session)
+
+    def test_public_listener_startup_obeys_each_switch(self):
+        for http_enabled, https_enabled, expected in (
+            (True, False, [(app.PUBLIC_HTTP_PORT, False)]),
+            (False, True, [(app.PUBLIC_HTTPS_PORT, True)]),
+            (False, False, []),
+        ):
+            with self.subTest(http=http_enabled, https=https_enabled), \
+                 patch.object(app, 'PUBLIC_HTTP_ENABLED', http_enabled), \
+                 patch.object(app, 'PUBLIC_HTTPS_ENABLED', https_enabled), \
+                 patch.object(app, 'make_server', side_effect=lambda port, handler, tls: object()) as make, \
+                 patch.object(app, 'serve_forever_in_thread'):
+                servers = []
+                status = app.start_public_listeners(servers)
+                self.assertEqual([(call.args[0], call.args[2]) for call in make.call_args_list], expected)
+                self.assertEqual(len(servers), len(expected))
+                self.assertEqual(status['http']['bound'], http_enabled)
+                self.assertEqual(status['https']['bound'], https_enabled)
+
+    def test_occupied_public_port_is_named_on_home_and_modules(self):
+        session = app.create_session()
+        with tempfile.TemporaryDirectory() as directory:
+            status = Path(directory) / 'module-job.json'
+            status.write_text(json.dumps({'module': 'web_http', 'state': 'failed',
+                                          'reason': 'port_occupied', 'port': 80}))
+            try:
+                with patch.object(app, 'module_status_path', return_value=status), \
+                     patch.object(app, 'installed_modules', return_value={'web'}), \
+                     patch.object(app, 'PUBLIC_HTTP_ENABLED', False):
+                    for route in ('/', '/settings/modules'):
+                        conn = self.connect()
+                        conn.request('GET', route, headers={'Cookie': f'session={session}'})
+                        response = conn.getresponse()
+                        body = response.read().decode()
+                        conn.close()
+                        self.assertEqual(response.status, 200)
+                        self.assertIn('Port 80 is already in use.', body)
+            finally:
+                app.destroy_session(session)
+
+    def test_public_listener_reports_bind_conflict(self):
+        with patch.object(app, 'PUBLIC_HTTP_ENABLED', True), \
+             patch.object(app, 'PUBLIC_HTTPS_ENABLED', False), \
+             patch.object(app, 'make_server', side_effect=OSError(98, 'Address already in use')):
+            status = app.start_public_listeners([])
+        self.assertFalse(status['http']['bound'])
+        self.assertEqual(status['http']['reason'], 'occupied')
+        self.assertFalse(status['https']['enabled'])
 
     def test_frpc_module_shows_install_only_when_program_or_unit_is_missing(self):
         session = app.create_session()
@@ -198,6 +358,39 @@ class ConsoleTest(unittest.TestCase):
                         self.assertIn('href="/frp/client/edit"', card[0])
         finally:
             app.destroy_session(session)
+
+    def test_frpc_home_stays_enabled_when_every_instance_is_stopped(self):
+        session = app.create_session()
+        try:
+            with patch.object(app, 'installed_modules', return_value={'web', 'frpc'}), \
+                 patch.object(app, 'frpc_names', return_value=['demo']), \
+                 patch.object(app, '_run_quiet', return_value=False):
+                self.assertTrue(app.module_states()['frpc'])
+                conn = self.connect()
+                conn.request('GET', '/', headers={'Cookie': f'session={session}'})
+                response = conn.getresponse()
+                body = response.read().decode()
+                conn.close()
+                card = re.search(r'<article class="tile" data-module="frpc">(.*?)</article>', body, re.S)
+                self.assertIsNotNone(card)
+                self.assertIn('aria-checked="true"', card[0])
+                self.assertIn('href="/frpc"', card[0])
+        finally:
+            app.destroy_session(session)
+
+    def test_login_session_survives_web_state_reload(self):
+        token = app.create_session(security_verified=True)
+        try:
+            with app._sessions_lock:
+                app._sessions.clear()
+                app._security_sessions.clear()
+                app._ip_sessions.clear()
+                app._feature_auth.load_sessions(app)
+            self.assertTrue(app.session_valid(token))
+            self.assertTrue(app.security_settings_valid(token))
+            self.assertEqual(app.SESSION_STATE_FILE.stat().st_mode & 0o777, 0o600)
+        finally:
+            app.destroy_session(token)
 
     def test_login_page_has_accessible_password_control(self):
         conn = self.connect()
@@ -233,6 +426,75 @@ class ConsoleTest(unittest.TestCase):
         self.assertIn("This IP cannot use password-free access", denied)
         self.assertIn('name="next" value="settings"', denied)
         self.assertNotIn('aria-invalid="true"', denied)
+
+    def test_console_port_setting_submits_a_checked_background_job(self):
+        session = app.create_session()
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                prefix = Path(directory)
+                (prefix / 'console_port.py').write_text('helper')
+                with patch.object(app, 'BASE_DIR', prefix), \
+                     patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                     patch.object(app.ConsoleHandler, 'render_page', side_effect=lambda title, body, lang, **kwargs: body), \
+                     patch.object(app.subprocess, 'run', return_value=type('Result', (), {'returncode': 0})()) as run:
+                    body = urlencode({'csrf': app.access_csrf_token(session, 'console-port'),
+                                      'port': '60001'})
+                    conn = self.connect()
+                    conn.request('POST', '/settings/console-port', body,
+                                 {'Cookie': f'session={session}',
+                                  'Content-Type': 'application/x-www-form-urlencoded',
+                                  'Host': '127.0.0.1:44816'})
+                    response = conn.getresponse()
+                    result = response.read().decode()
+                    conn.close()
+                    self.assertEqual(response.status, 200)
+                    self.assertIn('http://127.0.0.1:60001/settings', result)
+                    self.assertEqual(run.call_args.args[0][-5:],
+                                     ['change', str(prefix), str(app.CONSOLE_PORT), '60001',
+                                      str(app.CONSOLE_PORT_FILE)])
+        finally:
+            app.destroy_session(session)
+
+    def test_server_label_uses_ordinary_settings_and_updates_brand_and_title(self):
+        session = app.create_session()
+        with tempfile.TemporaryDirectory() as directory, patch.object(app, 'DATA_DIR', Path(directory)):
+            try:
+                def request(method, path, form=None):
+                    conn = self.connect()
+                    body = urlencode(form) if form is not None else None
+                    headers = {'Cookie': f'session={session}'}
+                    if body is not None:
+                        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                    conn.request(method, path, body, headers)
+                    response = conn.getresponse()
+                    result = response.status, response.getheader('Location'), response.read().decode()
+                    conn.close()
+                    return result
+
+                status, _, page = request('GET', '/settings')
+                self.assertEqual(status, 200)
+                self.assertIn('action="/settings/server-label"', page)
+                self.assertNotIn('class="server-label"', page)
+                form = {'csrf': app.access_csrf_token(session, 'server-label'), 'label': '阿里云-广州'}
+                self.assertEqual(request('POST', '/settings/server-label',
+                                         {'csrf': 'wrong', 'label': 'test'})[0], 403)
+                self.assertEqual(request('POST', '/settings/server-label', form)[:2],
+                                 (302, '/settings?msg=server_label_saved#settings-identity'))
+                self.assertEqual(app.server_label(), '阿里云-广州')
+                self.assertEqual((Path(directory) / 'server-label.txt').stat().st_mode & 0o777, 0o600)
+                status, _, home = request('GET', '/')
+                self.assertEqual(status, 200)
+                self.assertIn('<span class="server-label" title="阿里云-广州">阿里云-广州</span>', home)
+                self.assertIn('<title>阿里云-广州 — Home — vps-server</title>', home)
+                self.assertEqual(request('POST', '/settings/server-label',
+                                         {**form, 'label': '<script>'})[1],
+                                 '/settings?msg=server_label_invalid#settings-identity')
+                self.assertEqual(app.server_label(), '阿里云-广州')
+                self.assertEqual(request('POST', '/settings/server-label',
+                                         {**form, 'label': ''})[0], 302)
+                self.assertEqual(app.server_label(), '')
+            finally:
+                app.destroy_session(session)
 
     def test_access_settings_reject_public_ips_and_require_password_session(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -728,6 +990,46 @@ class ConsoleTest(unittest.TestCase):
             self.assertNotIn(b'data-private-field="frpc-config"', body)
             conn.close()
 
+    def test_removed_modules_show_the_same_install_page(self):
+        cookie = self.login()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / '.install-state').write_text('modules=web\n')
+            with patch.object(app, 'BASE_DIR', root), \
+                 patch.object(app, 'installed_modules', return_value={'web'}), \
+                 patch.object(app, 'ui_icon', return_value='<svg></svg>'), \
+                 patch.object(app, 'frps_node', return_value={'port': 7000}), \
+                 patch.object(app, 'frpc_names', return_value=['demo']):
+                for path, name in (('/iperf', 'iperf3'), ('/frps', 'FRPS'),
+                                   ('/frpc', 'FRPC'), ('/proxy', 'Singbox')):
+                    with self.subTest(path=path):
+                        conn = self.connect()
+                        conn.request('GET', path + '?lang=zh_cn',
+                                     headers={'Cookie': 'session=' + cookie})
+                        response = conn.getresponse()
+                        body = response.read().decode()
+                        conn.close()
+                        self.assertEqual(response.status, 200)
+                        self.assertIn('<div class="card access-card">', body)
+                        self.assertIn('本机未安装 ' + name, body)
+                        self.assertIn('安装 ' + name + '</a>', body)
+                        self.assertIn('href="/settings/modules"', body)
+                        self.assertNotIn('frp-target-card', body)
+                        self.assertNotIn('iperf-client-form', body)
+
+    def test_closed_page_has_a_return_home_button(self):
+        cookie = self.login()
+        with patch.object(app, 'module_states', return_value={'portfwd': False}):
+            conn = self.connect()
+            conn.request('GET', '/closed?module=portfwd&lang=zh_cn',
+                         headers={'Cookie': 'session=' + cookie})
+            response = conn.getresponse()
+            body = response.read().decode()
+            conn.close()
+        self.assertEqual(response.status, 200)
+        self.assertIn('<a class="page-back" href="/">返回首页</a>', body)
+        self.assertIn('页面已关闭', body)
+
     def test_frps_and_frpc_have_separate_pages(self):
         cookie = self.login()
         config = Path(TEST_DATA_DIR) / 'separate-frps.toml'
@@ -830,6 +1132,29 @@ class ConsoleTest(unittest.TestCase):
         with patch.object(app.subprocess, 'run', side_effect=command):
             self.assertTrue(app.frpc_connected('demo', '203.0.113.42', 7000))
             self.assertFalse(app.frpc_connected('demo', '203.0.113.42', 7001))
+
+    def test_failed_unicode_frpc_creation_returns_to_new_instance_form(self):
+        from subprocess import CompletedProcess
+        session = app.create_session()
+        try:
+            body = urlencode({'name': '示例-一', 'section': 'create',
+                              'server': '203.0.113.42', 'port': '7000',
+                              'token': 'example-token',
+                              'csrf': app.access_csrf_token(session, 'frp:structured:new')})
+            with patch.object(app, 'FRP_CONTROL_HELPER', Path(__file__).resolve().parents[1] / 'src/web/frp_control.py'), \
+                 patch.object(app.shutil, 'which', return_value='/usr/bin/systemd-run'), \
+                 patch.object(app.subprocess, 'run', return_value=CompletedProcess([], 1)):
+                conn = self.connect()
+                conn.request('POST', '/frp/client/structured', body=body,
+                             headers={'Cookie': 'session=' + session,
+                                      'Content-Type': 'application/x-www-form-urlencoded'})
+                response = conn.getresponse()
+                self.assertEqual(response.status, 302)
+                self.assertEqual(response.getheader('Location'), '/frp/client/edit?msg=failed')
+                response.read()
+                conn.close()
+        finally:
+            app.destroy_session(session)
 
     def test_frpc_connection_probe_requires_successful_login_log(self):
         from subprocess import TimeoutExpired
@@ -1163,8 +1488,9 @@ class ConsoleTest(unittest.TestCase):
             # STATIC_FILES are computed from the deployment, not patched here.
             prefix = Path(directory)
             shutil.copy2(repo_static.parent / "src" / "web" / "app.py", prefix / "app.py")
-            for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "frp_control"):
+            for module in ("node_accounting", "node_inventory", "node_state", "module_manager", "console_port", "frp_control"):
                 shutil.copy2(repo_static.parent / "src" / "web" / f"{module}.py", prefix / f"{module}.py")
+            shutil.copytree(repo_static.parent / "src" / "web" / "features", prefix / "features")
             shutil.copytree(repo_static, prefix / "static")
             shutil.copytree(repo_static.parent / "lang", prefix / "lang")
             check = '''import app, http.client, json, threading
@@ -1449,7 +1775,7 @@ class ChangelogAndVersionTest(unittest.TestCase):
         response.read()
         conn.close()
 
-    def test_release_changelog_omits_old_development_updates(self):
+    def test_development_changelog_shows_current_updates_without_old_notes(self):
         self.require_log_files("doc/LOG.md", "doc/zh-CN/LOG.md")
         session = self.login()
         with patch.object(app, "VERSION", "dev-test123"), patch.object(app, "VERSION_LABEL", "dev-test123"):
@@ -1459,7 +1785,8 @@ class ChangelogAndVersionTest(unittest.TestCase):
             body = response.read().decode()
             conn.close()
         self.assertEqual(response.status, 200)
-        self.assertNotIn("<h2>dev-test123</h2>", body)
+        self.assertIn("<h2>dev-test123</h2>", body)
+        self.assertIn("全新安装改为终端安装", body)
         self.assertNotIn("The login page uses the shared project header.", body)
         self.assertNotIn(app.STRINGS["zh_cn"]["development_fallback"], body)
         self.assertIn(self.changelog_sentinel("doc/zh-CN/LOG.md"), body)
@@ -1478,8 +1805,20 @@ class ChangelogAndVersionTest(unittest.TestCase):
             conn.close()
         self.assertEqual(response.status, 200)
         self.assertIn("test-95ca649", body)
-        self.assertNotIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("<h2>test-95ca649</h2>", body)
+        self.assertIn("changes fresh setup to a terminal installer", body)
         self.assertIn("v4.0.0", body)
+
+    def test_semver_prerelease_shows_candidate_notes(self):
+        self.require_log_files("doc/LOG.md")
+        session = self.login()
+        with patch.object(app, "VERSION", "4.1.0-test.1"), patch.object(app, "VERSION_LABEL", "v4.1.0-test.1"):
+            conn = self.connect()
+            conn.request("GET", "/changelog", headers={"Cookie": f"session={session}"})
+            body = conn.getresponse().read().decode()
+            conn.close()
+        self.assertIn("<h2>v4.1.0-test.1</h2>", body)
+        self.assertIn("changes fresh setup to a terminal installer", body)
 
     def test_changelog_markdown_is_escaped_not_injected(self):
         # LOG.md is author-controlled, but rendering must still escape tags.
@@ -3275,7 +3614,49 @@ class IperfLabelTest(unittest.TestCase):
         self.assertNotIn(app.STRINGS["en"]["iperf_extend"], body)
         self.assertNotIn(app.STRINGS["en"]["iperf_close"], body)
         self.assertIn('class="iperf-facts"', body)
+        self.assertIn('class="iperf-panels"', body)
+        self.assertIn('<h1>iperf3 server</h1>', body)
+        self.assertIn('<h2>iperf3 client</h2>', body)
         self.assertIn('action="/iperf/port"', body)
+        self.assertIn('action="/iperf/client"', body)
+
+    def test_outbound_test_requires_csrf_and_renders_result(self):
+        session = app.create_session()
+        try:
+            fields = {'host': '203.0.113.5', 'port': '5201', 'seconds': '10',
+                      'mbps': '100', 'protocol': 'tcp', 'direction': 'upload',
+                      'csrf': 'incorrect'}
+
+            def post():
+                conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=10)
+                conn.request('POST', '/iperf/client', body=urlencode(fields),
+                             headers={'Cookie': f'session={session}',
+                                      'Content-Type': 'application/x-www-form-urlencoded'})
+                response = conn.getresponse()
+                status, body = response.status, response.read().decode()
+                conn.close()
+                return status, body
+
+            with patch.object(app.IPERF_CLIENT, 'run', return_value={'status': 'done', 'mbps': 81.5}) as run:
+                self.assertEqual(post()[0], 403)
+                run.assert_not_called()
+                fields['csrf'] = app.access_csrf_token(session, 'iperf-client')
+                with patch.object(app, 'IPERF_ENABLED', True):
+                    status, body = post()
+                self.assertEqual(status, 302)
+                run.assert_called_once_with('203.0.113.5', '5201', 'tcp',
+                                            'upload', '10', '100')
+                conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=10)
+                conn.request('GET', '/iperf?client=done',
+                             headers={'Cookie': f'session={session}'})
+                response = conn.getresponse()
+                body = response.read().decode()
+                conn.close()
+                self.assertEqual(response.status, 200)
+                self.assertIn('81.50 Mbit/s', body)
+                self.assertEqual(app.IPERF_CLIENT.take_result(session), (None, None))
+        finally:
+            app.destroy_session(session)
 
     def test_port_can_be_changed_and_persists(self):
         with socket.socket() as probe:
@@ -3362,14 +3743,34 @@ class IperfLabelTest(unittest.TestCase):
         self.assertNotIn("data-iperf-deadline=", body)
         self.assertNotIn("/static/iperf-countdown.js", body)
 
-    def test_page_offers_default_reverse_and_udp_commands(self):
+    def test_page_offers_speed_single_and_multi_commands(self):
         body = self._page()
         port = app.IPERF_WINDOW.port
         self.assertNotIn(f"iperf3 -c 127.0.0.1 -p {port}", body)
-        for field in ('cmd-default', 'cmd-reverse', 'cmd-udp'):
+        for field in ('cmd-speed', 'cmd-single', 'cmd-multi'):
             self.assertIn(f'data-private-field="{field}"', body)
-        for key in ("iperf_cmd_default", "iperf_cmd_reverse", "iperf_cmd_udp"):
+        for key in ("iperf_cmd_speed", "iperf_cmd_single", "iperf_cmd_multi"):
             self.assertIn(app.STRINGS["en"][key], body)
+
+    def test_revealed_commands_use_simple_stream_presets(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("POST", "/login", body=f"password={self.password}",
+                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        response = conn.getresponse()
+        jar = SimpleCookie()
+        jar.load(response.getheader("Set-Cookie"))
+        response.read()
+        port = app.IPERF_WINDOW.port
+        for field, suffix in (("cmd-speed", ""), ("cmd-single", " -P 1"),
+                              ("cmd-multi", " -P 4")):
+            conn.request("GET", f"/proxy/private-value?id=iperf&field={field}",
+                         headers={"Cookie": f"session={jar['session'].value}",
+                                  "Host": "198.51.100.9:44816"})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())["value"],
+                             f"iperf3 -c 198.51.100.9 -p {port}{suffix}")
+        conn.close()
 
 
 class InstallerContractTest(unittest.TestCase):
@@ -3416,8 +3817,13 @@ class InstallerContractTest(unittest.TestCase):
         self.assertIsNotNone(section)
         latest = re.search(r"^### (v[^ ]+) [—-] \d{4}-\d{2}-\d{2}$", section, re.M)
         self.assertIsNotNone(latest, "LOG has no dated release heading")
-        self.assertEqual(f"v{version}", latest.group(1),
-                         "VERSION and LOG name different latest releases")
+        if "-test." in version:
+            updates = app.development_updates_section((self.ROOT / "doc" / "LOG.md").read_text())
+            self.assertIsNotNone(updates, "a prerelease needs candidate notes")
+            self.assertIn(f"v{version}", updates)
+        else:
+            self.assertEqual(f"v{version}", latest.group(1),
+                             "VERSION and LOG name different latest releases")
 
     def test_version_is_not_a_constant_in_the_source(self):
         # webui.md §1: the displayed version must come from the real tag, so

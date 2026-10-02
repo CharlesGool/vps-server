@@ -33,7 +33,7 @@ class NodeInstallerLockTest(unittest.TestCase):
         # Execute the actual post-wizard installer block, including its lock
         # decision, against temporary install state and a competing rotation.
         block = INSTALLER.split('# 1a. An existing install, if there is one.\n', 1)[1]
-        block = block.split('if [ -n "$WIZARD_POLICY" ]; then export PROXY_PROTOCOLS=', 1)[0]
+        block = block.split('# Re-derived here, because apply_previous', 1)[0]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             lock, state, unit, config = (root / name for name in
@@ -53,7 +53,7 @@ class NodeInstallerLockTest(unittest.TestCase):
                               'FRPS_UNIT=/nonexistent/frps\nLUCKY_UNIT=/nonexistent/lucky\n'
                               'DEFAULT_MODULES=web\nKNOWN_VARS=""\ndeclare -A PREV=()\n'
                               'PREV_MODULES=""\nPREV_VERSION=""\nPREV_STATE_KNOWN=0\n'
-                              'VPSSRV_MODULES=web\nWIZARD_POLICY=""\nINTERACTIVE=0\nNEW_VERSION=new\n' +
+                              'MODULES=web\nINTERACTIVE=0\nNEW_VERSION=new\n' +
                               block.replace('/etc/vps-server-node.lock', str(lock)) +
                               f'printf "%s\\n" "$PROXY_TROJAN_PASSWORD" > "{root / "snapshot"}"\n')
             rotate = root / 'rotate.py'
@@ -94,8 +94,8 @@ class NodeInstallerLockTest(unittest.TestCase):
             self.assertIsNotNone(match)
             child_blocks.append(match.group())
         self.assertRegex(INSTALLER, r'exec \{node_lock\}>/etc/vps-server-node\.lock\n\s*flock -x "\$node_lock"')
-        self.assertIn('VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/anytls/setup-anytls.sh"', INSTALLER)
-        self.assertIn('VPSSRV_NODE_LOCK_FD="${node_lock:-}" bash "$PREFIX/proxy/setup-proxy.sh"', INSTALLER)
+        self.assertIn('VPSSRV_NODE_LOCK_FD="${node_lock:-}" VPSSRV_DEFER_NODE_START=1 VPSSRV_EMPTY_NODE_INSTALL=1 bash "$PREFIX/anytls/setup-anytls.sh"', INSTALLER)
+        self.assertIn('VPSSRV_NODE_LOCK_FD="${node_lock:-}" VPSSRV_DEFER_NODE_START=1 VPSSRV_EMPTY_NODE_INSTALL=1 bash "$PREFIX/proxy/setup-proxy.sh"', INSTALLER)
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

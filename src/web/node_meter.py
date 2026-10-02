@@ -260,7 +260,8 @@ def main():
         while True:
             time.sleep(2)
             tick()
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+        print(f"Node traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Existing rules may have disappeared or become stale. Stop the node
         # units instead of leaving unrestricted traffic running indefinitely.
         for service in ("vps-server-anytls.service", "vps-server-proxy.service"):

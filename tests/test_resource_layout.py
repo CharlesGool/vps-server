@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ResourceLayoutTest(unittest.TestCase):
+    def test_feature_css_bundle_is_current(self):
+        result = subprocess.run(["python3", str(ROOT / "tools/build_styles/build_styles.py"), "--check"],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_copy_stage_web_and_module_only_and_in_place(self):
         source = (ROOT / "deploy/install.sh").read_text()
         functions = []
@@ -47,6 +52,8 @@ class ResourceLayoutTest(unittest.TestCase):
                         self.assertEqual((prefix / "app.py").read_bytes(), (ROOT / "src/web/app.py").read_bytes())
                         self.assertEqual((prefix / "node_config.py").read_bytes(),
                                          (ROOT / "src/web/node_config.py").read_bytes())
+                        self.assertEqual((prefix / "features/frp.py").read_bytes(),
+                                         (ROOT / "src/web/features/frp.py").read_bytes())
                         cli = subprocess.run(["python3", str(prefix / "node_config.py")],
                                              capture_output=True, text=True)
                         self.assertEqual(cli.returncode, 2)
@@ -88,7 +95,10 @@ class ResourceLayoutTest(unittest.TestCase):
             (inplace / "src/web/app.py").write_text("new app")
             (inplace / "src/web/node_config.py").write_text("new helper")
             (inplace / "src/web/module_manager.py").write_text("new module helper")
+            (inplace / "src/web/console_port.py").write_text("new port helper")
             (inplace / "src/web/frp_control.py").write_text("new frp helper")
+            (inplace / "src/web/features").mkdir()
+            (inplace / "src/web/features/__init__.py").write_text("feature package")
             for modules in ("anytls", "web proxy"):
                 with self.subTest(inplace=modules):
                     subprocess.run(["bash", "-e", "-c", stage], env={
@@ -105,6 +115,7 @@ class ResourceLayoutTest(unittest.TestCase):
                         self.assertEqual((inplace / "node_config.py").read_text(), "new helper")
                         self.assertEqual((inplace / "module_manager.py").read_text(), "new module helper")
                         self.assertEqual((inplace / "frp_control.py").read_text(), "new frp helper")
+                        self.assertEqual((inplace / "features/__init__.py").read_text(), "feature package")
                     else:
                         self.assertEqual((inplace / "app.py").read_text(), "keep")
 

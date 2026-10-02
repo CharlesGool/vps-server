@@ -155,10 +155,18 @@ if [ "${KEEP_DATA:-0}" = "1" ]; then
     msg nothing_left "$PREFIX"
   fi
 elif [ -d "$PREFIX" ]; then
+  # The installed language catalog lives inside PREFIX. Render both final
+  # messages before removing it so a complete purge can still exit cleanly.
+  final_purged="$(msg purged "$PREFIX")"
+  final_done="$(msg done)"
   rm -rf "${PREFIX:?}"
-  msg purged "$PREFIX"
+  printf '%s\n' "$final_purged"
 else
   msg nothing_left "$PREFIX"
 fi
 
-msg "done"
+if [ -n "${final_done:-}" ]; then
+  printf '%s\n' "$final_done"
+else
+  msg "done"
+fi

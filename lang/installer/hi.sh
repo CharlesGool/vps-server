@@ -46,7 +46,7 @@ case "$key" in
   modules_are) fmt='मॉड्यूल: %s\n' ;;
   port_busy) fmt='पोर्ट %s पहले से किसी दूसरी प्रक्रिया के उपयोग में है।\nउसे खाली करें, या VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT से अलग पोर्ट चुनें,\nया सार्वजनिक पृष्ठ छोड़ने के लिए VPSSRV_PUBLIC_ENABLE=0 सेट करें। जाँचें:\n  ss -lntp "( sport = :%s )"\n' ;;
   iperf_installing) fmt='डिस्ट्रिब्यूशन से iperf3 स्थापित किया जा रहा है ...\n' ;;
-  iperf_failed) fmt='iperf3 स्थापित नहीं हो सका (ऊपर apt आउटपुट देखें)। विंडो माँगने पर कंसोल यह बताएगा; इसे स्वयं स्थापित करें: apt install iperf3\n' ;;
+  iperf_failed) fmt='iperf3 स्थापित नहीं हो सका (ऊपर apt आउटपुट देखें)। स्थापना रुक गई है; पैकेज स्रोत ठीक करके स्क्रिप्ट फिर चलाएँ।\n' ;;
   anytls_arch) fmt='anytls मॉड्यूल के लिए x86-64 चाहिए; यह होस्ट %s है। इसे छोड़ा जा रहा है — शामिल sing-box बाइनरी यहाँ नहीं चलेगी।\n' ;;
   proxy_arch) fmt='proxy मॉड्यूल के लिए x86-64 चाहिए; यह होस्ट %s है। इसे छोड़ा जा रहा है — शामिल sing-box बाइनरी यहाँ नहीं चलेगी।\n' ;;
   iperf_web_required) fmt='web मॉड्यूल के बिना iperf3 मॉड्यूल बेअसर है — केवल कंसोल इसकी विंडो खोल या बंद कर सकता है। VPSSRV_MODULES में "web" जोड़ें या "iperf3" हटाएँ।\n' ;;

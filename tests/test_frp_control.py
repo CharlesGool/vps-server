@@ -10,6 +10,84 @@ from src.web import frp_control as control
 
 
 class FrpControlTest(unittest.TestCase):
+    def test_unicode_instance_name_keeps_config_suffix_and_uses_safe_unit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clients = root / 'frp'
+            clients.mkdir()
+            binary = root / 'frpc'
+            binary.touch()
+            unit_template = root / 'frpc@.service'
+            unit_template.touch()
+            registry = root / 'PORTS.md'
+            registry.write_text(control.HEADER)
+            commands = []
+
+            def run(argv, **_kwargs):
+                commands.append(argv)
+                return subprocess.CompletedProcess(argv, 0)
+
+            name = '示例-一'
+            renamed = '示例-二'
+            with patch.object(control, 'CLIENT_DIR', clients), \
+                 patch.object(control, 'CLIENT_BIN', binary), \
+                 patch.object(control, 'CLIENT_UNIT', unit_template), \
+                 patch.object(control, 'REGISTRY', registry), \
+                 patch.object(control, 'LOCK', root / '.ports.lock'), \
+                 patch.object(control.subprocess, 'run', side_effect=run):
+                content = control.build_client('203.0.113.42', 7000, 'example-token', [])
+                control.save_client(name, content)
+                old_path = clients / f'frpc-{name}.toml'
+                old_alias = control.client_alias(name)
+                self.assertEqual(old_path.read_text(), content)
+                self.assertEqual(old_alias.readlink(), Path(old_path.name))
+                self.assertEqual(control.client_names(), [name])
+                self.assertRegex(control.client_unit(name), r'^frpc@u-[0-9a-f]{24}\.service$')
+                self.assertIn(['systemctl', 'enable', '--now', control.client_unit(name)], commands)
+                control.rename_client(name, renamed)
+                self.assertFalse(old_path.exists())
+                self.assertFalse(old_alias.exists())
+                self.assertEqual(control.client_names(), [renamed])
+                self.assertEqual(control.client_alias(renamed).readlink(), Path(f'frpc-{renamed}.toml'))
+                control.delete_client(renamed)
+                self.assertEqual(control.client_names(), [])
+                self.assertFalse(control.client_alias(renamed).exists())
+                self.assertEqual(len(list(clients.glob('.deleted-frpc-*.toml'))), 1)
+
+        for invalid in ('../frp', 'name/other', 'smile😀', 'a' * 33):
+            with self.assertRaises(ValueError):
+                control.client_unit(invalid)
+
+    def test_failed_unicode_client_start_removes_config_and_alias(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clients = root / 'frp'
+            clients.mkdir()
+            binary = root / 'frpc'
+            binary.touch()
+            unit_template = root / 'frpc@.service'
+            unit_template.touch()
+            registry = root / 'PORTS.md'
+            registry.write_text(control.HEADER)
+            name = '示例-一'
+
+            def run(argv, **_kwargs):
+                if argv[:3] == ['systemctl', 'enable', '--now']:
+                    raise subprocess.CalledProcessError(1, argv)
+                return subprocess.CompletedProcess(argv, 0)
+
+            with patch.object(control, 'CLIENT_DIR', clients), \
+                 patch.object(control, 'CLIENT_BIN', binary), \
+                 patch.object(control, 'CLIENT_UNIT', unit_template), \
+                 patch.object(control, 'REGISTRY', registry), \
+                 patch.object(control, 'LOCK', root / '.ports.lock'), \
+                 patch.object(control.subprocess, 'run', side_effect=run):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    control.save_client(name, control.build_client('203.0.113.42', 7000,
+                                                                   'example-token', []))
+                self.assertFalse(control.client_path(name).exists())
+                self.assertFalse(control.client_alias(name).is_symlink())
+
     def test_add_proxy_does_not_require_an_existing_index(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(control, 'CLIENT_DIR', Path(directory)):
             path = Path(directory) / 'frpc-demo.toml'
