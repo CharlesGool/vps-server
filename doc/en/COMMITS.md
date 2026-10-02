@@ -28,9 +28,10 @@ metadata:
 
 ## Commit History
 
-Commits reachable from the current branch are listed newest first. Run `git show <SHA>` to inspect a commit and `git log --all --oneline` to view the full history. Rebuild this list from `main` after the release merge.
+Commits reachable from `main` are listed newest first. Run `git show <SHA>` to inspect a commit and `git log --all --oneline` to view the full history.
 
-- `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (pending commit)
+- `HEAD` 2026-10-03 docs: record v5.0.0 publication and handoff (pending commit)
+- `b9314f5` 2026-10-03 docs: document release verification and legacy archive boundary
 - `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version
 - `f02c202` 2026-10-03 refactor: place web assets and release notes in standard paths

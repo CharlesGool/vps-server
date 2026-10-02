@@ -28,9 +28,10 @@ metadata:
 
 ## 提交記錄
 
-目前分支的提交按時間由新到舊排列.使用 `git show <SHA>` 檢視單次提交,使用 `git log --all --oneline` 檢視完整歷史.發行合併後按主分支重建本表.
+本表列出 `main` 可達的提交,最新在前.使用 `git show <SHA>` 檢視單次提交,使用 `git log --all --oneline` 檢視完整歷史.
 
-- `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
+- `HEAD` 2026-10-03 docs: record v5.0.0 publication and handoff (待提交)
+- `b9314f5` 2026-10-03 docs: document release verification and legacy archive boundary
 - `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version
 - `f02c202` 2026-10-03 refactor: place web assets and release notes in standard paths

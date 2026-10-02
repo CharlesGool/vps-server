@@ -27,9 +27,10 @@ metadata:
 
 ## कमिट इतिहास
 
-वर्तमान शाखा के कमिट नवीनतम से पुराने क्रम में हैं। एक कमिट देखने के लिए `git show <SHA>` और पूरा इतिहास देखने के लिए `git log --all --oneline` चलाएँ। मुख्य शाखा में विलय के बाद यह सूची फिर बनाएँ।
+यह सूची `main` से उपलब्ध कमिट को नवीनतम से पुराने क्रम में दिखाती है। एक कमिट के लिए `git show <SHA>` और पूरे इतिहास के लिए `git log --all --oneline` चलाएँ।
 
-- `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
+- `HEAD` 2026-10-03 docs: record v5.0.0 publication and handoff (待提交)
+- `b9314f5` 2026-10-03 docs: document release verification and legacy archive boundary
 - `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version
 - `f02c202` 2026-10-03 refactor: place web assets and release notes in standard paths
