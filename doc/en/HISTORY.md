@@ -145,6 +145,8 @@ Previous test-host handoff before full removal (2026-10-03):
 
 ## Earlier English LOG records
 
+These entries preserve facts recorded only in the English LOG before the documentation migration. They are archival evidence of the state observed at the time, not current operating instructions. For current status and release changes, see [LOG](LOG.md) and [CHANGELOG](CHANGELOG.md).
+
 <a id="vps-current-state"></a>
 
 Version 2.0.0 includes experimental frps and Lucky install paths. Their

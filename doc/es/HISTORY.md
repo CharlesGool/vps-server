@@ -27,6 +27,8 @@ metadata:
 
 ## Registros históricos
 
+Antes de la migración, el `LOG.md` en inglés registró por separado algunas pruebas que entonces no figuraban en el original en chino simplificado. Esos hechos antiguos se conservan en el [archivo histórico en inglés](../en/HISTORY.md#earlier-english-log-records). El archivo solo permite reconstruir el estado de aquel momento y no contiene instrucciones operativas actuales; consulta [LOG](LOG.md) y el [historial de cambios](CHANGELOG.md) para conocer el estado vigente.
+
 ## Limitaciones y estado actual de aceptación
 
 <a id="vps-current-state"></a>

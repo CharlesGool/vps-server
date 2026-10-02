@@ -41,6 +41,7 @@ No other breaking issue is recorded in the prior status snapshot; the startup/sh
 ## Limitations
 
 - Automated checks verify catalog keys, placeholders, and document structure, but the new translations have not had independent native-language review.
+- Before migration, the Simplified Chinese originals and older translations of the four core documents were scattered across different paths, so a complete baseline from a single synchronization cannot be restored. This migration resynchronized all seven languages against the current Simplified Chinese source. The next update can use this commit as the incremental translation baseline. English-only test records from before migration remain in the historical archive; its boundary is described in [HISTORY](HISTORY.md).
 - During standardization on 2026-10-03, ignored runtime state and caches at the source checkout root were moved intact to `private/local-runtime-prestandardization-20261003/`. The current worktree passes the structure check. On a CIFS working copy mounted with fixed 0644 file and 0755 directory modes, `chmod` does not change the displayed modes of local secrets; the mount's access control requires separate assessment.
 - The current branch's real-host acceptance limits are recorded in the Simplified Chinese handoff below.
 

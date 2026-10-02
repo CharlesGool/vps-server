@@ -42,6 +42,7 @@ La anterior instantánea de estado no registraba otros problemas que impidieran 
 ## Limitaciones
 
 - Las comprobaciones automatizadas verifican las claves de los catálogos, los marcadores de posición y la estructura de los documentos, pero las nuevas traducciones todavía no han recibido una revisión independiente por hablantes nativos.
+- Antes de la migración, los originales en chino simplificado de los cuatro documentos principales y sus traducciones anteriores estaban en rutas distintas; no fue posible reconstruir una base completa de la misma sincronización. En esta migración se sincronizaron íntegramente los siete idiomas con el texto actual en chino simplificado; las siguientes actualizaciones retomarán la traducción incremental desde este commit. Los registros de pruebas que solo existían en inglés se conservan como archivo histórico; [HISTORY](HISTORY.md) delimita su alcance.
 - Durante la estandarización del 2026-10-03, los datos de ejecución y cachés antiguos ignorados por Git se trasladaron sin cambios desde la raíz del código a `private/local-runtime-prestandardization-20261003/`; el árbol de trabajo actual supera la comprobación de estructura. Si un montaje CIFS presenta los archivos siempre con modo 0644 y los directorios con 0755, `chmod` no cambia el modo visible de los archivos secretos locales; evalúe por separado el control de acceso del montaje.
 - Los límites actuales de aceptación de esta rama en un servidor real se documentan más abajo.
 

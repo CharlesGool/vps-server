@@ -46,6 +46,11 @@ metadata:
 - FRPC instance names accept Unicode letters and numbers. Module reinstall keeps installed nodes and service state, and module controls report their result before restart.
 - Full uninstall prints its localized completion message and exits successfully after deleting the installation directory.
 
+#### Verification and limits
+
+- The local unit suite ran 377 tests: 369 passed and 8 were skipped. The style build, dependency verification, project structure, multilingual, and document-link checks passed. The operator reports that the existing features had previously been tested without problems. This source layout migration has not been reinstalled on a real host; reboot persistence, every cross-host proxy and forwarding combination, and real mobile devices have not been fully verified.
+- FRPC continues to use the [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64) asset from the prior formal release. It is 16,593,080 bytes, with SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`. For offline installation, place the file at `~/apps/vps-server/vendor/frp/frpc`, then install it from the Modules page; the installer verifies its digest before use. The three large executables retained in the repository have Git blobs identical to those in `v4.0.0`.
+
 ### v4.0.0 — 2026-09-29
 
 #### Added

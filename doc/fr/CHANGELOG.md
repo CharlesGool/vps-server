@@ -49,6 +49,11 @@ Seules les versions étiquetées sont répertoriées ici. Les entrées suivantes
 - Les noms d’instances FRPC acceptent les lettres et chiffres Unicode ; réinstaller un module préserve les nœuds et l’état du service et confirme le résultat d’un interrupteur avant le redémarrage.
 - La désinstallation complète affiche son message final traduit et se termine avec succès après la suppression du répertoire d’installation.
 
+#### Vérifications et limites
+
+- Sur 377 tests unitaires locaux exécutés, 369 ont réussi et 8 ont été ignorés. La génération des styles, la vérification des dépendances et les contrôles de structure du projet, de documentation multilingue et de liens locaux ont réussi. L’utilisateur a indiqué que les fonctions avaient été testées auparavant sans problème. Depuis cette réorganisation des sources, aucune nouvelle installation sur un hôte réel n’a été effectuée ; la persistance après redémarrage, toutes les combinaisons de proxy et de transfert entre hôtes ainsi que les appareils mobiles réels ne sont pas entièrement vérifiés.
+- FRPC utilise toujours le fichier [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64) de la précédente version officielle, d’une taille de 16,593,080 octets et de SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`. Pour une installation hors ligne, placez ce fichier dans `~/apps/vps-server/vendor/frp/frpc`, puis installez-le depuis Modules ; son empreinte est vérifiée avant l’installation. Les trois grands exécutables conservés dans le dépôt ont des blobs Git identiques à ceux de `v4.0.0`.
+
 ### v4.0.0 — 2026-09-29
 
 #### Ajouts

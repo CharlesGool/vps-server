@@ -27,6 +27,8 @@ metadata:
 
 ## Archives historiques
 
+Avant la migration, le `LOG.md` anglais consignait séparément certains essais absents de la source en chinois simplifié à cette date. Ces faits anciens sont conservés dans les [archives historiques anglaises](../en/HISTORY.md#earlier-english-log-records). Elles servent uniquement à retrouver l’état de l’époque et ne constituent pas des instructions actuelles ; pour l’état en vigueur, consultez [LOG](LOG.md) et l’[historique des modifications](CHANGELOG.md).
+
 ## Limitations et état actuel de validation
 
 <a id="vps-current-state"></a>

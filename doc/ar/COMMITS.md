@@ -30,6 +30,7 @@ metadata:
 تُعرض التزامات الفرع الحالي من الأحدث إلى الأقدم. استخدم `git show <SHA>` لعرض تغيير واحد و`git log --all --oneline` لعرض السجل الكامل. أعِد إنشاء القائمة بعد الدمج في الفرع الرئيسي.
 
 - `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
+- `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version
 - `f02c202` 2026-10-03 refactor: place web assets and release notes in standard paths
 - `2f73767` 2026-10-03 fix: preserve localized completion after full uninstall

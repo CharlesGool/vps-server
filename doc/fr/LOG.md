@@ -42,6 +42,7 @@ Aucun autre problème bloquant n'est consigné dans l'ancien état des lieux ; l
 ## Limitations
 
 - Les contrôles automatisés vérifient les clés des catalogues, les espaces réservés et la structure des documents, mais les nouvelles traductions n’ont pas encore fait l’objet d’une relecture indépendante par des locuteurs natifs.
+- Avant la migration, les sources en chinois simplifié des quatre documents principaux et leurs anciennes traductions se trouvaient dans des chemins différents ; la base complète d’une même synchronisation n’a pas pu être reconstituée. Les sept langues ont été entièrement resynchronisées avec le texte actuel en chinois simplifié ; les prochaines mises à jour reprendront la traduction incrémentale depuis ce commit. Les comptes rendus d’essais qui n’existaient qu’en anglais sont conservés comme archives historiques ; leur périmètre est précisé dans [HISTORY](HISTORY.md).
 - Lors de la standardisation du 2026-10-03, les anciennes données d’exécution et caches ignorés par Git ont été déplacés sans modification de la racine des sources vers `private/local-runtime-prestandardization-20261003/` ; l’arbre de travail actuel passe le contrôle de structure. Si un montage CIFS présente toujours les fichiers en mode 0644 et les répertoires en mode 0755, `chmod` ne change pas le mode affiché des fichiers confidentiels locaux ; examinez séparément le contrôle d’accès du montage.
 - Les limites actuelles de validation de cette branche sur un hôte réel sont consignées plus bas.
 

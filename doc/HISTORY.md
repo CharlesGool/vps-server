@@ -27,6 +27,8 @@ metadata:
 
 ## 历史记录
 
+迁移前的英文 `LOG.md` 曾独立记录部分测试过程,这些当时没有进入简体中文原文的旧事实保留在[英文历史档案](en/HISTORY.md#earlier-english-log-records).档案仅用于追溯当时状态,不是当前操作指令;当前状态以[LOG](LOG.md)和[变更日志](CHANGELOG.md)为准.
+
 ## 当前状态与验收限制
 
 <a id="vps-current-state"></a>
