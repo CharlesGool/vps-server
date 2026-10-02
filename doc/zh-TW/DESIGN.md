@@ -10,7 +10,7 @@ metadata:
 
 ## 多語言
 
-[English](../DESIGN.md) | [简体中文](../zh-CN/DESIGN.md) | **繁體中文(台灣)** | [繁體中文(香港)](../zh-HK/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
+[简体中文](../DESIGN.md) | [English](../en/DESIGN.md) | **繁體中文(台灣)** | [繁體中文(香港)](../zh-HK/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
 
 ## 文件
 
@@ -18,7 +18,10 @@ metadata:
 
 - 設計考量:[DESIGN](DESIGN.md)
 
-- 發行歷史:[LOG](LOG.md)
+- 專案狀態: [LOG](LOG.md)
+- 歷史記錄: [HISTORY](HISTORY.md)
+- 變更紀錄: [CHANGELOG](CHANGELOG.md)
+- 提交歷史: [COMMITS](COMMITS.md)
 
 - 第三方聲明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -28,7 +31,7 @@ metadata:
 
 **目前版本已實作的目標(見[驗收限制][local-link-001]):**
 
-v2.0.0 亦包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過實機驗收;以下目標描述先前已記錄的四個模組.
+目前安裝程式預設部署 Web 主控台,其他服務端模組由 `VPSSRV_MODULES` 或後續模組管理選擇.FRPC 另行安裝.以下保留各功能形成時的目標與驗證記錄;具體時間以歷史記錄為準.
 
 - 在全新的 Debian/Ubuntu VPS 上安裝一套可選四個模組,提供五項功能的套件(web 模組同時包含公開頁面與私人主控台):
   1. **公開可達性頁面**——一個刻意精簡,不需要驗證的頁面,服務於 TCP
@@ -48,18 +51,18 @@ v2.0.0 亦包含實驗性的 frps 與 Lucky 安裝路徑.其行為尚未通過�
 **持續追蹤的目標與目前狀態:**
 
 - [x] 2026-09-19 各節點流量統計及上限:五種代理協定分別統計上傳與下載.原有達上限後雙向限速 1 Mbps,以及每月或指定時間重設,已於 2026-09-27 通過實機測試.目前分支新增上傳與下載獨立限速,達流量上限後選擇雙向限速 1 Mbps 或停止使用,以天/月/年設定重複週期,以及到期後停止使用的選用有效期.新規則與狀態遷移已通過自動檢查;測試機已驗證介面與遷移,尚未逐一驗證實際流量.
-- [x] 2026-09-19 瀏覽器首次執行設定:目前簽出版本透過 `tools/setup_wizard/setup_wizard.py` 提供短暫有效的設定精靈,觸發條件是互動式安裝程式沒有設定 `VPSSRV_MODULES`.精靈收集語言,模組,連接埠及驗證選項;Shell 安裝程式驗證結果後才執行所選操作.目前簽出版本尚未通過實機驗收.
+- [x] 2026-09-19 瀏覽器首次設定曾由 `tools/setup_wizard/setup_wizard.py` 提供;該流程已退役.v5.0.0 的首次安裝直接在終端完成,預設只安裝 Web 主控台.
 - [x] 2026-09-22 在已登入控制檯提供 FRPS / FRPC 連線資訊.頁面報告本機 FRPS unit 狀態,繫結地址,網絡卡地址,埠和認證令牌;敏感值僅在點選顯示或複製時讀取.FRPC 連線模板使用已安裝伺服器的值和可替換的伺服器地址佔位符.伺服器無法檢視其他裝置上 FRPC 的執行狀態.
 - [x] 2026-09-29 管理本機 FRP 配置.已登入操作員無需再次驗證管理員密碼,即可修改 FRPS 繫結埠和令牌,編輯及驗證本機 FRPC 例項,並啟動或停止例項.例項頁面按需顯示已儲存的 IP 和令牌.臨時 root 輔助程式在 Web unit 的只讀系統沙盒外執行固定操作;更改的本機監聽埠會在啟動前登記到 `~/apps/PORTS.md`,停用後釋放,驗證或服務操作失敗時恢復舊配置;其他裝置上的 FRPC 例項不受影響.模組頁面可獨立於 FRPS 安裝帶固定校驗和的 FRPC 二進位制檔案及 `frpc@.service` 模板,依據這兩者而非例項配置判斷安裝狀態.解除安裝會停止例項並保留其配置.
 - [x] 2026-09-29 將 FRPS 和本機 FRPC 控制元件呈現為操作卡片.FRPS 使用與節點頁面相同的行內編輯模式和服務開關.每個 FRPC 例項都有遮蔽的目標 IP,根據套接字判斷的連線狀態,以及單獨的“測試連線”操作;該操作使用已儲存的憑據執行不帶代理的 FRPC 登入.例項頁面顯示伺服器欄位及各代理的型別,本地 IP,本地埠和遠端埠;只有選擇“編輯”才打開編輯介面,儲存後返回該例項.欄位編輯器只接受它能表示的簡單令牌認證 TCP/UDP 配置,對不支援的 TOML 保持原樣.每張目標卡片僅代表本機例項;初始連線狀態要求該例項 systemd 主程序擁有與配置中的伺服器及埠之間已建立的套接字.
 
 FRPC 卡片檢查,2026-09-29:操作員提供的四張截圖顯示舊連線模板,無法直接顯示的遮蔽資訊,高階 TOML 面板,以及缺少測試操作的伺服器卡片.在部署的 `test-d09835d` 版本上,Chromium 以 390 和 1440 CSS px 檢查了例項列表,遮蔽和顯示後的伺服器資訊,收起與展開的編輯控制元件,代理資訊,連線測試狀態,以及儲存後返回同一例項.多餘面板已移除,兩項資訊均按需載入,四項代理資訊全部可見,兩種寬度均無橫向溢位.介面沿用專案現有卡片樣式;此次瀏覽器檢查未覆蓋真實移動裝置及代理流量.
-- [x] 2026-09-29 擴充套件初次設定並增加受保護的模組管理.全新互動式安裝會在隨機臨時 HTTPS 埠上開啟設定頁,在終端列印一次性設定密碼,並要求透過瀏覽器設定時選擇 Web 控制檯.提交後頁面顯示安裝進度,控制檯執行正常時提供連結.後續的 Settings → Security → Modules 頁面可從已安裝,版本匹配的原始碼包安裝遺漏的模組,或啟用及停用已安裝模組.臨時 systemd 任務在 Web 服務外執行原安裝程式;模組選擇保留既有模組和憑據.systemd 服務開關保留配置;Web 開關隻影響公開頁面,控制檯仍可訪問.初次設定和後續安裝已透過本地測試及瀏覽器檢查,尚未在全新主機上完成驗收.
+- [x] 2026-09-29 的瀏覽器首次設定流程已退役.目前 Settings → Modules 可從已安裝,版本相符的原始碼包安裝遺漏模組,或啟用及停用已安裝模組.臨時 systemd 任務在 Web 服務外執行安裝程式;模組選擇保留既有模組及憑據.公開 HTTP,HTTPS 開關分別影響對應監聽器,控制台仍可使用.原向導的測試記錄保留在歷史文件中.
 
-初次設定監聽器在提供服務前將隨機埠登記到 `~/apps/PORTS.md`,關閉時刪除登記.臨時設定密碼只允許一個瀏覽器會話使用,並在完成模組選擇後丟棄.後續模組頁面要求與其他 Security Settings 相同的短時管理員驗證.它僅向單獨的特權 systemd 任務提交固定模組名稱及操作.任務在 Web 服務外記錄進度,因此安裝過程中允許 Web 重啟.停用代理模組不會刪除節點或憑據;使用節點控制元件時,已停用 unit 仍保持停止.iperf3 和公開頁面開關會重啟 Web 服務以應用監聽器變更.兩者都不會移除控制檯,之後仍可修改設定.
+退役的首次設定監聽器曾在提供服務前將隨機埠登記到 `~/apps/PORTS.md`,關閉時刪除登記;臨時設定密碼只容許一個瀏覽器會話使用.目前模組頁面位於普通 Settings,使用已登入會話;只向獨立的特權 systemd 任務提交固定模組名稱及操作.任務在 Web 服務外記錄進度,因此安裝期間容許 Web 重啟.停用代理模組不會刪除節點或憑據;使用節點控制元件時,已停用 unit 仍保持停止.iperf3 和公開頁面開關會重啟 Web 服務以套用監聽器變更,控制台仍可使用.
 - [ ] 界定 2026-09-22 狀態快照所記更廣泛的 `gdy666/lucky` 功能需求.目前簽出版本已有 Lucky 安裝路徑,但當時未記錄更廣泛的功能清單或驗收準則.
 - [x] 完成節點控制的實機驗收:刪除節點後顯示編號維持連續,全部刪除後新節點從 1 開始,隱藏的 UUID 維持身分不變;名稱,連接埠,憑據與 TLS SNI 可修改;Shadowsocks 的 SNI 顯示為不適用;隨機重設連接埠與憑據時保留 SNI.每個節點可單獨停用並保留設定與流量紀錄,再以原連接埠啟用.控制功能已於 2026-09-27 通過實機測試.
-- [x] 整個 Web UI 已採用一致且易於使用的設計系統,涵蓋控制台,公開連通頁面及安裝精靈.一致的間距與控制項樣式,隨附字型與圖示,清楚的焦點狀態及響應式版面繼續沿用.一般設定頁現有八種可記憶的主題色與獨立的明暗模式;切換模式不會改變主題色.
+- [x] 整個 Web UI 已採用一致且易於使用的設計系統,涵蓋控制台,公開連通頁面.一致的間距與控制項樣式,隨附字型與圖示,清楚的焦點狀態及響應式版面繼續沿用.一般設定頁現有八種可記憶的主題色與獨立的明暗模式;切換模式不會改變主題色.
 
 登入頁使用與介面其他部分相同的專案名稱及 Home 連結.卡片頁尾把執行版本連結到 Changelog,並允許登入前選擇語言.主題控制元件仍位於普通 Settings.每個可編輯密碼欄位預設遮蔽,帶有獨立且可訪問的顯示/隱藏控制元件;切換可見性不會清空值,轉移焦點或提交表單.
 已登入頁面的頁首僅包含 Home,Changelog,Settings 和 Sign out;各功能入口放在 Dashboard.子頁面有 Back 連結.普通設定和安全設定在桌面寬度使用側邊導航,在較窄寬度使用可滾動的一行導航.在普通設定中選擇 Security 組會跳到其入口卡片;開啟受保護頁面須使用獨立操作並透過管理員驗證.各頁面使用彼此關聯但不同的標籤圖示.
@@ -118,11 +121,32 @@ web,anytls 及可選的 proxy 服務以獨立行程執行;web 服務也會建立
 
 圖示顯示 web 和 anytls unit;可選的 `vps-server-proxy.service` 在第三個行程中執行多個獨立入站,共用隨附的 sing-box 執行檔,但不共用任何 unit 的狀態.各模組均可獨立選擇;見[代理模組][local-link-005].
 
+### 功能模組
+
+`src/web/app.py` 負責程序配置,身份驗證邊界,監聽器及兼容舊呼叫方的名稱.`ConsoleHandler` 組合 `src/web/features/` 中的功能 mixin;各模組包含對應路由,頁面和操作.同一模組中的服務函數接收 `context` 參數;入口將自身模組作為 context 傳入,保留既有測試替換點和公開 Python 匯入.其他項目重用功能時,須提供所選功能引用的設定,服務函數及標準庫物件,以及適用的 HTTP 輔助方法.功能模組不匯入本應用入口.
+
+| 功能 | 後端模組 | 前端原始檔 |
+| --- | --- | --- |
+| 登入與存取 | `features/auth.py` | `src/web/static/password-fields.js`, `src/web/static/styles/login.css` |
+| 設定 | `features/settings.py` | `src/web/static/access-settings.js`, `src/web/static/settings-sections.js`, `src/web/static/styles/settings.css` |
+| 首頁與模組管理 | `features/modules.py` | `src/web/static/module-controls.js`, `src/web/static/module-status.js`, `src/web/static/styles/dashboard.css`, `src/web/static/styles/modules.css` |
+| 瀏覽器測速 | `features/speedtest.py` | `src/web/static/speedtest-ui.js`, `src/web/static/styles/speedtest.css` |
+| iperf3 視窗與對外測試 | `features/iperf.py`, `features/iperf_client.py` | `src/web/static/iperf-countdown.js`, `src/web/static/styles/iperf.css` |
+| FRPS 與 FRPC | `features/frp.py` | `src/web/static/frp-editor.js`, `src/web/static/styles/frp.css` |
+| 代理節點與 AnyTLS | `features/proxy.py`, `features/proxy_service.py` | `src/web/static/node-controls.js`, `src/web/static/private-values.js`, `src/web/static/styles/proxy.css`, `src/web/static/styles/nodes.css` |
+| 連接埠轉發 | `features/portfwd.py` | `src/web/static/styles/forms.css` 中的共用表單樣式 |
+| 最近訪客 | `features/visitors.py` | `src/web/static/visitors.js`, `src/web/static/styles/visitors.css` |
+| 變更記錄 | `features/changelog.py` | `src/web/static/styles/changelog.css` |
+| Lucky 狀態 | `features/lucky.py` | 共用卡片樣式 |
+| 公開可達性頁面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入回應 |
+
+`features/system.py` 提供共用主機命令和防火牆輔助函數;`features/ui.py` 提供共用渲染函數.節點控制器及 FRP/模組輔助程式仍位於 `src/web/`,可獨立於 HTTP 處理器重用.各 JavaScript 檔案只綁定本功能的頁面元素;共用腳本處理主題,複製,密碼顯示和選擇控制元件.依序排列的 CSS 原始檔位於 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 產生 `src/web/static/style.css`,保留原有規則順序.安裝程式將 `features/` 與 `static/` 複製到平鋪的 `$PREFIX/app.py` 旁.重用功能時須提供 context 適配層及對應樣式和腳本;這些路由沒有獨立的身份驗證策略.
+
 ### 公開頁面與主控台為何使用不同監聽器
 
 它們的安全姿態是相反的,合併起來會迫使其中一方放棄自己的立場.主控台需要驗證,
 放在一個猜不到的連接埠上,就是為了不被隨便發現;公開頁面則**必須**容易被發現,
-也**不得**要求密碼.所以:不同的連接埠,不同的請求處理器,不同的路由表.
+也**禁止**要求密碼.所以:不同的連接埠,不同的請求處理器,不同的路由表.
 一個打到 80/443 的請求永遠碰不到主控台的路由,因為 `ProbeHandler` 根本沒有那些路由——
 不是因為某個檢查拒絕了它.這正是重點所在:授權檢查可能會有 bug,
 但不存在的路由不會.
@@ -289,7 +313,7 @@ Tailscale 或區域網路才能連到的裝置——這是一台有公開 IP 的
    規則的 iptables 狀態,但不會動 JSON 裡的 `enabled` 旗標——
    重啟服務或重開機時,**必須**靠 `load()` 把它們全部直接帶回來.
    這跟 iperf3 視窗是同一個容錯方向:如果管理這個狀態的行程沒有在跑,
-   這個狀態就**不得**悄悄活得比它久.
+   這個狀態就**禁止**悄悄活得比它久.
 
 `target_host` **必須**是一個字面上的 IPv4 位址,不能是主機名稱:
 `iptables --to-destination` 接受的是位址,而且這個專案在請求當下
@@ -299,7 +323,7 @@ Tailscale 或區域網路才能連到的裝置——這是一台有公開 IP 的
 
 ## 設計限制
 
-- 主控台路由必須留在 `ProbeHandler` 之外;驗證不能取代獨立的公開路由表.
+- **禁止**將主控台路由放入 `ProbeHandler`;驗證不能取代獨立的公開路由表.
 - iperf3 必須有時限,關閉視窗或停止服務時必須撤銷防火牆規則.
 - 行程啟動時從 JSON 重新套用持久化的轉發規則;正常停止時撤銷執行期規則,但不重設全主機的 `ip_forward` 開關.
 - 升級時保留節點憑證與選定設定;輪替時使用擁有節點的設定腳本,並在 web unit 的檔案系統沙盒之外執行.
@@ -419,7 +443,7 @@ anytls 模組刻意沿用 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
 ## 從零開始安裝
 
 1. 執行 `git clone <repo>` 並 `cd` 進入儲存庫;驗證:`ls -lh third_party/sing-box/sing-box` 顯示約 57 MB 的檔案.
-2. 執行 `bash deploy/install.sh`;互動式執行會啟動暫時的瀏覽器設定精靈,收集模組,介面語言,主控台驗證及連接埠選項.開啟列印的網址並輸入一次性權杖;套用經驗證的選項後,確認終端摘要列出各模組及連接埠.
+2. `bash deploy/install.sh`;首次執行直接安裝 Web 主控台並列印地址和密碼.需要其他服務端模組時設定 `VPSSRV_MODULES`,或安裝後在 Settings → Modules 操作.
 3. 執行 `systemctl status vps-server-web`;驗證:`active (running)`.
 4. 從另一台機器開啟 `http://<ip>/`;驗證:可達性頁面正常顯示,並顯示你的來源 IP.
 5. 從另一台機器開啟 `https://<ip>/` 並接受憑證警告;驗證:顯示相同頁面,協定列為 HTTPS.
@@ -450,7 +474,7 @@ anytls 模組刻意沿用 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
     │   ├── proxy/setup-proxy.sh
     │   ├── frps/setup-frps.sh
     │   └── lucky/setup-lucky.sh
-    ├── static/                # first-party UI assets and vendored browser libraries
+    ├── src/web/static/        # first-party UI assets and vendored browser libraries
     │   └── third_party/
     │       ├── librespeed/    # speedtest.js, speedtest_worker.js
     │       └── qrcode/        # qrcode.js, qrcode-utf8.js
@@ -467,7 +491,10 @@ anytls 模組刻意沿用 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
-        ├── LOG.md             # bugs, dated decisions, verification, release history
+        ├── LOG.md             # current status, bugs, decisions, and handoff
+        ├── HISTORY.md         # historical work and prior handoffs
+        ├── CHANGELOG.md       # formal version changes
+        ├── COMMITS.md         # Git commit record
         ├── THIRD_PARTY_NOTICES.md
         └── <lang>/            # translated docs (seven language directories)
 ```
@@ -560,8 +587,8 @@ SQLite 結構原樣繼承自 `vps-webserver`:一張 `visits` 資料表,僅保留
 - **新增一個主控台頁面**:在 `ConsoleHandler` 裡新增一個路由.
   不要在 `ProbeHandler` 裡加路由——它的路由表幾乎是空的,
   這是一項安全特性,不是疏漏.
-- **新增一種語言**:在每個 `lang/<component>/` 目錄下加入對應的文案檔案,並在 Web 語言選擇器,變更日誌對應表,安裝程式,首次設定精靈及模組指令碼的文案載入程式中註冊語言代碼,再加入相應的 `doc/<BCP47>/` 文件目錄樹.
-- **新增一種顏色**:在 `:root` 裡加一個 token(位於 `static/style.css`),
+- **新增一種語言**:在每個 `lang/<component>/` 目錄下加入對應的文案檔案,並在 Web 語言選擇器,變更日誌對應表,安裝程式,模組指令碼的文案載入程式中註冊語言代碼,再加入相應的 `doc/<BCP47>/` 文件目錄樹.
+- **新增一種顏色**:在 `:root` 裡加一個 token(位於 `src/web/static/style.css`),
   *並且*在 `prefers-color-scheme: light` 區塊裡加對應的淺色模式值,
   然後使用這個 token.絕不要在元件規則裡直接寫死十六進位色碼——
   字面值沒辦法跟著主題走,所以它只在被目測校色的那個模式下是對的,
@@ -575,9 +602,9 @@ SQLite 結構原樣繼承自 `vps-webserver`:一張 `visits` 資料表,僅保留
   並在 [LOG.md][local-link-016] 裡記下這次更新.絕不要就地手改廠商化進來的程式碼——
   沒有反映回上游的本地修改,會讓下一次更新變成一次無聲的回歸.
 
-[local-link-001]: LOG.md#目前狀態與驗收限制
+[local-link-001]: HISTORY.md#目前狀態與驗收限制
 [local-link-002]: LOG.md#錯誤
-[local-link-003]: LOG.md#已完成工作歷史
+[local-link-003]: HISTORY.md#已完成工作歷史
 [local-link-004]: LOG.md#決策
 [local-link-005]: #代理模組
 [local-link-006]: LOG.md#決策
@@ -590,4 +617,4 @@ SQLite 結構原樣繼承自 `vps-webserver`:一張 `visits` 資料表,僅保留
 [local-link-013]: README.md
 [local-link-014]: LOG.md
 [local-link-015]: THIRD_PARTY_NOTICES.md
-[local-link-016]: LOG.md#變更紀錄
+[local-link-016]: CHANGELOG.md#變更紀錄

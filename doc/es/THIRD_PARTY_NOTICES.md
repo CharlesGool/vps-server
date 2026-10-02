@@ -12,7 +12,7 @@ Este documento registra componentes de terceros incluidos y suministrados por el
 
 ## Multilingüe
 
-[English](../THIRD_PARTY_NOTICES.md) | [简体中文](../zh-CN/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | **Español** | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | **Español** | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
 
 ## Documentación
 
@@ -20,7 +20,10 @@ Este documento registra componentes de terceros incluidos y suministrados por el
 
 - Justificación del diseño: [DESIGN](DESIGN.md)
 
-- Historial de versiones: [LOG](LOG.md)
+- Estado del proyecto: [LOG](LOG.md)
+- Registros históricos: [HISTORY](HISTORY.md)
+- Historial de cambios: [CHANGELOG](CHANGELOG.md)
+- Historial de commits: [COMMITS](COMMITS.md)
 
 - Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -36,9 +39,9 @@ La tabla inventaría los componentes incluidos y los proporcionados por el siste
 | sing-box | `v1.13.14`; revisión `25a600db24f7680ad9806ce5427bd0ab8afe1114`; SHA-256 del binario `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL versión 3 o posterior, más la condición de denominación original (según el aviso) | Ejecutable incluido, compartido por anytls y proxy | [aviso original][local-link-002]; [texto íntegro de GPL][local-link-003] | Conservar los enlaces al código fuente correspondiente y la condición original de nombre y asociación | 2026-09-27: coinciden el archivo de publicación, el binario, la licencia y la revisión de la etiqueta |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0, según la licencia original | Motor de navegador incluido | [texto LGPL original][local-link-006] y [texto GPL][local-link-007] | Conservar el texto de la licencia y facilitar el código fuente original | 2026-09-27: coinciden los dos archivos de la etiqueta y la licencia |
 | qrcode-generator | `js2.0.4`; revisión `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT, según la licencia original | Biblioteca QR del cliente incluida | [texto MIT original][local-link-008] | Conservar los avisos de atribución y licencia exigidos | 2026-09-27: coinciden los dos archivos de la etiqueta y la licencia |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Fuente latina incluida, pesos 400/600/700 | [license](../../static/licenses/OFL-Inter.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Fuente CJK incluida, pesos 400/700 | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
-| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos para la interfaz | [license](../../static/licenses/Lucide-ISC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Fuente latina incluida, pesos 400/600/700 | [license](../../src/web/static/licenses/OFL-Inter.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Fuente CJK incluida, pesos 400/700 | [license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos para la interfaz | [license](../../src/web/static/licenses/Lucide-ISC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
 | iperf3 | Paquete de la distribución; versión sin fijar | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause, según registros anteriores | Invocado como programa independiente instalado desde el SO; no se redistribuye aquí | No registrado; el paquete del SO aporta la licencia original | Volver a evaluar si se incluye o redistribuye más adelante | No consta; volver a comprobar antes de distribuir |
 
 El registro existente identifica GPL-3.0 como licencia de este proyecto ([LICENSE][local-link-009]) y señala como motivo la redistribución de un ejecutable sing-box bajo GPL; [Decisiones][local-link-010] conserva el razonamiento y las alternativas descartadas. El registro anterior describe `vps-webserver` como Apache-2.0 en origen y redistribuido aquí bajo GPL-3.0. Este inventario registra los archivos y condiciones comprobados para v2.0.0; no constituye una opinión jurídica independiente.
@@ -82,13 +85,13 @@ Este proyecto es independiente y no está afiliado a los autores de sing-box o S
 
 La prueba de velocidad del navegador usa un motor cliente LibreSpeed incluido en el repositorio. El 2026-09-27, sus dos archivos JavaScript incluidos y su licencia coincidían byte a byte con los archivos de la etiqueta original v6.2.1.
 
-- Componente: motor cliente LibreSpeed — `static/third_party/librespeed/speedtest.js`, `static/third_party/librespeed/speedtest_worker.js`
+- Componente: motor cliente LibreSpeed — `src/web/static/third_party/librespeed/speedtest.js`, `src/web/static/third_party/librespeed/speedtest_worker.js`
 - Proyecto original: https://github.com/librespeed/speedtest
 - Versión: `v6.2.1`
-- Licencia: GNU LGPL versión 3; texto íntegro en [`static/licenses/LGPL-3.0.txt`][local-link-013]
+- Licencia: GNU LGPL versión 3; texto íntegro en [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013]
 - Verificación: ambos archivos y la licencia original coincidían con la etiqueta v6.2.1; este inventario no registra el commit exacto de la etiqueta.
 
-`static/speedtest-ui.js` es código de integración propio de este proyecto y no forma parte de LibreSpeed. Los endpoints del servidor en `src/web/app.py` (`/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip`) vuelven a implementar el contrato cliente/servidor documentado de LibreSpeed; son código original y no derivan del backend PHP original.
+`src/web/static/speedtest-ui.js` es código de integración propio de este proyecto y no forma parte de LibreSpeed. Los endpoints del servidor en `src/web/app.py` (`/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip`) vuelven a implementar el contrato cliente/servidor documentado de LibreSpeed; son código original y no derivan del backend PHP original.
 
 El texto LGPL-3.0 está incluido y se enlaza al código fuente original; este inventario no constituye una opinión jurídica independiente sobre la combinación.
 
@@ -98,15 +101,15 @@ El texto LGPL-3.0 está incluido y se enlaza al código fuente original; este in
 
 La página `/proxy` de la consola muestra los enlaces para compartir como códigos QR escaneables mediante esta biblioteca cliente incluida. El 2026-09-27, sus dos archivos JavaScript incluidos y la licencia original coincidían byte a byte con los archivos de la etiqueta original js2.0.4.
 
-- Componente: `static/third_party/qrcode/qrcode.js`, `static/third_party/qrcode/qrcode-utf8.js`
+- Componente: `src/web/static/third_party/qrcode/qrcode.js`, `src/web/static/third_party/qrcode/qrcode-utf8.js`
 - Proyecto original: https://github.com/kazuhikoarase/qrcode-generator
 - Copyright (c) 2009 Kazuhiko Arase
 - Versión: `js2.0.4`
 - Revisión del código fuente: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- Licencia: MIT; texto íntegro en [`static/licenses/MIT.txt`][local-link-014]
+- Licencia: MIT; texto íntegro en [`src/web/static/licenses/MIT.txt`][local-link-014]
 - Verificación: ambos archivos coincidían con los originales `js/dist/qrcode.js` y `js/dist/qrcode_UTF8.js`; también coincidía la licencia MIT original.
 
-`static/qrcode-render.js` es código de integración propio de este proyecto (busca elementos `[data-qr-text]` y los rellena con el SVG generado), no forma parte de la biblioteca incluida.
+`src/web/static/qrcode-render.js` es código de integración propio de este proyecto (busca elementos `[data-qr-text]` y los rellena con el SVG generado), no forma parte de la biblioteca incluida.
 
 El aviso de copyright y la licencia MIT están incluidos con la biblioteca cliente.
 
@@ -126,7 +129,7 @@ El aviso de copyright y la licencia MIT están incluidos con la biblioteca clien
 
 No son componentes de terceros, pero se registran aquí porque el código no se originó en este repositorio y su procedencia es importante para las actualizaciones:
 
-- `src/web/app.py`, `static/speedtest-ui.js`, `static/style.css`, `static/visitors.js`,
+- `src/web/app.py`, `src/web/static/speedtest-ui.js`, `src/web/static/style.css`, `src/web/static/visitors.js`,
   `tests/`, `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` — proceden de `vps-webserver`
   v0.4.1 (Apache-2.0 original, relicenciado aquí bajo GPL-3.0). Consulta `config/upstream-version`.
 - `deploy/anytls/setup-anytls.sh`, `third_party/sing-box/sing-box`, `third_party/sing-box/sing-box.version` — proceden de
@@ -141,12 +144,12 @@ Las fuentes y los iconos de terceros incluidos se enumeran en la tabla anterior.
 [local-link-003]: ../../LICENSE
 [local-link-004]: #código-fuente-correspondiente
 [local-link-005]: LOG.md#decisiones
-[local-link-006]: ../../static/licenses/LGPL-3.0.txt
+[local-link-006]: ../../src/web/static/licenses/LGPL-3.0.txt
 [local-link-007]: ../../LICENSE
-[local-link-008]: ../../static/licenses/MIT.txt
+[local-link-008]: ../../src/web/static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
 [local-link-010]: LOG.md#decisiones
 [local-link-011]: DESIGN.md#reproduction-requirements
 [local-link-012]: ../../third_party/sing-box/LICENSE
-[local-link-013]: ../../static/licenses/LGPL-3.0.txt
-[local-link-014]: ../../static/licenses/MIT.txt
+[local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
+[local-link-014]: ../../src/web/static/licenses/MIT.txt

@@ -1,33 +1,34 @@
 ---
-name: project-commits
-description: 提交历史
+name: project-commits-zh-tw
+description: 提交歷史
 metadata:
   version: "1.0.0"
-  lang: "zh-CN"
+  lang: "zh-TW"
 ---
 
-# 提交历史
+# 提交歷史
 
-## 多语言
 
-**简体中文** | [English](en/COMMITS.md) | [繁體中文(台灣)](zh-TW/COMMITS.md) | [繁體中文(香港)](zh-HK/COMMITS.md) | [हिन्दी](hi/COMMITS.md) | [Español](es/COMMITS.md) | [العربية](ar/COMMITS.md) | [Français](fr/COMMITS.md)
+## 多語言
 
-## 文档
+[简体中文](../COMMITS.md) | [English](../en/COMMITS.md) | **繁體中文(台灣)** | [繁體中文(香港)](../zh-HK/COMMITS.md) | [हिन्दी](../hi/COMMITS.md) | [Español](../es/COMMITS.md) | [العربية](../ar/COMMITS.md) | [Français](../fr/COMMITS.md)
 
-- 项目概览:[README](../README.md)
+## 文件
 
-- 设计思路:[DESIGN](DESIGN.md)
+- 專案概覽:[README](README.md)
 
-- 项目状态: [LOG](LOG.md)
-- 历史记录: [HISTORY](HISTORY.md)
-- 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
+- 設計考量:[DESIGN](DESIGN.md)
 
-- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+- 專案狀態: [LOG](LOG.md)
+- 歷史記錄: [HISTORY](HISTORY.md)
+- 變更紀錄: [CHANGELOG](CHANGELOG.md)
+- 提交歷史: [COMMITS](COMMITS.md)
 
-## 提交历史
+- 第三方聲明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-本表列出发布分支可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
+## 提交歷史
+
+目前分支的提交按時間由新到舊排列.使用 `git show <SHA>` 檢視單次提交,使用 `git log --all --oneline` 檢視完整歷史.發行合併後按主分支重建本表.
 
 - `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version

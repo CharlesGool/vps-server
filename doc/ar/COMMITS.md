@@ -1,33 +1,33 @@
 ---
-name: project-commits
-description: 提交历史
+name: project-commits-ar
+description: سجل الالتزامات
 metadata:
   version: "1.0.0"
-  lang: "zh-CN"
+  lang: "ar"
 ---
 
-# 提交历史
+# سجل الالتزامات
 
-## 多语言
+## تعدد اللغات
 
-**简体中文** | [English](en/COMMITS.md) | [繁體中文(台灣)](zh-TW/COMMITS.md) | [繁體中文(香港)](zh-HK/COMMITS.md) | [हिन्दी](hi/COMMITS.md) | [Español](es/COMMITS.md) | [العربية](ar/COMMITS.md) | [Français](fr/COMMITS.md)
+[简体中文](../COMMITS.md) | [English](../en/COMMITS.md) | [繁體中文(台灣)](../zh-TW/COMMITS.md) | [繁體中文(香港)](../zh-HK/COMMITS.md) | [हिन्दी](../hi/COMMITS.md) | [Español](../es/COMMITS.md) | **العربية** | [Français](../fr/COMMITS.md)
 
-## 文档
+## الوثائق
 
-- 项目概览:[README](../README.md)
+- نظرة عامة على المشروع: [README](README.md)
 
-- 设计思路:[DESIGN](DESIGN.md)
+- مبررات التصميم: [DESIGN](DESIGN.md)
 
-- 项目状态: [LOG](LOG.md)
-- 历史记录: [HISTORY](HISTORY.md)
-- 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
+- حالة المشروع: [LOG](LOG.md)
+- السجلات التاريخية: [HISTORY](HISTORY.md)
+- سجل التغييرات: [CHANGELOG](CHANGELOG.md)
+- سجل الالتزامات: [COMMITS](COMMITS.md)
 
-- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+- إشعارات الجهات الخارجية: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-## 提交历史
+## سجل الالتزامات
 
-本表列出发布分支可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
+تُعرض التزامات الفرع الحالي من الأحدث إلى الأقدم. استخدم `git show <SHA>` لعرض تغيير واحد و`git log --all --oneline` لعرض السجل الكامل. أعِد إنشاء القائمة بعد الدمج في الفرع الرئيسي.
 
 - `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version

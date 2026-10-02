@@ -1,33 +1,33 @@
 ---
-name: project-commits
-description: 提交历史
+name: project-commits-es
+description: Historial de commits
 metadata:
   version: "1.0.0"
-  lang: "zh-CN"
+  lang: "es"
 ---
 
-# 提交历史
+# Historial de commits
 
-## 多语言
+## Multilingüe
 
-**简体中文** | [English](en/COMMITS.md) | [繁體中文(台灣)](zh-TW/COMMITS.md) | [繁體中文(香港)](zh-HK/COMMITS.md) | [हिन्दी](hi/COMMITS.md) | [Español](es/COMMITS.md) | [العربية](ar/COMMITS.md) | [Français](fr/COMMITS.md)
+[简体中文](../COMMITS.md) | [English](../en/COMMITS.md) | [繁體中文(台灣)](../zh-TW/COMMITS.md) | [繁體中文(香港)](../zh-HK/COMMITS.md) | [हिन्दी](../hi/COMMITS.md) | **Español** | [العربية](../ar/COMMITS.md) | [Français](../fr/COMMITS.md)
 
-## 文档
+## Documentación
 
-- 项目概览:[README](../README.md)
+- Descripción general del proyecto: [README](README.md)
 
-- 设计思路:[DESIGN](DESIGN.md)
+- Justificación del diseño: [DESIGN](DESIGN.md)
 
-- 项目状态: [LOG](LOG.md)
-- 历史记录: [HISTORY](HISTORY.md)
-- 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
+- Estado del proyecto: [LOG](LOG.md)
+- Registros históricos: [HISTORY](HISTORY.md)
+- Historial de cambios: [CHANGELOG](CHANGELOG.md)
+- Historial de commits: [COMMITS](COMMITS.md)
 
-- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+- Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-## 提交历史
+## Historial de commits
 
-本表列出发布分支可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
+Los commits de la rama actual se ordenan del más reciente al más antiguo. Usa `git show <SHA>` para ver un cambio y `git log --all --oneline` para ver todo el historial. Regenera la lista tras la fusión en la rama principal.
 
 - `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version

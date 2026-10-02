@@ -10,7 +10,7 @@ metadata:
 
 ## 多語言
 
-[English](../DESIGN.md) | [简体中文](../zh-CN/DESIGN.md) | [繁體中文(台灣)](../zh-TW/DESIGN.md) | **繁體中文(香港)** | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
+[简体中文](../DESIGN.md) | [English](../en/DESIGN.md) | [繁體中文(台灣)](../zh-TW/DESIGN.md) | **繁體中文(香港)** | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
 
 ## 文件
 
@@ -18,7 +18,10 @@ metadata:
 
 - 設計理據:[DESIGN](DESIGN.md)
 
-- 發佈歷史:[LOG](LOG.md)
+- 項目狀態: [LOG](LOG.md)
+- 歷史記錄: [HISTORY](HISTORY.md)
+- 變更記錄: [CHANGELOG](CHANGELOG.md)
+- 提交記錄: [COMMITS](COMMITS.md)
 
 - 第三方聲明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -28,7 +31,7 @@ metadata:
 
 **目前版本已實現的目標(見[驗收限制][local-link-001]):**
 
-v2.0.0 亦包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真實主機驗收;以下目標描述先前已記錄的四個模組.
+目前安裝程式預設部署 Web 控制台,其他服務端模組由 `VPSSRV_MODULES` 或後續模組管理選擇.FRPC 另行安裝.以下保留各功能形成時的目標與驗證記錄;具體時間以歷史記錄為準.
 
 - 在全新 Debian/Ubuntu VPS 安裝一套工具,以四個可選模組提供五項功能(web 模組包括公開頁面與私人控制台):
   1. **公開連通性頁面** — 在 TCP
@@ -44,18 +47,18 @@ v2.0.0 亦包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過�
 **持續追蹤的目標及目前狀態:**
 
 - [x] 2026-09-19 每節點數據統計及上限:五種代理協定分別統計上載及下載.原有達上限後雙向限速 1 Mbps,以及每月或指定時間重設,已於 2026-09-27 通過真實主機測試.目前分支新增上載及下載獨立限速,達數據上限後選擇雙向限速 1 Mbps 或停止使用,以日/月/年設定重複週期,以及到期後停止使用的可選有效期.新規則及狀態遷移已通過自動檢查;測試機已驗證介面及遷移,尚未逐一驗證實際流量.
-- [x] 2026-09-19 瀏覽器初次設定:目前檢出版本透過 `tools/setup_wizard/setup_wizard.py` 提供短時間有效的設定精靈,觸發條件是互動安裝程式沒有設定 `VPSSRV_MODULES`.精靈收集語言,模組,連接埠及驗證選項;Shell 安裝程式驗證結果後才執行所選操作.目前檢出版本尚未通過真實主機驗收.
+- [x] 2026-09-19 瀏覽器初次設定曾由 `tools/setup_wizard/setup_wizard.py` 提供;該流程已退役.v5.0.0 的首次安裝直接在終端完成,預設只安裝 Web 控制台.
 - [x] 2026-09-22 在已登錄控制枱提供 FRPS / FRPC 連接信息.頁面報告本機 FRPS unit 狀態,綁定地址,網卡地址,端口和認證令牌;敏感值僅在點擊顯示或複製時讀取.FRPC 連接模板使用已安裝服務器的值和可替換的服務器地址佔位符.服務器無法查看其他設備上 FRPC 的運行狀態.
 - [x] 2026-09-29 管理本機 FRP 配置.已登錄操作員無需再次驗證管理員密碼,即可修改 FRPS 綁定端口和令牌,編輯及驗證本機 FRPC 實例,並啓動或停止實例.實例頁面按需顯示已保存的 IP 和令牌.臨時 root 輔助程序在 Web unit 的只讀系統沙盒外執行固定操作;更改的本機監聽端口會在啓動前登記到 `~/apps/PORTS.md`,停用後釋放,驗證或服務操作失敗時恢復舊配置;其他設備上的 FRPC 實例不受影響.模塊頁面可獨立於 FRPS 安裝帶固定校驗和的 FRPC 二進制文件及 `frpc@.service` 模板,依據這兩者而非實例配置判斷安裝狀態.卸載會停止實例並保留其配置.
 - [x] 2026-09-29 將 FRPS 和本機 FRPC 控件呈現為操作卡片.FRPS 使用與節點頁面相同的行內編輯模式和服務開關.每個 FRPC 實例都有遮蔽的目標 IP,根據套接字判斷的連接狀態,以及單獨的“測試連接”操作;該操作使用已保存的憑據執行不帶代理的 FRPC 登錄.實例頁面顯示服務器字段及各代理的類型,本地 IP,本地端口和遠程端口;只有選擇“編輯”才打開編輯界面,保存後返回該實例.字段編輯器只接受它能表示的簡單令牌認證 TCP/UDP 配置,對不支持的 TOML 保持原樣.每張目標卡片僅代表本機實例;初始連接狀態要求該實例 systemd 主進程擁有與配置中的服務器及端口之間已建立的套接字.
 
 FRPC 卡片檢查,2026-09-29:操作員提供的四張截圖顯示舊連接模板,無法直接顯示的遮蔽信息,高級 TOML 面板,以及缺少測試操作的服務器卡片.在部署的 `test-d09835d` 版本上,Chromium 以 390 和 1440 CSS px 檢查了實例列表,遮蔽和顯示後的服務器信息,收起與展開的編輯控件,代理信息,連接測試狀態,以及保存後返回同一實例.多餘面板已移除,兩項信息均按需載入,四項代理信息全部可見,兩種寬度均無橫向溢出.界面沿用項目現有卡片樣式;此次瀏覽器檢查未覆蓋真實移動設備及代理流量.
-- [x] 2026-09-29 擴展初次設置並增加受保護的模塊管理.全新交互式安裝會在隨機臨時 HTTPS 端口上打開設置頁,在終端打印一次性設置密碼,並要求通過瀏覽器設置時選擇 Web 控制枱.提交後頁面顯示安裝進度,控制枱運行正常時提供鏈接.後續的 Settings → Security → Modules 頁面可從已安裝,版本匹配的源碼包安裝遺漏的模塊,或啓用及停用已安裝模塊.臨時 systemd 任務在 Web 服務外運行原安裝程序;模塊選擇保留既有模塊和憑據.systemd 服務開關保留配置;Web 開關隻影響公開頁面,控制枱仍可訪問.初次設置和後續安裝已通過本地測試及瀏覽器檢查,尚未在全新主機上完成驗收.
+- [x] 2026-09-29 的瀏覽器首次設定流程已退役.目前 Settings → Modules 可從已安裝,版本相符的原始碼包安裝遺漏模組,或啟用及停用已安裝模組.臨時 systemd 任務在 Web 服務外執行安裝程式;模組選擇保留既有模組及憑據.公開 HTTP,HTTPS 開關分別影響對應監聽器,控制台仍可使用.原向導的測試記錄保留在歷史文件中.
 
-初次設置監聽器在提供服務前將隨機端口登記到 `~/apps/PORTS.md`,關閉時刪除登記.臨時設置密碼只允許一個瀏覽器會話使用,並在完成模塊選擇後丟棄.後續模塊頁面要求與其他 Security Settings 相同的短時管理員驗證.它僅向單獨的特權 systemd 任務提交固定模塊名稱及操作.任務在 Web 服務外記錄進度,因此安裝過程中允許 Web 重啓.停用代理模塊不會刪除節點或憑據;使用節點控件時,已停用 unit 仍保持停止.iperf3 和公開頁面開關會重啓 Web 服務以應用監聽器變更.兩者都不會移除控制枱,之後仍可修改設置.
+退役的首次設定監聽器曾在提供服務前將隨機埠登記到 `~/apps/PORTS.md`,關閉時刪除登記;臨時設定密碼只容許一個瀏覽器會話使用.目前模組頁面位於普通 Settings,使用已登入會話;只向獨立的特權 systemd 任務提交固定模組名稱及操作.任務在 Web 服務外記錄進度,因此安裝期間容許 Web 重啟.停用代理模組不會刪除節點或憑據;使用節點控制元件時,已停用 unit 仍保持停止.iperf3 和公開頁面開關會重啟 Web 服務以套用監聽器變更,控制台仍可使用.
 - [ ] 界定 2026-09-22 狀態快照內更廣泛的 `gdy666/lucky` 功能要求範圍.目前檢出版本已提供 Lucky 安裝路徑,但當時沒有記錄更廣泛的功能清單或驗收準則.
 - [x] 完成節點控制的主機驗收:刪除節點後顯示編號保持連續,全部刪除後新節點從 1 開始,隱藏的 UUID 保持身分不變;名稱,連接埠,憑據及 TLS SNI 可修改;Shadowsocks 的 SNI 顯示為不適用;隨機重設連接埠及憑據時保留 SNI.每個節點可獨立停用並保留設定及流量紀錄,再於原連接埠啟用.控制功能已於 2026-09-27 通過真實主機測試.
-- [x] 整個 Web UI 已採用一致且易於使用的設計系統,涵蓋控制台,公開連通頁面及安裝精靈.一致的間距和控制項樣式,隨附字型及圖示,清晰的焦點狀態和響應式版面繼續沿用.一般設定頁現有八種可記憶的主題色及獨立的明暗模式;切換模式不會改變主題色.
+- [x] 整個 Web UI 已採用一致且易於使用的設計系統,涵蓋控制台,公開連通頁面.一致的間距和控制項樣式,隨附字型及圖示,清晰的焦點狀態和響應式版面繼續沿用.一般設定頁現有八種可記憶的主題色及獨立的明暗模式;切換模式不會改變主題色.
 
 登錄頁使用與界面其他部分相同的項目名稱及 Home 鏈接.卡片頁腳把運行版本鏈接到 Changelog,並允許登錄前選擇語言.主題控件仍位於普通 Settings.每個可編輯密碼字段默認遮蔽,帶有獨立且可訪問的顯示/隱藏控件;切換可見性不會清空值,轉移焦點或提交表單.
 已登錄頁面的頁眉僅包含 Home,Changelog,Settings 和 Sign out;各功能入口放在 Dashboard.子頁面有 Back 鏈接.普通設置和安全設置在桌面寬度使用側邊導航,在較窄寬度使用可滾動的一行導航.在普通設置中選擇 Security 組會跳到其入口卡片;打開受保護頁面須使用獨立操作並通過管理員驗證.各頁面使用彼此關聯但不同的標籤圖標.
@@ -106,10 +109,31 @@ web,anytls 和可選 proxy 服務分別以獨立程序運行;web 服務另外啟
 
 圖中列出 web 和 anytls 服務;可選的 `vps-server-proxy.service` 在第三個程序中執行多個獨立入站連線,共用隨附 sing-box 執行檔但不共用其他服務的狀態.模組可分別選用;見[代理模組][local-link-005].
 
+### 功能模組
+
+`src/web/app.py` 負責程序配置,身份驗證邊界,監聽器及兼容舊呼叫方的名稱.`ConsoleHandler` 組合 `src/web/features/` 中的功能 mixin;各模組包含對應路由,頁面和操作.同一模組中的服務函數接收 `context` 參數;入口將自身模組作為 context 傳入,保留既有測試替換點和公開 Python 匯入.其他項目重用功能時,須提供所選功能引用的設定,服務函數及標準庫物件,以及適用的 HTTP 輔助方法.功能模組不匯入本應用入口.
+
+| 功能 | 後端模組 | 前端原始檔 |
+| --- | --- | --- |
+| 登入與存取 | `features/auth.py` | `src/web/static/password-fields.js`, `src/web/static/styles/login.css` |
+| 設定 | `features/settings.py` | `src/web/static/access-settings.js`, `src/web/static/settings-sections.js`, `src/web/static/styles/settings.css` |
+| 首頁與模組管理 | `features/modules.py` | `src/web/static/module-controls.js`, `src/web/static/module-status.js`, `src/web/static/styles/dashboard.css`, `src/web/static/styles/modules.css` |
+| 瀏覽器測速 | `features/speedtest.py` | `src/web/static/speedtest-ui.js`, `src/web/static/styles/speedtest.css` |
+| iperf3 視窗與對外測試 | `features/iperf.py`, `features/iperf_client.py` | `src/web/static/iperf-countdown.js`, `src/web/static/styles/iperf.css` |
+| FRPS 與 FRPC | `features/frp.py` | `src/web/static/frp-editor.js`, `src/web/static/styles/frp.css` |
+| 代理節點與 AnyTLS | `features/proxy.py`, `features/proxy_service.py` | `src/web/static/node-controls.js`, `src/web/static/private-values.js`, `src/web/static/styles/proxy.css`, `src/web/static/styles/nodes.css` |
+| 連接埠轉發 | `features/portfwd.py` | `src/web/static/styles/forms.css` 中的共用表單樣式 |
+| 最近訪客 | `features/visitors.py` | `src/web/static/visitors.js`, `src/web/static/styles/visitors.css` |
+| 變更記錄 | `features/changelog.py` | `src/web/static/styles/changelog.css` |
+| Lucky 狀態 | `features/lucky.py` | 共用卡片樣式 |
+| 公開可達性頁面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入回應 |
+
+`features/system.py` 提供共用主機命令和防火牆輔助函數;`features/ui.py` 提供共用渲染函數.節點控制器及 FRP/模組輔助程式仍位於 `src/web/`,可獨立於 HTTP 處理器重用.各 JavaScript 檔案只綁定本功能的頁面元素;共用腳本處理主題,複製,密碼顯示和選擇控制元件.依序排列的 CSS 原始檔位於 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 產生 `src/web/static/style.css`,保留原有規則順序.安裝程式將 `features/` 與 `static/` 複製到平鋪的 `$PREFIX/app.py` 旁.重用功能時須提供 context 適配層及對應樣式和腳本;這些路由沒有獨立的身份驗證策略.
+
 ### 公開頁面與控制台為何使用獨立監聽器
 
 兩者的保安定位相反,合併會迫使其中之一妥協.控制台經驗證並使用難以猜測的連接埠,避免被輕易發現;公開頁面則**必須**容易發現,
-而且**不得**要求密碼.因此採用不同連接埠,請求處理器及路由表.到達 80/443 的請求永遠無法到達控制台路由,因為 `ProbeHandler` 沒有這些路由,而非因為檢查拒絕了請求.授權檢查可能有錯誤,不存在的路由則不會.
+而且**禁止**要求密碼.因此採用不同連接埠,請求處理器及路由表.到達 80/443 的請求永遠無法到達控制台路由,因為 `ProbeHandler` 沒有這些路由,而非因為檢查拒絕了請求.授權檢查可能有錯誤,不存在的路由則不會.
 
 公開頁面只接受 `GET` 和 `HEAD`,且限於兩個路徑(`/`,`/favicon.ico`),其餘一律回應 404;不讀取查詢字串,不剖析請求內容,也不設定 cookie.
 
@@ -196,13 +220,13 @@ SNI 不儲存在 sing-box 設定內;`setup-anytls.sh` 只把它寫入自簽憑�
 3. 首次有規則需要時開啟 `net.ipv4.ip_forward`(`_ensure_ip_forward()`),之後不自動關閉;原因見[決策][local-link-007] (2026-09-19).
 4. 規則集合存於 `PORTFWD_STATE_FILE`(JSON),不只存記憶體.每次程序啟動均呼叫 `PortForwardManager.load()`,無條件撤銷並重新加入每條已啟用規則的 iptables 狀態:重新開機後核心的表不保留規則,單純重啟服務時表又可能保留舊規則;此路徑兩種情況都須正確.
 5. 正常停止(`SIGTERM`,與 iperf3 時段使用相同訊號處理器)呼叫 `PortForwardManager.shutdown()`,撤銷所有已啟用規則的 iptables 狀態,但不改 JSON 的 `enabled` 旗標;服務或主機重啟時**必須**經 `load()` 立即恢復.安全故障方向與 iperf3 時段一致:
-管理程序未運行時,狀態**不得**默默留存.
+管理程序未運行時,狀態**禁止**默默留存.
 
 `target_host` **必須**是 IPv4 字面位址,而非主機名稱:`iptables --to-destination` 接受位址,本項目在請求時不會向外查詢 DNS(見"Zero third-party runtime dependencies"決策).Tailscale 裝置的 IP 固定,可在裝置上以 `tailscale status` 或 `tailscale ip` 查看.
 
 ## 設計限制
 
-- 控制台路由不可加入 `ProbeHandler`;驗證不能取代獨立的公開路由表.
+- **禁止**將控制台路由放入 `ProbeHandler`;驗證不能取代獨立的公開路由表.
 - iperf3 須限時運行,在關閉或停止時移除防火牆規則.
 - 程序啟動時從 JSON 重套持久保存的轉發;正常停止時撤銷執行期規則,但不重設主機層面的 `ip_forward` 開關.
 - 升級時保留節點憑證及已選設定;在 web 服務單位檔案系統沙盒外透過所屬安裝腳本更換憑證.
@@ -322,7 +346,7 @@ anytls 模組刻意保留 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
 ## 從零開始安裝
 
 1. `git clone <repo>` 並 `cd` 進入;驗證:`ls -lh third_party/sing-box/sing-box` 顯示約 57 MB 檔案.
-2. `bash deploy/install.sh`;互動執行會啟動暫時的瀏覽器設定精靈,收集模組,介面語言,控制台驗證及連接埠選項.開啟顯示的網址並輸入一次性權杖;套用經驗證的選項後,確認終端摘要列出各模組及連接埠.
+2. `bash deploy/install.sh`;首次執行直接安裝 Web 控制台並列印地址和密碼.需要其他服務端模組時設定 `VPSSRV_MODULES`,或安裝後在 Settings → Modules 操作.
 3. `systemctl status vps-server-web`;驗證:`active (running)`.
 4. 從另一部機器開啟 `http://<ip>/`;驗證:連通性頁面顯示自己的來源 IP.
 5. 從另一部機器開啟 `https://<ip>/` 並接受憑證警告;驗證:同一頁面,協定顯示 HTTPS.
@@ -353,7 +377,7 @@ anytls 模組刻意保留 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
     │   ├── proxy/setup-proxy.sh
     │   ├── frps/setup-frps.sh
     │   └── lucky/setup-lucky.sh
-    ├── static/                # first-party UI assets and vendored browser libraries
+    ├── src/web/static/        # first-party UI assets and vendored browser libraries
     │   └── third_party/
     │       ├── librespeed/    # speedtest.js, speedtest_worker.js
     │       └── qrcode/        # qrcode.js, qrcode-utf8.js
@@ -370,7 +394,10 @@ anytls 模組刻意保留 `Anytsl-Serve` 的變數名稱,而不改為 `VPSSRV_AN
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
-        ├── LOG.md             # bugs, dated decisions, verification, release history
+        ├── LOG.md             # current status, bugs, decisions, and handoff
+        ├── HISTORY.md         # historical work and prior handoffs
+        ├── CHANGELOG.md       # formal version changes
+        ├── COMMITS.md         # Git commit record
         ├── THIRD_PARTY_NOTICES.md
         └── <lang>/            # translated docs (seven language directories)
 ```
@@ -408,13 +435,13 @@ SQLite 綱要原封不動繼承自 `vps-webserver`:一個 `visits` 表,僅保留
 
 - **新增模組**(安裝程式可選擇設定的另一項功能):加入 `deploy/<name>/setup-<name>.sh`,其 systemd 服務單位(隨 `deploy/systemd/` 提供或由安裝腳本產生),`deploy/install.sh` 模組選單分支,以及 `deploy/uninstall.sh` 清理分支.模組互不呼叫.
 - **新增控制台頁面**:在 `ConsoleHandler` 加入路由.不要在 `ProbeHandler` 加路由;其路由表幾乎為空是保安特性,而非疏忽.
-- **新增語言**:在每個 `lang/<component>/` 目錄下加入對應的文案檔案,並在 Web 語言選擇器,變更記錄對應表,安裝程式,初次設定精靈及模組腳本的文案載入器中登記語言代碼,然後加入相應的 `doc/<BCP47>/` 文件目錄樹.
-- **新增顏色**:在 `:root` 中(位於 `static/style.css`) *以及* `prefers-color-scheme: light` 區塊加入對應變數,然後使用該變數.不要在組件規則直接寫十六進制值;字面值不會跟隨佈景,因此只會在目測當時的模式正確,另一模式則錯誤,亦不會收到提示.作為填滿背景的顏色須配有 `--on-*` 前景色:適合文字的值很少適合作為白色文字背景.提交前對兩種模式檢查 WCAG AA(4.5:1);`tests/test_app.py::StylesheetTest` 只檢查結構,不能判斷對比度.
+- **新增語言**:在每個 `lang/<component>/` 目錄下加入對應的文案檔案,並在 Web 語言選擇器,變更記錄對應表,安裝程式,模組腳本的文案載入器中登記語言代碼,然後加入相應的 `doc/<BCP47>/` 文件目錄樹.
+- **新增顏色**:在 `:root` 中(位於 `src/web/static/style.css`) *以及* `prefers-color-scheme: light` 區塊加入對應變數,然後使用該變數.不要在組件規則直接寫十六進制值;字面值不會跟隨佈景,因此只會在目測當時的模式正確,另一模式則錯誤,亦不會收到提示.作為填滿背景的顏色須配有 `--on-*` 前景色:適合文字的值很少適合作為白色文字背景.提交前對兩種模式檢查 WCAG AA(4.5:1);`tests/test_app.py::StylesheetTest` 只檢查結構,不能判斷對比度.
 - **更新隨附上游程式碼**:從上游標籤重新複製,在同一 commit 更新相應 `.upstream-version`,並在 [LOG.md][local-link-016] 記錄版本更新.切勿原地手動修改隨附程式碼;未反映在上游的本地更改,會在下次更新時默默倒退.
 
-[local-link-001]: LOG.md#目前狀態與驗收限制
+[local-link-001]: HISTORY.md#目前狀態與驗收限制
 [local-link-002]: LOG.md#錯誤
-[local-link-003]: LOG.md#已完成工作歷史
+[local-link-003]: HISTORY.md#已完成工作歷史
 [local-link-004]: LOG.md#決策
 [local-link-005]: #proxy-模組
 [local-link-006]: LOG.md#決策
@@ -427,4 +454,4 @@ SQLite 綱要原封不動繼承自 `vps-webserver`:一個 `visits` 表,僅保留
 [local-link-013]: README.md
 [local-link-014]: LOG.md
 [local-link-015]: THIRD_PARTY_NOTICES.md
-[local-link-016]: LOG.md#變更記錄
+[local-link-016]: CHANGELOG.md#變更記錄

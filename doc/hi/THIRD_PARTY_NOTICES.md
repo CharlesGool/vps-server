@@ -12,7 +12,7 @@ metadata:
 
 ## बहुभाषी
 
-[English](../THIRD_PARTY_NOTICES.md) | [简体中文](../zh-CN/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | **हिन्दी** | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | **हिन्दी** | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
 
 ## दस्तावेज़ीकरण
 
@@ -20,7 +20,10 @@ metadata:
 
 - डिज़ाइन का औचित्य: [DESIGN](DESIGN.md)
 
-- रिलीज़ का इतिहास: [LOG](LOG.md)
+- परियोजना स्थिति: [LOG](LOG.md)
+- ऐतिहासिक अभिलेख: [HISTORY](HISTORY.md)
+- परिवर्तन सूची: [CHANGELOG](CHANGELOG.md)
+- कमिट इतिहास: [COMMITS](COMMITS.md)
 
 - तृतीय-पक्ष सूचनाएँ: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -36,9 +39,9 @@ metadata:
 | sing-box | `v1.13.14`; संशोधन `25a600db24f7680ad9806ce5427bd0ab8afe1114`; बाइनरी SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL संस्करण 3 या बाद का, साथ में upstream की नाम-संबंधी शर्त (सूचना के अनुसार) | साथ वितरित निष्पादन फ़ाइल, anytls और proxy दोनों के लिए | [upstream सूचना][local-link-002]; [GPL का पूरा पाठ][local-link-003] | अनुरूप स्रोत लिंक और अपस्ट्रीम नाम/संबद्धता शर्त बनाए रखें | 2026-09-27: आर्काइव, बाइनरी, लाइसेंस और टैग संशोधन मेल खाते थे |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | अपस्ट्रीम लाइसेंस के अनुसार LGPL-3.0 | साथ वितरित ब्राउज़र इंजन | [मूल LGPL पाठ][local-link-006] और [GPL पाठ][local-link-007] | लाइसेंस पाठ और अपस्ट्रीम स्रोत उपलब्ध रखें | 2026-09-27: दो टैग फ़ाइलें और लाइसेंस मेल खाते थे |
 | qrcode-generator | `js2.0.4`; संशोधन `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | अपस्ट्रीम लाइसेंस के अनुसार MIT | साथ वितरित क्लाइंट-पक्ष QR लाइब्रेरी | [मूल MIT पाठ][local-link-008] | अनिवार्य कॉपीराइट और लाइसेंस सूचनाएँ बनाए रखें | 2026-09-27: दो टैग फ़ाइलें और लाइसेंस मेल खाते थे |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | साथ दिया गया लैटिन इंटरफ़ेस फ़ॉन्ट, 400/600/700 भार | [license](../../static/licenses/OFL-Inter.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | साथ दिया गया CJK इंटरफ़ेस फ़ॉन्ट, 400/700 भार | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
-| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | साथ दिए गए इंटरफ़ेस SVG आइकन | [license](../../static/licenses/Lucide-ISC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | साथ दिया गया लैटिन इंटरफ़ेस फ़ॉन्ट, 400/600/700 भार | [license](../../src/web/static/licenses/OFL-Inter.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | साथ दिया गया CJK इंटरफ़ेस फ़ॉन्ट, 400/700 भार | [license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | साथ दिए गए इंटरफ़ेस SVG आइकन | [license](../../src/web/static/licenses/Lucide-ISC.txt) | साथ दिए गए लाइसेंस और कॉपीराइट सूचना रखें | 2026-09-27 |
 | iperf3 | वितरण का पैकेज; संस्करण तय नहीं | [ESnet/iperf](https://github.com/esnet/iperf) | पहले दर्ज BSD-3-Clause | OS से स्थापित अलग प्रोग्राम के रूप में चलाया जाता है; यहाँ पुनर्वितरित नहीं | कॉपीराइट दर्ज नहीं; OS पैकेज मूल लाइसेंस देता है | बाद में साथ वितरित या पुनर्वितरित करने पर दोबारा आकलन करें | दर्ज नहीं; वितरण से पहले फिर सत्यापित करें |
 
 मौजूदा परियोजना अभिलेख इस परियोजना का लाइसेंस GPL-3.0 ([LICENSE][local-link-009]) बताता है और इसका कारण GPL लाइसेंस वाली sing-box निष्पादन फ़ाइल का पुनर्वितरण बताता है; [निर्णय][local-link-010] तर्क और अस्वीकृत विकल्प सुरक्षित रखते हैं। पिछला अभिलेख `vps-webserver` का upstream लाइसेंस Apache-2.0 और यहाँ उसका पुनर्वितरण GPL-3.0 के अंतर्गत बताता है। यह सूची v2.0.0 के लिए जाँची गई फ़ाइलों और शर्तों को दर्ज करती है; यह स्वतंत्र कानूनी राय नहीं है।
@@ -82,13 +85,13 @@ metadata:
 
 ब्राउज़र गति परीक्षण साथ वितरित LibreSpeed क्लाइंट इंजन इस्तेमाल करता है। 2026-09-27 को इसकी दोनों साथ वितरित JavaScript फ़ाइलें और लाइसेंस अपस्ट्रीम v6.2.1 टैग की फ़ाइलों से बाइट-दर-बाइट मेल खाते थे।
 
-- घटक: LibreSpeed क्लाइंट इंजन — `static/third_party/librespeed/speedtest.js`, `static/third_party/librespeed/speedtest_worker.js`
+- घटक: LibreSpeed क्लाइंट इंजन — `src/web/static/third_party/librespeed/speedtest.js`, `src/web/static/third_party/librespeed/speedtest_worker.js`
 - upstream परियोजना: https://github.com/librespeed/speedtest
 - संस्करण: `v6.2.1`
-- लाइसेंस: GNU LGPL संस्करण 3; पूरा पाठ [`static/licenses/LGPL-3.0.txt`][local-link-013] में
+- लाइसेंस: GNU LGPL संस्करण 3; पूरा पाठ [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013] में
 - सत्यापन: दोनों फ़ाइलें और मूल लाइसेंस v6.2.1 टैग से मेल खाते थे; इस सूची में टैग का सटीक commit दर्ज नहीं है।
 
-`static/speedtest-ui.js` इस परियोजना का अपना संयोजक कोड है, LibreSpeed का हिस्सा नहीं। `src/web/app.py` के सर्वर-पक्ष एंडपॉइंट (`/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip`) LibreSpeed के दस्तावेज़ित क्लाइंट/सर्वर अनुबंध को नए सिरे से लागू करते हैं; ये मूल कोड हैं, upstream PHP बैकएंड से व्युत्पन्न नहीं।
+`src/web/static/speedtest-ui.js` इस परियोजना का अपना संयोजक कोड है, LibreSpeed का हिस्सा नहीं। `src/web/app.py` के सर्वर-पक्ष एंडपॉइंट (`/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip`) LibreSpeed के दस्तावेज़ित क्लाइंट/सर्वर अनुबंध को नए सिरे से लागू करते हैं; ये मूल कोड हैं, upstream PHP बैकएंड से व्युत्पन्न नहीं।
 
 LGPL-3.0 पाठ साथ वितरित है और अपस्ट्रीम स्रोत का लिंक दिया गया है; यह सूची इस संयोजन पर स्वतंत्र कानूनी राय नहीं देती।
 
@@ -98,15 +101,15 @@ LGPL-3.0 पाठ साथ वितरित है और अपस्ट्
 
 कंसोल का `/proxy` पृष्ठ इस साथ वितरित क्लाइंट-पक्ष लाइब्रेरी से शेयर लिंक के स्कैन करने योग्य QR कोड बनाता है। 2026-09-27 को इसकी दोनों साथ वितरित JavaScript फ़ाइलें और मूल लाइसेंस अपस्ट्रीम js2.0.4 टैग की फ़ाइलों से बाइट-दर-बाइट मेल खाते थे।
 
-- घटक: `static/third_party/qrcode/qrcode.js`, `static/third_party/qrcode/qrcode-utf8.js`
+- घटक: `src/web/static/third_party/qrcode/qrcode.js`, `src/web/static/third_party/qrcode/qrcode-utf8.js`
 - upstream परियोजना: https://github.com/kazuhikoarase/qrcode-generator
 - Copyright (c) 2009 Kazuhiko Arase
 - संस्करण: `js2.0.4`
 - स्रोत संशोधन: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- लाइसेंस: MIT; पूरा पाठ [`static/licenses/MIT.txt`][local-link-014] में
+- लाइसेंस: MIT; पूरा पाठ [`src/web/static/licenses/MIT.txt`][local-link-014] में
 - सत्यापन: दोनों फ़ाइलें अपस्ट्रीम की `js/dist/qrcode.js` और `js/dist/qrcode_UTF8.js` से मेल खाती थीं; मूल MIT लाइसेंस भी मेल खाता था।
 
-`static/qrcode-render.js` इस परियोजना का अपना संयोजक कोड है (यह `[data-qr-text]` तत्व खोजकर उनमें रेंडर किया SVG डालता है), साथ वितरित लाइब्रेरी का हिस्सा नहीं।
+`src/web/static/qrcode-render.js` इस परियोजना का अपना संयोजक कोड है (यह `[data-qr-text]` तत्व खोजकर उनमें रेंडर किया SVG डालता है), साथ वितरित लाइब्रेरी का हिस्सा नहीं।
 
 MIT कॉपीराइट और लाइसेंस सूचना क्लाइंट लाइब्रेरी के साथ वितरित है।
 
@@ -126,7 +129,7 @@ MIT कॉपीराइट और लाइसेंस सूचना क्
 
 ये तृतीय-पक्ष नहीं हैं, फिर भी यहाँ दर्ज हैं क्योंकि कोड का उद्गम इस रिपॉज़िटरी में नहीं हुआ और अपडेट के लिए उसकी उत्पत्ति जानना आवश्यक है:
 
-- `src/web/app.py`, `static/speedtest-ui.js`, `static/style.css`, `static/visitors.js`, `tests/`, `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` — `vps-webserver` v0.4.1 से (upstream Apache-2.0, यहाँ GPL-3.0 के अंतर्गत पुनर्लाइसेंस)। `config/upstream-version` देखें।
+- `src/web/app.py`, `src/web/static/speedtest-ui.js`, `src/web/static/style.css`, `src/web/static/visitors.js`, `tests/`, `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` — `vps-webserver` v0.4.1 से (upstream Apache-2.0, यहाँ GPL-3.0 के अंतर्गत पुनर्लाइसेंस)। `config/upstream-version` देखें।
 - `deploy/anytls/setup-anytls.sh`, `third_party/sing-box/sing-box`, `third_party/sing-box/sing-box.version` — `Anytsl-Serve` v1.2.0 से (upstream GPL-3.0)। `deploy/anytls/.upstream-version` देखें।
 
 ---
@@ -138,12 +141,12 @@ MIT कॉपीराइट और लाइसेंस सूचना क्
 [local-link-003]: ../../LICENSE
 [local-link-004]: #संबंधित-स्रोत
 [local-link-005]: LOG.md#vps-decisions
-[local-link-006]: ../../static/licenses/LGPL-3.0.txt
+[local-link-006]: ../../src/web/static/licenses/LGPL-3.0.txt
 [local-link-007]: ../../LICENSE
-[local-link-008]: ../../static/licenses/MIT.txt
+[local-link-008]: ../../src/web/static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
 [local-link-010]: LOG.md#vps-decisions
 [local-link-011]: DESIGN.md#vps-reproduction-requirements
 [local-link-012]: ../../third_party/sing-box/LICENSE
-[local-link-013]: ../../static/licenses/LGPL-3.0.txt
-[local-link-014]: ../../static/licenses/MIT.txt
+[local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
+[local-link-014]: ../../src/web/static/licenses/MIT.txt

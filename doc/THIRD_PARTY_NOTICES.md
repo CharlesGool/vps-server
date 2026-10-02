@@ -1,195 +1,153 @@
 ---
 name: project-third-party-notices
-description: Third-party attribution and compliance notices
+description: 第三方署名与合规声明
 metadata:
   version: "1.0.0"
-  lang: "en"
+  lang: "zh-CN"
 ---
 
-# Third-party notices
+# 第三方声明
 
-This document records bundled and OS-supplied third-party components, source claims, and release-review limits.
+## 多语言
 
-## Multi-language
+**简体中文** | [English](en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](hi/THIRD_PARTY_NOTICES.md) | [Español](es/THIRD_PARTY_NOTICES.md) | [العربية](ar/THIRD_PARTY_NOTICES.md) | [Français](fr/THIRD_PARTY_NOTICES.md)
 
-**English** | [简体中文](zh-CN/THIRD_PARTY_NOTICES.md) | [繁體中文 (台灣)](zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文 (香港)](zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](hi/THIRD_PARTY_NOTICES.md) | [Español](es/THIRD_PARTY_NOTICES.md) | [العربية](ar/THIRD_PARTY_NOTICES.md) | [Français](fr/THIRD_PARTY_NOTICES.md)
+## 文档
 
-## Documentation
+- 项目概览:[README](../README.md)
 
-- Project overview: [README](../README.md)
+- 设计思路:[DESIGN](DESIGN.md)
 
-- Design rationale: [DESIGN](DESIGN.md)
+- 项目状态: [LOG](LOG.md)
+- 历史记录: [HISTORY](HISTORY.md)
+- 变更日志: [CHANGELOG](CHANGELOG.md)
+- 提交历史: [COMMITS](COMMITS.md)
 
-- Release history: [LOG](LOG.md)
+- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-- Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+## 第三方声明
 
-## Third-Party-Notice
+下表列出随附组件及由操作系统提供的组件.七个随附构件在 [dependencies.lock.json][local-link-001] 中记录了检出文件的 SHA-256;从仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`,可离线比较其字节.2026-09-27,仓库中的全部七个文件均与记录的上游发布归档成员或标签文件逐字节一致.随附的许可证文件也与下文核验的上游文件一致.这些检查确认构件身份,不构成法律意见,也不能建立完全可复现的系统依赖闭包.
 
-The table inventories bundled and OS-supplied components. The seven bundled
-artifacts have checkout SHA-256 values in [config/dependencies.lock.json][local-link-001];
-run `python3 tools/verify_dependencies/verify_dependencies.py` from the repository
-root to compare them offline. On 2026-09-27, all seven repository files matched
-their recorded upstream release archive members or tag files byte for byte.
-The included license files also matched the upstream files checked below.
-These checks establish artifact identity, not a legal opinion or a fully
-reproducible system dependency closure.
-
-| Component / resource | Version / hash | Source | License as recorded | How used | Attribution / original license path | Release obligations to review | Verified on |
+| 组件/资源 | 版本/散列 | 来源 | 所记录的许可证 | 用途 | 署名/原始许可证路径 | 待审核的发布义务 | 核验日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frps executable | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | Keep the included Apache-2.0 license; no NOTICE file was in the official binary archive | 2026-09-27: archive, binary, and license matched |
-| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Separate `frpc-0.71.0-linux-amd64` GitHub Release asset, verified before installation | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | Distribute the same upstream license with the source and retain the asset checksum | 2026-09-29: client binary matched the recorded upstream archive member |
-| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per upstream license | Bundled Lucky executable | [included license](../third_party/lucky/LICENSE); [artifact record](../third_party/lucky/component.txt) | Keep the included MIT copyright and license notice | 2026-09-27: archive, binary, and license matched |
-| sing-box | `v1.13.14`; revision `25a600db24f7680ad9806ce5427bd0ab8afe1114`; binary SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL version 3 or later plus upstream naming condition (as stated in notice) | Vendored executable, shared by anytls and proxy | [upstream notice][local-link-002]; [GPL full text][local-link-003] | Keep corresponding source links and upstream name/association condition | 2026-09-27: archive, binary, license, and tag revision matched |
-| LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 per upstream license | Vendored browser engine | [original LGPL text][local-link-006] and [GPL text][local-link-007] | Keep license text and upstream source available | 2026-09-27: two tag files and license matched |
-| qrcode-generator | `js2.0.4`; revision `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT per upstream license | Vendored client-side QR library | [original MIT text][local-link-008] | Keep required attribution and license notice | 2026-09-27: two tag files and license matched |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Bundled Latin interface font, weights 400/600/700 | [included license](../static/licenses/OFL-Inter.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Bundled CJK interface font, weights 400/700 | [included license](../static/licenses/OFL-Noto-Sans-SC.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
-| Lucide icons | Upstream `main` on 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled interface SVG icons | [included license](../static/licenses/Lucide-ISC.txt) | Keep the included copyright and license notice | 2026-09-27: upstream SVG files |
-| iperf3 | Distro package; version not pinned | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause as previously recorded | Invoked as separate OS-installed program; not redistributed here | Not recorded; OS package supplies original license | Reassess if bundled or redistributed later | Not recorded; reverify before distribution |
+| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0,依据上游许可证 | 随附的 frps 可执行文件 | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | 保留随附的 Apache-2.0 许可证;官方二进制归档中没有 NOTICE 文件 | 2026-09-27:归档,二进制文件及许可证一致 |
+| frpc | `v0.71.0`;二进制文件 SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | 上游许可证为 Apache-2.0 | 独立提供的 `frpc-0.71.0-linux-amd64` GitHub Release 资源,安装前验证 | [随附许可证](../third_party/frp/LICENSE);[资源记录](../third_party/frp/component.txt) | 随源码分发相同的上游许可证,并保留资源校验和 | 2026-09-29:客户端二进制文件与记录的上游归档成员一致 |
+| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT,依据上游许可证 | 随附的 Lucky 可执行文件 | [included license](../third_party/lucky/LICENSE); [artifact record](../third_party/lucky/component.txt) | 保留随附的 MIT 版权及许可声明 | 2026-09-27:归档,二进制文件及许可证一致 |
+| sing-box | `v1.13.14`;修订号 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;二进制 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更高版本,另附上游命名条件(据声明所述) | 供 anytls 和 proxy 共用的随附可执行文件 | [上游声明][local-link-002];[GPL 全文][local-link-003] | 保留对应源码链接及上游名称/关联条件 | 2026-09-27:归档,二进制文件,许可证及标签修订号一致 |
+| LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依据上游许可证 | 随附的浏览器引擎 | [原始 LGPL 文本][local-link-006]和[GPL 文本][local-link-007] | 保留许可证文本并确保上游源码可获得 | 2026-09-27:两个标签文件及许可证一致 |
+| qrcode-generator | `js2.0.4`;修订号 `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT,依据上游许可证 | 随附的客户端二维码库 | [原始 MIT 文本][local-link-008] | 保留必要的版权与许可声明 | 2026-09-27:两个标签文件及许可证一致 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | 随附的拉丁界面字体,400/600/700 字重 | [license](../src/web/static/licenses/OFL-Inter.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | 随附的 CJK 界面字体,400/700 字重 | [license](../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 随附的界面 SVG 图标 | [license](../src/web/static/licenses/Lucide-ISC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
+| iperf3 | 发行版软件包;未锁定版本 | [ESnet/iperf](https://github.com/esnet/iperf) | 此前记录为 BSD-3-Clause | 作为独立的操作系统安装程序调用;本项目不重新分发 | 未记录版权;操作系统软件包提供原始许可证 | 若以后随附或重新分发,须重新评估 | 未记录;分发前重新核实 |
 
-The existing project record identifies GPL-3.0 for this project ([LICENSE][local-link-009]) and records the redistribution of a GPL-licensed sing-box executable as its reason; [Decisions][local-link-010] retains the rationale and rejected alternatives. The prior record describes `vps-webserver` as Apache-2.0 upstream and redistributed here under GPL-3.0. This inventory records the files and terms checked for v2.0.0; it does not provide an independent legal opinion.
+现有项目记录将本项目的许可证标为 GPL-3.0([LICENSE][local-link-009]),并将重新分发 GPL 许可的 sing-box 可执行文件作为选择该许可证的理由;[决策][local-link-010]保留了其理由及被否决的替代方案.先前记录称 `vps-webserver` 上游采用 Apache-2.0,在本项目中以 GPL-3.0 重新分发.本清单记录了为 v2.0.0 核验的文件与条款;不提供独立的法律意见.
 
-There are no third-party Python packages. `src/web/app.py` uses the standard library,
-so there is no Python package lock. The vendored-artifact lock above does not
-pin OS-supplied Python, iperf3, or other system packages: their versions and
-security updates are managed through the target Debian/Ubuntu distribution's
-package channels. The installer does not select exact package versions or a
-repository snapshot; a fully reproducible system dependency closure remains
-unresolved (see [Reproduction requirements][local-link-011]).
+本项目没有第三方 Python 包.`src/web/app.py` 使用标准库,因此没有 Python 包锁.上述随附构件的锁文件没有锁定由操作系统提供的 Python,iperf3 或其他系统包:其版本和安全更新由目标 Debian/Ubuntu 发行版的软件包渠道管理.安装程序不选择精确的包版本或仓库快照;完整可复现的系统依赖闭包仍未解决(见[复现要求][local-link-011]).
 
 ---
 
 ## sing-box
 
-This repository redistributes a sing-box executable as `third_party/sing-box/sing-box` in the
-repository checkout. On 2026-09-27 its bytes and included upstream license
-matched the official v1.13.14 release archive.
-It is installed as `/usr/local/bin/sing-box-vps-server`.
+本仓库以 `third_party/sing-box/sing-box` 路径重新分发 sing-box 可执行文件.2026-09-27,其字节及随附的上游许可证与官方 v1.13.14 发布归档一致.安装路径为 `/usr/local/bin/sing-box-vps-server`.
 
-- Component: `sing-box`
-- Upstream project: https://github.com/SagerNet/sing-box
+- 组件:`sing-box`
+- 上游项目:https://github.com/SagerNet/sing-box
 - Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
-- Version: `v1.13.14`
-- Source revision: `25a600db24f7680ad9806ce5427bd0ab8afe1114`
-- Distributed artifact: `sing-box-1.13.14-linux-amd64.tar.gz`
-- Repository binary SHA-256: `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
-- License: GNU GPL version 3 or any later version, plus the upstream
-  name/association condition; see [`third_party/sing-box/LICENSE`][local-link-012]
+- 版本:`v1.13.14`
+- 源码修订号:`25a600db24f7680ad9806ce5427bd0ab8afe1114`
+- 分发构件:`sing-box-1.13.14-linux-amd64.tar.gz`
+- 仓库内二进制文件 SHA-256:`68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
+- 许可证:GNU GPL 第 3 版或任何后续版本,另附上游名称/关联条件;参见 [`third_party/sing-box/LICENSE`][local-link-012]
 
-The downloaded release archive SHA-256 was
-`f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697`.
-The repository binary and license matched its extracted members byte for byte.
+下载的发布归档 SHA-256 为 `f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697`.仓库内的二进制文件和许可证与解压出的对应文件逐字节一致.
 
-### Corresponding source
+### 对应源码
 
-The v1.13.14 tag resolved to source revision
-`25a600db24f7680ad9806ce5427bd0ab8afe1114` on 2026-09-27. The
-following upstream source links accompany the bundled executable:
+2026-09-27,v1.13.14 标签解析到源码修订号 `25a600db24f7680ad9806ce5427bd0ab8afe1114`.以下上游源码链接与随附的可执行文件一同提供:
 
-- Tagged source tree: https://github.com/SagerNet/sing-box/tree/v1.13.14
-- Exact source revision: https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114
-- Source archive: https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz
+- 已打标签的源码树:https://github.com/SagerNet/sing-box/tree/v1.13.14
+- 准确的源码修订号:https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114
+- 源码归档:https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz
 
-The upstream Release archive cited in the prior project record is:
+先前项目记录引用的上游 Release 归档为:
 
 - https://github.com/SagerNet/sing-box/releases/download/v1.13.14/sing-box-1.13.14-linux-amd64.tar.gz
 
-This project is independent and is not affiliated with or endorsed by the
-sing-box or SagerNet authors.
+本项目独立于 sing-box 和 SagerNet 的作者,与其没有关联,也未获其背书.
 
 ---
 
 ## LibreSpeed
 
-The browser speed test uses a vendored LibreSpeed client engine. On
-2026-09-27, its two bundled JavaScript files and license matched the upstream
-v6.2.1 tag files byte for byte.
+浏览器测速使用随附的 LibreSpeed 客户端引擎.2026-09-27,两个随附的 JavaScript 文件及许可证与上游 v6.2.1 标签文件逐字节一致.
 
-- Component: LibreSpeed client engine — `static/third_party/librespeed/speedtest.js`, `static/third_party/librespeed/speedtest_worker.js`
-- Upstream project: https://github.com/librespeed/speedtest
-- Version: `v6.2.1`
-- License: GNU LGPL version 3; full text at [`static/licenses/LGPL-3.0.txt`][local-link-013]
-- Verification: both files and the original license matched the v6.2.1 tag;
-  the exact tag commit is not recorded in this inventory.
+- 组件:LibreSpeed 客户端引擎——`src/web/static/third_party/librespeed/speedtest.js`,`src/web/static/third_party/librespeed/speedtest_worker.js`
+- 上游项目:https://github.com/librespeed/speedtest
+- 版本:`v6.2.1`
+- 许可证:GNU LGPL 第 3 版;全文见 [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013]
+- 核验:两个文件及原始许可证与 v6.2.1 标签一致;本清单没有记录准确的标签提交.
 
-`static/speedtest-ui.js` is this project's own glue code and is not part of
-LibreSpeed. The server-side endpoints in `src/web/app.py` (`/speedtest/garbage`,
-`/speedtest/empty`, `/speedtest/getip`) reimplement LibreSpeed's documented
-client/server contract; they are original code, not derived from the upstream
-PHP backend.
+`src/web/static/speedtest-ui.js` 是本项目自己的衔接代码,不属于 LibreSpeed.`src/web/app.py` 中的服务端端点(`/speedtest/garbage`,`/speedtest/empty`,`/speedtest/getip`)重新实现了 LibreSpeed 文档所述的客户端/服务端约定;它们是原创代码,不是上游 PHP 后端的派生代码.
 
-The LGPL-3.0 text is bundled and the upstream source is linked; this inventory
-does not provide an independent legal opinion about the combination.
+LGPL-3.0 全文已随附,上游源码已提供链接;本清单不提供关于组合使用的独立法律意见.
 
 ---
 
 ## qrcode-generator
 
-The console's `/proxy` page renders share links as scannable QR codes using
-this vendored client-side library. On 2026-09-27, its two bundled JavaScript
-files and original license matched the upstream js2.0.4 tag files byte for byte.
+控制台 `/proxy` 页面使用这个随附的客户端库,将分享链接渲染为可扫描的二维码.2026-09-27,两个随附的 JavaScript 文件及原始许可证与上游 js2.0.4 标签文件逐字节一致.
 
-- Component: `static/third_party/qrcode/qrcode.js`, `static/third_party/qrcode/qrcode-utf8.js`
-- Upstream project: https://github.com/kazuhikoarase/qrcode-generator
+- 组件:`src/web/static/third_party/qrcode/qrcode.js`,`src/web/static/third_party/qrcode/qrcode-utf8.js`
+- 上游项目:https://github.com/kazuhikoarase/qrcode-generator
 - Copyright (c) 2009 Kazuhiko Arase
-- Version: `js2.0.4`
-- Source revision: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- License: MIT; full text at [`static/licenses/MIT.txt`][local-link-014]
-- Verification: both files matched upstream `js/dist/qrcode.js` and
-  `js/dist/qrcode_UTF8.js`; the original MIT license matched too.
+- 版本:`js2.0.4`
+- 源码修订号:`83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
+- 许可证:MIT;全文见 [`src/web/static/licenses/MIT.txt`][local-link-014]
+- 核验:两个文件与上游 `js/dist/qrcode.js` 和 `js/dist/qrcode_UTF8.js` 一致;原始 MIT 许可证也一致.
 
-`static/qrcode-render.js` is this project's own glue code (finds
-`[data-qr-text]` elements and fills them with the rendered SVG) and is not
-part of the vendored library.
+`src/web/static/qrcode-render.js` 是本项目自己的衔接代码(查找 `[data-qr-text]` 元素并填入渲染后的 SVG),不属于随附的库.
 
-The MIT copyright and license notice is bundled with the client library.
+MIT 版权及许可声明与客户端库一同随附.
 
 ---
 
 ## iperf3
 
-- Component: `iperf3`
-- Upstream project: https://github.com/esnet/iperf
-- License: BSD 3-Clause
-- Modified: no
-- **Not redistributed.** `iperf3` is installed from the operating system's
-  package repository by `install.sh` and is invoked as a separate program over
-  a process boundary. No iperf3 code or binary ships in this repository, so the
-  BSD attribution requirement, which attaches to redistribution, is not
-  triggered here according to the prior record; reassess if distribution changes. It is listed because the project depends on it at runtime.
+- 组件:`iperf3`
+- 上游项目:https://github.com/esnet/iperf
+- 许可证:BSD 3-Clause
+- 是否修改:否
+- **未重新分发.** `iperf3` 由 `install.sh` 从操作系统软件包仓库安装,通过进程边界作为独立程序调用.本仓库不包含 iperf3 的代码或二进制文件,因此按先前记录,随重新分发而产生的 BSD 署名要求在此并未触发;若分发方式改变,须重新评估.之所以列出,是因为本项目运行时依赖它.
 
 ---
 
-## Vendored from this author's own projects
+## 随附本作者其他项目的代码
 
-Not third-party, but recorded here because the code did not originate in this
-repository and its provenance matters for updates:
+不属于第三方,但这些代码并非源自本仓库,其来源对未来更新仍有意义:
 
-- `src/web/app.py`, `static/speedtest-ui.js`, `static/style.css`, `static/visitors.js`,
-  `tests/`, `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` (with root installer entries) — from `vps-webserver`
-  v0.4.1 (Apache-2.0 upstream, relicensed GPL-3.0 here). See `config/upstream-version`.
-- `deploy/anytls/setup-anytls.sh`, `third_party/sing-box/sing-box`, `third_party/sing-box/sing-box.version` — from
-  `Anytsl-Serve` v1.2.0 (GPL-3.0 upstream). See `deploy/anytls/.upstream-version`.
+- `src/web/app.py`, `src/web/static/speedtest-ui.js`,`src/web/static/style.css`,`src/web/static/visitors.js`,
+  `tests/`,`deploy/install.sh`,`deploy/uninstall.sh`,`deploy/systemd/`——来自 `vps-webserver`
+  v0.4.1(上游 Apache-2.0,在此重新授权为 GPL-3.0).见 `config/upstream-version`.
+- `deploy/anytls/setup-anytls.sh`,`third_party/sing-box/sing-box`,`third_party/sing-box/sing-box.version`——来自
+  `Anytsl-Serve` v1.2.0(上游 GPL-3.0).见 `deploy/anytls/.upstream-version`.
 
 ---
 
-The bundled third-party fonts and icons are listed in the table above. No
-third-party image datasets or model weights are included. Installation can
-download the checksum-pinned FRPC client asset and optionally look up the
-public IP address; the latter degrades to a warning if it fails.
+随附的第三方字体和图标列于上表.没有包含第三方图像数据集或模型权重.安装程序可以下载经固定校验和验证的 FRPC 客户端资源,也可以选择查询公网 IP 地址;查询失败时仅显示警告.
 
 [local-link-001]: ../config/dependencies.lock.json
 [local-link-002]: ../third_party/sing-box/LICENSE
 [local-link-003]: ../LICENSE
-[local-link-004]: #corresponding-source
-[local-link-005]: LOG.md#decisions
-[local-link-006]: ../static/licenses/LGPL-3.0.txt
+[local-link-004]: #对应源码
+[local-link-005]: LOG.md#决策
+[local-link-006]: ../src/web/static/licenses/LGPL-3.0.txt
 [local-link-007]: ../LICENSE
-[local-link-008]: ../static/licenses/MIT.txt
+[local-link-008]: ../src/web/static/licenses/MIT.txt
 [local-link-009]: ../LICENSE
-[local-link-010]: LOG.md#decisions
-[local-link-011]: DESIGN.md#reproduction-requirements
+[local-link-010]: LOG.md#决策
+[local-link-011]: DESIGN.md#复现要求
 [local-link-012]: ../third_party/sing-box/LICENSE
-[local-link-013]: ../static/licenses/LGPL-3.0.txt
-[local-link-014]: ../static/licenses/MIT.txt
+[local-link-013]: ../src/web/static/licenses/LGPL-3.0.txt
+[local-link-014]: ../src/web/static/licenses/MIT.txt

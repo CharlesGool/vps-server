@@ -1,33 +1,33 @@
 ---
-name: project-commits
-description: 提交历史
+name: project-commits-hi
+description: कमिट इतिहास
 metadata:
   version: "1.0.0"
-  lang: "zh-CN"
+  lang: "hi"
 ---
 
-# 提交历史
+# कमिट इतिहास
 
-## 多语言
+## बहुभाषी
 
-**简体中文** | [English](en/COMMITS.md) | [繁體中文(台灣)](zh-TW/COMMITS.md) | [繁體中文(香港)](zh-HK/COMMITS.md) | [हिन्दी](hi/COMMITS.md) | [Español](es/COMMITS.md) | [العربية](ar/COMMITS.md) | [Français](fr/COMMITS.md)
+[简体中文](../COMMITS.md) | [English](../en/COMMITS.md) | [繁體中文(台灣)](../zh-TW/COMMITS.md) | [繁體中文(香港)](../zh-HK/COMMITS.md) | **हिन्दी** | [Español](../es/COMMITS.md) | [العربية](../ar/COMMITS.md) | [Français](../fr/COMMITS.md)
 
-## 文档
+## दस्तावेज़ीकरण
 
-- 项目概览:[README](../README.md)
+- परियोजना का परिचय: [README](README.md)
 
-- 设计思路:[DESIGN](DESIGN.md)
+- डिज़ाइन का औचित्य: [DESIGN](DESIGN.md)
 
-- 项目状态: [LOG](LOG.md)
-- 历史记录: [HISTORY](HISTORY.md)
-- 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
+- परियोजना स्थिति: [LOG](LOG.md)
+- ऐतिहासिक अभिलेख: [HISTORY](HISTORY.md)
+- परिवर्तन सूची: [CHANGELOG](CHANGELOG.md)
+- कमिट इतिहास: [COMMITS](COMMITS.md)
 
-- 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
+- तृतीय-पक्ष सूचनाएँ: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-## 提交历史
+## कमिट इतिहास
 
-本表列出发布分支可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
+वर्तमान शाखा के कमिट नवीनतम से पुराने क्रम में हैं। एक कमिट देखने के लिए `git show <SHA>` और पूरा इतिहास देखने के लिए `git log --all --oneline` चलाएँ। मुख्य शाखा में विलय के बाद यह सूची फिर बनाएँ।
 
 - `HEAD` 2026-10-03 docs: align release documentation with v5.0.0 (待提交)
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version

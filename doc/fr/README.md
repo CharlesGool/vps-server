@@ -10,7 +10,7 @@ metadata:
 
 ## Multilingue
 
-[English](../../README.md) | [简体中文](../zh-CN/README.md) | [繁體中文(台灣)](../zh-TW/README.md) | [繁體中文(香港)](../zh-HK/README.md) | [हिन्दी](../hi/README.md) | [Español](../es/README.md) | [العربية](../ar/README.md) | **Français**
+[简体中文](../../README.md) | [English](../en/README.md) | [繁體中文(台灣)](../zh-TW/README.md) | [繁體中文(香港)](../zh-HK/README.md) | [हिन्दी](../hi/README.md) | [Español](../es/README.md) | [العربية](../ar/README.md) | **Français**
 
 ## Documentation
 
@@ -18,13 +18,16 @@ metadata:
 
 - Justification de la conception : [DESIGN](DESIGN.md)
 
-- Historique des versions : [LOG](LOG.md)
+- État du projet: [LOG](LOG.md)
+- Archives historiques: [HISTORY](HISTORY.md)
+- Historique des modifications: [CHANGELOG](CHANGELOG.md)
+- Historique des commits: [COMMITS](COMMITS.md)
 
 - Avis relatifs aux tiers : [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 ## Introduction
 
-Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de vérification de l’accessibilité des ports web, une console d’administration pour les tests de débit et la journalisation des connexions, une fenêtre iperf3 à la demande et des nœuds proxy sing-box. La version v3.0.0 ajoute des nœuds gérés, des règles de trafic, un accès sans mot de passe depuis des IP privées et des modes clair et sombre. Le paquet comprend aussi les installateurs expérimentaux de frps et Lucky. Voir [l’état actuel et les limites de validation][local-link-001].
+Un ensemble de modules sélectionnables pour un VPS Debian/Ubuntu : page publique pour vérifier l’accès aux ports Web, console opérateur pour les tests de débit et le journal des connexions, fenêtre iperf3 à la demande et nœuds proxy sing-box. v5.0.0 comprend des nœuds gérés, des politiques de trafic, l’accès sans mot de passe depuis des IP privées, des commandes HTTP/HTTPS séparées, la gestion de FRPS et de FRPC local, l’installation de Lucky et un programme d’installation direct dans le terminal. La portée de la version et les vérifications figurent dans l’[historique des modifications][local-link-001].
 
 ## Fonctionnalités
 
@@ -38,7 +41,7 @@ Un ensemble de modules au choix pour un VPS Debian/Ubuntu : une page publique de
 
 La page FRPS accessible après connexion affiche l’état du service serveur local, les adresses de ses interfaces et ses paramètres de connexion. Le port et le jeton restent masqués jusqu’à ce que l’opérateur demande à les afficher. Il peut modifier le port et le jeton sur place et activer ou arrêter le service. La page FRPC distincte présente les instances clientes locales sous forme de cartes, avec une adresse IP masquée et un indicateur de connexion fondé sur une socket TCP établie. Le bouton Tester la connexion effectue une connexion FRPC indépendante avec le serveur, le port et le jeton enregistrés. La page d’une instance affiche, avant modification, le type de chaque proxy TCP/UDP, son IP locale, son port local et son port distant ; l’IP et le jeton du serveur ne sont révélés qu’à la demande. Après un enregistrement, l’opérateur reste sur cette page. Le fichier est vérifié et la configuration précédente est rétablie en cas d’échec. Ces opérations FRP requièrent une session connectée ; la vérification récente du mot de passe administrateur reste réservée aux opérations des paramètres de sécurité, notamment le changement de mot de passe et la gestion de l’accès par IP sans mot de passe. L’éditeur de champs accepte uniquement les configurations TCP/UDP simples authentifiées par jeton qu’il sait représenter et ne modifie pas les autres fichiers TOML de FRPC. La console ne prétend pas afficher l’état en direct des instances FRPC installées sur d’autres appareils. La page Modules vérifie séparément le binaire FRPC local et le modèle `frpc@.service`, indépendamment de la présence de configurations d’instances. Elle propose Installer s’il manque l’un des deux et affiche Créer une instance si FRPC est installé sans instance. L’installation utilise le binaire FRPC v0.71.0 dont l’empreinte est vérifiée et ne crée ni connexion ni port d’écoute. Le journal du module consigne le téléchargement et sa vérification. Pour une installation hors ligne, télécharger [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64) (16 593 080 octets ; SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`) et le placer dans `~/apps/vps-server/vendor/frp/frpc` avant de choisir Installer. La même empreinte est vérifiée pour un fichier téléchargé ou placé manuellement. La désinstallation arrête les instances FRPC locales, archive leurs configurations sous `data/` et conserve les fichiers de configuration pour une réinstallation ultérieure.
 
-Les modules sélectionnables sont web, iperf3, anytls, proxy, frps et Lucky. frps et Lucky restent expérimentaux ; leur fonctionnement n’a pas été validé sur un hôte réel pour cette version.
+La première installation n’installe que Web. `VPSSRV_MODULES` permet de choisir d’autres modules serveur parmi web, iperf3, anytls, proxy, frps et lucky ; FRPC est une fonction cliente locale distincte.
 
 **Hors périmètre :** ni ACME ni noms de domaine (le certificat sur 443 est volontairement autosigné) ; pas d'iperf3 permanent ; pas de proxy inverse ni de conteneurs ; la page publique ne révèle jamais le nom de l'hôte, le noyau, la durée de fonctionnement, la liste des services ou les paramètres des proxys. Ce projet ne remplace pas `vps-webserver` ou `Anytsl-Serve` : tous deux restent maintenus indépendamment et leur code est embarqué ici plutôt qu'absorbé.
 
@@ -53,47 +56,33 @@ Les modules sélectionnables sont web, iperf3, anytls, proxy, frps et Lucky. frp
 
 ## Installation
 
-Installation rapide en une ligne (dernier tag publié, sans variables de configuration) :
+### Installation rapide
+
+Exécutez en tant que root ; par défaut, seule la console Web est installée et le terminal affiche un port administratif et un mot de passe aléatoires.
 
 ```bash
-git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
-Installation pas à pas, avec configuration :
+### Installation standard
 
 ```bash
-# Clonez un tag de version ; la branche par défaut peut contenir des modifications non publiées.
-# Listez les tags de version : `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # facultatif : chaque variable a une valeur par défaut fonctionnelle
+cp .env.example .env  # facultatif : adaptez les valeurs selon les commentaires
 bash deploy/install.sh
 ```
 
-`deploy/install.sh` demande les modules à installer, la langue de l’interface, l’activation de la protection de la console par mot de passe et les ports. Le tag v4.0.0 comprend les six modules sélectionnables ; frps et Lucky sont expérimentaux.
-
-
-### Première configuration
-
-Le flux de configuration ci-dessous est inclus dans v4.0.0. Sur une nouvelle installation Debian ou Ubuntu, cloner la balise de publication et exécuter `bash deploy/install.sh` comme racine d'un terminal. Le répertoire d'application par défaut est le compte racine `~/apps/vps-server`; `PREFIX` peut sélectionner un autre répertoire.
-
-L'installateur ouvre une page de configuration HTTPS temporaire sur un port disponible au hasard et imprime son URL, son empreinte digitale et son mot de passe de configuration au hasard dans le terminal. La page expire après cinq minutes si aucune sélection n'est faite. Connectez-vous et choisissez les modules à installer; la console Web est nécessaire pour la configuration du navigateur. Les protocoles proxy ne sont demandés que lorsque des nœuds proxy sont sélectionnés. Après la soumission, rafraîchir la page de configuration pour voir les progrès. Lorsque l'installation se termine et que l'hôte a une adresse d'interface utilisable, il se connecte au panneau de commande; sinon, utilisez l'adresse imprimée dans le terminal. Le terminal imprime le mot de passe et l'adresse permanent du panneau de contrôle; le mot de passe de configuration unique ne se connecte pas au panneau de contrôle. L'auditeur temporaire ferme et libère son port après le délai de grâce.
-
-Depuis la console, ouvrez **Paramètres → Modules**. Une session connectée ordinaire peut gérer ces fonctions ; la vérification du mot de passe reste exigée pour les paramètres de sécurité. La liste comprend Test de débit, iperf3, Nœuds proxy, FRPS, FRPC, Transfert de ports, Visiteurs récents, Changelog et Paramètres. Seuls les modules installables séparément affichent Installer ou Désinstaller. Avant une désinstallation, l’assistant archive la configuration du module sous `$PREFIX/data` ; la page Modules affiche les derniers messages de la tâche. Les modules facultatifs sont installés depuis les fichiers de la même version placés sous `$PREFIX/installer-source`. Chaque carte de la page d’accueil, sauf Paramètres, possède son propre interrupteur. Celui de Nœuds proxy commande AnyTLS et les autres protocoles proxy, conserve les nœuds et ne démarre aucun service si aucun nœud n’est actif. Celui de FRPC redémarre les instances qui fonctionnaient avant sa désactivation. Le transfert de ports conserve les règles enregistrées quand il est désactivé et réapplique les règles actives lorsqu’il est réactivé. Une installation s’exécute dans une tâche systemd indépendante et peut redémarrer brièvement Web. Si le port de configuration n’est pas accessible, utilisez `VPSSRV_SETUP_PUBLIC=0` avec un tunnel SSH local ou choisissez un port autorisé avec `VPSSRV_SETUP_PORT`.
-
-Sur un hôte où FRPC est installé, ouvrez la carte **FRPS** ou **FRPC** depuis la page d’accueil.
-**Modifier FRPS** change son port d’écoute et son jeton ; laisser un champ vide conserve sa valeur actuelle. Après un tel changement, mettez à jour les instances FRPC qui se connectent à ce serveur. Chaque carte d’instance FRPC possède des actions distinctes Tester la connexion, Modifier et Supprimer avec confirmation ; cliquer sur le fond de la carte ne fait rien. L’interrupteur de démarrage se trouve à côté du nom. Ouvrez Modifier pour renommer l’instance ou changer sur place son serveur et ses proxys. Cliquez sur une IP, un port ou un jeton masqué pour l’afficher ; Modifier le serveur charge les valeurs enregistrées. Tester la connexion effectue une connexion temporaire avec ces valeurs, sans démarrer ni modifier l’instance gérée. L’enregistrement exécute `frpc verify`, redémarre l’instance si elle était active, puis revient à sa page. Une nouvelle instance est activée après son premier enregistrement valide. La page permet aussi de démarrer ou d’arrêter une instance existante sans supprimer sa configuration. Les changements locaux ne touchent pas les clients sur d’autres appareils. Pour un proxy TCP, autorisez son `remotePort` dans le pare-feu actif de l’hôte et dans le groupe de sécurité du fournisseur cloud ; l’éditeur enregistre les ports utilisés sur l’hôte, mais ne modifie pas les règles du pare-feu cloud.
-
-**Une nouvelle exécution met à niveau l'installation sur place.** Le script détecte l'installation existante, propose de conserver sa configuration et ne demande que les paramètres absents de la version installée, chacun avec sa valeur par défaut : appuyer sur Entrée est donc une réponse valable. Le mot de passe de la console, le port conservé, les certificats, le journal des visiteurs, les identifiants du nœud anytls ainsi que les ports et identifiants de chaque protocole proxy installé sont préservés. Répondez `n` à la question de mise à niveau pour redéfinir les paramètres.
+`PREFIX` vaut `/root/apps/vps-server` par défaut. La première installation s’effectue dans le terminal sans assistant dans le navigateur. Utilisez `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` pour choisir les modules serveur ; sans cette variable, seul Web est installé. Installez ou retirez les fonctions facultatives depuis Settings → Modules. Les pages publiques HTTP et HTTPS s’activent séparément depuis Home ; la console administrative utilise un autre port. Installez FRPC séparément lorsqu’un client local est nécessaire ; le fichier à télécharger et son chemin hors ligne sont indiqués plus haut.
 
 ## Conseils
 
 ### Quick start
 
-La version 2.0.0 place l’implémentation Web dans `src/web/app.py` et exécute les installateurs depuis `deploy/`. Les binaires embarqués et leurs mentions de licence se trouvent dans `third_party/` ; les métadonnées de version sont dans `config/`. Les fichiers installés conservent une arborescence plate sous `$PREFIX` ; le changement d’organisation du dépôt ne migre pas les données d’exécution. Les nouveaux chemins ont passé les tests locaux, mais cette version n’a pas été validée sur un hôte réel.
+Le code Web se trouve dans `src/web/`, les ressources statiques dans `src/web/static/` et l’installateur dans `deploy/`. Les exécutables et licences fournis se trouvent dans `third_party/` ; les métadonnées de version dans `config/`. L’installation conserve son ancien agencement plat ; la réorganisation des sources ne déplace pas les données d’exécution.
 
 ```bash
-bash deploy/install.sh                       # configuration interactive dans un assistant temporaire du navigateur
+bash deploy/install.sh                       # première installation de la console Web dans le terminal
 sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # installation sans intervention ni questions
 systemctl status vps-server-web              # vérifie si le service est actif
 bash deploy/anytls/setup-anytls.sh status           # détails du nœud anytls si ce module est installé
@@ -127,7 +116,7 @@ Chaque variable a une valeur par défaut fonctionnelle ; `.env` est facultatif. 
 |---|---|---|---|
 | `VPSSRV_PUBLIC_HTTP_PORT` | Page publique d'accessibilité, en clair | `80` | non |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Page publique d'accessibilité, TLS | `443` | non |
-| `VPSSRV_PUBLIC_ENABLE` | Activer la page publique | `1` | non |
+| `VPSSRV_PUBLIC_ENABLE` | Activer la page publique | `0` | non |
 | `VPSSRV_CONSOLE_PORT` | Port de la console ; `0` en génère un et le conserve | `0` | non |
 | `VPSSRV_AUTH` | Exiger un mot de passe sur la console | `1` | non |
 | `VPSSRV_IPERF_PORT` | Port d'écoute de la fenêtre iperf3 ouverte | `5201` | non |
@@ -171,7 +160,7 @@ Licence du projet : GPL-3.0 (SPDX : `GPL-3.0-only`) ; lire le texte intégral da
 
 Ce projet n'est ni affilié à sing-box/SagerNet ou LibreSpeed, ni approuvé par eux.
 
-[local-link-001]: LOG.md#limitations-et-état-actuel-de-validation
+[local-link-001]: CHANGELOG.md
 [local-link-002]: DESIGN.md#référence-de-configuration
 [local-link-003]: THIRD_PARTY_NOTICES.md
 [local-link-004]: ../../LICENSE

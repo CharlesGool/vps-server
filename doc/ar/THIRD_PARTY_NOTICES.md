@@ -12,7 +12,7 @@ metadata:
 
 ## تعدد اللغات
 
-[English](../THIRD_PARTY_NOTICES.md) | [简体中文](../zh-CN/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | **العربية** | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | **العربية** | [Français](../fr/THIRD_PARTY_NOTICES.md)
 
 ## الوثائق
 
@@ -20,7 +20,10 @@ metadata:
 
 - مبررات التصميم: [DESIGN](DESIGN.md)
 
-- سجل الإصدارات: [LOG](LOG.md)
+- حالة المشروع: [LOG](LOG.md)
+- السجلات التاريخية: [HISTORY](HISTORY.md)
+- سجل التغييرات: [CHANGELOG](CHANGELOG.md)
+- سجل الالتزامات: [COMMITS](COMMITS.md)
 
 - إشعارات الجهات الخارجية: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -36,9 +39,9 @@ metadata:
 | sing-box | `v1.13.14`؛ المراجعة `25a600db24f7680ad9806ce5427bd0ab8afe1114`؛ SHA-256 للملف التنفيذي `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL الإصدار 3 أو أحدث، إضافةً إلى شرط التسمية الخاص بالمصدر الأصلي (كما ورد في الإشعار) | ملف تنفيذي مضمّن تتشاركه anytls وproxy | [الإشعار الأصلي][local-link-002]؛ [النص الكامل لـGPL][local-link-003] | احتفظ بروابط المصدر المطابق وشرط التسمية/الارتباط الأصلي | 2026-09-27: تطابق الأرشيف والملف التنفيذي والترخيص ومراجعة الوسم |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 وفق ترخيص المصدر الأصلي | محرك متصفح مضمّن | [نص LGPL الأصلي][local-link-006] و[نص GPL][local-link-007] | احتفظ بنص الترخيص وأبقِ المصدر الأصلي متاحًا | 2026-09-27: تطابق ملفا الوسم والترخيص |
 | qrcode-generator | `js2.0.4`؛ المراجعة `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT وفق ترخيص المصدر الأصلي | مكتبة QR مضمّنة تعمل لدى العميل | [نص MIT الأصلي][local-link-008] | الاحتفاظ بإشعارات حقوق النشر والترخيص المطلوبة | 2026-09-27: تطابق ملفا الوسم والترخيص |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | خط لاتيني مضمّن للواجهة، بأوزان 400/600/700 | [license](../../static/licenses/OFL-Inter.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | خط CJK مضمّن للواجهة، بأوزان 400/700 | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
-| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | أيقونات SVG مضمّنة للواجهة | [license](../../static/licenses/Lucide-ISC.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | خط لاتيني مضمّن للواجهة، بأوزان 400/600/700 | [license](../../src/web/static/licenses/OFL-Inter.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | خط CJK مضمّن للواجهة، بأوزان 400/700 | [license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | أيقونات SVG مضمّنة للواجهة | [license](../../src/web/static/licenses/Lucide-ISC.txt) | الاحتفاظ بالترخيص وإشعار حقوق النشر المضمّنين | 2026-09-27 |
 | iperf3 | حزمة توزيعة؛ الإصدار غير مثبّت | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause كما سُجّل سابقًا | يُشغّل برنامجًا منفصلًا مثبّتًا من نظام التشغيل؛ لا يُعاد توزيعه هنا | حقوق النشر غير مسجّلة؛ توفّر حزمة نظام التشغيل الترخيص الأصلي | إعادة التقييم إذا ضُمّن أو أُعيد توزيعه لاحقًا | غير مسجّل؛ يُعاد التحقق قبل التوزيع |
 
 يحدّد السجل الحالي للمشروع GPL-3.0 ترخيصًا له ([LICENSE][local-link-009])، ويسجّل إعادة توزيع الملف التنفيذي sing-box المرخّص بموجب GPL سببًا لذلك؛ وتحتفظ [القرارات][local-link-010] بالمبررات والبدائل المرفوضة. يصف السجل السابق `vps-webserver` بأنه مرخّص أصلًا بموجب Apache-2.0، ويُعاد توزيعه هنا بموجب GPL-3.0. يوثّق هذا الجرد الملفات والشروط التي فُحصت لإصدار v2.0.0؛ ولا يقدّم رأيًا قانونيًا مستقلًا.
@@ -82,13 +85,13 @@ metadata:
 
 يستخدم اختبار السرعة في المتصفح محرك عميل LibreSpeed مضمّنًا. في 2026-09-27، طابق ملفا JavaScript المضمّنان والترخيص ملفات وسم v6.2.1 الأصلية بايتًا ببايت.
 
-- المكوّن: محرك عميل LibreSpeed — `static/third_party/librespeed/speedtest.js`، `static/third_party/librespeed/speedtest_worker.js`
+- المكوّن: محرك عميل LibreSpeed — `src/web/static/third_party/librespeed/speedtest.js`، `src/web/static/third_party/librespeed/speedtest_worker.js`
 - المشروع الأصلي: https://github.com/librespeed/speedtest
 - الإصدار: `v6.2.1`
-- الترخيص: GNU LGPL الإصدار 3؛ النص الكامل في [`static/licenses/LGPL-3.0.txt`][local-link-013]
+- الترخيص: GNU LGPL الإصدار 3؛ النص الكامل في [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013]
 - التحقق: طابق الملفان والترخيص الأصلي وسم v6.2.1؛ ولم تُسجّل مراجعة commit الدقيقة للوسم في هذا الجرد.
 
-`static/speedtest-ui.js` شفرة ربط خاصة بهذا المشروع وليست جزءًا من LibreSpeed. تعيد نقاط النهاية من جهة الخادم في `src/web/app.py` (`/speedtest/garbage`، `/speedtest/empty`، `/speedtest/getip`) تنفيذ عقد العميل/الخادم الموثّق لدى LibreSpeed؛ وهي شفرة أصلية غير مشتقة من الواجهة الخلفية PHP الأصلية.
+`src/web/static/speedtest-ui.js` شفرة ربط خاصة بهذا المشروع وليست جزءًا من LibreSpeed. تعيد نقاط النهاية من جهة الخادم في `src/web/app.py` (`/speedtest/garbage`، `/speedtest/empty`، `/speedtest/getip`) تنفيذ عقد العميل/الخادم الموثّق لدى LibreSpeed؛ وهي شفرة أصلية غير مشتقة من الواجهة الخلفية PHP الأصلية.
 
 نص LGPL-3.0 مضمّن ورابط المصدر الأصلي متاح؛ ولا يقدّم هذا الجرد رأيًا قانونيًا مستقلًا بشأن الجمع بينهما.
 
@@ -98,15 +101,15 @@ metadata:
 
 تعرض صفحة `/proxy` في اللوحة روابط المشاركة على هيئة رموز QR قابلة للمسح باستخدام هذه المكتبة المضمّنة التي تعمل لدى العميل. في 2026-09-27، طابق ملفا JavaScript المضمّنان والترخيص الأصلي ملفات وسم js2.0.4 بايتًا ببايت.
 
-- المكوّن: `static/third_party/qrcode/qrcode.js`، `static/third_party/qrcode/qrcode-utf8.js`
+- المكوّن: `src/web/static/third_party/qrcode/qrcode.js`، `src/web/static/third_party/qrcode/qrcode-utf8.js`
 - المشروع الأصلي: https://github.com/kazuhikoarase/qrcode-generator
 - Copyright (c) 2009 Kazuhiko Arase
 - الإصدار: `js2.0.4`
 - مراجعة المصدر: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- الترخيص: MIT؛ النص الكامل في [`static/licenses/MIT.txt`][local-link-014]
+- الترخيص: MIT؛ النص الكامل في [`src/web/static/licenses/MIT.txt`][local-link-014]
 - التحقق: طابق الملفان الملفين الأصليين `js/dist/qrcode.js` و`js/dist/qrcode_UTF8.js`؛ وطابق الترخيص الأصلي MIT أيضًا.
 
-`static/qrcode-render.js` شفرة ربط خاصة بهذا المشروع (تجد عناصر `[data-qr-text]` وتملؤها برمز SVG المعروض) وليست جزءًا من المكتبة المضمّنة.
+`src/web/static/qrcode-render.js` شفرة ربط خاصة بهذا المشروع (تجد عناصر `[data-qr-text]` وتملؤها برمز SVG المعروض) وليست جزءًا من المكتبة المضمّنة.
 
 إشعار حقوق النشر وترخيص MIT مضمّنان مع مكتبة العميل.
 
@@ -126,7 +129,7 @@ metadata:
 
 ليست من أطراف ثالثة، ولكنها مسجّلة هنا لأن الشفرة لم تنشأ في هذا المستودع، ولمصدرها أهمية عند التحديث:
 
-- `src/web/app.py` ، `static/speedtest-ui.js`، `static/style.css`، `static/visitors.js`، `tests/`، `deploy/install.sh`، `deploy/uninstall.sh`، `deploy/systemd/` — من `vps-webserver` v0.4.1 ‏(Apache-2.0 في المشروع الأصلي، أُعيد ترخيصه هنا بـGPL-3.0). انظر `config/upstream-version`.
+- `src/web/app.py` ، `src/web/static/speedtest-ui.js`، `src/web/static/style.css`، `src/web/static/visitors.js`، `tests/`، `deploy/install.sh`، `deploy/uninstall.sh`، `deploy/systemd/` — من `vps-webserver` v0.4.1 ‏(Apache-2.0 في المشروع الأصلي، أُعيد ترخيصه هنا بـGPL-3.0). انظر `config/upstream-version`.
 - `deploy/anytls/setup-anytls.sh`، `third_party/sing-box/sing-box`، `third_party/sing-box/sing-box.version` — من `Anytsl-Serve` v1.2.0 ‏(GPL-3.0 في المشروع الأصلي). انظر `deploy/anytls/.upstream-version`.
 
 ---
@@ -138,12 +141,12 @@ metadata:
 [local-link-003]: ../../LICENSE
 [local-link-004]: #المصدر-المقابل
 [local-link-005]: LOG.md#القرارات
-[local-link-006]: ../../static/licenses/LGPL-3.0.txt
+[local-link-006]: ../../src/web/static/licenses/LGPL-3.0.txt
 [local-link-007]: ../../LICENSE
-[local-link-008]: ../../static/licenses/MIT.txt
+[local-link-008]: ../../src/web/static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
 [local-link-010]: LOG.md#القرارات
 [local-link-011]: DESIGN.md#متطلبات-إعادة-الإنتاج
 [local-link-012]: ../../third_party/sing-box/LICENSE
-[local-link-013]: ../../static/licenses/LGPL-3.0.txt
-[local-link-014]: ../../static/licenses/MIT.txt
+[local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
+[local-link-014]: ../../src/web/static/licenses/MIT.txt

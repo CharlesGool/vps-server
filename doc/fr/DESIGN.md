@@ -10,7 +10,7 @@ metadata:
 
 ## Multilingue
 
-[English](../DESIGN.md) | [简体中文](../zh-CN/DESIGN.md) | [繁體中文(台灣)](../zh-TW/DESIGN.md) | [繁體中文(香港)](../zh-HK/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | **Français**
+[简体中文](../DESIGN.md) | [English](../en/DESIGN.md) | [繁體中文(台灣)](../zh-TW/DESIGN.md) | [繁體中文(香港)](../zh-HK/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | [Español](../es/DESIGN.md) | [العربية](../ar/DESIGN.md) | **Français**
 
 ## Documentation
 
@@ -18,11 +18,16 @@ metadata:
 
 - Justification de la conception : [DESIGN](DESIGN.md)
 
-- Historique des versions : [LOG](LOG.md)
+- État du projet: [LOG](LOG.md)
+- Archives historiques: [HISTORY](HISTORY.md)
+- Historique des modifications: [CHANGELOG](CHANGELOG.md)
+- Historique des commits: [COMMITS](COMMITS.md)
 
 - Avis relatifs aux tiers : [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 ## Objectifs de conception
+
+L’installateur actuel n’installe que Web si `VPSSRV_MODULES` est omis.
 
 <a id="vps-design-goals"></a>
 
@@ -51,18 +56,18 @@ La version 2.0.0 comprend également des parcours d’installation expérimentau
 **Objectifs suivis et état actuel :**
 
 - [x] 2026-09-19 Trafic et plafond de données par nœud : les cinq protocoles proxy suivent séparément les volumes montant et descendant. L’ancien plafonnement des deux sens à 1 Mbps après le quota et la remise à zéro mensuelle ou à une date donnée ont été testés sur hôte réel le 2026-09-27. Cette branche ajoute des débits distincts en montée et descente, le choix entre 1 Mbps et le blocage au plafond, des cycles récurrents de jours, mois ou années et une durée de validité facultative qui bloque l’usage à son terme. Les nouvelles règles et la migration ont des contrôles automatisés ; l’interface et la migration ont été vérifiées sur l’hôte de test, mais pas le trafic réel avec toutes les politiques.
-- [x] 2026-09-19 Configuration initiale dans le navigateur : cette version utilise un assistant de configuration de courte durée dans `tools/setup_wizard/setup_wizard.py` lorsque l’installateur interactif ne reçoit aucune valeur `VPSSRV_MODULES`. Il recueille les choix de langue, de modules, de ports et d’authentification ; l’installateur shell n’exécute les actions choisies qu’après validation du résultat. Cette version n’a pas encore été validée sur un hôte réel.
+- [x] 2026-09-19 La configuration initiale dans le navigateur était fournie par `tools/setup_wizard/setup_wizard.py` ; ce parcours a été retiré. Dans v5.0.0, la première installation se termine dans le terminal et n’installe que Web par défaut.
 - [x] 2026-09-22 Fournir des informations de connexion FRPS / FRPC dans la console authentifiée. La page rapporte l'état de l'unité FRPS locale, lier l'adresse, l'adresse de l'interface, le port et le jeton d'auth ; les valeurs sensibles ne sont récupérées que sur Afficher ou Copier. Un modèle de connexion FRPC utilise les valeurs du serveur installé et un support d'adresse de serveur remplaçable. Le serveur n'a aucune visibilité sur FRPC fonctionnant sur un autre périphérique.
 - [x] 2026-09-29 Gérer la configuration de FRP local hôte. Un opérateur connecté peut modifier le port de liaison FRPS et le jeton, modifier et vérifier les instances FRPC locales, et démarrer ou arrêter ces instances sans vérification de mot de passe administrateur récente. La page d'instance ne révèle les valeurs d'IP et de jeton enregistrées que sur demande. Un helper root temporaire effectue des opérations fixes à l'extérieur du bac à sable du système en lecture seule de l'unité Web. Il réserve des ports d'écoute locaux modifiés dans `~/apps/PORTS.md` avant de les démarrer, libère les assignations terminées, restaure la configuration précédente lors de la validation ou de la panne de service, et ne modifie pas les instances FRPC sur d'autres appareils. La page Modules installe maintenant un binaire FRPC de contrôle et `frpc@.service` modèle séparé de FRPS; il détermine l'installation à partir de ces fichiers, plutôt que de la présence d'une configuration d'instance. Désinstaller arrête les instances et conserve leurs configurations.
 - [x] 2026-09-29 Présentez les contrôles FRPS et FRPC locaux comme cartes d'opérateur. FRPS utilise le modèle d'édition en ligne de la page de nœud et un commutateur de service. Chaque instance FRPC dispose d'une IP cible masquée, d'un indicateur de connexion dérivé de socket et d'une action de connexion de test séparée qui fait une connexion FRPC sans proxy avec des identifiants enregistrés. Sa page affiche les champs serveur et le type de proxy, l'IP locale, le port local et le port distant ; l'édition s'ouvre seulement après que l'opérateur ait choisi Édition, et l'enregistrement retourne à cette instance. L'éditeur de champ accepte seulement la configuration simple authentifiée TCP/UDP qu'il peut représenter et laisse TOML inchangé. Une carte cible représente une instance host-local, et l'indicateur de connexion initial nécessite une socket établie appartenant au processus principal systemd de cette instance vers son serveur et son port configurés.
 
 Examen des cartes FRPC, 2026-09-29: les quatre captures d'écran de l'opérateur ont montré l'ancien modèle de connexion, des faits masqués sans révélation directe, un panneau TOML avancé et une carte serveur sans action de test. Chromium sur les `test-d09835d` build à 390 et 1440 CSS px a vérifié la liste d'instances, masqué et révélé les faits du serveur, s'est effondré et ouvert les contrôles d'édition, les faits de proxy, les états de connexion-test, et un sauvegarde retour à la même instance. Les panneaux redondants sont absents, les deux révèlent la charge sur demande, les quatre faits proxy sont visibles, et aucun port de vue n'a de débordement horizontal. L'interface conserve le style de carte existant du projet; le véritable matériel mobile et le trafic proxy étaient en dehors de cet examen du navigateur.
-- [x] 2026-09-29 Prolongez la configuration de première sortie et ajoutez la gestion de module protégée. Une nouvelle installation interactive ouvre un port HTTPS temporaire aléatoire, imprime un mot de passe de configuration unique et nécessite la console Web dans sa sélection de navigateurs. Après la soumission, la page montre l'avancement de l'installation et des liens vers le panneau de contrôle lorsque sain. La page Paramètres → Sécurité → Modules peut installer un module omis à partir de la charge utile installée, compatible avec la version ou activer et désactiver un module installé. Un travail de système transitoire exécute l'installateur d'origine en dehors du service Web; ses choix de modules préservent les modules et les identifiants précédemment installés. Les commutateurs de service système conservent la configuration; le commutateur Web n'affecte que la page publique de sorte que le panneau de commande reste accessible. Le flux de première sortie et l'installation ultérieure sont couverts par des tests locaux et des vérifications de navigateur, mais n'ont pas encore été acceptés sur un hôte propre.
+- [x] 2026-09-29 La configuration initiale dans le navigateur a été retirée. Settings → Modules peut installer une fonction absente depuis les sources correspondant à la version installée ou activer et désactiver une fonction déjà installée. Une tâche systemd distincte lance l’installateur hors du service Web ; le choix explicite préserve les identifiants existants. Les interrupteurs publics HTTP et HTTPS n’affectent que leurs écouteurs respectifs et la console reste disponible. Les essais de l’ancien assistant figurent dans les archives.
 
-Le serveur temporaire de la configuration initiale réserve son port aléatoire dans `~/apps/PORTS.md` avant de répondre aux demandes et libère cette réservation à sa fermeture. Le mot de passe temporaire n’ouvre qu’une session de navigateur et est invalidé après le choix des modules. Dans cette étape du design, la page de gestion ultérieure exigeait la même vérification récente du mot de passe administrateur que les autres paramètres de sécurité. Elle ne transmettait que des noms de modules et des actions prédéfinis à une tâche systemd privilégiée distincte. La tâche enregistrait sa progression hors du service Web, ce qui permettait de redémarrer Web pendant l’installation. Désactiver un module proxy ne supprime ni ses nœuds ni leurs identifiants ; ses unités systemd désactivées restent arrêtées lors de l’utilisation des contrôles de nœuds. Les interrupteurs iperf3 et de la page publique redémarraient alors le service Web pour appliquer les changements de leurs ports d’écoute. Aucun de ces interrupteurs ne supprime la console, qui reste disponible pour des modifications ultérieures.
+L’ancien écouteur de configuration initiale réservait son port aléatoire dans `~/apps/PORTS.md` avant de répondre et libérait cette réservation à sa fermeture ; son mot de passe temporaire n’autorisait qu’une session de navigateur. La page Modules actuelle se trouve dans les paramètres ordinaires et utilise la session connectée. Elle ne transmet que des noms de modules et des actions prédéfinis à une tâche systemd privilégiée distincte. Cette tâche consigne sa progression hors du service Web, qui peut donc redémarrer pendant l’installation. Désactiver un module proxy conserve ses nœuds et ses identifiants ; les commandes des nœuds ne relancent pas une unité désactivée. Les interrupteurs iperf3 et des pages publiques redémarrent Web pour appliquer les changements d’écouteurs ; la console reste accessible.
 - [ ] Définir le périmètre de la demande plus large de fonctionnalités de `gdy666/lucky` consignée dans l’instantané du 2026-09-22. Le dépôt propose maintenant un parcours d’installation de Lucky, mais aucune liste de fonctionnalités plus larges ni aucun critère de validation n’étaient consignés.
 - [x] Validation des contrôles des nœuds sur un hôte réel terminée : les numéros affichés restent consécutifs après une suppression et repartent de 1 après la suppression de tous les nœuds, tandis que les UUID masqués conservent leur identité ; nom, port, identifiant de connexion et SNI TLS sont modifiables ; le SNI est sans objet pour Shadowsocks ; la réinitialisation aléatoire du port et de l’identifiant conserve le SNI. Chaque nœud peut être désactivé sans perdre sa configuration ni son historique de trafic, puis réactivé sur le même port. Les contrôles ont passé les essais sur hôte réel le 2026-09-27.
-- [x] Toute la Web UI partage un système visuel accessible pour la console, la page publique de connectivité et l’assistant de configuration. Les espacements, commandes, polices et icônes incluses, le focus visible et les mises en page adaptatives restent en place. Les paramètres ordinaires proposent huit couleurs d’accent persistantes et des modes clair et sombre indépendants ; changer de mode conserve la couleur.
+- [x] L’interface Web partage un système visuel accessible pour la console et la page publique. Les espacements, commandes, polices et icônes incluses, le focus visible et les mises en page adaptatives restent en place. Les paramètres ordinaires proposent huit couleurs d’accent persistantes et des modes clair et sombre indépendants ; changer de mode conserve la couleur.
 
 La page de connexion de la console utilise la même marque de projet et le même lien personnel que le reste de l'interface. Son pied de carte relie la version courante à Changelog et offre la sélection de la langue avant l'authentification. Les contrôles des thèmes restent dans les paramètres ordinaires. Chaque champ de mot de passe modifiable commence masqué et dispose de son propre contrôle accessible Show/Hide; changement de visibilité préserve la valeur et le focus et ne soumet jamais le formulaire. L'en-tête authentifié contient Home, Changelog, Settings et Sign out ; les liens de fonction sont en direct sur le tableau de bord. Les pages pour enfants comprennent un lien Back. Les paramètres ordinaires et de sécurité utilisent la navigation latérale aux largeurs du bureau et une ligne de défilement aux largeurs étroites. Sélectionner le groupe Sécurité dans les paramètres ordinaires passe à sa carte d'entrée; ouvrir la page protégée utilise son action séparée et défi administrateur. Chaque page utilise une icône d'onglet connexe mais distincte. Les modifications de page utilisent la navigation ordinaire du navigateur sans animation de route ou un réglage de page-motion, comme demandé sur 2026-09-29. La fenêtre redimensionne les gels et déplace ensuite les commandes visibles vers la nouvelle disposition. Les pages protégées se cachent avant d'entrer dans l'historique du navigateur et nécessitent une nouvelle demande de serveur lorsqu'elles sont revisitées; une signature terminée ne peut révéler une page de console mise en cache. Pour une construction de développement, le Web Changelog affiche les notes de test-build actuelles de `LOG.md` au-dessus de l'historique de sortie étiqueté. La version en cours vient de son déploiement `VERSION` estamp; l'historique de sortie traduit reste localisé, et les notes de construction d'essai reviennent à l'anglais lorsqu'une traduction n'est pas disponible.
 
@@ -119,6 +124,27 @@ Le service Web, le service anytls et le service proxy facultatif tournent dans d
 ```
 
 Le schéma montre les unités Web et anytls ; le service facultatif `vps-server-proxy.service` exécute plusieurs entrées indépendantes dans un troisième processus, partageant le binaire sing-box embarqué mais pas l'état des deux autres unités. Chaque module peut être choisi séparément ; voir [Le module proxy][local-link-005].
+
+### Modules fonctionnels
+
+`src/web/app.py` gère la configuration du processus, les limites d’authentification, les écouteurs et les noms compatibles avec les anciens appelants. `ConsoleHandler` combine les mixins fonctionnels de `src/web/features/` ; chaque module contient ses routes, pages et actions. Les fonctions de service reçoivent `context` ; le point d’entrée passe son propre module pour préserver les points de substitution des tests et les importations Python publiques. Un autre projet doit fournir les réglages, fonctions, objets de la bibliothèque standard et auxiliaires HTTP utilisés par la fonction choisie. Les modules fonctionnels n’importent pas le point d’entrée de cette application.
+
+| Fonction | Module serveur | Source de l’interface |
+| --- | --- | --- |
+| Connexion et accès | `features/auth.py` | `src/web/static/password-fields.js`, `src/web/static/styles/login.css` |
+| Paramètres | `features/settings.py` | `src/web/static/access-settings.js`, `src/web/static/settings-sections.js`, `src/web/static/styles/settings.css` |
+| Accueil et gestion des modules | `features/modules.py` | `src/web/static/module-controls.js`, `src/web/static/module-status.js`, `src/web/static/styles/dashboard.css`, `src/web/static/styles/modules.css` |
+| Test de débit dans le navigateur | `features/speedtest.py` | `src/web/static/speedtest-ui.js`, `src/web/static/styles/speedtest.css` |
+| Fenêtre iperf3 et test distant | `features/iperf.py`, `features/iperf_client.py` | `src/web/static/iperf-countdown.js`, `src/web/static/styles/iperf.css` |
+| FRPS et FRPC | `features/frp.py` | `src/web/static/frp-editor.js`, `src/web/static/styles/frp.css` |
+| Nœuds proxy et AnyTLS | `features/proxy.py`, `features/proxy_service.py` | `src/web/static/node-controls.js`, `src/web/static/private-values.js`, `src/web/static/styles/proxy.css`, `src/web/static/styles/nodes.css` |
+| Transfert de ports | `features/portfwd.py` | `src/web/static/styles/forms.css` styles de formulaire communs dans |
+| Visiteurs récents | `features/visitors.py` | `src/web/static/visitors.js`, `src/web/static/styles/visitors.css` |
+| Historique des modifications | `features/changelog.py` | `src/web/static/styles/changelog.css` |
+| État de Lucky | `features/lucky.py` | styles de cartes communs |
+| Page publique d’accessibilité | `features/public.py` | `src/web/static/styles/public.css`,intégré dans la réponse |
+
+`features/system.py` fournit les commandes hôte et les utilitaires de pare-feu communs ; `features/ui.py` fournit le rendu commun. Les contrôleurs de nœuds et les auxiliaires FRP/modules restent dans `src/web/` et peuvent être réutilisés hors des gestionnaires HTTP. Chaque fichier JavaScript se lie aux éléments de sa fonction ; les scripts communs gèrent thème, copie, mots de passe et sélection. Les sources CSS ordonnées sont dans `src/web/static/styles/` ; `python3 tools/build_styles/build_styles.py` génère `src/web/static/style.css` en conservant leur ordre. L’installateur copie `features/` et `static/` près de `$PREFIX/app.py`. La réutilisation demande un adaptateur de contexte ainsi que les styles et scripts correspondants ; ces routes n’ont pas de politique d’authentification autonome.
 
 ### Pourquoi la page publique et la console ont des écouteurs distincts
 
@@ -216,7 +242,7 @@ Un transfert relaie un port public TCP/UDP de cet hôte vers un appareil joignab
 
 ## Contraintes de conception
 
-- Ne pas ajouter de routes de console à `ProbeHandler` ; l'authentification ne remplace pas la table de routes publique distincte.
+- **Ne** pas ajouter de routes de console à `ProbeHandler` ; l'authentification ne remplace pas la table de routes publique distincte.
 - Limiter la durée d'iperf3 et retirer la règle de pare-feu à la fermeture ou à l'arrêt.
 - Réappliquer les transferts conservés dans le JSON au démarrage du processus ; retirer les règles actives lors d'un arrêt normal sans réinitialiser le réglage `ip_forward` valable pour tout l'hôte.
 - Préserver les identifiants des nœuds et les réglages choisis lors des mises à niveau ; confier les rotations aux scripts responsables, hors du bac à sable du système de fichiers de l'unité Web.
@@ -336,7 +362,7 @@ Le module anytls conserve volontairement les noms de variables d'`Anytsl-Serve` 
 ## Installation à partir de zéro
 
 1. `git clone <repo>` puis entrer dans le répertoire avec `cd` ; vérifier : `ls -lh third_party/sing-box/sing-box` affiche un fichier d'environ 57 Mo.
-2. `bash deploy/install.sh` ; une exécution interactive démarre un assistant temporaire dans le navigateur pour choisir les modules, la langue de l’interface, l’authentification de la console et les ports. Ouvrir l’URL affichée et saisir son jeton à usage unique ; après validation et application des choix, vérifier que le récapitulatif du terminal indique chaque module et son port.
+2. Exécutez `bash deploy/install.sh` : la première exécution installe Web directement et affiche son adresse et son mot de passe ; choisissez d’autres modules serveur avec `VPSSRV_MODULES` ou installez-les ensuite depuis Settings → Modules.
 3. `systemctl status vps-server-web` ; vérifier : `active (running)`.
 4. Depuis une autre machine, ouvrir `http://<ip>/` ; vérifier : la page d'accessibilité s'affiche et indique votre propre IP source.
 5. Depuis une autre machine, ouvrir `https://<ip>/` et accepter l'avertissement relatif au certificat ; vérifier : la même page s'affiche avec HTTPS dans la ligne du protocole.
@@ -367,7 +393,7 @@ Le mot de passe de la console, le port choisi, les certificats Web et `.install-
     │   ├── proxy/setup-proxy.sh
     │   ├── frps/setup-frps.sh
     │   └── lucky/setup-lucky.sh
-    ├── static/                # first-party UI assets and vendored browser libraries
+    ├── src/web/static/        # first-party UI assets and vendored browser libraries
     │   └── third_party/
     │       ├── librespeed/    # speedtest.js, speedtest_worker.js
     │       └── qrcode/        # qrcode.js, qrcode-utf8.js
@@ -384,7 +410,10 @@ Le mot de passe de la console, le port choisi, les certificats Web et `.install-
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
-        ├── LOG.md             # bugs, dated decisions, verification, release history
+        ├── LOG.md             # current status, bugs, decisions, and handoff
+        ├── HISTORY.md         # historical work and prior handoffs
+        ├── CHANGELOG.md       # formal version changes
+        ├── COMMITS.md         # Git commit record
         ├── THIRD_PARTY_NOTICES.md
         └── <lang>/            # translated docs (seven language directories)
 ```
@@ -423,12 +452,12 @@ de ports, y compris les transferts activés.** C'est voulu et symétrique avec l
 - **Un nouveau module** (un élément que l'installateur peut configurer facultativement) : ajouter un script `deploy/<name>/setup-<name>.sh`, son unité systemd (livrée dans `deploy/systemd/` ou générée par le script), une branche au menu de modules d'`deploy/install.sh` et une branche de désinstallation dans `deploy/uninstall.sh`. Les modules ne s'appellent pas entre eux.
 - **Une nouvelle page de console** : ajouter une route à `ConsoleHandler`. Ne pas ajouter de routes à `ProbeHandler` : sa table de routes presque vide est une propriété de sécurité, non un oubli.
 - **Une nouvelle langue** : ajouter des catalogues correspondants dans chaque répertoire `lang/<component>/`, enregistrer le code dans le sélecteur de langue Web et la correspondance du journal des modifications, dans l’installateur, l’assistant de configuration et les chargeurs des scripts de modules, puis ajouter une arborescence documentaire correspondante `doc/<BCP47>/`.
-- **Une nouvelle couleur** : ajouter un jeton dans `:root` de `static/style.css` *et* une valeur pour le mode clair dans le bloc `prefers-color-scheme: light`, puis utiliser ce jeton. Ne jamais écrire de valeur hexadécimale directement dans une règle de composant : une valeur littérale ne peut pas suivre le thème et devient correcte seulement dans le mode où elle a été jugée à l'œil, incorrecte dans l'autre, sans qu'aucun contrôle ne le signale. Toute couleur utilisée comme fond plein exige une couleur de premier plan `--on-*` associée : la valeur lisible comme texte convient rarement derrière un texte blanc. Vérifier les deux modes selon WCAG AA (4.5:1) avant de valider ; `tests/test_app.py::StylesheetTest` vérifie la partie structurelle, mais ne peut pas juger le rapport de contraste.
+- **Une nouvelle couleur** : ajouter un jeton dans `:root` de `src/web/static/style.css` *et* une valeur pour le mode clair dans le bloc `prefers-color-scheme: light`, puis utiliser ce jeton. Ne jamais écrire de valeur hexadécimale directement dans une règle de composant : une valeur littérale ne peut pas suivre le thème et devient correcte seulement dans le mode où elle a été jugée à l'œil, incorrecte dans l'autre, sans qu'aucun contrôle ne le signale. Toute couleur utilisée comme fond plein exige une couleur de premier plan `--on-*` associée : la valeur lisible comme texte convient rarement derrière un texte blanc. Vérifier les deux modes selon WCAG AA (4.5:1) avant de valider ; `tests/test_app.py::StylesheetTest` vérifie la partie structurelle, mais ne peut pas juger le rapport de contraste.
 - **Actualiser une ressource amont embarquée** : recopier depuis le tag amont, mettre à jour le fichier `.upstream-version` correspondant dans le même commit et noter la mise à jour dans le [LOG.md][local-link-016]. Ne jamais modifier directement le code embarqué : une modification locale absente en amont produirait une régression silencieuse au prochain renouvellement.
 
-[local-link-001]: LOG.md#limitations-et-état-actuel-de-validation
+[local-link-001]: ../LOG.md#交接
 [local-link-002]: LOG.md#bogues
-[local-link-003]: LOG.md#historique-des-travaux-terminés
+[local-link-003]: HISTORY.md
 [local-link-004]: LOG.md#décisions
 [local-link-005]: #le-module-proxy
 [local-link-006]: LOG.md#décisions
@@ -441,4 +470,4 @@ de ports, y compris les transferts activés.** C'est voulu et symétrique avec l
 [local-link-013]: ../../README.md
 [local-link-014]: LOG.md
 [local-link-015]: THIRD_PARTY_NOTICES.md
-[local-link-016]: LOG.md#historique-des-modifications
+[local-link-016]: CHANGELOG.md

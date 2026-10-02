@@ -12,7 +12,7 @@ metadata:
 
 ## 多語言
 
-[English](../THIRD_PARTY_NOTICES.md) | [简体中文](../zh-CN/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | **繁體中文(香港)** | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | **繁體中文(香港)** | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
 
 ## 文件
 
@@ -20,7 +20,10 @@ metadata:
 
 - 設計理據:[DESIGN](DESIGN.md)
 
-- 發佈歷史:[LOG](LOG.md)
+- 項目狀態: [LOG](LOG.md)
+- 歷史記錄: [HISTORY](HISTORY.md)
+- 變更記錄: [CHANGELOG](CHANGELOG.md)
+- 提交記錄: [COMMITS](COMMITS.md)
 
 - 第三方聲明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -36,9 +39,9 @@ metadata:
 | sing-box | `v1.13.14`;修訂 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;執行檔 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更新版,加上上游命名條件(依聲明記錄) | anytls 和 proxy 共用的隨附執行檔 | [上游聲明][local-link-002];[GPL 全文][local-link-003] | 保留對應原始碼連結及上游名稱/關聯條件 | 2026-09-27:壓縮檔,執行檔,授權文件及標籤修訂相符 |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依上游授權 | 隨附瀏覽器引擎 | [原始 LGPL 條文][local-link-006]及[GPL 條文][local-link-007] | 保留授權條文並確保上游原始碼可取得 | 2026-09-27:兩個標籤檔案及授權文件相符 |
 | qrcode-generator | `js2.0.4`;修訂 `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT,依上游授權 | 隨附用戶端 QR 函式庫 | [原始 MIT 條文][local-link-008] | 保留規定的版權及授權聲明 | 2026-09-27:兩個標籤檔案及授權文件相符 |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | 隨附的拉丁介面字型,400/600/700 字重 | [license](../../static/licenses/OFL-Inter.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | 隨附的 CJK 介面字型,400/700 字重 | [license](../../static/licenses/OFL-Noto-Sans-SC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
-| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 隨附的介面 SVG 圖示 | [license](../../static/licenses/Lucide-ISC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
+| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | 隨附的拉丁介面字型,400/600/700 字重 | [license](../../src/web/static/licenses/OFL-Inter.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
+| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | 隨附的 CJK 介面字型,400/700 字重 | [license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
+| Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 隨附的介面 SVG 圖示 | [license](../../src/web/static/licenses/Lucide-ISC.txt) | 保留隨附的授權及版權聲明 | 2026-09-27 |
 | iperf3 | 發行版套件;未鎖定版本 | [ESnet/iperf](https://github.com/esnet/iperf) | 先前記錄為 BSD-3-Clause | 作為獨立的作業系統安裝程式呼叫;此處不再分發 | 版權未記錄;原始授權由作業系統套件提供 | 如日後隨附或再分發,須重新評估 | 未記錄;分發前須重新核實 |
 
 現有項目紀錄指定本項目使用 GPL-3.0([LICENSE][local-link-009]),並將再分發 GPL 授權的 sing-box 執行檔列為原因;[決策][local-link-010]保留理由及遭否決的方案.舊紀錄稱 `vps-webserver` 上游使用 Apache-2.0,此處以 GPL-3.0 再分發.本清單記錄了為 v2.0.0 核實的檔案及條款;不提供獨立法律意見.
@@ -82,13 +85,13 @@ metadata:
 
 瀏覽器網速測試使用隨附的 LibreSpeed 用戶端引擎.2026-09-27,兩個隨附的 JavaScript 檔案及授權文件與上游 v6.2.1 標籤檔案位元組完全相同.
 
-- 組件:LibreSpeed 用戶端引擎 — `static/third_party/librespeed/speedtest.js`,`static/third_party/librespeed/speedtest_worker.js`
+- 組件:LibreSpeed 用戶端引擎 — `src/web/static/third_party/librespeed/speedtest.js`,`src/web/static/third_party/librespeed/speedtest_worker.js`
 - 上游項目:https://github.com/librespeed/speedtest
 - 版本:`v6.2.1`
-- 授權:GNU LGPL 第 3 版;全文見 [`static/licenses/LGPL-3.0.txt`][local-link-013]
+- 授權:GNU LGPL 第 3 版;全文見 [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013]
 - 核實:兩個檔案及原始授權文件與 v6.2.1 標籤相符;本清單沒有記錄準確的標籤提交.
 
-`static/speedtest-ui.js` 是本項目自有的銜接程式碼,並非 LibreSpeed 的一部分.`src/web/app.py` 內的伺服器端點(`/speedtest/garbage`,`/speedtest/empty`,`/speedtest/getip`)重新實作 LibreSpeed 文件所述用戶端/伺服器協定;屬原創程式碼,並非衍生自上游 PHP 後端.
+`src/web/static/speedtest-ui.js` 是本項目自有的銜接程式碼,並非 LibreSpeed 的一部分.`src/web/app.py` 內的伺服器端點(`/speedtest/garbage`,`/speedtest/empty`,`/speedtest/getip`)重新實作 LibreSpeed 文件所述用戶端/伺服器協定;屬原創程式碼,並非衍生自上游 PHP 後端.
 
 LGPL-3.0 全文已隨附,並提供上游原始碼連結;本清單不提供關於組合使用的獨立法律意見.
 
@@ -98,15 +101,15 @@ LGPL-3.0 全文已隨附,並提供上游原始碼連結;本清單不提供關於
 
 控制台的 `/proxy` 頁面使用這套隨附用戶端函式庫,把分享連結繪成可掃描 QR 碼.2026-09-27,兩個隨附的 JavaScript 檔案及原始授權文件與上游 js2.0.4 標籤檔案位元組完全相同.
 
-- 組件:`static/third_party/qrcode/qrcode.js`,`static/third_party/qrcode/qrcode-utf8.js`
+- 組件:`src/web/static/third_party/qrcode/qrcode.js`,`src/web/static/third_party/qrcode/qrcode-utf8.js`
 - 上游項目:https://github.com/kazuhikoarase/qrcode-generator
 - Copyright (c) 2009 Kazuhiko Arase
 - 版本:`js2.0.4`
 - 原始碼修訂:`83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- 授權:MIT;全文見 [`static/licenses/MIT.txt`][local-link-014]
+- 授權:MIT;全文見 [`src/web/static/licenses/MIT.txt`][local-link-014]
 - 核實:兩個檔案與上游 `js/dist/qrcode.js` 和 `js/dist/qrcode_UTF8.js` 相符;原始 MIT 授權文件亦相符.
 
-`static/qrcode-render.js` 是本項目自有的銜接程式碼(尋找 `[data-qr-text]` 元素,填入繪製的 SVG),並非隨附函式庫的一部分.
+`src/web/static/qrcode-render.js` 是本項目自有的銜接程式碼(尋找 `[data-qr-text]` 元素,填入繪製的 SVG),並非隨附函式庫的一部分.
 
 MIT 版權及授權聲明與用戶端函式庫一同隨附.
 
@@ -126,24 +129,24 @@ MIT 版權及授權聲明與用戶端函式庫一同隨附.
 
 並非第三方;但程式碼並非源自此儲存庫,其來源對更新甚為重要,故在此記錄:
 
-- `src/web/app.py`, `static/speedtest-ui.js`,`static/style.css`,`static/visitors.js`,`tests/`,`deploy/install.sh`,`deploy/uninstall.sh`,`deploy/systemd/` — 來自 `vps-webserver` v0.4.1(上游 Apache-2.0,此處改以 GPL-3.0 授權).見 `config/upstream-version`.
+- `src/web/app.py`, `src/web/static/speedtest-ui.js`,`src/web/static/style.css`,`src/web/static/visitors.js`,`tests/`,`deploy/install.sh`,`deploy/uninstall.sh`,`deploy/systemd/` — 來自 `vps-webserver` v0.4.1(上游 Apache-2.0,此處改以 GPL-3.0 授權).見 `config/upstream-version`.
 - `deploy/anytls/setup-anytls.sh`,`third_party/sing-box/sing-box`,`third_party/sing-box/sing-box.version` — 來自 `Anytsl-Serve` v1.2.0(上游 GPL-3.0).見 `deploy/anytls/.upstream-version`.
 
 ---
 
-隨附的第三方字體和圖標列於上表.沒有包含第三方圖像數據集或模型權重.安裝程序可以下載經固定校驗和驗證的 FRPC 客户端資源,也可以選擇查詢公網 IP 地址;查詢失敗時僅顯示警告.
+隨附的第三方字體和圖標列於上表.沒有包含第三方圖像數據集或模型權重.安裝程序可以下載經固定校驗和驗證的 FRPC 客户端資源,不會查詢公網 IP 地址.
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE
 [local-link-003]: ../../LICENSE
 [local-link-004]: #對應原始碼
 [local-link-005]: LOG.md#決策
-[local-link-006]: ../../static/licenses/LGPL-3.0.txt
+[local-link-006]: ../../src/web/static/licenses/LGPL-3.0.txt
 [local-link-007]: ../../LICENSE
-[local-link-008]: ../../static/licenses/MIT.txt
+[local-link-008]: ../../src/web/static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
 [local-link-010]: LOG.md#決策
 [local-link-011]: DESIGN.md#重現要求
 [local-link-012]: ../../third_party/sing-box/LICENSE
-[local-link-013]: ../../static/licenses/LGPL-3.0.txt
-[local-link-014]: ../../static/licenses/MIT.txt
+[local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
+[local-link-014]: ../../src/web/static/licenses/MIT.txt
