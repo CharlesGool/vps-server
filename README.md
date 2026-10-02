@@ -49,6 +49,8 @@ See [current state and acceptance limits][local-link-001].
   and language choices are available on the ordinary Settings page; its Security
   section asks for the administrator password when verification has expired. Password
   changes invalidate existing sessions.
+  Ordinary Web service restarts preserve unexpired sessions, including when a
+  public listener or iperf3 setting is switched.
 - **Measures throughput and latency with iperf3, on demand.** The console opens
   a time-boxed window; `iperf3 -s` runs only inside it and shuts itself down
   when the window expires. Its status and port are shown separately; the port
@@ -65,9 +67,8 @@ See [current state and acceptance limits][local-link-001].
   connection settings, and a one-tap Clash Meta for Android import link with a
   copyable subscription URL and QR code when a private LAN address is available.
 - **Serves vmess/vless/trojan/shadowsocks proxies, any subset.** One more
-  sing-box process shares the vendored binary with anytls. Each installed
-  protocol starts with a numbered node. The console can create more nodes of
-  any installed protocol and delete individual nodes. New nodes accept a manual
+  sing-box process shares the vendored binary with anytls. Installing Singbox creates no default nodes. The console can create nodes
+  for supported protocols and delete individual nodes. New nodes accept a manual
   password or protocol-specific key/UUID, or generate one when the field is blank; TLS nodes default to
   `www.bing.com` for SNI. The node page lists interface and Tailscale addresses.
   Each node can have a traffic cap in GiB, separate upload and download speed limits
@@ -79,9 +80,9 @@ See [current state and acceptance limits][local-link-001].
   The import URL contains an opaque token and changes after the node's connection settings
   or name changes. The public ports do not serve proxy configurations.
 
-The selectable modules are web, iperf3, anytls, proxy, frps, and Lucky. frps
-and Lucky remain experimental; their behavior has not been accepted on a real
-host for this version.
+Fresh installation selects Web only. Settings can later install iperf3,
+Singbox, FRPS, and FRPC; Lucky can be selected with installer options.
+The final clean-install path for this pre-release is awaiting operator testing.
 The authenticated FRPS page shows the local server service, interface
 addresses, and connection settings, with its token and port masked until
 requested. The FRPS port and token can be edited in place and its service can
@@ -91,9 +92,12 @@ Its Test connection button makes a separate FRPC login using the saved server,
 port, and token. The instance page reveals the IP or token on request and
 shows each TCP/UDP proxy's type, local IP, local port, and remote port before
 editing. Saves keep the operator on the instance page, verify the file, and
-roll back on failure. These FRP actions use the signed-in session; recent
-administrator-password verification is reserved for Security Settings actions
-such as password and password-free IP changes. The field editor accepts simple
+roll back on failure. FRPC instance names may use Unicode letters and numbers,
+hyphens, and underscores, up to 32 characters. The name remains the suffix of
+its `/etc/frp/frpc-<name>.toml` configuration file. These FRP actions use the
+signed-in session; recent administrator-password verification is reserved for
+Security Settings actions such as password and password-free IP changes. The
+field editor accepts simple
 token-authenticated TCP/UDP configurations only; it does not alter unsupported
 FRPC TOML. FRPC instances on other devices remain outside this console's live
 status. The Modules page checks the local FRPC executable and
@@ -130,63 +134,68 @@ maintained, and their code is vendored here rather than absorbed.
 
 ## Install
 
-One-line quick install (latest release tag, no configuration variables):
+This pre-release is for a manual clean-install check. A fresh install from this
+exact tag has not yet been verified.
 
 ```bash
-git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
-```
-
-Step by step, with configuration:
-
-```bash
-# Clone a release tag; the default branch can contain unpublished changes.
-# List release tags: `git ls-remote --tags https://github.com/CharlesGool/vps-server.git`
-git clone --branch v4.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v4.1.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
-cp .env.example .env   # optional — every variable has a working default
-bash deploy/install.sh
+sudo bash deploy/install.sh
 ```
 
-`deploy/install.sh` asks which modules to install, the interface language,
-whether to password-protect the console, and which ports to use. The v4.0.0
-tag includes all six selectable modules; frps and Lucky are experimental.
+The installer installs only the Web console on a fresh host, using a random
+persistent port and generated administrator password. It prints both after the
+service starts. Install optional modules from **Settings → Modules**.
 
 ### First setup
 
-The setup flow below is included in v4.0.0. On a new Debian or Ubuntu installation,
-clone the release tag and run `bash deploy/install.sh` as root from a terminal. The
-default application directory is the root account's `~/apps/vps-server`;
-`PREFIX` can select another directory.
+On a Debian or Ubuntu host, run `sudo bash deploy/install.sh` from the tagged
+checkout. The default application directory is the root account's
+`~/apps/vps-server`; `PREFIX` can select another directory.
 
-The installer opens a temporary HTTPS setup page on a random available port
-and prints its URL, certificate fingerprint, and one-time random setup password
-in the terminal. The page expires after five minutes if no selection is made.
-Sign in there and choose the modules to install; the Web console is required
-for browser setup. Proxy protocols are asked only when proxy nodes are selected.
-After submission, refresh the setup page to see progress. When installation
-finishes and the host has a usable interface address, it links to the control
-panel; otherwise use the address printed in the terminal. The terminal prints
-the persistent control-panel password and address; the one-time setup password
-does not log in to the control panel. The temporary listener closes and
-releases its port after the completion grace period.
+The installer runs directly in the terminal. On a fresh host it installs only
+the Web console and prints its URL and persistent password when the service
+is healthy. Open **Settings → Modules** to install optional modules. Public
+HTTP/HTTPS can be enabled separately from Home; FRPS defaults
+to 7000; Lucky's admin listener defaults to private access on 16601. Proxy
+ports and credentials are generated by their setup scripts. Check the printed
+addresses and service status before using them from another device.
 
 From the control panel, open **Settings → Modules**. An ordinary signed-in
 session can manage these operational functions; password verification remains
-required for Security Settings. The module list contains Speed test, iperf3,
-Proxy nodes, FRPS, FRPC, Port forward, Recent visitors, Changelog, and Settings.
-Only separately installable functions show Install or Uninstall. Before
+required for Security Settings. Settings also lets an ordinary signed-in
+operator save a server label, shown beside the product name and in browser
+tab titles, and change the management console port. The label and port
+selection are stored in the installation's private data directory;
+clearing the field restores the default title. Home contains HTTP page (80),
+HTTPS page (443), Speed test, iperf3, Singbox, FRPS, FRPC, Port forward,
+Recent visitors, Changelog, and Settings. Settings → Modules contains only
+the separately installable iperf3, Singbox, FRPS, and FRPC. Before
 uninstalling one, the helper stores a private configuration archive under
 `$PREFIX/data`; the latest job output is visible on the Modules page. Optional
-modules install from version-matched files under `$PREFIX/installer-source`.
-Every Home card except Settings has its own switch. The Proxy nodes switch
-controls both AnyTLS and the other proxy protocols; it keeps node records and
+modules other than iperf3 install from version-matched files under
+`$PREFIX/installer-source`, including when the source checkout is also the
+install directory. Singbox and FRPS use bundled binaries; apt installs their
+missing system dependencies. The Modules page streams the actual installer
+output, including apt output. A new Singbox installation creates no proxy
+nodes; add each desired protocol from the Singbox page. Existing node
+configurations are retained during an upgrade. FRPS installation runs
+independently of Singbox and reuses its saved port and token after reinstall.
+iperf3 installs from the distro package manager without
+rerunning setup for existing proxy nodes. The HTTP page (80) and HTTPS page
+(443) appear as separate cards on Home and Modules. Selecting a Home card
+opens that page on its public port; a disabled page shows a closed notice.
+If a port is occupied when its switch is enabled, the card shows the port
+conflict and the previous setting is restored. Either port can be stopped
+without turning off the other or the console. On an
+upgrade, both switches inherit the previous public-page setting until each is
+changed. Every Home card except Settings has its own switch. The Proxy nodes
+switch controls both AnyTLS and the other proxy protocols; it keeps node records and
 does not start a service with zero enabled nodes. The FRPC switch restores
 instances that were running before it was turned off. Port forwarding keeps
 saved rules when switched off and reapplies enabled rules when switched on.
-An installation runs as an independent systemd job and can briefly restart
-the Web service. If the setup port is unreachable,
-use `VPSSRV_SETUP_PUBLIC=0` with a local SSH tunnel or choose a permitted port
-with `VPSSRV_SETUP_PORT`.
+An optional module installation from the console runs as an independent
+systemd job and can briefly restart the Web service.
 
 For a host with FRPC installed, open the **FRPS** or **FRPC** card from Home.
 **Edit FRPS** changes its bind port and token; a blank field keeps its current
@@ -206,39 +215,68 @@ allow its `remotePort` in any active host firewall and cloud security group;
 the editor registers same-host port assignments but does not change cloud
 firewall rules.
 
-**Re-running it upgrades in place.** It detects an existing install, offers to
-keep its configuration, and only asks about settings the installed version did
-not have — each with its default, so pressing Enter is a valid answer. The
-console password, the persisted port, the certificates, the visitor log, the
-anytls node's credentials, and every installed
-proxy protocol's port and credential all survive. Answer `n` to the upgrade
-question to re-ask settings instead.
+**Re-running it upgrades in place.** It preserves the previously selected
+modules, recorded settings, console password and port, certificates, visitor
+data, and existing proxy credentials. Set `VPSSRV_MODULES` to change the
+module selection explicitly. Changing the console port in Settings updates
+`PORTS.md` and restarts Web; the old address is restored if the new listener
+fails.
 
 ## Guidance
+
+### Maintaining and reusing features
+
+The Web entry point is `src/web/app.py`. Feature pages, actions, routes, and
+their service functions live under `src/web/features/`; the unauthenticated
+reachability page has its own module. Each feature receives its host context
+explicitly and does not import the Web entry point. Existing imports and
+HTTP paths remain available through the entry point.
+
+Frontend behavior remains in the feature scripts under `static/`. Edit CSS in
+`static/styles/`, then run `python3 tools/build_styles/build_styles.py` to refresh the
+served `static/style.css`; use `--check` to verify that bundle. A feature can
+be copied into another Python project with the context values and request
+methods it uses, plus its relevant JavaScript and CSS. See
+[Feature modules](doc/DESIGN.md#feature-modules) for the file map and context
+contract. The installer copies the feature package with the Web entry point.
+
+The iperf3 page places the **iperf3 server** and **iperf3 client** panels side
+by side when space permits, and stacks them on narrower screens. The client
+panel can run this host as a client against another server.
+Start `iperf3 -s` on the target first, then enter its IP and server port in
+the console. Choose TCP or UDP and whether this host sends or receives the
+test traffic. The form limits a test to 30 seconds and 1,000 Mbit/s; results
+are shown on the page and are not saved. This client operation lives in
+`src/web/features/iperf_client.py` and can be reused independently of the Web
+handler.
+When this host opens its iperf3 window, the page offers three short commands
+for another machine: a basic speed test, an explicit single-stream test, and
+a four-stream test. The first two both use one stream. The Changelog card is
+always available and has no on/off switch.
 
 ### Quick start
 
 Version 2.0.0 puts web implementation in `src/web/app.py` and runs installers
 from `deploy/`. Bundled binaries and license notices are under `third_party/`;
 release metadata is under `config/`. Installed files remain flat under
-`$PREFIX`; the checkout layout change does not migrate runtime data. The
-new paths have passed local tests, but this version has not been accepted on a
-real host.
+`$PREFIX`; the checkout layout change does not migrate runtime data. The paths and upgrade behavior passed local and test-host checks; a fresh
+install from this pre-release remains unverified.
 
 ```bash
-bash deploy/install.sh                       # interactive setup in a temporary browser wizard
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
+sudo bash deploy/install.sh                  # install Web only on a fresh host
+sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # select additional modules
 systemctl status vps-server-web              # is it up
 bash deploy/anytls/setup-anytls.sh status           # anytls node details, if that module is installed
 bash deploy/proxy/setup-proxy.sh status             # proxy node details, if that module is installed
 ```
 
-Then, from a different machine:
+After enabling the corresponding modules or listeners, verify them from a
+different machine:
 
 ```bash
-curl -sS  http://<ip>/                     # reachability over plain HTTP
-curl -sSk https://<ip>/                    # ... and over TLS (self-signed)
-iperf3 -c <ip> -p 5201 --json              # only while a window is open
+curl -sS  http://<ip>/                     # only after enabling HTTP
+curl -sSk https://<ip>/                    # only after enabling HTTPS
+iperf3 -c <ip> -p 5201                     # only while an iperf3 window is open
 ```
 
 ### Verify it works
@@ -253,8 +291,8 @@ module and its port. Then:
   reading HTTPS.
 - Logging in to `http://<ip>:<console port>/` shows the dashboard with the
   iperf3 control present and the window closed.
-- After opening a 5-minute window, `iperf3 -c <ip> -p 5201 --json` from another
-  machine reports a throughput figure and contains `mean_rtt`. Five minutes
+- After opening a 5-minute window, `iperf3 -c <ip> -p 5201` from another
+  machine reports a throughput figure. Five minutes
   later the same command fails to connect — that is the window closing itself,
   not a fault.
 - If you installed anytls: `systemctl status vps-server-anytls` reports
@@ -271,7 +309,7 @@ ones:
 |---|---|---|---|
 | `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Public reachability page, TLS | `443` | no |
-| `VPSSRV_PUBLIC_ENABLE` | Serve the public page at all | `1` | no |
+| `VPSSRV_PUBLIC_ENABLE` | Serve the public page at all on a fresh install | `0` | no |
 | `VPSSRV_CONSOLE_PORT` | Console port; `0` generates one and remembers it | `0` | no |
 | `VPSSRV_AUTH` | Require a password on the console | `1` | no |
 | `VPSSRV_IPERF_PORT` | Port an open iperf3 window listens on | `5201` | no |

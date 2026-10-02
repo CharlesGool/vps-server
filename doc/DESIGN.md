@@ -60,25 +60,29 @@ describe the four previously documented modules.
 **Tracked goals and current status:**
 
 - [x] 2026-09-19 Per-node traffic accounting and data caps: the five proxy protocols track upload/download independently. The original 1 Mbps response to a cap and the monthly or one-time reset passed live-host tests on 2026-09-27. The current branch adds separate upload/download speed caps, a choice of 1 Mbps throttling or blocking after the traffic cap, recurring cycles measured in days, calendar months or years, and an optional validity duration that blocks traffic on expiry. The new policy rules and state migration have automated checks; the current test host has verified the UI and migration, while live transfer through every policy combination remains unverified.
-- [x] 2026-09-19 Browser-based first-run setup: this checkout uses a short-lived setup wizard in `tools/setup_wizard/setup_wizard.py` when the interactive installer has no `VPSSRV_MODULES` value. It collects language, modules, ports, and authentication choices; the shell installer performs the selected actions only after validating the result. This checkout has not been accepted on a real host.
+- [x] 2026-09-19 Browser-based first-run setup was implemented and tested, then retired on 2026-09-30 after a failed clean-host trial. The current installer runs directly and selects only the Web console when `VPSSRV_MODULES` is unset.
 - [x] 2026-09-22 Provide FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device.
 - [x] 2026-09-29 Manage host-local FRP configuration. A signed-in operator can change the FRPS bind port and token, edit and verify local FRPC instances, and start or stop those instances without recent administrator-password verification. The instance page reveals saved IP and token values only on request. A transient root helper performs fixed operations outside the Web unit's read-only system sandbox. It reserves changed local listener ports in `~/apps/PORTS.md` before starting them, releases ended assignments, restores the previous configuration on validation or service failure, and does not modify FRPC instances on other devices. The Modules page now installs a checksum-pinned FRPC binary and `frpc@.service` template separately from FRPS; it determines installation from those files, rather than from the presence of an instance configuration. Uninstall stops instances and retains their configurations.
 - [x] 2026-09-29 Present FRPS and local FRPC controls as operator cards. FRPS uses the node page's inline edit pattern and a service switch. Each FRPC instance has a masked target IP, socket-derived connection indicator, and a separate Test connection action that makes a proxy-free FRPC login with saved credentials. Its page shows the server fields and every proxy's type, local IP, local port, and remote port; editing opens only after the operator chooses Edit, and saving returns to that instance. The field editor accepts only simple token-authenticated TCP/UDP configuration it can represent and leaves unsupported TOML unchanged. A target card represents a host-local instance, and the initial connection indicator requires an established socket owned by that instance's systemd main process to its configured server and port.
 
 FRPC card review, 2026-09-29: the four operator screenshots showed the old connection template, masked facts without a direct reveal, an advanced TOML panel, and a server card without a test action. Chromium on the deployed `test-d09835d` build at 390 and 1440 CSS px checked the instance list, masked and revealed server facts, collapsed and open Edit controls, proxy facts, connection-test states, and a save returning to the same instance. The redundant panels are absent, both reveals load on request, all four proxy facts are visible, and neither viewport has horizontal overflow. The interface retains the project's existing card styling; real mobile hardware and proxy traffic were outside this browser review.
-- [x] 2026-09-29 Extend first-run setup and add protected module management. A fresh interactive install opens a random temporary HTTPS port, prints a one-time setup password, and requires the Web console in its browser selection. After submission, the page shows installation progress and links to the control panel when healthy. The later Settings → Security → Modules page can install an omitted module from the installed, version-matched source payload or enable and disable an installed module. A transient systemd job runs the original installer outside the Web service; its module choices preserve previously installed modules and credentials. Systemd service switches retain configuration; the Web switch affects only the public page so the control panel remains reachable. The first-run flow and later installation are covered by local tests and browser checks, but have not yet been accepted on a clean host.
+- [x] 2026-09-29 Add console module management. The former browser setup flow is historical. The Settings → Modules page can install an omitted module from the installed, version-matched source payload or enable and disable an installed module. A transient systemd job runs the installer outside the Web service; explicit module choices preserve existing credentials. The iperf3 action installs only the distro package, records it, and enables its console control without rerunning node setup. Systemd service switches retain configuration; the public listener switches affect only their selected port so the control panel remains reachable.
 
-The first-run listener reserves its random port in `~/apps/PORTS.md` before it
-serves requests, and releases that entry when it closes. The temporary setup
-password admits one browser session and is discarded after the module choice.
+The Changelog remains available as a permanent Home and Settings entry. Its
+card has no switch, and module actions cannot disable it. The iperf3 window
+offers basic, one-stream, and four-stream commands without requiring JSON
+output; the first two use the same stream count by design.
+
 The later module page requires the same short-lived administrator verification
 as other Security Settings. It submits only fixed module names and actions to
 a separate privileged systemd job. The job records progress outside the Web
 service, allowing a Web restart during installation. Disabling a proxy module
 does not remove its nodes or credentials; disabled units remain stopped when
-node controls are used. The iperf3 and public-page switches restart the Web
-service to apply their listener changes. Neither switch removes the control
-panel, which remains available for later changes.
+node controls are used. The iperf3 and public listener switches restart the Web
+service to apply their settings. HTTP and HTTPS have separate persisted flags;
+when a flag does not yet exist, it inherits the former combined public-page
+flag or the installation default. The control panel stays available on its
+separate listener.
 - [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
 - [x] Complete live-host acceptance of the node controls: display numbers stay contiguous after deletion and restart at 1 when all nodes are removed, while hidden UUIDs preserve identity; names, ports, credentials, and TLS SNI are editable; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. Each node can be disabled without deleting its configuration or traffic record and re-enabled on the same port. The controls passed live-host tests on 2026-09-27.
 - [x] Redesign the full Web UI with one accessible design system across the console, public reachability page, and setup wizard. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
@@ -143,6 +147,49 @@ The web service, anytls service, and optional proxy service run as separate proc
 
 The diagram shows the web and anytls units; the optional `vps-server-proxy.service` runs multiple independent inbounds in a third process, sharing the vendored sing-box binary but not either unit's state. Each module can be selected separately; see [The proxy module][local-link-005].
 
+### Feature modules
+
+`src/web/app.py` owns process configuration, authentication boundaries,
+listener setup, and compatibility names used by existing callers. The
+`ConsoleHandler` composes feature mixins from `src/web/features/`; each mixin
+contains the routes, page HTML, and actions for its feature. Service functions
+in the same modules take a `context` argument. The entry point passes its
+module as that context, so existing test overrides and public Python imports
+continue to work. A consuming project can provide a different context with
+the settings, service functions, and standard-library facilities referenced
+by the selected feature. Handler mixins also expect the host handler's HTTP
+helpers (`send_html`, `redirect`, `read_body`, and `render_page`) as applicable.
+The feature modules do not import this application's entry point.
+
+| Feature | Backend module | Frontend source |
+| --- | --- | --- |
+| Login and access | `features/auth.py` | `static/password-fields.js`, `static/styles/login.css` |
+| Settings | `features/settings.py` | `static/access-settings.js`, `static/settings-sections.js`, `static/styles/settings.css` |
+| Home and module control | `features/modules.py` | `static/module-controls.js`, `static/module-status.js`, `static/styles/dashboard.css`, `static/styles/modules.css` |
+| Browser speed test | `features/speedtest.py` | `static/speedtest-ui.js`, `static/styles/speedtest.css` |
+| iperf3 window and outbound test | `features/iperf.py`, `features/iperf_client.py` | `static/iperf-countdown.js`, `static/styles/iperf.css` |
+| FRPS and FRPC | `features/frp.py` | `static/frp-editor.js`, `static/styles/frp.css` |
+| Proxy nodes and AnyTLS | `features/proxy.py`, `features/proxy_service.py` | `static/node-controls.js`, `static/private-values.js`, `static/styles/proxy.css`, `static/styles/nodes.css` |
+| Port forwarding | `features/portfwd.py` | Shared form styles in `static/styles/forms.css` |
+| Recent visitors | `features/visitors.py` | `static/visitors.js`, `static/styles/visitors.css` |
+| Changelog | `features/changelog.py` | `static/styles/changelog.css` |
+| Lucky status | `features/lucky.py` | Shared card styles |
+| Public reachability page | `features/public.py` | `static/styles/public.css`, embedded into the response |
+
+`features/system.py` contains shared host command and firewall helpers;
+`features/ui.py` contains shared rendering helpers. The existing node
+controllers and FRP/module helpers remain separate under `src/web/` and can
+be reused without the HTTP handler. JavaScript files attach to their own
+page elements; shared scripts handle theme, copying, password visibility, and
+selection controls. Ordered CSS source files under `static/styles/` build
+`static/style.css` with `python3 tools/build_styles/build_styles.py`. The build preserves
+the former rule order and does not add a runtime CSS dependency. The Web
+installer copies `features/` and `static/` beside its flat `app.py` entry
+point. Reusing a feature in another project requires its context adapter and
+the shared styles or scripts it references; the routes are not a standalone
+package with an independent authentication policy.
+
+
 ### Why the public page and the console are separate listeners
 
 They have opposite security postures, and merging them would force one of the
@@ -162,7 +209,10 @@ The resulting session is bound to the connection peer and the allowlist is
 rechecked on every request. Security Settings requires administrator-password
 verification recorded for the session and expires after ten minutes. An IP-only
 session completes that challenge and receives a new password-authenticated
-session; changing the password invalidates all existing sessions. The ordinary
+session; changing the password invalidates all existing sessions. The session
+store is persisted in a private file so restarting the Web service for
+listener or iperf3 changes does not require another login. Expired sessions
+are discarded on load and password changes clear the store. The ordinary
 Settings page holds appearance and language choices without a second password
 check. Its separate Security page requires the short-lived verification before
 showing the allowlist or changing security controls. The allowlist
@@ -379,6 +429,19 @@ absent on one that cannot read it — iperf3 under Cygwin on Windows reports
 throughput but no `mean_rtt`. UDP mode (`-u`) reports jitter and loss
 everywhere, and is the portable answer when the tester is not on Linux.
 
+The console can also initiate an iperf3 client test toward an operator-entered
+IP address. The operator starts `iperf3 -s` on the target; this console does
+not control the remote service. The client helper accepts only IP literals,
+validates the port, protocol, direction, duration (at most 30 seconds), and
+rate limit (at most 1,000 Mbit/s), then runs iperf3 with a fixed argument
+list and a process timeout. A lock permits only one outbound test at a time.
+`--reverse` makes the target send traffic to this host. The page reports the
+JSON summary, including UDP jitter and loss or TCP retransmits when iperf3
+provides them. The result is held in memory for the redirect back to the
+page, available once to the same session for up to two minutes, and is never
+written to disk.
+The existing inbound test window remains independent.
+
 ### Port forwarding lifecycle
 
 A forward relays a public TCP/UDP port on this host to a device reached over
@@ -571,21 +634,17 @@ exists to avoid.
 ## Setup from scratch
 
 1. `git clone <repo>` and `cd` into it — verify: `ls -lh third_party/sing-box/sing-box` shows the ~57 MB binary.
-2. `bash deploy/install.sh` — an interactive run starts a temporary browser
-   setup wizard for modules, UI language, console authentication, and ports.
-   Open the printed URL and enter its one-time token; after applying the
-   validated selection, verify the terminal summary lists each module and port.
+2. `bash deploy/install.sh` — installs only the Web console on a fresh host,
+   with a random port and generated password. Optional modules remain absent,
+   and public HTTP/HTTPS and built-in features remain off.
 3. `systemctl status vps-server-web` — verify: `active (running)`.
-4. From another machine, open `http://<ip>/` — verify: the reachability page
-   renders and shows your own source IP.
-5. From another machine, open `https://<ip>/` and accept the certificate warning
-   — verify: the same page, with the protocol line reading HTTPS.
-6. Open `http://<ip>:<console port>/`, log in — verify: the dashboard loads and
-   shows the iperf3 control with the window closed.
-7. Open a 5-minute iperf3 window from the console, then from another machine run
-   `iperf3 -c <ip> -p 5201 --json` — verify: throughput is reported and
-   `mean_rtt` is present in the output.
-8. If the anytls module was installed: `systemctl status vps-server-anytls` —
+4. From another machine, open `http://<ip>:<console port>/` and log in — verify
+   that Settings can change the console port and that Modules offers optional
+   installation. Enabling public HTTP and HTTPS later exposes ports 80 and 443.
+5. Install iperf3 from Settings → Modules, open a 5-minute window from the console, then from another machine run
+   `iperf3 -c <ip> -p 5201` — verify: throughput is reported. Add `--json`
+   when the client's `mean_rtt` field is also needed.
+6. If the anytls module was installed: `systemctl status vps-server-anytls` —
    verify: `active (running)`; the installer's summary printed a client config
    line.
 
@@ -593,11 +652,45 @@ exists to avoid.
 
 The visitor database, `portfwd.json` (enabled forwarding rules), and
 `login-access.json` (private-IP allowlist) persist under `$VPSSRV_DATA_DIR`.
-The signed-in Settings page owns the nine-item operational module list.
+An optional `server-label.txt` in that directory stores the operator's
+server identifier. The ordinary Settings page edits it with a CSRF-protected
+form; the shared page renderer reads it for the top-left label and browser
+title without restarting Web. Empty input clears the label.
+`console_port.txt` stores the generated console port. An authenticated Settings
+action starts a privileged port-change job that checks listeners and the host
+port registry, writes `data/console-port-override`, restarts Web, verifies the
+new listener, and restores the old port and registry on failure. The host
+registry is `~/apps/PORTS.md`; the console records its listener there.
+The signed-in Settings page owns the four installable modules: iperf3,
+Singbox, FRPS, and FRPC. HTTP page (80) and HTTPS page (443) each have
+their own card and switch on Home. Selecting an enabled Home card opens its public
+listener; selecting a disabled one shows the closed page. The Web process
+records which listeners actually bound. The privileged switch helper checks
+that report after restart, restores the previous flag on failure, and reports
+a port conflict on the relevant card. The console remains available on its
+separate port.
+An in-place install also stages the version-matched source needed for later FRPC setup.
 Optional installs and uninstalls run through the serialized root helper;
 `data/module-job.json` exposes its state and `data/module-job.log` contains
-the latest installer output, including package-manager failures. Uninstalls
+the complete latest installer output, including live apt progress. Singbox and
+FRPS install from bundled binaries, while apt installs system dependencies.
+Singbox installation creates validated empty configurations for its two
+services; operators add nodes explicitly in the console. Existing
+configurations are validated and preserved on upgrade.
+The Modules action installs both Singbox services in one installer run so
+their configurations enter the node inventory before either service starts.
+FRPS installation uses its own setup script and retains `/etc/vps-server-frps/frps.toml`
+on uninstall, avoiding an unrelated traffic-meter restart and keeping clients'
+server port and token stable after reinstall.
+Uninstalls
 archive current module configuration under `data/` before removing it.
+Removing Singbox also reconciles its node inventory and stops the traffic
+meter. Reinstalling a removed node module preserves an inventory backup,
+then imports the newly installed configuration. Installing an unrelated
+module does not require the traffic meter when no node module is selected.
+During a node install, the installer stops node services and defers their
+restart until both configuration files have been imported into the inventory
+and the traffic meter is ready. Enabled node services then start again.
 Home keeps one switch for each function except Settings. Built-in feature
 flags persist under `data/`; the Port forward flag is reconciled by the running
 Web process so its saved rules are withdrawn or reapplied without invalidating
@@ -610,6 +703,13 @@ AnyTLS and proxy units while the node inventory stays intact.
 Home opens FRPS at `/frps` and the FRPC instance list at `/frpc`; the client
 editor remains under `/frp/client/edit`. The former combined `/frp` route
 redirects to the FRPC list for existing bookmarks.
+FRPC instance names allow normalized Unicode letters and numbers plus `_` and
+`-`, up to 32 characters. The canonical configuration keeps that name in
+`/etc/frp/frpc-<name>.toml`. Existing ASCII names keep their systemd unit names;
+Unicode names use a stable ASCII unit name and a root-owned configuration
+symlink because the `frpc@.service` template expands `%i` into its config path.
+The client list excludes these aliases. Creating, renaming, or deleting an
+instance maintains its alias, and a failed create removes both files.
 The console password, selected port, web certificates and
 `.install-state` live under `$PREFIX`; the sing-box module configs and their
 certificates live in `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`.
