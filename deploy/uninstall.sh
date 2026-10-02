@@ -42,8 +42,13 @@ msg() {
     zh_cn) catalog=zh-CN ;; zh_tw) catalog=zh-TW ;; zh_hk) catalog=zh-HK ;;
     *) catalog="$INSTALL_LANG" ;;
   esac
+  # Keep the catalog in memory: a full uninstall removes PREFIX before the
+  # final messages, and the installed catalog may live under PREFIX/lang.
+  if [ -z "${CATALOG_CONTENTS+x}" ]; then
+    CATALOG_CONTENTS="$(cat "$CATALOG_ROOT/uninstaller/$catalog.sh")"
+  fi
   # shellcheck disable=SC1090
-  source "$CATALOG_ROOT/uninstaller/$catalog.sh"
+  source /dev/stdin <<< "$CATALOG_CONTENTS"
   printf "$fmt" "$@"
 }
 
@@ -155,18 +160,10 @@ if [ "${KEEP_DATA:-0}" = "1" ]; then
     msg nothing_left "$PREFIX"
   fi
 elif [ -d "$PREFIX" ]; then
-  # The installed language catalog lives inside PREFIX. Render both final
-  # messages before removing it so a complete purge can still exit cleanly.
-  final_purged="$(msg purged "$PREFIX")"
-  final_done="$(msg done)"
   rm -rf "${PREFIX:?}"
-  printf '%s\n' "$final_purged"
+  msg purged "$PREFIX"
 else
   msg nothing_left "$PREFIX"
 fi
 
-if [ -n "${final_done:-}" ]; then
-  printf '%s\n' "$final_done"
-else
-  msg "done"
-fi
+msg "done"

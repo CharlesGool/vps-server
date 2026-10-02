@@ -11,6 +11,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class UninstallGuidanceTest(unittest.TestCase):
+    def test_catalog_remains_available_after_prefix_removal(self):
+        source = (ROOT / "deploy/uninstall.sh").read_text()
+        message = re.search(r'^msg\(\) \{\n.*?^\}', source, re.M | re.S)
+        self.assertIsNotNone(message)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "lang" / "uninstaller"
+            catalog.mkdir(parents=True)
+            (catalog / "en.sh").write_text((ROOT / "lang/uninstaller/en.sh").read_text())
+            script = (message.group() + '\nmsg removed_unit example.service\n'
+                      'rm -rf "$CATALOG_ROOT"\nmsg done\n')
+            result = subprocess.run(
+                ["bash", "-e", "-c", script],
+                env={"INSTALL_LANG": "en", "CATALOG_ROOT": str(root / "lang")},
+                capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Removed example.service", result.stdout)
+            self.assertIn("vps-server has been uninstalled", result.stdout)
+
     def test_missing_anytls_script_preserves_shared_binary_used_by_proxy(self):
         source = (ROOT / "deploy/uninstall.sh").read_text()
         message = re.search(r'^msg\(\) \{\n.*?^\}', source, re.M | re.S)
@@ -51,8 +71,8 @@ class UninstallGuidanceTest(unittest.TestCase):
                     self.assertNotRegex(result.stdout, r'(?m)^\s*rm\b[^\n]*sing-box-vps-server')
 
     def test_qrcode_comment_names_existing_vendor_sources(self):
-        comment = (ROOT / "static/qrcode-render.js").read_text().split("// Own code", 1)[0]
-        for path in ("static/third_party/qrcode/qrcode.js", "static/third_party/qrcode/qrcode-utf8.js"):
+        comment = (ROOT / "src/web/static/qrcode-render.js").read_text().split("// Own code", 1)[0]
+        for path in ("src/web/static/third_party/qrcode/qrcode.js", "src/web/static/third_party/qrcode/qrcode-utf8.js"):
             self.assertIn(path, comment)
             self.assertTrue((ROOT / path).is_file())
 
