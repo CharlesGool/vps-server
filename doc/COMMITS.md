@@ -11,7 +11,8 @@ metadata:
 Use `git show <hash>` to inspect an entry and `git log` for the full history.
 The `HEAD` entry refers to the candidate commit being prepared.
 
-- `HEAD` 2026-10-03 docs: record v4.1.0-test.1 publication
+- `HEAD` 2026-10-03 docs: record fresh-host test deployment
+- `3f5372c` 2026-10-03 docs: record v4.1.0-test.1 publication
 - `cb64de9` 2026-10-03 build: mark v4.1.0-test.1 prerelease
 - `1d18537` 2026-10-03 docs: describe v4.1.0-test.1 installation and release limits
 - `96aee4b` 2026-10-03 feat: prepare modular console and direct installer
