@@ -57,8 +57,9 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
                  require_root=True):
     """Remove this project's FRPC service; purge its configs on full uninstall.
 
-    A changed service template is not ours to remove. The same rule protects
-    unrelated FRPC installations that use this host's global paths.
+    A full uninstall also removes an older FRPC template when this project
+    exposes named client configurations through its console. KEEP_DATA leaves
+    an unowned template and its configurations untouched.
     """
     if require_root and os.geteuid() != 0:
         raise PermissionError("root required")
@@ -69,22 +70,24 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
     owned_binary = marker.is_file() and marker.read_text().strip() == FRPC_SHA256
     matching_unit = (unit.is_file() and not unit.is_symlink() and
                      template.is_file() and unit.read_bytes() == template.read_bytes())
+    names = _instances(directory)
+    purge_named_clients = bool(names) and not keep_data
     if not unit.exists() and not owned_binary:
-        if not directory.is_dir() or (not _instances(directory) and
+        if not directory.is_dir() or (not names and
                 not any(directory.glob(".deleted-frpc-*.toml")) and
                 not any(_aliases(directory))):
             return None
     if unit.exists() and not matching_unit:
-        if owned_binary:
+        if unit.is_symlink() or (owned_binary and not purge_named_clients):
             raise CleanupError("FRPC service template changed")
-        return False
-    if not matching_unit and not owned_binary:
+        if not purge_named_clients:
+            return False
+    if not matching_unit and not owned_binary and not purge_named_clients:
         return False
     if binary.exists() and (binary.is_symlink() or not binary.is_file() or
             hashlib.sha256(binary.read_bytes()).hexdigest() != FRPC_SHA256):
         raise CleanupError("FRPC binary changed")
 
-    names = _instances(directory)
     services = {client_unit(name) for name in names}
     listed = _run(["systemctl", "list-units", "--all", "--plain", "--no-legend",
                    "frpc@*.service"], run=run, capture=True)
@@ -100,10 +103,11 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
         if _run(["systemctl", "is-active", "--quiet", service], run=run).returncode == 0:
             raise CleanupError("FRPC instance remains active")
 
-    if matching_unit:
+    if unit.is_file():
+        original_unit = unit.read_bytes()
         unit.unlink()
         if _run(["systemctl", "daemon-reload"], run=run).returncode:
-            unit.write_bytes(template.read_bytes())
+            unit.write_bytes(original_unit)
             _run(["systemctl", "daemon-reload"], run=run)
             raise CleanupError("could not reload systemd after FRPC removal")
 
@@ -184,7 +188,8 @@ def main(argv=None):
             print(cleanup_ports(prefix, service, check_only=action == "check-ports",
                                 preserve_frpc=len(argv) == 5 and argv[4] == "unowned"))
     except (CleanupError, OSError, ValueError, subprocess.SubprocessError) as exc:
-        print(f"uninstall cleanup failed: {type(exc).__name__}", file=sys.stderr)
+        reason = str(exc) if isinstance(exc, CleanupError) else type(exc).__name__
+        print(f"uninstall cleanup failed: {reason}", file=sys.stderr)
         return 1
     return 0
 
