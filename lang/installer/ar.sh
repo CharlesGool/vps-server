@@ -2,23 +2,15 @@
 case "$key" in
   need_root) fmt='يلزم التشغيل بصلاحيات الجذر (جرّب: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='لم يُعثر على systemd؛ هذا المثبّت مخصّص للمضيفات التي تستخدم systemd\n' ;;
+  platform_unsupported) fmt='النظام المدعوم هو Linux x86-64 فقط.\n' ;;
   no_python) fmt='لم يُعثر على python3 (apt install python3)\n' ;;
   no_openssl) fmt='لم يُعثر على openssl (apt install openssl)، أو اضبط VPSSRV_CONSOLE_TLS=0 لتقديم HTTP دون تشفير\n' ;;
   installing) fmt='جارٍ التثبيت في %s ...\n' ;;
   inplace_skip) fmt='المصدر هو دليل التثبيت؛ سيُتجاوز نسخ الملفات (ترقية في موضعها).\n' ;;
   missing_app) fmt='ملف %s/app.py غير موجود بعد خطوة النسخ\n' ;;
-  ask_auth) fmt='هل تريد حماية واجهة الويب بكلمة مرور؟ [Y/n] ' ;;
   auth_disabled) fmt='حماية كلمة المرور معطّلة؛ يستطيع أي شخص يعثر على المنفذ الدخول دون تسجيل.\n' ;;
-  ask_pwmode) fmt='هل تستخدم كلمة مرور عشوائية أم تعيّنها بنفسك؟ [R/m] ' ;;
-  pw_enter) fmt='كلمة المرور: ' ;;
-  pw_confirm) fmt='تأكيد كلمة المرور: ' ;;
-  pw_mismatch) fmt='كلمتا المرور فارغتان أو غير متطابقتين؛ حاول مجددًا.\n' ;;
-  pwmode_invalid) fmt='أجب R (عشوائية) أو m (تعيينها بنفسك)؛ حاول مجددًا.\n' ;;
   anytls_failed) fmt='\nفشل تثبيت وحدة anytls. وحدة الويب أعلاه مثبّتة وتعمل؛ المفقود فقط هو anytls. أعد التشغيل مع VPSSRV_MODULES=anytls بعد معالجة السبب.\n' ;;
   proxy_failed) fmt='\nفشل تثبيت وحدة proxy. وحدة الويب أعلاه مثبّتة وتعمل؛ المفقود فقط هو proxy. أعد التشغيل مع VPSSRV_MODULES=proxy بعد معالجة السبب.\n' ;;
-  ask_port) fmt='منفذ الاستماع — من 1 إلى 65535، أو اضغط Enter لاختيار منفذ عشوائي: ' ;;
-  port_nan) fmt='القيمة ليست رقمًا؛ حاول مجددًا.\n' ;;
-  port_range) fmt='خارج النطاق (1-65535)؛ حاول مجددًا.\n' ;;
   container) fmt='اكتُشفت حاوية؛ ستُحذف توجيهات عزل systemd (تفشل هنا بالرمز 226/NAMESPACE).\n' ;;
   writing_unit) fmt='جارٍ كتابة %s ...\n' ;;
   start_failed) fmt='\nفشل بدء الخدمة. أحدث السجلات:\n' ;;
@@ -32,11 +24,6 @@ case "$key" in
   line_lang) fmt='  اللغة: %s (الافتراضية إذا لم تطابق ملفات الارتباط أو الاستعلام أو المتصفح)\n' ;;
   cert_note) fmt='\nملاحظة: تُستخدم شهادة ذاتية التوقيع، لذا سيعرض المتصفح تحذيرًا\nعليك تجاوزه. لاستخدام شهادة حقيقية، اضبط VPSSRV_TLS_CERT\nوVPSSRV_TLS_KEY ثم أعد تشغيل المثبّت.\n' ;;
   to_remove) fmt='\nللإزالة:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
-  mod_head) fmt='\nأي الوحدات تريد؟ أجب عن كل واحدة على حدة.\n' ;;
-  ask_module_web) fmt='  web — صفحة التحقق من الوصول + اللوحة [Y/n] ' ;;
-  ask_module_iperf3) fmt='  iperf3 — نافذة اختبار عرض النطاق، تُدار من اللوحة [Y/n] ' ;;
-  ask_module_anytls) fmt='  anytls — عقدة وكيل sing-box [y/N] ' ;;
-  ask_module_proxy) fmt='  proxy — بروتوكولات sing-box vmess/vless/trojan/shadowsocks، اختر أيًّا منها [y/N] ' ;;
   proxy_protocols_head) fmt='  أي البروتوكولات؟ أجب عن كل واحد على حدة.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -77,8 +64,6 @@ case "$key" in
   lucky_public_warning) fmt='تحذير: ترسل إدارة Lucky العامة بيانات الاعتماد عبر HTTP غير مشفّر.\n' ;;
   lucky_public_confirm_prompt) fmt='اكتب I ACCEPT PUBLIC HTTP في طرفية الخادم للمتابعة: ' ;;
   lucky_public_confirm_required) fmt='يلزم تأكيد إتاحة إدارة Lucky للعامة\n' ;;
-  ask_module_frps) fmt='  frps — خادم FRP مستقل [y/N] ' ;;
-  ask_module_lucky) fmt='  lucky — خدمة DDNS ووكيل عكسي دون اتصال [y/N] ' ;;
   ask_lucky_port) fmt='  منفذ إدارة Lucky [16601]: ' ;;
   ask_lucky_public) fmt='  هل تريد إتاحة إدارة Lucky للعامة عبر HTTP غير مشفّر؟ [y/N] ' ;;
   lucky_http_warning) fmt='تحذير: تُنقل بيانات اعتماد إدارة Lucky عبر HTTP دون تشفير. يُفضّل الوصول الخاص أو وكيل TLS.\n' ;;

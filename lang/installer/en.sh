@@ -2,23 +2,15 @@
 case "$key" in
   need_root) fmt='must run as root (try: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='systemd not found; this installer targets systemd hosts\n' ;;
+  platform_unsupported) fmt='Only x86-64 Linux is supported.\n' ;;
   no_python) fmt='python3 not found (apt install python3)\n' ;;
   no_openssl) fmt='openssl not found (apt install openssl), or set VPSSRV_CONSOLE_TLS=0 to serve plain HTTP\n' ;;
   installing) fmt='Installing to %s ...\n' ;;
   inplace_skip) fmt='Source is the install directory — skipping file copy (in-place upgrade).\n' ;;
   missing_app) fmt='%s/app.py is missing after the copy step\n' ;;
-  ask_auth) fmt='Enable password protection for the web UI? [Y/n] ' ;;
   auth_disabled) fmt='Password protection disabled — anyone who finds the port gets in with no login.\n' ;;
-  ask_pwmode) fmt='Use a random password, or set one yourself? [R/m] ' ;;
-  pw_enter) fmt='Password: ' ;;
-  pw_confirm) fmt='Confirm password: ' ;;
-  pw_mismatch) fmt='Passwords were empty or did not match — try again.\n' ;;
-  pwmode_invalid) fmt='Answer R (random) or m (set it yourself) — try again.\n' ;;
   anytls_failed) fmt='\nThe anytls module failed to install. The web module above is installed and running; only anytls is missing. Re-run with VPSSRV_MODULES=anytls once the cause is fixed.\n' ;;
   proxy_failed) fmt='\nThe proxy module failed to install. The web module above is installed and running; only proxy is missing. Re-run with VPSSRV_MODULES=proxy once the cause is fixed.\n' ;;
-  ask_port) fmt='Port to listen on — 1-65535, or press Enter for a random one: ' ;;
-  port_nan) fmt='Not a number — try again.\n' ;;
-  port_range) fmt='Out of range (1-65535) — try again.\n' ;;
   container) fmt='Container detected — omitting systemd sandboxing directives (they fail with 226/NAMESPACE here).\n' ;;
   writing_unit) fmt='Writing %s ...\n' ;;
   start_failed) fmt='\nService failed to start. Recent log:\n' ;;
@@ -32,11 +24,6 @@ case "$key" in
   line_lang) fmt='  language: %s (default when no cookie/query/browser match)\n' ;;
   cert_note) fmt='\nNote: using a self-signed certificate, so browsers will show a warning\nyou must click through. To use a real certificate, set VPSSRV_TLS_CERT\nand VPSSRV_TLS_KEY and re-run this installer.\n' ;;
   to_remove) fmt='\nTo remove:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
-  mod_head) fmt='\nWhich modules? Answer each one independently.\n' ;;
-  ask_module_web) fmt='  web — reachability page + console [Y/n] ' ;;
-  ask_module_iperf3) fmt='  iperf3 — bandwidth test window, controlled from the console [Y/n] ' ;;
-  ask_module_anytls) fmt='  anytls — sing-box proxy node [y/N] ' ;;
-  ask_module_proxy) fmt='  proxy — sing-box vmess/vless/trojan/shadowsocks, pick any [y/N] ' ;;
   proxy_protocols_head) fmt='  Which protocols? Answer each one independently.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -77,8 +64,6 @@ case "$key" in
   lucky_public_warning) fmt='WARNING: Lucky public admin sends credentials over unencrypted HTTP.\n' ;;
   lucky_public_confirm_prompt) fmt='Type I ACCEPT PUBLIC HTTP on the server terminal to proceed: ' ;;
   lucky_public_confirm_required) fmt='Public Lucky admin confirmation required\n' ;;
-  ask_module_frps) fmt='  frps — standalone FRP server [y/N] ' ;;
-  ask_module_lucky) fmt='  lucky — offline DDNS and reverse proxy [y/N] ' ;;
   ask_lucky_port) fmt='  Lucky admin port [16601]: ' ;;
   ask_lucky_public) fmt='  Expose Lucky admin publicly over unencrypted HTTP? [y/N] ' ;;
   lucky_http_warning) fmt='WARNING: Lucky HTTP admin credentials travel unencrypted. Prefer private access or TLS proxy.\n' ;;

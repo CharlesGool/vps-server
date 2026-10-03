@@ -78,6 +78,7 @@ from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
 from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
 from module_manager import installed_modules, save_status as save_module_status
+from module_manager import iperf_binary
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
@@ -251,6 +252,7 @@ LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30")
 # as long as they like, and nothing about the host surfaces that it is
 # happening. See doc/LOG.md#decisions (2026-09-12).
 IPERF_MODULE_SWITCH = BASE_DIR / "data" / "iperf3-enabled"
+IPERF_BINARY = iperf_binary(BASE_DIR)
 IPERF_ENABLED = (IPERF_MODULE_SWITCH.read_text().strip() == "1" if IPERF_MODULE_SWITCH.exists()
                  else os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1")
 IPERF_PORT = int(os.environ.get("VPSSRV_IPERF_PORT", "5201"))
@@ -369,7 +371,7 @@ class IperfWindow(_feature_iperf.IperfWindow):
 
 
 IPERF_WINDOW = IperfWindow(IPERF_PORT, IPERF_MAX_MINUTES, IPERF_PORT_FILE)
-IPERF_CLIENT = IperfClient()
+IPERF_CLIENT = IperfClient(find_binary=lambda _: IPERF_BINARY)
 
 # ---------------------------------------------------------------------------
 # Port forwarding — persistent iptables DNAT rules, console-managed
@@ -445,18 +447,6 @@ ANYTLS_CONFIG = Path(
     os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
 )
 ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
-ANYTLS_SETUP = Path(
-    os.environ.get("VPSSRV_ANYTLS_SETUP", str(BASE_DIR / "anytls" / "setup-anytls.sh"))
-)
-# Generous: the script may hit apt, openssl and a service restart. A web
-# request blocking for a few seconds is fine for an operator action; blocking
-# forever because systemd is wedged is not.
-ANYTLS_RESET_TIMEOUT = 120
-# Fixed, so two resets cannot run at once. It also has to be stoppable by name
-# when the timeout fires; see anytls_reset().
-ANYTLS_RESET_UNIT = "vps-server-anytls-reset.service"
-
-
 def _cert_common_name(*args, **kwargs):
     return _feature_proxy._cert_common_name(sys.modules[__name__], *args, **kwargs)
 
@@ -495,14 +485,6 @@ def address_entries(*args, **kwargs):
     return _feature_proxy.address_entries(sys.modules[__name__], *args, **kwargs)
 
 
-def anytls_reset_command(*args, **kwargs):
-    return _feature_proxy.anytls_reset_command(sys.modules[__name__], *args, **kwargs)
-
-
-def anytls_reset(*args, **kwargs):
-    return _feature_proxy.anytls_reset(sys.modules[__name__], *args, **kwargs)
-
-
 # ---------------------------------------------------------------------------
 # proxy nodes (vmess/vless/trojan/shadowsocks), read-only
 #
@@ -519,28 +501,16 @@ PROXY_CONFIG = Path(
     os.environ.get("VPSSRV_PROXY_CONFIG", "/etc/vps-server-proxy/config.json")
 )
 PROXY_SERVICE = os.environ.get("VPSSRV_PROXY_SERVICE", "vps-server-proxy.service")
-PROXY_SETUP = Path(
-    os.environ.get("VPSSRV_PROXY_SETUP", str(BASE_DIR / "proxy" / "setup-proxy.sh"))
-)
-PROXY_RESET_TIMEOUT = 120
-PROXY_RESET_UNIT = "vps-server-proxy-reset.service"
 NODE_STATE_PATH = Path("/etc/vps-server-nodes/state.json")
 NODE_METER_PATH = NODE_STATE_PATH.parent / "meter.json"
 NODE_CONTROL_HELPER = BASE_DIR / "node_control.py"
 NODE_CONTROL_UNIT = "vps-server-node-control.service"
-NODE_CONFIG_HELPER = BASE_DIR / "node_config.py"  # installed, root-owned helper
-NODE_APPLY_UNIT = "vps-server-node-apply.service"
 NODE_APPLY_TIMEOUT = 120
-NODE_APPLY_BODY_LIMIT = 1024
 NODE_PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 
 
 def node_csrf_token(*args, **kwargs):
     return _feature_proxy.node_csrf_token(sys.modules[__name__], *args, **kwargs)
-
-
-def node_apply(*args, **kwargs):
-    return _feature_proxy.node_apply(sys.modules[__name__], *args, **kwargs)
 
 
 def node_control_apply(*args, **kwargs):
@@ -619,14 +589,6 @@ def proxy_share_link(*args, **kwargs):
     return _feature_proxy.proxy_share_link(sys.modules[__name__], *args, **kwargs)
 
 
-def proxy_reset_command(*args, **kwargs):
-    return _feature_proxy.proxy_reset_command(sys.modules[__name__], *args, **kwargs)
-
-
-def proxy_reset(*args, **kwargs):
-    return _feature_proxy.proxy_reset(sys.modules[__name__], *args, **kwargs)
-
-
 def render_copyable(*args, **kwargs):
     return _feature_ui.render_copyable(sys.modules[__name__], *args, **kwargs)
 
@@ -639,23 +601,12 @@ IPERF_MESSAGE_KEYS = frozenset({
     "iperf_port_saved", "iperf_port_invalid",
 })
 
-ANYTLS_MESSAGE_KEYS = frozenset({
-    "anytls_reset_done", "anytls_reset_unconfirmed", "anytls_reset_failed",
-    "anytls_reset_timeout", "anytls_reset_missing",
-})
-
-NODE_APPLY_MESSAGE_KEYS = frozenset({"node_apply_done", "node_apply_failed",
-                                     "node_settings_done", "node_settings_failed", "node_reset_done",
-                                     "node_created", "node_deleted"})
-
-PROXY_MESSAGE_KEYS = frozenset({
-    "proxy_reset_done", "proxy_reset_unconfirmed", "proxy_reset_failed",
-    "proxy_reset_timeout", "proxy_reset_missing",
-})
+NODE_APPLY_MESSAGE_KEYS = frozenset({"node_settings_done", "node_settings_failed",
+                                     "node_reset_done", "node_created", "node_deleted"})
 
 PORTFWD_MESSAGE_KEYS = frozenset({
     "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
-    "portfwd_invalid", "portfwd_port_taken", "portfwd_limit", "portfwd_not_found",
+    "portfwd_invalid", "portfwd_apply_failed", "portfwd_port_taken", "portfwd_limit", "portfwd_not_found",
     "portfwd_module_disabled",
 })
 
@@ -1076,8 +1027,11 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             self._route(method, path, parsed)
         except (BrokenPipeError, ConnectionResetError):
             self._last_status = 0  # client disconnected mid-stream, not a real outcome
-        except Exception:
+        except Exception as exc:
             self._last_status = 500
+            # Request paths and exception messages may contain subscription
+            # tokens or configuration values. Log only safe diagnostic facts.
+            print(f"Console {method} failed: {type(exc).__name__}", file=sys.stderr)
             # Only when nothing has been sent yet. /speedtest/garbage streams
             # hundreds of megabytes after its headers are out; an SSLError or
             # timeout partway through used to land here and append a second
@@ -1361,12 +1315,12 @@ def main():
             else:
                 print(_log_text('log_tracking_unavailable'), file=sys.stderr)
 
-        if IPERF_ENABLED and not shutil.which("iperf3"):
+        if IPERF_ENABLED and not IPERF_BINARY:
             print(_log_text('log_iperf_missing'), file=sys.stderr)
 
         if portfwd_enabled():
             PORTFWD.load()
-            active = sum(1 for r in PORTFWD.list_rules() if r["enabled"])
+            active = sum(1 for r in PORTFWD.list_rules() if r["applied"])
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()

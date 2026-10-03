@@ -2,23 +2,15 @@
 case "$key" in
   need_root) fmt='root अधिकारों के साथ चलाना आवश्यक है (आज़माएँ: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='systemd नहीं मिला; यह इंस्टॉलर systemd वाले होस्ट के लिए है\n' ;;
+  platform_unsupported) fmt='केवल x86-64 Linux समर्थित है।\n' ;;
   no_python) fmt='python3 नहीं मिला (apt install python3)\n' ;;
   no_openssl) fmt='openssl नहीं मिला (apt install openssl), या साधारण HTTP के लिए VPSSRV_CONSOLE_TLS=0 सेट करें\n' ;;
   installing) fmt='%s में स्थापित किया जा रहा है ...\n' ;;
   inplace_skip) fmt='स्रोत ही स्थापना निर्देशिका है — फ़ाइल कॉपी छोड़ी जा रही है (उसी स्थान पर अपग्रेड)।\n' ;;
   missing_app) fmt='कॉपी चरण के बाद %s/app.py नहीं मिला\n' ;;
-  ask_auth) fmt='वेब इंटरफ़ेस को पासवर्ड से सुरक्षित करें? [Y/n] ' ;;
   auth_disabled) fmt='पासवर्ड सुरक्षा बंद है — पोर्ट ढूँढ़ने वाला कोई भी व्यक्ति बिना लॉगिन प्रवेश कर सकता है।\n' ;;
-  ask_pwmode) fmt='यादृच्छिक पासवर्ड उपयोग करें या स्वयं बनाएँ? [R/m] ' ;;
-  pw_enter) fmt='पासवर्ड: ' ;;
-  pw_confirm) fmt='पासवर्ड की पुष्टि करें: ' ;;
-  pw_mismatch) fmt='पासवर्ड खाली थे या मेल नहीं खाते — फिर प्रयास करें।\n' ;;
-  pwmode_invalid) fmt='R (यादृच्छिक) या m (स्वयं बनाएँ) चुनें — फिर प्रयास करें।\n' ;;
   anytls_failed) fmt='\nanytls मॉड्यूल की स्थापना विफल रही। ऊपर दिया वेब मॉड्यूल स्थापित है और चल रहा है; केवल anytls नहीं है। कारण ठीक होने पर VPSSRV_MODULES=anytls के साथ दोबारा चलाएँ।\n' ;;
   proxy_failed) fmt='\nproxy मॉड्यूल की स्थापना विफल रही। ऊपर दिया वेब मॉड्यूल स्थापित है और चल रहा है; केवल proxy नहीं है। कारण ठीक होने पर VPSSRV_MODULES=proxy के साथ दोबारा चलाएँ।\n' ;;
-  ask_port) fmt='सुनने का पोर्ट — 1-65535, या यादृच्छिक पोर्ट के लिए Enter दबाएँ: ' ;;
-  port_nan) fmt='यह संख्या नहीं है — फिर प्रयास करें।\n' ;;
-  port_range) fmt='सीमा से बाहर (1-65535) — फिर प्रयास करें।\n' ;;
   container) fmt='कंटेनर मिला — systemd सैंडबॉक्स निर्देश हटाए जा रहे हैं (वे यहाँ 226/NAMESPACE के साथ विफल होते हैं)।\n' ;;
   writing_unit) fmt='%s लिखा जा रहा है ...\n' ;;
   start_failed) fmt='\nसेवा शुरू नहीं हो सकी। हाल का लॉग:\n' ;;
@@ -32,11 +24,6 @@ case "$key" in
   line_lang) fmt='  भाषा: %s (कुकी, क्वेरी या ब्राउज़र से मेल न मिलने पर डिफ़ॉल्ट)\n' ;;
   cert_note) fmt='\nनोट: स्वयं-हस्ताक्षरित प्रमाणपत्र उपयोग हो रहा है, इसलिए ब्राउज़र चेतावनी दिखाएगा\nजिसे आपको स्वीकार करना होगा। वास्तविक प्रमाणपत्र के लिए VPSSRV_TLS_CERT\nऔर VPSSRV_TLS_KEY सेट करके यह इंस्टॉलर दोबारा चलाएँ।\n' ;;
   to_remove) fmt='\nहटाने के लिए:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
-  mod_head) fmt='\nकौन से मॉड्यूल? हर एक का उत्तर अलग दें।\n' ;;
-  ask_module_web) fmt='  web — पहुँच-जाँच पृष्ठ + कंसोल [Y/n] ' ;;
-  ask_module_iperf3) fmt='  iperf3 — बैंडविड्थ परीक्षण विंडो, कंसोल से नियंत्रित [Y/n] ' ;;
-  ask_module_anytls) fmt='  anytls — sing-box प्रॉक्सी नोड [y/N] ' ;;
-  ask_module_proxy) fmt='  proxy — sing-box vmess/vless/trojan/shadowsocks, कोई भी चुनें [y/N] ' ;;
   proxy_protocols_head) fmt='  कौन से प्रोटोकॉल? हर एक का उत्तर अलग दें।\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -77,8 +64,6 @@ case "$key" in
   lucky_public_warning) fmt='चेतावनी: Lucky का सार्वजनिक व्यवस्थापन क्रेडेंशियल बिना एन्क्रिप्शन वाले HTTP से भेजता है।\n' ;;
   lucky_public_confirm_prompt) fmt='आगे बढ़ने के लिए सर्वर टर्मिनल में I ACCEPT PUBLIC HTTP लिखें: ' ;;
   lucky_public_confirm_required) fmt='Lucky के सार्वजनिक व्यवस्थापन के लिए पुष्टि आवश्यक है\n' ;;
-  ask_module_frps) fmt='  frps — स्वतंत्र FRP सर्वर [y/N] ' ;;
-  ask_module_lucky) fmt='  lucky — ऑफ़लाइन DDNS और रिवर्स प्रॉक्सी [y/N] ' ;;
   ask_lucky_port) fmt='  Lucky व्यवस्थापक पोर्ट [16601]: ' ;;
   ask_lucky_public) fmt='  Lucky व्यवस्थापन को बिना एन्क्रिप्शन वाले HTTP पर सार्वजनिक करें? [y/N] ' ;;
   lucky_http_warning) fmt='चेतावनी: Lucky व्यवस्थापन क्रेडेंशियल HTTP पर बिना एन्क्रिप्शन के भेजे जाते हैं। निजी पहुँच या TLS प्रॉक्सी चुनें।\n' ;;

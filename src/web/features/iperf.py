@@ -301,7 +301,7 @@ class IperfWindow:
         """Open or extend a window. Returns (ok, key) where key is a STRINGS key."""
         if not self.context.IPERF_ENABLED:
             return False, "iperf_disabled"
-        if not self.context.shutil.which("iperf3"):
+        if not self.context.IPERF_BINARY:
             return False, "iperf_missing"
         try:
             minutes = int(minutes)
@@ -319,7 +319,7 @@ class IperfWindow:
                 return True, "iperf_extended"
             try:
                 proc = self.context.subprocess.Popen(
-                    ["iperf3", "--server", "--port", str(self._port)],
+                    [self.context.IPERF_BINARY, "--server", "--port", str(self._port)],
                     stdin=self.context.subprocess.DEVNULL,
                     stdout=self.context.subprocess.DEVNULL,
                     stderr=self.context.subprocess.DEVNULL,

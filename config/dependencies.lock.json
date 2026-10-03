@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "coverage": "Only the seven third-party bundled distributable artifacts listed below. SHA-256 values were computed from this checkout and matched against their recorded upstream release files on 2026-09-27; this is artifact identity verification, not a legal conclusion or a system package lock.",
+  "coverage": "Nine bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
   "artifacts": [
     {
       "component": "Lucky",
@@ -17,6 +17,22 @@
       "recorded_upstream_revision": null,
       "path": "third_party/frp/frps",
       "sha256": "b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654"
+    },
+    {
+      "component": "frpc",
+      "version": "v0.71.0 linux amd64",
+      "upstream": "https://github.com/fatedier/frp",
+      "recorded_upstream_revision": null,
+      "path": "third_party/frp/frpc",
+      "sha256": "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
+    },
+    {
+      "component": "iperf3",
+      "version": "3.22 x86-64 Linux static build",
+      "upstream": "https://github.com/esnet/iperf",
+      "recorded_upstream_revision": null,
+      "path": "third_party/iperf3/iperf3",
+      "sha256": "f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
     },
     {
       "component": "sing-box",
@@ -62,7 +78,6 @@
   "exclusions": [
     {
       "items": [
-        "iperf3",
         "python3 and its standard library",
         "openssl",
         "curl",

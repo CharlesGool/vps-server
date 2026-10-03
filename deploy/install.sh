@@ -3,7 +3,7 @@
 # Install vps-server. A fresh install starts with the management console only.
 #
 #   web      the public reachability page on 80/443 plus the private console
-#   iperf3   the distro iperf3 package, so the console can open a test window
+#   iperf3   bundled on amd64, so the console can open a test window
 #   anytls   the sing-box anytls proxy (amd64 only)
 #   proxy    sing-box vmess/vless/trojan/shadowsocks, any subset (amd64 only)
 #   frps     offline FRP server (amd64 only)
@@ -36,7 +36,7 @@ DEFAULT_MODULES="web"
 PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
-INTERACTIVE=0
+IPERF_SHA256="f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
 
 has_module() {
   case ",${MODULES}," in *",$1,"*) return 0 ;; esac
@@ -56,8 +56,8 @@ KNOWN_VARS="VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSS
             VPSSRV_MAX_TEST_MB VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS
             VPSSRV_TEST_SECONDS VPSSRV_WARMUP_SECONDS VPSSRV_DOWNLOAD_STREAMS
             VPSSRV_UPLOAD_STREAMS VPSSRV_PING_SAMPLES
-            VPSSRV_ANYTLS_CONFIG VPSSRV_ANYTLS_SERVICE VPSSRV_ANYTLS_SETUP
-            VPSSRV_PROXY_CONFIG VPSSRV_PROXY_SERVICE VPSSRV_PROXY_SETUP"
+            VPSSRV_ANYTLS_CONFIG VPSSRV_ANYTLS_SERVICE
+            VPSSRV_PROXY_CONFIG VPSSRV_PROXY_SERVICE"
 
 # What this install left behind, so the next one can tell what changed.
 # Deliberately not the unit file: the unit records only settings that were
@@ -138,7 +138,7 @@ load_previous() {
   # disk rather than giving up.
   if [ -z "$PREV_MODULES" ]; then
     [ -f "$UNIT_PATH" ] && PREV_MODULES="web"
-    command -v iperf3 >/dev/null 2>&1 && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}iperf3"
+    { [ -x "$PREFIX/vendor/iperf3/iperf3" ] || command -v iperf3 >/dev/null 2>&1; } && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}iperf3"
     [ -f "$ANYTLS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}anytls"
     [ -f "$PROXY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}proxy"
     [ -f "$FRPS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}frps"
@@ -250,8 +250,8 @@ default_for() {
 # Settings this version understands that the installed one did not. Only
 # answerable when the old install recorded its own list; otherwise say so
 # rather than presenting a guess as a diff.
-prompt_new_settings() {
-  local var new="" default value
+report_new_settings() {
+  local var new="" default
   if [ "$PREV_STATE_KNOWN" = "0" ]; then
     msg upgrade_vars_unknown
     return 0
@@ -267,22 +267,8 @@ prompt_new_settings() {
   msg upgrade_new_head
   for var in $new; do
     default="$(default_for "$var")"
-    if [ "$INTERACTIVE" != "1" ]; then
-      msg upgrade_new_item "$var" "${default:-(empty)}"
-      continue
-    fi
-    msg ask_new_var "$var" "${default:-(empty)}"
-    read -r value </dev/tty || value=""
-    if [ -n "$value" ]; then
-      export "$var=$value"
-    fi
+    msg upgrade_new_item "$var" "${default:-(empty)}"
   done
-  # A bare `[ -n "$value" ] && export ...` as the loop's last statement would
-  # make THIS FUNCTION's own exit status track that test — false whenever the
-  # last new setting is left at its default. Called bare (`prompt_new_settings`
-  # inside an if-body, not itself exempt from `set -e`), a false there killed
-  # the whole installer right after the last prompt: no error, no copy step,
-  # no VERSION stamp, no service restart. See doc/LOG.md#decisions (2026-09-21).
   return 0
 }
 
@@ -331,6 +317,7 @@ die() { printf '%s%s\n' "$(msg error_prefix)" "$*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
+[ "$(uname -s)" = Linux ] && { [ "$(uname -m)" = x86_64 ] || [ "$(uname -m)" = amd64 ]; } || die "$(msg platform_unsupported)"
 
 # Reuse the installed language unless this run explicitly selects another.
 if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
@@ -409,48 +396,22 @@ if has_module iperf3 && ! has_module web; then
 fi
 
 if [ "$UPGRADE" = "1" ]; then
-  prompt_new_settings
+  report_new_settings
 fi
 
-# The vendored sing-box binary is amd64. Skipping the module beats installing
-# a binary that cannot execute and failing later with "Exec format error".
-# Both anytls and proxy share that one binary, so both need the same guard.
-if has_module anytls || has_module proxy || has_module frps || has_module lucky; then
-  ARCH="$(uname -m)"
-  case "$ARCH" in
-    x86_64|amd64) ;;
-    *)
-      has_module anytls && { msg anytls_arch "$ARCH"; MODULES="${MODULES//anytls/}"; }
-      has_module proxy && { msg proxy_arch "$ARCH"; MODULES="${MODULES//proxy/}"; }
-      has_module frps && die "$(msg frps_arch)"
-      has_module lucky && die "$(msg lucky_arch)"
-      ;;
-  esac
-fi
-
+# Bundled executable assets target x86-64 Linux only.
 install_iperf3() {
-  command -v iperf3 >/dev/null 2>&1 && return 0
-  msg iperf_installing
-  export DEBIAN_FRONTEND=noninteractive
-
-  # Two distinct apt failure modes land here, both transient: apt-get update
-  # itself can fail outright (one unreachable repo is enough, even a stale
-  # third-party .list unrelated to iperf3), or it can report success while
-  # security.debian.org's CDN hands back a stale index whose .deb URLs 404 on
-  # install (apt's own "maybe run apt-get update" hints at exactly this). A
-  # single retry of update alone fixes neither case reliably; retrying the
-  # whole update-then-install pair does, since a later attempt both tolerates
-  # an update failure (`|| true` keeps set -e from killing the installer) and
-  # has a decent chance of landing on a synced mirror.
-  local attempt
-  for attempt in 1 2 3; do
-    apt-get update -qq || true
-    apt-get install -y -qq iperf3 && return 0
-    [ "$attempt" -eq 3 ] || sleep 2
-  done
-
-  msg iperf_failed
-  return 1
+  local source="$SRC_DIR/third_party/iperf3/iperf3" digest
+  [ -f "$source" ] || { msg iperf_failed; return 1; }
+  digest="$(sha256sum "$source")"
+  [ "${digest%% *}" = "$IPERF_SHA256" ] || { msg iperf_failed; return 1; }
+  if [ -x "$PREFIX/vendor/iperf3/iperf3" ]; then
+    digest="$(sha256sum "$PREFIX/vendor/iperf3/iperf3")"
+    [ "${digest%% *}" = "$IPERF_SHA256" ] && return 0
+  fi
+  mkdir -p "$PREFIX/vendor/iperf3"
+  install -m 755 "$source" "$PREFIX/vendor/iperf3/iperf3.tmp"
+  mv -f "$PREFIX/vendor/iperf3/iperf3.tmp" "$PREFIX/vendor/iperf3/iperf3"
 }
 
 install_anytls() {
@@ -659,9 +620,7 @@ copy_selected_files() {
     # Refreshing it on an in-place upgrade changes only an ignored runtime
     # copy, not the tracked implementation under src/web/.
     cp "$SRC_DIR/src/web/app.py" "$PREFIX/app.py"
-    cp "$SRC_DIR/src/web/node_config.py" "$PREFIX/node_config.py"
     cp "$SRC_DIR/src/web/module_manager.py" "$PREFIX/module_manager.py"
-    cp "$SRC_DIR/src/web/console_port.py" "$PREFIX/console_port.py"
     cp "$SRC_DIR/src/web/frp_control.py" "$PREFIX/frp_control.py"
     # Feature handlers form one versioned unit with the flat Web entry point.
     rm -rf "${PREFIX:?}/features"
@@ -689,6 +648,7 @@ copy_selected_files() {
   fi
   if has_module web || has_module anytls || has_module proxy || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
+    cp "$SRC_DIR/src/web/console_port.py" "$PREFIX/console_port.py"
     # The Web UI imports the inventory even without nodes, and the controller
     # also runs for proxy-only installs without the Web UI.
     for item in node_inventory node_operations node_accounting node_state node_control node_meter; do
@@ -703,7 +663,8 @@ copy_selected_files() {
   fi
   if has_module frps; then
     mkdir -p "$PREFIX/vendor/frp"
-    cp "$SRC_DIR/third_party/frp/frps" "$SRC_DIR/third_party/frp/LICENSE" "$SRC_DIR/third_party/frp/component.txt" "$PREFIX/vendor/frp/"
+    cp "$SRC_DIR/third_party/frp/frps" "$SRC_DIR/third_party/frp/frpc" \
+       "$SRC_DIR/third_party/frp/LICENSE" "$SRC_DIR/third_party/frp/component.txt" "$PREFIX/vendor/frp/"
   fi
 }
 
@@ -764,81 +725,11 @@ if ! has_module web; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Password protection: on/off, then random vs. operator-chosen.
+# 2. Password protection and the console port use noninteractive defaults.
 # ---------------------------------------------------------------------------
-MANUAL_PASSWORD=""
-if [ -z "${VPSSRV_AUTH:-}" ]; then
-  if [ "$INTERACTIVE" = "1" ]; then
-    msg ask_auth
-    read -r ans </dev/tty || ans="y"
-    case "$ans" in
-      [nN]*) VPSSRV_AUTH=0 ;;
-      *) VPSSRV_AUTH=1 ;;
-    esac
-  else
-    VPSSRV_AUTH=1
-  fi
-fi
+VPSSRV_AUTH="${VPSSRV_AUTH:-1}"
 if [ "$VPSSRV_AUTH" = "0" ]; then
   msg auth_disabled
-elif [ "$INTERACTIVE" = "1" ] && [ -z "${VPSSRV_PASSWORD_FILE:-}" ] \
-     && [ ! -f "$PREFIX/admin_password.txt" ]; then
-  # Anything that is not R or M is re-asked rather than quietly treated as
-  # "random". An operator who types something else has not chosen random —
-  # they have misread the question, and silently handing them a generated
-  # password looks identical to having honoured an answer. This is the same
-  # mistake the port prompt made (vps-webserver DECISIONS.md, 2026-08-25:
-  # the operator answered "50" and got a random port).
-  while :; do
-    msg ask_pwmode
-    read -r pwmode </dev/tty || pwmode="r"
-    case "$pwmode" in
-      ""|[rR]*) break ;;
-      [mM]*)
-        while :; do
-          # The || fallbacks are not decoration: under set -e a bare failing
-          # read — Ctrl-D at the prompt, a momentarily unavailable /dev/tty —
-          # kills the whole installer instead of reaching the retry below.
-          # Every other read in this file has one; these two were missed.
-          msg pw_enter
-          read -rs MANUAL_PASSWORD </dev/tty || MANUAL_PASSWORD=""; echo
-          msg pw_confirm
-          read -rs pw_confirm </dev/tty || pw_confirm=""; echo
-          if [ -n "$MANUAL_PASSWORD" ] && [ "$MANUAL_PASSWORD" = "$pw_confirm" ]; then
-            break
-          fi
-          msg pw_mismatch
-        done
-        break
-        ;;
-      *) msg pwmode_invalid ;;
-    esac
-  done
-fi
-
-# ---------------------------------------------------------------------------
-# 3. Port: random (default, see doc/LOG.md#decisions) or an operator-chosen one.
-# ---------------------------------------------------------------------------
-# One question, not two: an operator looking at a port prompt types a port
-# number. Asking "random or custom?" first and *then* for the number meant a
-# typed number fell through to the random branch (reported 2026-08-25: the
-# operator answered "50" and silently got a random port).
-if [ -z "${VPSSRV_CONSOLE_PORT:-}" ] && [ "$INTERACTIVE" = "1" ] \
-   && [ ! -f "${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}" ]; then
-  while :; do
-    msg ask_port
-    read -r custom_port </dev/tty || custom_port=""
-    # Empty (just Enter) means "random", which is the documented default.
-    [ -z "$custom_port" ] && break
-    case "$custom_port" in
-      *[!0-9]*) msg port_nan; continue ;;
-    esac
-    if [ "$custom_port" -ge 1 ] && [ "$custom_port" -le 65535 ]; then
-      VPSSRV_CONSOLE_PORT="$custom_port"
-      break
-    fi
-    msg port_range
-  done
 fi
 
 check_frps_console_collision
@@ -931,16 +822,8 @@ fi
 # it would dirty the working tree of whoever is developing there.
 if [ "$SRC_DIR" != "$PREFIX_ABS" ]; then
   printf '%s\n' "$NEW_VERSION" > "$PREFIX/VERSION"
-fi
-
-# A manually-chosen password must land on disk before the first start, so
-# ensure_admin_password() in app.py finds it already there and never
-# generates a random one to replace it.
-if [ -n "$MANUAL_PASSWORD" ]; then
-  PW_TARGET="${VPSSRV_PASSWORD_FILE:-$PREFIX/admin_password.txt}"
-  printf '%s\n' "$MANUAL_PASSWORD" > "$PW_TARGET"
-  chmod 600 "$PW_TARGET"
-  MANUAL_PASSWORD=""
+  mkdir -p "$PREFIX/config"
+  printf '%s\n' "$NEW_VERSION" > "$PREFIX/config/VERSION"
 fi
 
 # Carry over any explicitly provided settings so the unit reproduces them.
@@ -1071,7 +954,7 @@ else
   msg line_url_unknown "$SCHEME" "$HOST" "$PORT_FILE" "$SERVICE_NAME"
 fi
 [ -n "$OTHER_IPS" ] && msg line_also "$OTHER_IPS"
-if command -v iperf3 >/dev/null 2>&1; then
+if [ -x "$PREFIX/vendor/iperf3/iperf3" ] || command -v iperf3 >/dev/null 2>&1; then
   msg line_iperf "${VPSSRV_IPERF_PORT:-5201}"
 else
   msg line_iperf_off

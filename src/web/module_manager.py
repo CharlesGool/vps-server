@@ -16,7 +16,6 @@ import subprocess
 import sys
 import tarfile
 import time
-from urllib.request import Request, urlopen
 
 try:
     from .node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
@@ -44,8 +43,12 @@ FRPC_BINARY = Path("/usr/local/bin/frpc")
 FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
 FRPC_CONFIG_DIR = Path("/etc/frp")
 FRPC_SHA256 = "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
-FRPC_ASSET_URL = ("https://github.com/CharlesGool/vps-server/releases/download/"
-                  "v4.0.0/frpc-0.71.0-linux-amd64")
+IPERF_SHA256 = "f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
+
+
+def iperf_binary(prefix):
+    bundled = Path(prefix) / "vendor" / "iperf3" / "iperf3"
+    return str(bundled) if bundled.is_file() else shutil.which("iperf3")
 
 
 def frpc_installed():
@@ -72,7 +75,7 @@ def installed_modules(prefix):
             present = set()
             if "web" in recorded and (Path(prefix) / "app.py").is_file():
                 present.add("web")
-            if "iperf3" in recorded and shutil.which("iperf3"):
+            if "iperf3" in recorded and iperf_binary(prefix):
                 present.add("iperf3")
             for module in ("anytls", "proxy", "frps", "lucky"):
                 if module in recorded and Path(f"/etc/systemd/system/{UNITS[module]}").is_file():
@@ -293,7 +296,7 @@ def run_install(prefix, module):
 
 
 def install_iperf3(prefix):
-    """Add the distro package without rerunning setup for existing nodes."""
+    """Install the verified offline binary without touching existing nodes."""
     prefix = Path(prefix)
     if "web" not in installed_modules(prefix):
         raise RuntimeError("the console module is unavailable")
@@ -312,21 +315,18 @@ def install_iperf3(prefix):
             break
     else:
         raise RuntimeError("installed-module record has no modules field")
-    if not shutil.which("iperf3"):
-        env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
-        for attempt in range(3):
-            subprocess.run(["apt-get", "update"], env=env,
-                           stdout=sys.stdout, stderr=subprocess.STDOUT,
-                           check=False, timeout=300)
-            result = subprocess.run(["apt-get", "install", "-y", "iperf3"], env=env,
-                                    stdout=sys.stdout, stderr=subprocess.STDOUT,
-                                    check=False, timeout=600)
-            if result.returncode == 0 and shutil.which("iperf3"):
-                break
-            if attempt < 2:
-                time.sleep(2)
-        else:
-            raise RuntimeError("iperf3 package installation failed; see apt output above")
+    source = prefix / "installer-source" / "third_party" / "iperf3" / "iperf3"
+    if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != IPERF_SHA256:
+        raise RuntimeError("verified bundled iperf3 is unavailable")
+    destination = prefix / "vendor" / "iperf3" / "iperf3"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staged = destination.with_suffix(".tmp")
+    try:
+        shutil.copyfile(source, staged)
+        os.chmod(staged, 0o755)
+        os.replace(staged, destination)
+    finally:
+        staged.unlink(missing_ok=True)
     switch_web_setting(prefix / "data" / "iperf3-enabled", True)
     temp = state.with_suffix(".tmp")
     temp.write_text("".join(lines), encoding="utf-8")
@@ -375,7 +375,9 @@ def install_frpc(prefix):
     source = Path(prefix) / "vendor" / "frp" / "frpc"
     bundled = Path(prefix) / "installer-source" / "third_party" / "frp" / "frpc"
     if not source.is_file():
-        source = bundled if bundled.is_file() else download_frpc(prefix)
+        source = bundled
+    if not source.is_file():
+        raise RuntimeError("bundled FRPC binary is unavailable")
     if hashlib.sha256(source.read_bytes()).hexdigest() != FRPC_SHA256:
         raise RuntimeError("FRPC binary checksum mismatch")
     if FRPC_BINARY.exists() and hashlib.sha256(FRPC_BINARY.read_bytes()).hexdigest() != FRPC_SHA256:
@@ -412,34 +414,6 @@ def install_frpc(prefix):
             FRPC_BINARY.unlink(missing_ok=True)
         raise
     print("FRPC installed.", flush=True)
-
-
-def download_frpc(prefix):
-    """Cache the release asset only after its pinned digest has been verified."""
-    target = Path(prefix) / "vendor" / "frp" / "frpc"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    staged = target.with_suffix(".download")
-    digest = hashlib.sha256()
-    size = 0
-    print(f"Downloading FRPC asset: {FRPC_ASSET_URL}", flush=True)
-    try:
-        with urlopen(Request(FRPC_ASSET_URL, headers={"User-Agent": "vps-server/4.0.0"}), timeout=60) as response, \
-             staged.open("wb") as output:
-            while chunk := response.read(1024 * 1024):
-                size += len(chunk)
-                if size > 30_000_000:
-                    raise RuntimeError("FRPC asset exceeds the expected size")
-                digest.update(chunk)
-                output.write(chunk)
-        if digest.hexdigest() != FRPC_SHA256:
-            raise RuntimeError("FRPC asset checksum mismatch")
-        os.chmod(staged, 0o600)
-        os.replace(staged, target)
-    except BaseException:
-        staged.unlink(missing_ok=True)
-        raise
-    print(f"FRPC asset verified: {size} bytes, SHA-256 {FRPC_SHA256}", flush=True)
-    return target
 
 
 def run_toggle(prefix, module, enabled):
@@ -547,9 +521,10 @@ def run_uninstall(prefix, module):
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
     if module == "iperf3":
-        subprocess.run(["apt-get", "remove", "-y", "iperf3"],
-                       stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=900)
         switch_web_setting(Path(prefix) / "data" / "iperf3-enabled", False)
+        bundled = Path(prefix) / "vendor" / "iperf3" / "iperf3"
+        if bundled.is_file() and hashlib.sha256(bundled.read_bytes()).hexdigest() == IPERF_SHA256:
+            bundled.unlink()
     elif module == "proxy_nodes":
         subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
                        check=False, timeout=60)

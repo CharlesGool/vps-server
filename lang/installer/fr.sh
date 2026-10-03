@@ -2,23 +2,15 @@
 case "$key" in
   need_root) fmt='exécution en tant que root requise (essayez : sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='systemd introuvable ; cet installateur cible les hôtes utilisant systemd\n' ;;
+  platform_unsupported) fmt='Seul Linux x86-64 est pris en charge.\n' ;;
   no_python) fmt='python3 introuvable (apt install python3)\n' ;;
   no_openssl) fmt='openssl introuvable (apt install openssl) ; vous pouvez aussi définir VPSSRV_CONSOLE_TLS=0 pour servir en HTTP non chiffré\n' ;;
   installing) fmt='Installation dans %s ...\n' ;;
   inplace_skip) fmt='La source est le répertoire d’installation : copie des fichiers ignorée (mise à niveau sur place).\n' ;;
   missing_app) fmt='%s/app.py est absent après la copie\n' ;;
-  ask_auth) fmt='Protéger l’interface Web par mot de passe ? [Y/n] ' ;;
   auth_disabled) fmt='Protection par mot de passe désactivée : quiconque trouve le port peut entrer sans connexion.\n' ;;
-  ask_pwmode) fmt='Utiliser un mot de passe aléatoire ou en définir un vous-même ? [R/m] ' ;;
-  pw_enter) fmt='Mot de passe : ' ;;
-  pw_confirm) fmt='Confirmez le mot de passe : ' ;;
-  pw_mismatch) fmt='Les mots de passe sont vides ou différents ; réessayez.\n' ;;
-  pwmode_invalid) fmt='Répondez R (aléatoire) ou m (défini par vous) ; réessayez.\n' ;;
   anytls_failed) fmt='\nÉchec de l’installation du module anytls. Le module Web ci-dessus est installé et fonctionne ; seul anytls manque. Relancez avec VPSSRV_MODULES=anytls après avoir corrigé la cause.\n' ;;
   proxy_failed) fmt='\nÉchec de l’installation du module proxy. Le module Web ci-dessus est installé et fonctionne ; seul proxy manque. Relancez avec VPSSRV_MODULES=proxy après avoir corrigé la cause.\n' ;;
-  ask_port) fmt='Port d’écoute — 1 à 65535, ou appuyez sur Entrée pour un port aléatoire : ' ;;
-  port_nan) fmt='Ce n’est pas un nombre ; réessayez.\n' ;;
-  port_range) fmt='Hors de la plage (1-65535) ; réessayez.\n' ;;
   container) fmt='Conteneur détecté : les directives d’isolation systemd sont omises (elles échouent ici avec 226/NAMESPACE).\n' ;;
   writing_unit) fmt='Écriture de %s ...\n' ;;
   start_failed) fmt='\nLe service n’a pas démarré. Journal récent :\n' ;;
@@ -32,11 +24,6 @@ case "$key" in
   line_lang) fmt='  langue : %s (valeur par défaut si aucun cookie, paramètre de requête ou navigateur ne correspond)\n' ;;
   cert_note) fmt='\nRemarque : le certificat est autosigné ; le navigateur affichera donc un avertissement\nque vous devrez accepter. Pour utiliser un vrai certificat, définissez VPSSRV_TLS_CERT\net VPSSRV_TLS_KEY, puis relancez cet installateur.\n' ;;
   to_remove) fmt='\nPour désinstaller :\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
-  mod_head) fmt='\nQuels modules installer ? Répondez pour chacun séparément.\n' ;;
-  ask_module_web) fmt='  web — page d’accessibilité + console [Y/n] ' ;;
-  ask_module_iperf3) fmt='  iperf3 — fenêtre de test du débit, pilotée depuis la console [Y/n] ' ;;
-  ask_module_anytls) fmt='  anytls — nœud proxy sing-box [y/N] ' ;;
-  ask_module_proxy) fmt='  proxy — protocoles sing-box vmess/vless/trojan/shadowsocks, au choix [y/N] ' ;;
   proxy_protocols_head) fmt='  Quels protocoles ? Répondez pour chacun séparément.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -77,8 +64,6 @@ case "$key" in
   lucky_public_warning) fmt='ATTENTION : l’administration publique de Lucky transmet les identifiants via HTTP sans chiffrement.\n' ;;
   lucky_public_confirm_prompt) fmt='Saisissez I ACCEPT PUBLIC HTTP dans le terminal du serveur pour continuer : ' ;;
   lucky_public_confirm_required) fmt='Confirmation requise pour l’administration publique de Lucky\n' ;;
-  ask_module_frps) fmt='  frps — serveur FRP autonome [y/N] ' ;;
-  ask_module_lucky) fmt='  lucky — DDNS et proxy inverse hors ligne [y/N] ' ;;
   ask_lucky_port) fmt='  Port d’administration Lucky [16601] : ' ;;
   ask_lucky_public) fmt='  Exposer publiquement l’administration Lucky via HTTP sans chiffrement ? [y/N] ' ;;
   lucky_http_warning) fmt='ATTENTION : les identifiants d’administration Lucky transitent sans chiffrement via HTTP. Préférez un accès privé ou un proxy TLS.\n' ;;

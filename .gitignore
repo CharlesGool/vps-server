@@ -60,8 +60,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# FRPC is distributed as a versioned GitHub Release asset, not a Git blob.
-third_party/frp/frpc
-
-# The other vendored binaries remain tracked under third_party/. The ignored
-# root copies above are created only by an in-place installation.
+# Bundled binaries under third_party/ are tracked. The ignored root copies
+# above are created only by an in-place installation.

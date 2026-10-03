@@ -2,23 +2,15 @@
 case "$key" in
   need_root) fmt='必須以 root 執行（試試：sudo bash deploy/install.sh）\n' ;;
   no_systemd) fmt='找不到 systemd；本安裝腳本只支援使用 systemd 的主機\n' ;;
+  platform_unsupported) fmt='僅支援 x86-64 Linux.\n' ;;
   no_python) fmt='找不到 python3（apt install python3）\n' ;;
   no_openssl) fmt='找不到 openssl（apt install openssl）；也可以設定 VPSSRV_CONSOLE_TLS=0 改用純 HTTP\n' ;;
   installing) fmt='正在安裝到 %s ...\n' ;;
   inplace_skip) fmt='來源目錄就是安裝目錄 —— 略過檔案複製（原地升級）。\n' ;;
   missing_app) fmt='複製完成後 %s/app.py 仍然不存在\n' ;;
-  ask_auth) fmt='是否為網頁開啟密碼保護？[Y/n] ' ;;
   auth_disabled) fmt='已關閉密碼保護 —— 任何人只要找到連接埠就能直接進入，無需登入。\n' ;;
-  ask_pwmode) fmt='使用隨機密碼，還是自己設定一個？[R=隨機/m=手動] ' ;;
-  pw_enter) fmt='密碼： ' ;;
-  pw_confirm) fmt='確認密碼： ' ;;
-  pw_mismatch) fmt='密碼為空或兩次輸入不一致 —— 請重試。\n' ;;
-  pwmode_invalid) fmt='請回答 R（隨機）或 m（自己設定）—— 請重試。\n' ;;
   anytls_failed) fmt='\nanytls 模組安裝失敗。上面的 web 模組已經裝好並在執行，缺的只有 anytls。排除原因後用 VPSSRV_MODULES=anytls 單獨重跑即可。\n' ;;
   proxy_failed) fmt='\nproxy 模組安裝失敗。上面的 web 模組已經裝好並在執行，缺的只有 proxy。排除原因後用 VPSSRV_MODULES=proxy 單獨重跑即可。\n' ;;
-  ask_port) fmt='監聽連接埠 —— 填 1-65535，或直接按 Enter 隨機產生： ' ;;
-  port_nan) fmt='不是數字 —— 請重試。\n' ;;
-  port_range) fmt='超出範圍（1-65535）—— 請重試。\n' ;;
   container) fmt='偵測到容器環境 —— 略過 systemd 沙箱指令（在這裡會以 226/NAMESPACE 失敗）。\n' ;;
   writing_unit) fmt='正在寫入 %s ...\n' ;;
   start_failed) fmt='\n服務啟動失敗。最近的日誌：\n' ;;
@@ -32,11 +24,6 @@ case "$key" in
   line_lang) fmt='  語言：    %s （沒有 cookie/查詢參數/瀏覽器語言相符時的預設值）\n' ;;
   cert_note) fmt='\n注意：使用的是自簽憑證，瀏覽器會跳出警告，需要手動點繼續。\n想使用真實憑證的話，設定 VPSSRV_TLS_CERT 與 VPSSRV_TLS_KEY 後\n重新執行本安裝腳本。\n' ;;
   to_remove) fmt='\n解除安裝方法：\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
-  mod_head) fmt='\n安裝哪些模組？下面每一項獨立回答。\n' ;;
-  ask_module_web) fmt='  web —— 可達性頁面 + 主控台 [Y/n] ' ;;
-  ask_module_iperf3) fmt='  iperf3 —— 頻寬測試視窗，由主控台控制 [Y/n] ' ;;
-  ask_module_anytls) fmt='  anytls —— sing-box 代理節點 [y/N] ' ;;
-  ask_module_proxy) fmt='  proxy —— sing-box vmess/vless/trojan/shadowsocks，任選 [y/N] ' ;;
   proxy_protocols_head) fmt='  哪些協議？下面每一項獨立回答。\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -77,8 +64,6 @@ case "$key" in
   lucky_public_warning) fmt='警告:公開的 Lucky 管理介面會透過未加密的 HTTP 傳送憑證.\n' ;;
   lucky_public_confirm_prompt) fmt='請在伺服器終端機輸入 I ACCEPT PUBLIC HTTP 以繼續: ' ;;
   lucky_public_confirm_required) fmt='公開 Lucky 管理介面需要確認\n' ;;
-  ask_module_frps) fmt='  frps — 獨立的 FRP 伺服器 [y/N] ' ;;
-  ask_module_lucky) fmt='  lucky — 離線 DDNS 與反向代理 [y/N] ' ;;
   ask_lucky_port) fmt='  Lucky 管理連接埠 [16601]: ' ;;
   ask_lucky_public) fmt='  要透過未加密的 HTTP 對外開放 Lucky 管理介面嗎? [y/N] ' ;;
   lucky_http_warning) fmt='警告:Lucky HTTP 管理憑證會以未加密方式傳送.建議使用私人網路存取或 TLS 代理.\n' ;;

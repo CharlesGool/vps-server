@@ -1,0 +1,10 @@
+Component: iperf3 executable, x86-64 Linux
+Version: 3.22
+Official source: https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz
+Official source SHA256: 1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92
+Build: ./configure --enable-static-bin --disable-shared --without-sctp && make -j2; strip src/iperf3
+Build host: Ubuntu 22.04 x86-64; gcc and glibc static linker; no OpenSSL development library
+Binary SHA256: f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2
+Binary: third_party/iperf3/iperf3
+License: official source LICENSE (BSD-3-Clause), included beside binary
+Limitations: build lacks SCTP and OpenSSL-backed authentication; static glibc getaddrinfo requires runtime validation on older distributions

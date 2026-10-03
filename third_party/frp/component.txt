@@ -1,4 +1,4 @@
-Component: frps server executable and separately distributed frpc client
+Component: bundled frps server and frpc client executables
 Version: v0.71.0 linux amd64
 Source archive: https://github.com/fatedier/frp/releases/download/v0.71.0/frp_0.71.0_linux_amd64.tar.gz
 Archive SHA256: 84f27e39f11169f7adcef8e8b70c9329de17747b1f14dad9fb95eef5682ea716
@@ -6,6 +6,5 @@ Extracted member: frp_0.71.0_linux_amd64/frps
 Binary SHA256: b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654
 Client member: frp_0.71.0_linux_amd64/frpc
 Client SHA256: f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068
-Client release asset: https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64
-Client destination for offline setup: third_party/frp/frpc or PREFIX/vendor/frp/frpc
+Client source in repository: third_party/frp/frpc; installed copy: PREFIX/vendor/frp/frpc
 License member: frp_0.71.0_linux_amd64/LICENSE (Apache-2.0)
