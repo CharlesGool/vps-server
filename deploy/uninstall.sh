@@ -56,6 +56,18 @@ die() { msg error_prefix "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
 
+# This helper validates PORTS.md before changing services, then removes only
+# the FRPC template and data managed by this project. Run it before PREFIX is
+# removed because the ownership marker lives in PREFIX/data.
+FRPC_CLEANUP="$SCRIPT_DIR/../src/web/uninstall_cleanup.py"
+[ -f "$FRPC_CLEANUP" ] || die "$(msg cleanup_failed)"
+python3 "$FRPC_CLEANUP" check-ports "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME" >/dev/null || die "$(msg cleanup_failed)"
+frpc_result="$(python3 "$FRPC_CLEANUP" frpc "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME")" || die "$(msg cleanup_failed)"
+case "$frpc_result" in
+  removed) msg frpc_removed ;;
+  unowned) msg frpc_unowned >&2 ;;
+esac
+
 # Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
 if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-lucky/firewall-owned ]; then
   systemctl disable --now vps-server-lucky.service 2>/dev/null || true
@@ -152,6 +164,10 @@ if [ -f "$UNIT_PATH" ]; then
 else
   msg no_unit "$UNIT_PATH"
 fi
+
+# All vps-server listeners have stopped. Keep other projects' PORTS.md rows.
+released="$(python3 "$FRPC_CLEANUP" ports "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME" "$frpc_result")" || die "$(msg cleanup_failed)"
+msg ports_released "$released"
 
 if [ "${KEEP_DATA:-0}" = "1" ]; then
   if [ -d "$PREFIX" ]; then

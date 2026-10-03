@@ -10,6 +10,10 @@ case "$key" in
   anytls_orphan) fmt='%s is installed but %s/anytls/setup-anytls.sh is gone, so it cannot be removed automatically.\nRemove it by hand:\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s\n  rm -rf /etc/vps-server-anytls\n  (keep /usr/local/bin/sing-box-vps-server if proxy still uses it; remove it only after confirming no module uses it)\n' ;;
   proxy_removing) fmt='Removing the proxy module (%s) ...\n' ;;
   proxy_orphan) fmt='%s is installed but %s/proxy/setup-proxy.sh is gone, so it cannot be removed automatically.\nRemove it by hand:\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s\n  rm -rf /etc/vps-server-proxy\n  (leave /usr/local/bin/sing-box-vps-server if the anytls module still uses it)\n' ;;
+  frpc_removed) fmt='FRPC cleanup complete.\n' ;;
+  frpc_unowned) fmt='FRPC ownership could not be verified; existing FRPC files and their port registrations were kept.\n' ;;
+  ports_released) fmt='Released %s vps-server port registrations.\n' ;;
+  cleanup_failed) fmt='Could not complete FRPC or port-registry cleanup.\n' ;;
   done) fmt='\nvps-server has been uninstalled.\n' ;;
   lucky_fw_retained) fmt='Warning: Lucky firewall ownership record retained; manual cleanup needed\n' ;;
   lucky_config_retained) fmt='Lucky DDNS/reverse proxy configuration retained in /etc/vps-server-lucky/config.json\n' ;;

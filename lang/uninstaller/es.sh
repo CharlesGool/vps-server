@@ -10,6 +10,10 @@ case "$key" in
   anytls_orphan) fmt='%s está instalado, pero falta %s/anytls/setup-anytls.sh, así que no puede eliminarse automáticamente.\nElimínalo manualmente:\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s\n  rm -rf /etc/vps-server-anytls\n  (conserva /usr/local/bin/sing-box-vps-server si proxy todavía lo utiliza; elimínalo solo tras confirmar que ningún módulo lo necesita)\n' ;;
   proxy_removing) fmt='Eliminando el módulo proxy (%s) ...\n' ;;
   proxy_orphan) fmt='%s está instalado, pero falta %s/proxy/setup-proxy.sh, así que no puede eliminarse automáticamente.\nElimínalo manualmente:\n  systemctl disable --now %s\n  rm -f /etc/systemd/system/%s\n  rm -rf /etc/vps-server-proxy\n  (conserva /usr/local/bin/sing-box-vps-server si anytls todavía lo utiliza)\n' ;;
+  frpc_removed) fmt='Limpieza de FRPC completada.\n' ;;
+  frpc_unowned) fmt='No se pudo verificar que FRPC pertenezca al proyecto; se conservaron los archivos y registros de puertos.\n' ;;
+  ports_released) fmt='Se liberaron %s registros de puertos de vps-server.\n' ;;
+  cleanup_failed) fmt='No se pudo completar la limpieza de FRPC o del registro de puertos.\n' ;;
   done) fmt='\nSe desinstaló vps-server.\n' ;;
   lucky_fw_retained) fmt='Advertencia: se conservó el registro de propiedad de la regla de firewall de Lucky; requiere limpieza manual\n' ;;
   lucky_config_retained) fmt='La configuración de DDNS/proxy inverso de Lucky se conserva en /etc/vps-server-lucky/config.json\n' ;;
