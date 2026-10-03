@@ -66,11 +66,15 @@ def atomic_bytes(path, payload, mode=0o600):
         Path(name).unlink(missing_ok=True)
 
 
-def write_rows(path, rows):
+def serialize_rows(rows):
     payload = HEADER + "".join(f"| {port} | {owner} | {bind} | {registered} |\n"
                                for port, owner, bind, registered in sorted(rows))
+    return payload.encode("utf-8")
+
+
+def write_rows(path, rows):
     mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
-    atomic_bytes(path, payload.encode(), mode)
+    atomic_bytes(path, serialize_rows(rows), mode)
 
 
 def available(port):

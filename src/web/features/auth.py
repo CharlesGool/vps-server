@@ -63,7 +63,7 @@ class AuthMixin:
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
         submitted = form.get("password", [""])[0]
         next_page = form.get("next", [""])[0]
-        if self.context.hmac.compare_digest(submitted, self.context.ADMIN_PASSWORD):
+        if self.context.hmac.compare_digest(submitted.encode("utf-8"), self.context.ADMIN_PASSWORD.encode("utf-8")):
             self.context.LOGIN_LIMITER.record_success(ip)
             previous = self.get_cookie("session")
             if previous:
@@ -138,7 +138,8 @@ class AuthMixin:
             return self.page_security_verify(lang,
                                              error=self.context.STRINGS[lang]["login_locked"].format(seconds=retry_after),
                                              status=429, next_page=next_page)
-        if not self.context.hmac.compare_digest(form["password"][0], self.context.ADMIN_PASSWORD):
+        if not self.context.hmac.compare_digest(form["password"][0].encode("utf-8"),
+                                                self.context.ADMIN_PASSWORD.encode("utf-8")):
             self.context.LOGIN_LIMITER.record_failure(ip)
             return self.page_security_verify(lang, error=self.context.STRINGS[lang]["wrong_password"], status=401, next_page=next_page)
         self.context.LOGIN_LIMITER.record_success(ip)

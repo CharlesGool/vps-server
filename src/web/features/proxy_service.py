@@ -91,94 +91,9 @@ def address_entries(context, t):
         seen.add(tailscale)
     return entries
 
-def anytls_reset_command(context, ):
-    """argv for a reset, run outside this service's sandbox where possible.
-
-    The unit this process runs under has ProtectSystem=strict with only
-    ReadWritePaths=$PREFIX, so /etc is read-only to it — and a reset has to
-    write /etc/vps-server-anytls and a unit file. Running it inside the
-    sandbox fails partway through, after the old port's firewall rule is
-    already gone.
-
-    The fix is not to widen this service's write access for the lifetime of
-    the install so that one button works. It is to hand the privileged work to
-    a transient unit, which systemd starts outside our sandbox. The fixed unit
-    name also serialises resets; --collect reaps it either way.
-
-    Without systemd-run — a container, a stripped image — run it directly.
-    Hardening is omitted in exactly those environments anyway, so the direct
-    call is the one that works there.
-    """
-    direct = ["bash", str(context.ANYTLS_SETUP), "reset"]
-    if context.shutil.which("systemd-run"):
-        return ["systemd-run", "--pipe", "--wait", "--collect",
-                f"--unit={context.ANYTLS_RESET_UNIT}", *direct]
-    return direct
-
-def anytls_reset(context, ):
-    """Rotate the node's port and password. Returns a STRINGS key.
-
-    The console deliberately does not write anytls state itself:
-    setup-anytls.sh owns it, including the part that is easy to get wrong —
-    withdrawing the old port's firewall rule before opening the new one.
-    Duplicating that here would leave two copies to drift apart.
-    """
-    if not context.ANYTLS_SETUP.is_file():
-        return "anytls_reset_missing"
-    try:
-        result = context.subprocess.run(
-            context.anytls_reset_command(),
-            stdout=context.subprocess.PIPE,
-            stderr=context.subprocess.STDOUT,
-            timeout=context.ANYTLS_RESET_TIMEOUT,
-            check=False,
-            text=True,
-        )
-    except context.subprocess.TimeoutExpired:
-        # The timeout kills the systemd-run client, not the unit it asked
-        # systemd to start — that runs outside this process tree and would
-        # carry on, possibly rotating the credentials minutes after the
-        # console reported a timeout. The fixed unit name would then make the
-        # retry this message suggests fail with "unit already exists", which
-        # says nothing about what actually happened.
-        context._run_quiet(["systemctl", "stop", context.ANYTLS_RESET_UNIT])
-        return "anytls_reset_timeout"
-    except OSError:
-        return "anytls_reset_missing"
-    if result.returncode != 0:
-        # The script's own diagnostics are the useful part and the console
-        # cannot improve on them, so put them where an operator will look
-        # rather than flattening everything into one generic failure.
-        print(context._log_text('log_anytls_reset', code=result.returncode, output=result.stdout), file=context.sys.stderr)
-        return "anytls_reset_failed"
-    return "anytls_reset_done"
-
 def node_csrf_token(context, session, protocol):
     return context.hmac.new(context.SESSION_SECRET.encode(),
                     f"node-apply:{session}:{protocol}".encode(), "sha256").hexdigest()
-
-def node_apply(context, protocol, credential):
-    """Use the installed privileged helper, never putting credentials in argv."""
-    if not context.NODE_CONFIG_HELPER.is_file():
-        return "node_apply_failed"
-    direct = ["/usr/bin/python3", str(context.NODE_CONFIG_HELPER), protocol]
-    systemd_run = context.shutil.which("systemd-run")
-    if not systemd_run and context.Path("/run/systemd/system").exists():
-        return "node_apply_failed"  # never run inside the production web sandbox
-    command = (["systemd-run", "--pipe", "--wait", "--collect",
-                f"--unit={context.NODE_APPLY_UNIT}", *direct]
-               if systemd_run else direct)
-    try:
-        result = context.subprocess.run(command, input=credential.encode("utf-8"),
-                                stdout=context.subprocess.DEVNULL, stderr=context.subprocess.DEVNULL,
-                                timeout=context.NODE_APPLY_TIMEOUT, check=False)
-    except context.subprocess.TimeoutExpired:
-        if command[0] == "systemd-run":
-            context._run_quiet(["systemctl", "stop", context.NODE_APPLY_UNIT])
-        return "node_apply_failed"
-    except OSError:
-        return "node_apply_failed"
-    return "node_apply_done" if result.returncode == 0 else "node_apply_failed"
 
 def node_control_apply(context, request):
     """Send one ID-based edit to the privileged transactional helper."""
@@ -200,10 +115,17 @@ def node_control_apply(context, request):
     except context.subprocess.TimeoutExpired:
         if systemd_run:
             context._run_quiet(["systemctl", "stop", context.NODE_CONTROL_UNIT])
+        print("node control apply failed: timeout", file=context.sys.stderr)
         return False
     except OSError:
+        print("node control apply failed: helper unavailable", file=context.sys.stderr)
         return False
-    return result.returncode == 0
+    if result.returncode:
+        action = request.get("action") if isinstance(request, dict) else None
+        action = action if action in ("create", "delete", "toggle", "edit", "reset", "iperf-port") else "unknown"
+        print(f"node control {action} failed: exit {result.returncode}", file=context.sys.stderr)
+        return False
+    return True
 
 def proxy_installed(context, ):
     """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
@@ -331,50 +253,3 @@ def proxy_share_link(context, node, sni, host, name):
                 f'?sni={context.quote(sni, safe="")}&allowInsecure=1#{context.quote(name, safe="")}')
     blob = context.base64.b64encode(f"2022-blake3-aes-128-gcm:{secret}".encode()).decode()
     return f"ss://{blob}@{host}:{port}#{context.quote(name, safe='')}"
-
-def proxy_reset_command(context, protocol=None):
-    """Same sandboxing workaround as anytls_reset_command() — see its
-    docstring. ConsoleHandler's unit has ProtectSystem=strict, so a reset has
-    to run outside this process's own sandbox to reach /etc.
-
-    `protocol`, when given, rotates only that one protocol's port and
-    credential — setup-proxy.sh's `reset <protocol>` form, added after an
-    operator pointed out that a single "reset everything" button forces
-    rotating protocols nobody asked to touch. `None` keeps the old
-    "reset everything currently installed" behaviour.
-    """
-    direct = ["bash", str(context.PROXY_SETUP), "reset"]
-    if protocol:
-        direct.append(protocol)
-    if context.shutil.which("systemd-run"):
-        return ["systemd-run", "--pipe", "--wait", "--collect",
-                f"--unit={context.PROXY_RESET_UNIT}", *direct]
-    return direct
-
-def proxy_reset(context, protocol=None):
-    """Rotate one protocol's (or, with no argument, every currently-
-    installed protocol's) port and credential. Returns a STRINGS key. Same
-    non-duplication reasoning as anytls_reset(): setup-proxy.sh owns the
-    state, including which protocol set survives a reset (it reads that
-    back from the config it is about to overwrite).
-    """
-    if not context.PROXY_SETUP.is_file():
-        return "proxy_reset_missing"
-    try:
-        result = context.subprocess.run(
-            context.proxy_reset_command(protocol),
-            stdout=context.subprocess.PIPE,
-            stderr=context.subprocess.STDOUT,
-            timeout=context.PROXY_RESET_TIMEOUT,
-            check=False,
-            text=True,
-        )
-    except context.subprocess.TimeoutExpired:
-        context._run_quiet(["systemctl", "stop", context.PROXY_RESET_UNIT])
-        return "proxy_reset_timeout"
-    except OSError:
-        return "proxy_reset_missing"
-    if result.returncode != 0:
-        print(context._log_text('log_proxy_reset', code=result.returncode, output=result.stdout), file=context.sys.stderr)
-        return "proxy_reset_failed"
-    return "proxy_reset_done"

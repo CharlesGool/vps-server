@@ -20,8 +20,9 @@ class PortfwdMixin:
         for rule in self.context.PORTFWD.list_rules():
             label = self.context.html.escape(rule["label"] or rule["id"])
             proto = self.context.html.escape(rule["protocol"].upper())
-            state_cls = "is-open" if rule["enabled"] else "is-closed"
-            state_label = t["portfwd_state_on"] if rule["enabled"] else t["portfwd_state_off"]
+            state_cls = "is-open" if rule["enabled"] and rule["applied"] else "is-closed"
+            state_label = (t["portfwd_state_on"] if rule["applied"] else
+                           t["portfwd_state_failed"] if rule["enabled"] else t["portfwd_state_off"])
             toggle_action = "/portfwd/disable" if rule["enabled"] else "/portfwd/enable"
             toggle_label = t["portfwd_disable"] if rule["enabled"] else t["portfwd_enable"]
             rows.append(f"""
@@ -192,17 +193,16 @@ def _ensure_ip_forward(context, ):
     try:
         current = context.Path("/proc/sys/net/ipv4/ip_forward").read_text().strip()
     except OSError:
-        return
+        return False
     if current != "1":
-        context._run_quiet(["sysctl", "-w", "net.ipv4.ip_forward=1"])
+        return context._run_quiet(["sysctl", "-w", "net.ipv4.ip_forward=1"])
+    return True
 
 def portfwd_rule_apply(context, rule, opening):
     """Add (opening=True) or withdraw (opening=False) one rule's iptables state.
 
-    Best effort, like firewall_port(): a host with no iptables must not block
-    the console, so failure is reported to stderr and otherwise swallowed.
-    Withdrawal ignores failure outright — the rule may simply not be present,
-    which is the normal case the first time a rule is ever applied.
+    Return whether every requested rule was applied or withdrawn. An absent
+    rule is already withdrawn; partial additions are removed before failure.
     """
     if not context.shutil.which("iptables"):
         print(context._log_text('log_iptables_missing'), file=context.sys.stderr)
@@ -211,9 +211,14 @@ def portfwd_rule_apply(context, rule, opening):
     for table, chain, match, action in context._portfwd_specs(rule):
         verb = "-A" if opening else "-D"
         cmd = ["iptables", "-t", table, verb, chain, *match, *action]
-        if not context._run_quiet(cmd) and opening:
-            ok = False
-    if not ok:
+        if not context._run_quiet(cmd):
+            if opening or context._run_quiet(["iptables", "-t", table, "-C", chain, *match, *action]):
+                ok = False
+    if opening and not ok:
+        # A partially applied rule must not be left in the kernel after the
+        # caller reports a failure. Every spec carries this rule's own tag.
+        for table, chain, match, action in context._portfwd_specs(rule):
+            context._run_quiet(["iptables", "-t", table, "-D", chain, *match, *action])
         print(context._log_text('log_portfwd_apply', rule_id=rule['id']), file=context.sys.stderr)
     return ok
 
@@ -231,6 +236,7 @@ class PortForwardManager:
         self._max_rules = max_rules
         self._lock = self.context.threading.RLock()
         self._rules = self._read()
+        self._applied = set()
 
     def _read(self):
         try:
@@ -246,7 +252,7 @@ class PortForwardManager:
 
     def list_rules(self):
         with self._lock:
-            return list(self._rules)
+            return [{**rule, "applied": rule["id"] in self._applied} for rule in self._rules]
 
     def reserved_ports(self, exclude_id=None):
         """Every public port this install already answers on.
@@ -301,10 +307,16 @@ class PortForwardManager:
                 "enabled": True,
                 "created": self.context.datetime.now(self.context.timezone.utc).isoformat(timespec="seconds"),
             }
+            if not self.context._ensure_ip_forward() or not self.context.portfwd_rule_apply(rule, opening=True):
+                return None, "portfwd_apply_failed"
             self._rules.append(rule)
-            self._write()
-            self.context._ensure_ip_forward()
-            self.context.portfwd_rule_apply(rule, opening=True)
+            try:
+                self._write()
+            except OSError:
+                self._rules.pop()
+                self.context.portfwd_rule_apply(rule, opening=False)
+                return None, "portfwd_apply_failed"
+            self._applied.add(rule["id"])
             return rule, "portfwd_added"
 
     def remove(self, rule_id):
@@ -312,10 +324,18 @@ class PortForwardManager:
             rule = next((r for r in self._rules if r["id"] == rule_id), None)
             if rule is None:
                 return "portfwd_not_found"
-            if rule["enabled"]:
-                self.context.portfwd_rule_apply(rule, opening=False)
+            if rule["enabled"] and not self.context.portfwd_rule_apply(rule, opening=False):
+                return "portfwd_apply_failed"
+            previous = self._rules
             self._rules = [r for r in self._rules if r["id"] != rule_id]
-            self._write()
+            try:
+                self._write()
+            except OSError:
+                self._rules = previous
+                if rule["enabled"] and self.context._ensure_ip_forward():
+                    self.context.portfwd_rule_apply(rule, opening=True)
+                return "portfwd_apply_failed"
+            self._applied.discard(rule_id)
             return "portfwd_removed"
 
     def set_enabled(self, rule_id, enabled):
@@ -323,17 +343,31 @@ class PortForwardManager:
             rule = next((r for r in self._rules if r["id"] == rule_id), None)
             if rule is None:
                 return "portfwd_not_found"
-            if rule["enabled"] == enabled:
+            if rule["enabled"] == enabled and (not enabled or rule_id in self._applied):
                 return "portfwd_enabled" if enabled else "portfwd_disabled"
             if enabled and rule["public_port"] in self.reserved_ports(exclude_id=rule_id):
                 return "portfwd_port_taken"
-            rule["enabled"] = enabled
-            self._write()
             if enabled:
-                self.context._ensure_ip_forward()
-                self.context.portfwd_rule_apply(rule, opening=True)
+                if not self.context._ensure_ip_forward() or not self.context.portfwd_rule_apply(rule, opening=True):
+                    return "portfwd_apply_failed"
             else:
-                self.context.portfwd_rule_apply(rule, opening=False)
+                if not self.context.portfwd_rule_apply(rule, opening=False):
+                    return "portfwd_apply_failed"
+            previous = rule["enabled"]
+            rule["enabled"] = enabled
+            try:
+                self._write()
+            except OSError:
+                rule["enabled"] = previous
+                if enabled:
+                    self.context.portfwd_rule_apply(rule, opening=False)
+                elif self.context._ensure_ip_forward():
+                    self.context.portfwd_rule_apply(rule, opening=True)
+                return "portfwd_apply_failed"
+            if enabled:
+                self._applied.add(rule_id)
+            else:
+                self._applied.discard(rule_id)
             return "portfwd_enabled" if enabled else "portfwd_disabled"
 
     def load(self):
@@ -345,12 +379,18 @@ class PortForwardManager:
         nally whether the rule was already present or not.
         """
         with self._lock:
-            if any(r["enabled"] for r in self._rules):
-                self.context._ensure_ip_forward()
+            self._applied.clear()
+            if any(r["enabled"] for r in self._rules) and not self.context._ensure_ip_forward():
+                return False
+            success = True
             for rule in self._rules:
                 if rule["enabled"]:
                     self.context.portfwd_rule_apply(rule, opening=False)
-                    self.context.portfwd_rule_apply(rule, opening=True)
+                    if self.context.portfwd_rule_apply(rule, opening=True):
+                        self._applied.add(rule["id"])
+                    else:
+                        success = False
+            return success
 
     def shutdown(self):
         """Withdraw every enabled rule's kernel state on a clean stop.
@@ -365,6 +405,7 @@ class PortForwardManager:
             for rule in self._rules:
                 if rule["enabled"]:
                     self.context.portfwd_rule_apply(rule, opening=False)
+            self._applied.clear()
 
 def portfwd_switch_revision(context, ):
     try:
@@ -390,7 +431,8 @@ def watch_portfwd_switch(context, stop_event):
         if desired != active:
             try:
                 if desired:
-                    context.PORTFWD.load()
+                    if not context.PORTFWD.load():
+                        raise RuntimeError("port forwarding rules were not applied")
                 else:
                     context.PORTFWD.shutdown()
             except Exception as exc:

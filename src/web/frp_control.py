@@ -15,6 +15,11 @@ from datetime import date
 import time
 import unicodedata
 
+try:
+    from .console_port import read_rows, write_rows
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from console_port import read_rows, write_rows
+
 
 APP_DIR = Path(__file__).resolve().parent
 if APP_DIR.parent.name == "src":
@@ -27,8 +32,6 @@ SERVER_SETUP = APP_DIR / "frps" / "setup-frps.sh"
 REGISTRY = APP_DIR.parent / "PORTS.md"
 LOCK = APP_DIR.parent / ".ports.lock"
 ASCII_NAME = re.compile(r"[a-zA-Z0-9_-]{1,32}\Z")
-HEADER = "| Host Port | Project / Service | Bind Address | Registration Date |\n| --- | --- | --- | --- |\n"
-ROW = re.compile(r"\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d\d-\d\d)\s*\|")
 
 
 def valid_client_name(name):
@@ -207,34 +210,11 @@ def update_structured(name, section, values):
 
 
 def _rows():
-    text = REGISTRY.read_text(encoding="utf-8") if REGISTRY.exists() else HEADER
-    if not text.startswith(HEADER):
-        raise ValueError("port registry format changed")
-    rows = []
-    for line in text[len(HEADER):].splitlines():
-        if not line.strip():
-            continue
-        match = ROW.fullmatch(line)
-        if not match:
-            raise ValueError("port registry format changed")
-        rows.append((int(match[1]), match[2], match[3], match[4]))
-    return rows
+    return read_rows(REGISTRY)[0]
 
 
 def _save_rows(rows):
-    fd, temporary = tempfile.mkstemp(prefix=".PORTS.", dir=REGISTRY.parent)
-    try:
-        if REGISTRY.exists():
-            os.fchmod(fd, REGISTRY.stat().st_mode & 0o777)
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            stream.write(HEADER)
-            for port, service, bind, date in sorted(rows):
-                stream.write(f"| {port} | {service} | {bind} | {date} |\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, REGISTRY)
-    finally:
-        Path(temporary).unlink(missing_ok=True)
+    write_rows(REGISTRY, rows)
 
 
 def _free_port(port):

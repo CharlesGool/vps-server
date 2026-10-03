@@ -223,10 +223,16 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                 for entry in ledger["nodes"].values():
                     entry["suspect"] = True
                 old_fingerprint = None
+        # A new accounting cycle changes the quota's `used` value even when
+        # the resulting policy is identical. Rebuild the nft table once so
+        # the kernel and the persisted period start at the same zero.
+        previous_resets = {node["id"]: node["next_reset_at"] for node in inventory["nodes"]}
         inventory, ledger = advance_cycles(inventory, ledger, now=now)
+        cycle_changed = any(node["next_reset_at"] != previous_resets[node["id"]]
+                            for node in inventory["nodes"])
         policy = desired_policy(inventory, ledger, now=now)
         fingerprint = _policy_key(inventory, policy)
-        if not exists or fingerprint != old_fingerprint:
+        if not exists or cycle_changed or fingerprint != old_fingerprint:
             backend.apply(render_rules(inventory, policy, replace=exists))
             if metadata is not None:
                 epoch += 1

@@ -24,6 +24,7 @@ import tempfile
 import uuid
 
 from node_inventory import InvalidInventory, validate_inventory
+from console_port import read_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
 
@@ -461,32 +462,13 @@ def _apply_iperf_port(request, *, require_root):
     registry = root / "PORTS.md"
     state = IPERF_PORT_FILE
     service = "vps-server-iperf3-window"
-    header = ("| Host Port | Project / Service | Bind Address | Registration Date |\n"
-              "| --- | --- | --- | --- |\n")
     with open(root / ".ports.lock", "a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         current = (int(state.read_text().strip()) if state.exists() else
                    int(os.environ.get("VPSSRV_IPERF_PORT", "5201")))
         if current != old_port or port == old_port:
             raise NodeControlError("stale iperf port")
-        raw = registry.read_text(encoding="utf-8")
-        if not raw.startswith(header):
-            raise NodeControlError("invalid port registry")
-        rows = []
-        seen_ports = set()
-        for line in raw[len(header):].splitlines():
-            if not line.strip():
-                continue
-            match = re.fullmatch(r"\|\s*(\d{1,5})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|", line)
-            if not match:
-                raise NodeControlError("invalid port registry row")
-            registered_port = int(match[1])
-            if not 1 <= registered_port <= 65535 or registered_port in seen_ports:
-                raise NodeControlError("invalid port registry entry")
-            ipaddress.ip_address(match[3])
-            date.fromisoformat(match[4])
-            seen_ports.add(registered_port)
-            rows.append((registered_port, match[2], match[3], match[4]))
+        rows, raw = read_rows(registry)
         if sum(p == old_port and owner == service for p, owner, _, _ in rows) != 1:
             raise NodeControlError("iperf port is not registered")
         if any(p == port for p, _, _, _ in rows) or port in _reserved_ports():
@@ -495,9 +477,7 @@ def _apply_iperf_port(request, *, require_root):
         updated = [(port, service, "0.0.0.0", date.today().isoformat())
                    if p == old_port and owner == service else (p, owner, bind, registered)
                    for p, owner, bind, registered in rows]
-        registry_bytes = (header + "".join(
-            f"| {p} | {owner} | {bind} | {registered} |\n"
-            for p, owner, bind, registered in sorted(updated))).encode("utf-8")
+        registry_bytes = serialize_rows(updated)
         old_state = state.read_bytes() if state.exists() else None
         registry_stage = _stage(registry, registry_bytes)
         try:
@@ -511,7 +491,7 @@ def _apply_iperf_port(request, *, require_root):
             try:
                 _replace(state_stage, state)
             except BaseException:
-                rollback = _stage(registry, raw.encode("utf-8"))
+                rollback = _stage(registry, raw)
                 os.chmod(rollback, registry.stat().st_mode & 0o777)
                 try:
                     _replace(rollback, registry)
@@ -664,9 +644,11 @@ def main():
                 return 2
             apply_request(json.loads(raw))
     except (InvalidInventory, NodeControlError, DegradedNodeControl, OSError,
-            subprocess.SubprocessError, ValueError):
+            subprocess.SubprocessError, ValueError) as exc:
         # Detailed errors can contain paths or config facts. The console uses
         # its own localized status message and journalctl for diagnostics.
+        print(f"node control {sys.argv[1]} failed: {type(exc).__name__}",
+              file=sys.stderr, flush=True)
         return 1
     return 0
 

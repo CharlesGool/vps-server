@@ -7,186 +7,26 @@ can be reused with another application context.
 
 class ProxyMixin:
     def page_proxy(self, lang, query_lang):
-        """Show all installed proxy protocols in a single operator view."""
+        """Show the verified, ID-based node inventory."""
         t = self.context.STRINGS[lang]
         installed = self.context.installed_modules(self.context.BASE_DIR)
-        if (self.context.BASE_DIR / ".install-state").is_file() and not ({"proxy", "anytls"} & installed):
+        if not ({"proxy", "anytls"} & installed):
             return self.page_module_not_installed(lang, query_lang, t["proxy_heading"], t["proxy"], active="proxy")
-        anytls = self.context.anytls_node()
-        nodes = self.context.proxy_nodes()
         try:
-            inventory = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
-                                       config_paths={"anytls": self.context.ANYTLS_CONFIG,
-                                                     "proxy": self.context.PROXY_CONFIG})
-            managed = {node["protocol"]: node for node in inventory["nodes"]} if inventory else {}
+            inventory = self.context.read_inventory(
+                state_path=self.context.NODE_STATE_PATH,
+                config_paths={"anytls": self.context.ANYTLS_CONFIG,
+                              "proxy": self.context.PROXY_CONFIG})
             meter = self.context._read_json(self.context.NODE_METER_PATH) or {}
             meter_nodes = meter.get("ledger", {}).get("nodes", {})
-            if inventory is not None:
-                return self.page_managed_nodes(lang, query_lang, inventory, meter_nodes)
         except (OSError, ValueError, TypeError, AttributeError):
-            managed, meter_nodes = {}, {}
-        legacy_controls = not self.context.NODE_STATE_PATH.exists()
-        if anytls is None and not nodes:
-            return self.page_module_not_installed(lang, query_lang, t['proxy_heading'], t['proxy'], active="proxy")
-
-        host = (self.headers.get("Host") or "").split(":")[0] or "<server-ip>"
-        lan_host = self.context.clash_lan_host(host) if self.context.AUTH_ENABLED else None
-
-        notice = ""
-        key = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
-        if key in self.context.ANYTLS_MESSAGE_KEYS:
-            cls = "notice" if key == "anytls_reset_done" else "error"
-            notice = (f'<p class="{cls}">'
-                      f'{self.context.html.escape(t[key].format(service=self.context.ANYTLS_SERVICE))}</p>')
-        elif key in self.context.NODE_APPLY_MESSAGE_KEYS:
-            cls = "notice" if key in ("node_apply_done", "node_settings_done", "node_reset_done") else "error"
-            notice = f'<p class="{cls}">{self.context.html.escape(t[key])}</p>'
-        elif key in self.context.PROXY_MESSAGE_KEYS:
-            cls = "notice" if key == "proxy_reset_done" else "error"
-            notice = (f'<p class="{cls}">'
-                      f'{self.context.html.escape(t[key].format(service=self.context.PROXY_SERVICE))}</p>')
-
-        sections = []
-
-        if anytls is not None:
-            if anytls["running"]:
-                state = t["anytls_state_running"].format(port='••••••')
-                state_class = "is-open"
-            else:
-                state = t["anytls_state_stopped"].format(
-                    port='••••••', service=self.context.ANYTLS_SERVICE
-                )
-                state_class = "is-closed"
-            health = ("" if anytls["running"] else
-                      f'<p class="proxy-node-health warn">{self.context.html.escape(state)}</p>')
-            entries = self.context.address_entries(t)
-            blocks = []
-            for label, address in entries:
-                blocks.append(f"""
-                <div class="node-address"><span>{self.context.html.escape(label)}</span>
-                  <code>{self.context.html.escape(address)}</code></div>
-                """)
-            sections.append(f"""
-            <article class="proxy-node">
-              <header class="proxy-node-header">
-                <div><span class="proxy-node-protocol">anytls</span><h2>{self.context.html.escape(managed['anytls']['name'] if 'anytls' in managed else 'anytls')}</h2></div>
-                <span class="proxy-node-status {state_class}">{self.context.html.escape(t['node_active'] if anytls['running'] else t['node_stopped'])}</span>
-              </header>
-              {health}
-              <dl class="kv proxy-node-facts">
-                <dt>{self.context.html.escape(t['anytls_port'])}</dt>
-                <dd>{self.private_value_control('legacy-anytls', 'port', t)}</dd>
-                <dt>{self.context.html.escape(t['anytls_password'])}</dt>
-                <dd class="secret">{self.private_value_control('legacy-anytls', 'credential', t, copy=True)}</dd>
-                <dt>{self.context.html.escape(t['anytls_sni'])}</dt>
-                <dd>{self.context.html.escape(anytls['sni'] or '—')}</dd>
-              </dl>
-              <div class="proxy-node-addresses">{"".join(blocks)}</div>
-              {self.node_metrics(managed.get('anytls'), meter_nodes, t)}
-              {self.node_clash_share(managed.get('anytls'), lan_host, t)}
-              <details class="proxy-node-settings">
-                <summary>{self.context.html.escape(t['node_manage'])}</summary>
-                {self.node_settings_form('anytls', anytls['port'], anytls['sni'], managed.get('anytls'), t)}
-                {self.node_credential_form('anytls', t['anytls_password'], t) if legacy_controls else ''}
-                {f'''
-                <form method="post" action="/anytls/reset" class="proxy-node-reset">
-                  <label class="checkline">
-                    <input type="checkbox" name="confirm" value="yes" required>
-                    <span>{self.context.html.escape(t['anytls_reset_confirm'])}</span>
-                  </label>
-                  <button type="submit" class="danger">{self.context.html.escape(t['anytls_reset'])}</button>
-                </form>
-                ''' if legacy_controls else ''}
-              </details>
-            </article>
-            """)
-
-        if nodes:
-            proxy_entries = self.context.address_entries(t)
-            if self.context.proxy_running():
-                proxy_state = t["proxy_state_running"]
-                proxy_state_class = "is-open"
-            else:
-                proxy_state = t["proxy_state_stopped"].format(service=self.context.PROXY_SERVICE)
-                proxy_state_class = "is-closed"
-            proxy_health = ("" if proxy_state_class == "is-open" else
-                            f'<p class="proxy-node-health warn">{self.context.html.escape(proxy_state)}</p>')
-            for node in nodes:
-                proto = node["type"]
-                secret_label = (
-                    t["proxy_uuid"] if proto in ("vmess", "vless") else t["proxy_password"]
-                )
-                sni_row = ""
-                if proto != "shadowsocks":
-                    sni_row = f"""
-                    <dt>{self.context.html.escape(t['proxy_sni'])}</dt>
-                    <dd>{self.context.html.escape(node['sni'] or '—')}</dd>
-                    """
-                blocks = []
-                for label, address in proxy_entries:
-                    blocks.append(f"""
-                    <div class="node-address"><span>{self.context.html.escape(label)}</span>
-                      <code>{self.context.html.escape(address)}</code></div>
-                    """)
-                sections.append(f"""
-                <article class="proxy-node">
-                  <header class="proxy-node-header">
-                    <div><span class="proxy-node-protocol">{self.context.html.escape(proto)}</span>
-                      <h2>{self.context.html.escape(managed[proto]['name'] if proto in managed else proto)}</h2></div>
-                    <span class="proxy-node-status {proxy_state_class}">{self.context.html.escape(t['node_active'] if proxy_state_class == 'is-open' else t['node_stopped'])}</span>
-                  </header>
-                  {proxy_health}
-                  <dl class="kv proxy-node-facts">
-                    <dt>{self.context.html.escape(t['proxy_port'])}</dt>
-                    <dd>{self.private_value_control('legacy-' + proto, 'port', t)}</dd>
-                    <dt>{self.context.html.escape(secret_label)}</dt>
-                    <dd class="secret">{self.private_value_control('legacy-' + proto, 'credential', t, copy=True)}</dd>
-                    {sni_row}
-                  </dl>
-                  <div class="proxy-node-addresses">{"".join(blocks)}</div>
-                  {self.node_metrics(managed.get(proto), meter_nodes, t)}
-                  {self.node_clash_share(managed.get(proto), lan_host, t)}
-                  <details class="proxy-node-settings">
-                    <summary>{self.context.html.escape(t['node_manage'])}</summary>
-                    {self.node_settings_form(proto, node['port'], node['sni'], managed.get(proto), t)}
-                    {self.node_credential_form(proto, secret_label, t) if legacy_controls else ''}
-                    {f'''
-                    <form method="post" action="/proxy/reset" class="proxy-node-reset">
-                      <input type="hidden" name="protocol" value="{self.context.html.escape(proto)}">
-                      <label class="checkline">
-                        <input type="checkbox" name="confirm" value="yes" required>
-                        <span>{self.context.html.escape(t['anytls_reset_confirm'])}</span>
-                      </label>
-                      <button type="submit" class="danger">{self.context.html.escape(t['proxy_reset'])}</button>
-                    </form>
-                    ''' if legacy_controls else ''}
-                  </details>
-                </article>
-                """)
-
-        running_count = int(bool(anytls and anytls['running'])) + (len(nodes) if nodes and self.context.proxy_running() else 0)
-        body = f"""
-        <div class="proxy-workspace">
-          <header class="proxy-overview">
-            <div><p class="proxy-eyebrow">{self.context.html.escape(t['node_overview'])}</p>
-              <h1>{self.context.html.escape(t['proxy_heading'])}</h1>
-              </div>
-            <div class="proxy-summary" aria-label="{self.context.html.escape(t['node_summary'])}">
-              <div><strong>{len(sections)}</strong><span>{self.context.html.escape(t['node_total'])}</span></div>
-              <div><strong>{running_count}</strong><span>{self.context.html.escape(t['node_active'])}</span></div>
-            </div>
-          </header>
-          {notice}
-          <div class="proxy-node-grid">{"".join(sections)}</div>
-        </div>
-        <script src="/static/copy.js"></script>
-        <script src="/static/private-values.js"></script>
-        {'''<script src="/static/qrcode.js"></script>
-        <script src="/static/qrcode-utf8.js"></script>
-        <script src="/static/qrcode-render.js"></script>''' if lan_host and managed else ''}
-        """
-        self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
-                       {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+            inventory = None
+        if inventory is None:
+            message = self.context.html.escape(t["node_state_unavailable"])
+            return self.send_html(503, self.render_page(t["proxy_heading"],
+                                  f'<div class="card"><h1>{self.context.html.escape(t["proxy_heading"])}</h1><p role="alert">{message}</p></div>',
+                                  lang, active="proxy"), {"Cache-Control": "no-store"})
+        return self.page_managed_nodes(lang, query_lang, inventory, meter_nodes)
 
     def page_managed_nodes(self, lang, query_lang, inventory, meter_nodes):
         """Render each installed inbound by stable ID, including duplicates."""
@@ -515,51 +355,6 @@ class ProxyMixin:
           </div>
         </section>'''
 
-    def node_settings_form(self, protocol, port, sni, node, t):
-        if node is None:
-            return ""
-        token = self.context.node_csrf_token(self.get_cookie("session"), protocol)
-        cap = "" if node["cap_bytes"] is None else str(self.context.Decimal(node["cap_bytes"]) / 1073741824)
-        expiry = node["expires_at"][:16] if node["expires_at"] else ""
-        next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
-        options = "".join(f'<option value="{mode}"{" selected" if mode == node["reset_mode"] else ""}>{self.context.html.escape(t[key])}</option>'
-                          for mode, key in (("none", "node_reset_none"), ("monthly", "node_reset_monthly"), ("once", "node_reset_once")))
-        sni_field = (f'<label>{self.context.html.escape(t["proxy_sni"])}<input name="sni" value="{self.context.html.escape(sni, quote=True)}" required></label>'
-                     if protocol != "shadowsocks" else
-                     f'<p class="muted">{self.context.html.escape(t["proxy_sni"])}: {self.context.html.escape(t["node_not_applicable"])}</p>')
-        return f'''<form method="post" action="/proxy/node/edit" autocomplete="off" class="node-settings-form">
-          <input type="hidden" name="protocol" value="{self.context.html.escape(protocol)}">
-          <input type="hidden" name="csrf" value="{token}">
-          <div class="node-form-grid">
-            <label>{self.context.html.escape(t['node_name'])}<input name="name" maxlength="64" value="{self.context.html.escape(node['name'], quote=True)}" required></label>
-            <label>{self.context.html.escape(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" value="{port}" required></label>
-            <div class="node-form-field">{self.context.render_password_field(t, 'legacy-credential-' + protocol, t['node_credential'], 'credential', 'value="" placeholder="' + self.context.html.escape(t['node_keep_credential'], quote=True) + '" autocomplete="new-password"')}</div>
-            {sni_field}
-            <label>{self.context.html.escape(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{self.context.html.escape(t['node_unlimited'], quote=True)}"></label>
-            <label>{self.context.html.escape(t['node_expiry_utc'])}<input type="datetime-local" name="expires_at" value="{expiry}"></label>
-            <label>{self.context.html.escape(t['node_reset_schedule'])}<select name="reset_mode">{options}</select></label>
-            <label>{self.context.html.escape(t['node_reset_time_utc'])}<input type="datetime-local" name="next_reset_at" value="{next_reset}"></label>
-          </div><button type="submit">{self.context.html.escape(t['node_save_settings'])}</button>
-        </form>
-        <form method="post" action="/proxy/node/reset" class="proxy-node-reset">
-          <input type="hidden" name="protocol" value="{self.context.html.escape(protocol)}">
-          <input type="hidden" name="csrf" value="{token}">
-          <label class="checkline"><input type="checkbox" name="confirm" value="yes" required>
-            <span>{self.context.html.escape(t['node_random_confirm'])}</span></label>
-          <button type="submit" class="danger">{self.context.html.escape(t['node_random_reset'])}</button>
-        </form>'''
-
-    def node_credential_form(self, protocol, label, t):
-        token = self.context.node_csrf_token(self.get_cookie("session"), protocol)
-        return f"""
-        <form method="post" action="/proxy/apply" autocomplete="off">
-          <input type="hidden" name="protocol" value="{self.context.html.escape(protocol)}">
-          <input type="hidden" name="csrf" value="{token}">
-          {self.context.render_password_field(t, 'legacy-reset-' + protocol, label, 'credential', 'autocomplete="off" required')}
-          <button type="submit">{self.context.html.escape(t['node_save_credential'])}</button>
-        </form>
-        """
-
     def handle_node_control(self, action):
         """Validate the browser request, then identify the node only on server."""
         try:
@@ -715,72 +510,9 @@ class ProxyMixin:
                .get(action, "node_settings_done")) if success else "node_settings_failed"
         return self.redirect(f"/proxy?msg={key}", {"Cache-Control": "no-store"})
 
-    def handle_node_apply(self):
-        # Reject oversized/ambiguous forms before parsing or invoking the helper.
-        try:
-            length = int(self.headers.get("Content-Length", ""))
-        except ValueError:
-            length = 0
-        if (not 0 < length <= self.context.NODE_APPLY_BODY_LIMIT or
-                self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
-                "application/x-www-form-urlencoded"):
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        try:
-            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"),
-                            strict_parsing=True, keep_blank_values=True)
-        except (UnicodeError, ValueError):
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        if set(form) != {"protocol", "credential", "csrf"} or any(len(v) != 1 for v in form.values()):
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        protocol = form["protocol"][0]
-        session = self.get_cookie("session")
-        if protocol not in self.context.NODE_PROTOCOLS or not self.context.hmac.compare_digest(
-                form["csrf"][0], self.context.node_csrf_token(session, protocol)):
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        credential = form["credential"][0]
-        if not credential or len(credential.encode("utf-8")) > 128:
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        if self.context.NODE_STATE_PATH.exists():
-            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
-        self.redirect(f"/proxy?msg={self.context.node_apply(protocol, credential)}",
-                      {"Cache-Control": "no-store"})
-
-    def handle_anytls_reset(self):
-        if self.context.NODE_STATE_PATH.exists():
-            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
-        # Checked on the server, not just by the `required` attribute: this
-        # rotates live credentials and every client configured against the old
-        # ones stops working. A bare button would put that one mis-click away,
-        # and `required` is trivially bypassed by anything that is not a
-        # browser.
-        if form.get("confirm", [""])[0] != "yes":
-            return self.redirect("/proxy?msg=anytls_reset_unconfirmed")
-        self.redirect(f"/proxy?msg={self.context.anytls_reset()}")
-
-    def handle_proxy_reset(self):
-        if self.context.NODE_STATE_PATH.exists():
-            return self.send_html(410, "Use node settings", {"Cache-Control": "no-store"})
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
-        if form.get("confirm", [""])[0] != "yes":
-            return self.redirect("/proxy?msg=proxy_reset_unconfirmed")
-        # Validated against the known set rather than passed through
-        # verbatim: this reaches a subprocess argv, not a shell string, so
-        # injection is not the risk — a typo or forged value silently
-        # resetting nothing (or everything, via the empty-string "reset all"
-        # path) would be.
-        protocol = form.get("protocol", [""])[0]
-        if protocol and protocol not in self.context.PROXY_PROTOCOL_ORDER:
-            return self.redirect("/proxy?msg=proxy_reset_unconfirmed")
-        self.redirect(f"/proxy?msg={self.context.proxy_reset(protocol or None)}")
-
     def route_proxy(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/anytls":
             self.redirect("/proxy")
-        elif method == "POST" and path == "/anytls/reset":
-            self.handle_anytls_reset()
         elif method == "GET" and path == "/proxy":
             if not self.context.AUTH_ENABLED:
                 self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
@@ -791,8 +523,6 @@ class ProxyMixin:
                 self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             else:
                 self.handle_proxy_private_value(parsed)
-        elif method == "POST" and path == "/proxy/reset":
-            self.handle_proxy_reset()
         elif method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
                                                 "/proxy/node/reset", "/proxy/node/create",
                                                 "/proxy/node/delete", "/proxy/node/toggle"):
@@ -800,11 +530,6 @@ class ProxyMixin:
                 self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             else:
                 self.handle_node_control(path.rsplit("/", 1)[-1])
-        elif method == "POST" and path == "/proxy/apply":
-            if not self.context.AUTH_ENABLED:
-                self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-            else:
-                self.handle_node_apply()
         else:
             return False
         return True
