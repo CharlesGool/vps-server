@@ -367,7 +367,6 @@
   "module_closed_title": "الصفحة معطلة",
   "module_closed_help": "{name} معطل. فعّله من الرئيسية أو ثبّته من الإعدادات عند الحاجة.",
   "module_not_installed_help": "{name} غير مثبّت على هذا الخادم. ثبّته من الإعدادات ← الوحدات.",
-  "module_no_instances": "مثبّت، ولا توجد مثيلات خادم",
   "module_install": "تثبيت",
   "module_enable": "تفعيل",
   "module_disable": "تعطيل",

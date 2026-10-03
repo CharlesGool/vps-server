@@ -367,7 +367,6 @@
   "module_closed_title": "Page closed",
   "module_closed_help": "{name} is turned off. Enable it from Home, or install it in Settings if needed.",
   "module_not_installed_help": "{name} is not installed on this server. Install it from Settings → Modules.",
-  "module_no_instances": "Installed, no server instances",
   "module_install": "Install",
   "module_enable": "Enable",
   "module_disable": "Disable",

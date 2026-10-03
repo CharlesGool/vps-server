@@ -105,8 +105,7 @@ token-authenticated TCP/UDP configurations only; it does not alter unsupported
 FRPC TOML. FRPC instances on other devices remain outside this console's live
 status. The Modules page checks the local FRPC executable and
 `frpc@.service` template separately from server-instance configurations. It
-offers Install if either executable or template is absent, and shows a Create
-instance link when FRPC is installed with no instances. Install uses the
+offers Install if either executable or template is absent. Install uses the
 checksum-verified FRPC v0.71.0 release asset and creates no connection or listener.
 The module log records its download and verification. For an offline install,
 download [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64)

@@ -411,7 +411,7 @@ def install_frpc(prefix):
         if created_binary:
             FRPC_BINARY.unlink(missing_ok=True)
         raise
-    print("FRPC installed; create a server instance to connect.", flush=True)
+    print("FRPC installed.", flush=True)
 
 
 def download_frpc(prefix):

@@ -367,7 +367,6 @@
   "module_closed_title": "頁面已關閉",
   "module_closed_help": "{name} 已關閉。可在首頁啟用；如尚未安裝，請前往設定安裝。",
   "module_not_installed_help": "這部主機尚未安裝 {name}。請到設定 → 模組安裝。",
-  "module_no_instances": "已安裝，尚無伺服器實例",
   "module_install": "安裝",
   "module_enable": "啟用",
   "module_disable": "停用",

@@ -66,7 +66,6 @@ class ModulesMixin:
                                           for item in ("proxy", "anytls") if item in installed)
             elif module == "frpc":
                 present = module in installed
-                names = self.context.frpc_names() if present else []
                 enabled = present and self.context.frpc_group_enabled(self.context.BASE_DIR)
             elif module == "iperf3":
                 present = module in installed
@@ -75,8 +74,7 @@ class ModulesMixin:
                 present = module in installed
                 enabled = present and self.context._run_quiet(["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS[module]])
             status = (t["module_not_installed"] if not present else
-                      t["module_disabled"] if not enabled else
-                      t["module_no_instances"] if module == "frpc" and not names else t["module_enabled"])
+                      t["module_disabled"] if not enabled else t["module_enabled"])
             control = ""
             if installable:
                 action = "uninstall" if present else "install"
@@ -88,8 +86,6 @@ class ModulesMixin:
                            f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, "module:" + module + ":" + action)}">'
                            f'<button type="submit" class="{"danger" if present else ""}"{confirm} '
                            f'{"disabled" if busy else ""}>{esc(label)}</button></form>')
-            if module == "frpc" and present and not names:
-                control += f'<a class="button-link" href="/frp/client/edit">{esc(t["frp_new_client"])}</a>'
             cards.append(f'<section class="module-card"><div><h2>{esc(title)}</h2>'
                          f'<p>{esc(status)}</p></div>{control}</section>')
         notice_text = module_job_text(t, job, {key: title for key, title, _ in catalogue})

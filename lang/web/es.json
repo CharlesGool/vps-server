@@ -367,7 +367,6 @@
   "module_closed_title": "Página desactivada",
   "module_closed_help": "{name} está desactivado. Actívalo desde Inicio o instálalo en Ajustes si hace falta.",
   "module_not_installed_help": "{name} no está instalado en este servidor. Instálalo desde Ajustes → Módulos.",
-  "module_no_instances": "Instalado, sin instancias de servidor",
   "module_install": "Instalar",
   "module_enable": "Activar",
   "module_disable": "Desactivar",

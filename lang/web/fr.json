@@ -367,7 +367,6 @@
   "module_closed_title": "Page désactivée",
   "module_closed_help": "{name} est désactivé. Activez-le depuis l’accueil ou installez-le dans les paramètres si nécessaire.",
   "module_not_installed_help": "{name} n’est pas installé sur ce serveur. Installez-le depuis Paramètres → Modules.",
-  "module_no_instances": "Installé, aucune instance de serveur",
   "module_install": "Installer",
   "module_enable": "Activer",
   "module_disable": "Désactiver",

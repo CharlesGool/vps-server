@@ -29,7 +29,8 @@ metadata:
 
 Cette liste présente les commits accessibles depuis `main`, du plus récent au plus ancien. Utilisez `git show <SHA>` pour voir un changement et `git log --all --oneline` pour consulter tout l’historique.
 
-- `HEAD` 2026-10-03 docs: record v5.0.0 publication and handoff (待提交)
+- `HEAD` 2026-10-03 fix: simplify FRPC module status (pending commit)
+- `f96fd67` 2026-10-03 docs: record v5.0.0 publication and handoff
 - `b9314f5` 2026-10-03 docs: document release verification and legacy archive boundary
 - `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
 - `38fe72a` 2026-10-03 build: mark v5.0.0 release version

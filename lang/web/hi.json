@@ -367,7 +367,6 @@
   "module_closed_title": "पेज बंद है",
   "module_closed_help": "{name} बंद है। इसे होम से चालू करें या ज़रूरत हो तो सेटिंग में इंस्टॉल करें।",
   "module_not_installed_help": "इस सर्वर पर {name} इंस्टॉल नहीं है। सेटिंग → मॉड्यूल से इंस्टॉल करें।",
-  "module_no_instances": "इंस्टॉल है, कोई सर्वर इंस्टेंस नहीं",
   "module_install": "इंस्टॉल करें",
   "module_enable": "चालू करें",
   "module_disable": "बंद करें",

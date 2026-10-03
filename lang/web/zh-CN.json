@@ -367,7 +367,6 @@
   "module_closed_title": "页面已关闭",
   "module_closed_help": "{name} 已关闭。可在首页开启；如果尚未安装，请前往设置安装。",
   "module_not_installed_help": "本机未安装 {name}。请到设置 → 模块安装。",
-  "module_no_instances": "已安装，尚无服务器实例",
   "module_install": "安装",
   "module_enable": "启用",
   "module_disable": "停用",

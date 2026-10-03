@@ -338,7 +338,8 @@ class ConsoleTest(unittest.TestCase):
             for installed, expected_action in (({'web'}, 'install'), ({'web', 'frpc'}, 'uninstall')):
                 with self.subTest(expected_action=expected_action), \
                      patch.object(app, 'installed_modules', return_value=installed), \
-                     patch.object(app, 'frpc_names', return_value=[]):
+                     patch.object(app, 'frpc_group_enabled', return_value=True), \
+                     patch.object(app, 'frpc_names', return_value=[]) as names:
                     conn = self.connect()
                     conn.request('GET', '/settings/modules?lang=en',
                                  headers={'Cookie': f'session={session}'})
@@ -352,10 +353,10 @@ class ConsoleTest(unittest.TestCase):
                     self.assertIn(f'name="action" value="{expected_action}"', card[0])
                     if expected_action == 'install':
                         self.assertIn('Not installed', card[0])
-                        self.assertNotIn('href="/frp/client/edit"', card[0])
                     else:
-                        self.assertIn('Installed, no server instances', card[0])
-                        self.assertIn('href="/frp/client/edit"', card[0])
+                        self.assertIn('Enabled', card[0])
+                    self.assertNotIn('href="/frp/client/edit"', card[0])
+                    names.assert_not_called()
         finally:
             app.destroy_session(session)
 
