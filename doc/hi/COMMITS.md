@@ -29,7 +29,8 @@ metadata:
 
 यह सूची `main` से उपलब्ध कमिट को नवीनतम से पुराने क्रम में दिखाती है। एक कमिट के लिए `git show <SHA>` और पूरे इतिहास के लिए `git log --all --oneline` चलाएँ।
 
-- `HEAD` 2026-10-03 fix: simplify FRPC module status (pending commit)
+- `HEAD` 2026-10-03 docs: record FRPC module fix handoff (pending commit)
+- `213a2a0` 2026-10-03 fix: align FRPC module card with installed state
 - `f96fd67` 2026-10-03 docs: record v5.0.0 publication and handoff
 - `b9314f5` 2026-10-03 docs: document release verification and legacy archive boundary
 - `1509be9` 2026-10-03 docs: align v5.0.0 guides and release history
