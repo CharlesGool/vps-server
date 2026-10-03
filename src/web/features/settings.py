@@ -267,7 +267,7 @@ class SettingsMixin:
         except ValueError:
             return self.redirect("/settings?msg=console_port_invalid#settings-console-port",
                                  {"Cache-Control": "no-store"})
-        helper = self.context.BASE_DIR / "console_port.py"
+        helper = self.context.WEB_CODE_DIR / "console_port.py"
         if not helper.is_file() or not self.context.shutil.which("systemd-run"):
             return self.redirect("/settings?msg=console_port_error#settings-console-port",
                                  {"Cache-Control": "no-store"})

@@ -34,6 +34,8 @@ BINARY = Path("/usr/local/bin/sing-box-vps-server")
 SERVICES = {"anytls": "vps-server-anytls.service", "proxy": "vps-server-proxy.service"}
 PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 APP_DIR = Path(__file__).resolve().parent
+if APP_DIR.parent.name == "src":
+    APP_DIR = APP_DIR.parent.parent
 IPERF_PORT_FILE = Path(os.environ.get("VPSSRV_DATA_DIR", str(APP_DIR / "data"))) / "iperf-port.txt"
 EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
                          "cap_action", "upload_limit_bps", "download_limit_bps",

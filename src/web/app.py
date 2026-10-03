@@ -61,17 +61,14 @@ def load_dotenv(path):
         os.environ.setdefault(key.strip(), value.strip())
 
 
-# Checkout imports src.web.app (or runs src/web/app.py); deployment copies this
-# implementation to the root as app.py without the checkout entry.
-BASE_DIR = Path(__file__).resolve().parent
+# Source and installed code both live under src/web. The installed root keeps
+# only a small entry point and all persistent data remains beside it.
+WEB_CODE_DIR = Path(__file__).resolve().parent
+BASE_DIR = WEB_CODE_DIR
 if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_file():
     BASE_DIR = BASE_DIR.parent.parent
-# The same modules live beside app.py after installation and under src/web in
-# a checkout. Keep their imports independent of the caller's working directory.
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-if not STATIC_DIR.is_dir():
-    STATIC_DIR = BASE_DIR / "static"
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+STATIC_DIR = WEB_CODE_DIR / "static"
+sys.path.insert(0, str(WEB_CODE_DIR))
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
@@ -503,7 +500,7 @@ PROXY_CONFIG = Path(
 PROXY_SERVICE = os.environ.get("VPSSRV_PROXY_SERVICE", "vps-server-proxy.service")
 NODE_STATE_PATH = Path("/etc/vps-server-nodes/state.json")
 NODE_METER_PATH = NODE_STATE_PATH.parent / "meter.json"
-NODE_CONTROL_HELPER = BASE_DIR / "node_control.py"
+NODE_CONTROL_HELPER = WEB_CODE_DIR / "node_control.py"
 NODE_CONTROL_UNIT = "vps-server-node-control.service"
 NODE_APPLY_TIMEOUT = 120
 NODE_PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
@@ -532,7 +529,7 @@ def proxy_nodes(*args, **kwargs):
 FRPS_CONFIG = Path(os.environ.get('VPSSRV_FRPS_CONFIG', '/etc/vps-server-frps/frps.toml'))
 FRPS_SERVICE = 'vps-server-frps.service'
 FRPC_BINARY = Path(os.environ.get('VPSSRV_FRPC_BIN', '/usr/local/bin/frpc'))
-FRP_CONTROL_HELPER = BASE_DIR / 'frp_control.py'
+FRP_CONTROL_HELPER = WEB_CODE_DIR / 'frp_control.py'
 LUCKY_CONFIG = Path(os.environ.get('VPSSRV_LUCKY_CONFIG', '/etc/vps-server-lucky/config.json'))
 LUCKY_SERVICE = 'vps-server-lucky.service'
 

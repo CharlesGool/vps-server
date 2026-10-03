@@ -462,7 +462,7 @@ install_node_meter() {
   if ! command -v nft >/dev/null 2>&1; then
     apt-get update -qq && apt-get install -y -qq nftables || return 1
   fi
-  /usr/bin/python3 "$PREFIX/node_control.py" init || return 1
+  /usr/bin/python3 "$PREFIX/src/web/node_control.py" init || return 1
   local was_anytls=0 was_proxy=0
   systemctl is-enabled --quiet vps-server-anytls.service && was_anytls=1 || true
   systemctl is-enabled --quiet vps-server-proxy.service && was_proxy=1 || true
@@ -485,7 +485,7 @@ Before=vps-server-anytls.service vps-server-proxy.service
 [Service]
 Type=notify
 NotifyAccess=main
-ExecStart=/usr/bin/python3 $PREFIX/node_meter.py
+ExecStart=/usr/bin/python3 $PREFIX/src/web/node_meter.py
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
@@ -601,7 +601,7 @@ copy_selected_files() {
     local copy_items item source
     copy_items="lang"
     if has_module web; then
-      copy_items="$copy_items static systemd README.md LICENSE"
+      copy_items="$copy_items systemd README.md LICENSE"
     fi
     has_module anytls && copy_items="$copy_items anytls"
     has_module proxy && copy_items="$copy_items proxy"
@@ -609,22 +609,26 @@ copy_selected_files() {
     has_module lucky && copy_items="$copy_items lucky"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in static) source="$SRC_DIR/src/web/static" ;; systemd|anytls|proxy|frps|lucky) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in systemd|anytls|proxy|frps|lucky) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
     done
   fi
+  if has_module web || has_module anytls || has_module proxy || \
+     [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
+    if [ "$SRC_DIR" != "$prefix_abs" ]; then
+      mkdir -p "$PREFIX/src/web"
+      cp "$SRC_DIR/src/web/"*.py "$PREFIX/src/web/"
+    fi
+  fi
   if has_module web; then
-    # The flat entry point is needed even when PREFIX is the source checkout.
-    # Refreshing it on an in-place upgrade changes only an ignored runtime
-    # copy, not the tracked implementation under src/web/.
-    cp "$SRC_DIR/src/web/app.py" "$PREFIX/app.py"
-    cp "$SRC_DIR/src/web/module_manager.py" "$PREFIX/module_manager.py"
-    cp "$SRC_DIR/src/web/frp_control.py" "$PREFIX/frp_control.py"
-    # Feature handlers form one versioned unit with the flat Web entry point.
-    rm -rf "${PREFIX:?}/features"
-    cp -r "$SRC_DIR/src/web/features" "$PREFIX/features"
+    if [ "$SRC_DIR" != "$prefix_abs" ]; then
+      rm -rf "${PREFIX:?}/src/web/features" "${PREFIX:?}/src/web/static"
+      cp -r "$SRC_DIR/src/web/features" "$PREFIX/src/web/features"
+      cp -r "$SRC_DIR/src/web/static" "$PREFIX/src/web/static"
+    fi
+    cp "$SRC_DIR/deploy/runtime-entry.py" "$PREFIX/app.py"
   fi
   if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
     # Documentation required by /changelog and third-party notices.
@@ -645,17 +649,6 @@ copy_selected_files() {
   # the checkout's vendor path. Source and destination are distinct here.
   if has_module anytls || has_module proxy || [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     copy_singbox_binary
-  fi
-  if has_module web || has_module anytls || has_module proxy || \
-     [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
-    cp "$SRC_DIR/src/web/console_port.py" "$PREFIX/console_port.py"
-    # The Web UI imports the inventory even without nodes, and the controller
-    # also runs for proxy-only installs without the Web UI.
-    for item in node_inventory node_operations node_accounting node_state node_control node_meter; do
-      if [ -f "$SRC_DIR/src/web/$item.py" ]; then
-        cp "$SRC_DIR/src/web/$item.py" "$PREFIX/$item.py"
-      fi
-    done
   fi
   if has_module lucky; then
     mkdir -p "$PREFIX/vendor/lucky"
@@ -896,7 +889,7 @@ if [ -z "$PORT" ] && [ -f "$PORT_FILE" ]; then
   PORT="$(cat "$PORT_FILE")"
 fi
 if has_module web && [ -n "$PORT" ]; then
-  python3 "$PREFIX/console_port.py" register "$PREFIX" "$PORT" "$SERVICE_NAME.service" || {
+  python3 "$PREFIX/src/web/console_port.py" register "$PREFIX" "$PORT" "$SERVICE_NAME.service" || {
     systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
     die "$(msg port_busy "$PORT" "$PORT")"
   }

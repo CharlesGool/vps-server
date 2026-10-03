@@ -138,7 +138,7 @@ class ModulesMixin:
         if action == "install" and module != "iperf3" and not install_source.is_file():
             return self.send_html(503, esc(self.context.STRINGS[lang]["module_source_missing"]),
                                   {"Cache-Control": "no-store"})
-        helper = self.context.BASE_DIR / "module_manager.py"
+        helper = self.context.WEB_CODE_DIR / "module_manager.py"
         if not helper.is_file() or not self.context.shutil.which("systemd-run"):
             return self.send_html(503, esc(self.context.STRINGS[lang]["module_source_missing"]),
                                   {"Cache-Control": "no-store"})
