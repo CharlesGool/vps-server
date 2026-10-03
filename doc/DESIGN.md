@@ -10,7 +10,7 @@ metadata:
 
 ## 多语言
 
-**简体中文** | [English](en/DESIGN.md) | [繁體中文(台灣)](zh-TW/DESIGN.md) | [繁體中文(香港)](zh-HK/DESIGN.md) | [हिन्दी](hi/DESIGN.md) | [Español](es/DESIGN.md) | [العربية](ar/DESIGN.md) | [Français](fr/DESIGN.md)
+**简体中文** | [English](en/DESIGN.md) | [Español](es/DESIGN.md)
 
 ## 文档
 
@@ -21,7 +21,6 @@ metadata:
 - 项目状态: [LOG](LOG.md)
 - 历史记录: [HISTORY](HISTORY.md)
 - 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
 
 - 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -394,7 +393,7 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 | `VPSSRV_WARMUP_SECONDS` | 每个方向开始时被丢弃的预热时长 | `2` | 否 |
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | 每个方向的并行流数 | `6` / `3` | 否 |
 | `VPSSRV_PING_SAMPLES` | 用于计算延迟数值的往返次数 | `20` | 否 |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`;升级时旧语言值回退到 `en` | `en` | 否 |
 | `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
 | `VPSSRV_ANYTLS_CONFIG` | 控制台从哪里读取已安装的节点信息 | `/etc/vps-server-anytls/config.json` | 否 |
 | `VPSSRV_ANYTLS_SERVICE` | 控制台用来检查节点存活状态的 unit | `vps-server-anytls.service` | 否 |
@@ -465,9 +464,9 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
         ├── LOG.md             # current status, bugs, decisions, and handoff
         ├── HISTORY.md         # historical work and prior handoffs
         ├── CHANGELOG.md       # formal version changes
-        ├── COMMITS.md         # Git commit record
         ├── THIRD_PARTY_NOTICES.md
-        └── <lang>/            # translated docs (seven language directories)
+        ├── en/               # English translation
+        └── es/               # Spanish translation
 ```
 
 安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.现有密码,端口,证书与 `data/` 不迁移.

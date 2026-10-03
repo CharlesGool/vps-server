@@ -10,7 +10,7 @@ metadata:
 
 ## Multi-language
 
-[简体中文](../LOG.md) | **English** | [繁體中文 (台灣)](../zh-TW/LOG.md) | [繁體中文 (香港)](../zh-HK/LOG.md) | [हिन्दी](../hi/LOG.md) | [Español](../es/LOG.md) | [العربية](../ar/LOG.md) | [Français](../fr/LOG.md)
+[简体中文](../LOG.md) | **English** | [Español](../es/LOG.md)
 
 ## Documentation
 
@@ -21,7 +21,6 @@ metadata:
 - Project status: [LOG](LOG.md)
 - Historical records: [HISTORY](HISTORY.md)
 - Version changelog: [CHANGELOG](CHANGELOG.md)
-- Commit history: [COMMITS](COMMITS.md)
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -30,20 +29,30 @@ metadata:
 
 - [Historical records](HISTORY.md)
 - [Version changelog](CHANGELOG.md)
-- [Commit history](COMMITS.md)
 
 ## Bugs
 
-- [ ] 2026-09-12 Decide whether the shared `_db_lock` needs decoupling — every public-page hit takes a process-wide lock and does a synchronous SQLite write, and the console shares that lock, so in principle anonymous flooding can slow an authenticated page. **Measured and not reproduced**: 60 concurrent flooders left console latency at 0.4–0.6 ms, identical to idle. Recorded so the mechanism is not rediscovered as new; do not rearchitect without a measurement that shows harm
+- [x] 2026-10-04 Complete uninstall missed FRPC instance data and `PORTS.md` entries: `3335a7f` first added cleanup, but the operator reproduced an old template without an ownership marker being classified `unowned`. FRPC configuration and registrations remained, and a Web-only reinstall listed the old client. Source change `01b76ba` includes console-recognizable instances with old templates in a default complete uninstall. Isolated local checks passed; the operator confirmed cleanup on the test host after rerunning it. Fixed in `v5.1.0`; this session did not independently connect to the host.
 
-No other breaking issue is recorded in the prior status snapshot; the startup/shutdown signal edges, iperf3-only installer combination, and login rate limiting were fixed on `feat/hardening-batch`, which still requires merge/review. This is not a claim that the current branch was revalidated on a real host.
+- [x] 2026-10-04 [P1] A non-ASCII administrator password could be saved but could not log in: `src/web/features/auth.py` accepted Chinese in `change_admin_password`, while old login and Security verification called `hmac.compare_digest` with strings. Isolated checks reproduced a TypeError. Source now compares UTF-8 bytes while preserving password validation and session invalidation. The operator confirmed login; fixed in `v5.1.0`.
+- [x] 2026-10-04 [P1] A cycle reset did not refresh kernel quota: the old `src/web/node_meter.py` policy fingerprint omitted cycle identity. Isolated checks cleared usage from 600 against a 1000-byte quota without changing the fingerprint. Source now rebuilds on a cycle change. The operator confirmed node and traffic behavior; fixed in `v5.1.0`.
+- [ ] 2026-10-04 [P1] Python 3.9 compatibility has not been tested: the old `src/web/node_inventory.py` used `int | None` without postponed annotations, conflicting with the README's 3.9+ claim. Source now postpones annotation evaluation. Python 3.9 is unavailable locally; only syntax and import on a newer Python were checked. Installation and Web startup still need verification on a Python 3.9 target.
+- [x] 2026-10-04 [P2] A port-forward application failure was reported as success: old add/set_enabled/load paths ignored a False result from `portfwd_rule_apply`. Injected failure returned success while retaining enabled=true. Source now rolls back or reports that application failed. The operator confirmed port forwarding; fixed in `v5.1.0`.
+- [x] 2026-10-04 [P2] Diagnostic exceptions were discarded: the old `_dispatch` returned a generic 500 without a stack log, and node helper errors were discarded. Source now logs sanitized operation stages and error types while keeping generic client errors. Isolated local checks passed; fixed in `v5.1.0`. Real failure cases remain unverified.
+
+- [ ] 2026-09-12 Decide whether the shared `_db_lock` needs decoupling: every public-page hit takes a process-wide lock and does a synchronous SQLite write, and the console shares that lock, so in principle anonymous flooding can slow an authenticated page. **Measured and not reproduced**: 60 concurrent flooders left console latency at 0.4–0.6 ms, identical to idle. Keep this record so the mechanism is not rediscovered as new; do not rearchitect without a measurement showing harm.
+
+The remaining unverified defects are Python 3.9 installation and Web startup, and the `_db_lock` performance concern without demonstrated harm. Earlier branch status is in [Historical records](HISTORY.md).
 
 ## Limitations
 
-- Automated checks verify catalog keys, placeholders, and document structure, but the new translations have not had independent native-language review.
-- Before migration, the Simplified Chinese originals and older translations of the four core documents were scattered across different paths, so a complete baseline from a single synchronization cannot be restored. This migration resynchronized all seven languages against the current Simplified Chinese source. The next update can use this commit as the incremental translation baseline. English-only test records from before migration remain in the historical archive; its boundary is described in [HISTORY](HISTORY.md).
-- During standardization on 2026-10-03, ignored runtime state and caches at the source checkout root were moved intact to `private/local-runtime-prestandardization-20261003/`. The current worktree passes the structure check. On a CIFS working copy mounted with fixed 0644 file and 0755 directory modes, `chmod` does not change the displayed modes of local secrets; the mount's access control requires separate assessment.
-- The current branch's real-host acceptance limits are recorded in the Simplified Chinese handoff below.
+- Automated checks cover interface key names, placeholders, and document structure, but the new translations have not had independent native-language review.
+- Before migration, Simplified Chinese source and older translations of four core documents lived in different paths; no complete single synchronization baseline can be recovered. This release resynchronizes English and Spanish against current Simplified Chinese. The next update can use this synchronization commit as its incremental baseline. Other older translations and English-only test records remain in Git history; the boundary is in [HISTORY](HISTORY.md).
+- During standardization on 2026-10-03, ignored runtime state and caches at the source checkout root were moved intact to `private/local-runtime-prestandardization-20261003/`. The current worktree passed the structure check. On a CIFS worktree mounted with fixed 0644 file and 0755 directory modes, `chmod` does not change displayed local secret modes; assess mount access controls separately.
+- The new bundled iperf3 3.22 was built locally from upstream source. It was checked as a static ELF on Ubuntu 22.04 x86-64 and ran `--version`. Address resolution and real TCP/UDP traffic on Debian 11 and Ubuntu 20.04 targets have not been accepted. The build omits SCTP and OpenSSL authentication.
+- FRPC, FRPS, and iperf3 install offline from a complete source checkout. Other modules may still need the distro package repository when foundational system packages such as Python, OpenSSL, or nftables are missing.
+- `third_party/frp/frpc` is 16,593,080 bytes, blob `e2a8dc5b1bd2d995ec49896d20e1b2a4a8252ada`. It was already public at `origin/main` commit `f306f6e` before this task and was not changed here. It remains to preserve the accepted offline installation from a complete checkout. Future new or modified large files still require the GitHub Release asset process.
+- The real-host acceptance limits for the current branch are in the Simplified Chinese handoff below.
 
 ## Decisions
 
@@ -53,6 +62,7 @@ The dated decisions below preserve both rejected alternatives and their costs. A
 
 | Decisions | Reasons, rejected alternatives, and costs |
 | --- | --- |
+| 2026-10-03 — Remove `tests/` from this project and accept features manually | The operator explicitly requested removal of the automated test directory during source review and simplification; `tests/` was removed from source and the test-host install. The cost is losing those regression checks after changes. Structure, syntax, and build checks still run, followed by manual acceptance of enabled modules. Old tests remain in Git history. |
 | 2026-09-22 — `proxy` is one sing-box process with up to four inbounds, not four clones of anytls | - **Resolved, not rejected:** whether the vendored sing-box binary covers   vmess/vless/trojan/shadowsocks — confirmed by actually running all four   simultaneously in one process (not just `sing-box check`); no second   backend needed. hysteria2/tuic tried and left out (different field/TLS   requirements). - **Rejected:** one systemd unit + config per protocol, mirroring anytls's   own shape exactly — four units to monitor, three redundant self-signed   certs, and it fights the shape a future per-node traffic-accounting   feature would want (one process whose `inbounds` list is already the node   list). - **Cost:** the shared vendored binary is now used by two independent   modules; each module's `uninstall()` **MUST** check the other's config exists   before deleting it (anytls's vendored script gained this as a documented   local deviation — see `anytls/.upstream-version`). |
 | 2026-09-21 — `prompt_new_settings()` ends with an explicit `return 0`, not just falling off the loop | - **Rejected:** letting the function's exit status fall out of its final `for`   loop, as most other functions in `install.sh` do — the loop's last   statement used to be a bare `[ -n "$value" ] && export ...`, so leaving the   *last* prompted setting at its default made that test false, which became   the function's own return status. Called bare (`prompt_new_settings` inside   an `if`-body, not itself exempt from `set -e`) that silently killed the   whole installer right after the last prompt — no error, no file copy, no   `VERSION` stamp, no service restart. Reproduced live on v1.0.4 → v1.1.1 and   fixed by wrapping the export in `if`/`fi` and adding an explicit trailing   `return 0`, so the function's exit status no longer depends on which   setting happened to be prompted last. - **Do not remove the trailing `return 0` as apparent dead code.** It is the   fix, not boilerplate. |
 | 2026-09-19 — Port forwards are iptables DNAT, reapplied from JSON at every start; nothing written outside the process | - **Rejected:** a per-rule `socat` userspace relay — safer (no NAT table or   `ip_forward` changes), but the user explicitly chose kernel-level   DNAT+MASQUERADE for this project instead. - **Rejected:** `iptables-persistent` to survive a reboot at the kernel level   — that makes the console and a system package two sources of truth for the   same rules. `app.py` reapplies from its own JSON on every start instead   (DESIGN.md, "Port forwarding lifecycle"), so there is exactly one. - **Rejected:** auto-reverting `net.ipv4.ip_forward` to `0` once the last   forward is removed — it is host-wide, and other software (this project's   own test host runs Docker) may depend on it staying on. - **Cost:** stopping `vps-server-web` (not restarting it) withdraws every   forward's kernel state, even enabled ones — same fail-safe direction as the   iperf3 window. Do not move the rules into a separate always-on unit to   "fix" this; that was considered and rejected above. |

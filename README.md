@@ -10,7 +10,7 @@ metadata:
 
 ## 多语言
 
-**简体中文** | [English](doc/en/README.md) | [繁體中文(台灣)](doc/zh-TW/README.md) | [繁體中文(香港)](doc/zh-HK/README.md) | [हिन्दी](doc/hi/README.md) | [Español](doc/es/README.md) | [العربية](doc/ar/README.md) | [Français](doc/fr/README.md)
+**简体中文** | [English](doc/en/README.md) | [Español](doc/es/README.md)
 
 ## 文档
 
@@ -21,13 +21,12 @@ metadata:
 - 项目状态: [LOG](doc/LOG.md)
 - 历史记录: [HISTORY](doc/HISTORY.md)
 - 变更日志: [CHANGELOG](doc/CHANGELOG.md)
-- 提交历史: [COMMITS](doc/COMMITS.md)
 
 - 第三方声明:[THIRD_PARTY_NOTICES](doc/THIRD_PARTY_NOTICES.md)
 
 ## 简介
 
-这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.v5.0.0 包含受管节点,流量策略,内网 IP 免密访问,分开的 HTTP/HTTPS 开关,FRPS/本机 FRPC 管理,Lucky 安装入口和直接运行的安装程序.版本范围与检查结果见[变更日志][local-link-001].
+这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.v5.1.0 包含受管节点,流量策略,内网 IP 免密访问,分开的 HTTP/HTTPS 开关,FRPS/本机 FRPC 管理,Lucky 安装入口和直接运行的安装程序.版本范围与检查结果见[变更日志][local-link-001].
 
 ## 功能
 
@@ -58,16 +57,16 @@ metadata:
 
 ### 快速安装
 
-以 root 身份运行;默认仅安装 Web 控制台,并在终端打印随机管理端口和密码.以下标签命令安装已发布的 v5.0.0;本次离线二进制与精简改动仍只在当前开发源码中,尚未发布为该标签.
+以 root 身份运行;默认仅安装 Web 控制台,并在终端打印随机管理端口和密码.以下命令对应 `v5.1.0` 的正式发布源码;实际可安装范围与尚未验证的行为以该版本变更日志为准.
 
 ```bash
-git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### 常规安装
 
 ```bash
-git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # 可选: 按注释设置覆盖值
 bash deploy/install.sh
@@ -81,7 +80,7 @@ bash deploy/install.sh
 
 Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码仍位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;数据,证书和安装状态继续留在原有路径.从旧版升级时,安装程序保留这些运行数据.
 
-源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.当前源码的离线构件尚未进入上面的 v5.0.0 标签;使用该标签安装时,行为仍以对应版本的文档为准.
+源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.v5.1.0 源码包含随附 FRPC,FRPS 和 iperf3;使用旧的 `v5.0.0` 标签时,行为仍以旧版文档为准.
 
 ```bash
 bash deploy/install.sh                       # 首次仅安装 Web 控制台
@@ -123,13 +122,13 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 | `VPSSRV_AUTH` | 控制台是否要求密码 | `1` | 否 |
 | `VPSSRV_IPERF_PORT` | 已开启的 iperf3 窗口监听的端口 | `5201` | 否 |
 | `VPSSRV_IPERF_MAX_MINUTES` | 控制台不可超过的时长上限 | `60` | 否 |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`;升级时旧语言值回退到 `en` | `en` | 否 |
 
 完整说明:[配置参考][local-link-002].
 
 ## 升级
 
-升级时使用当前检出版本,并沿用原安装目录和模块选择重新运行安装程序.已安装代理的旧配置由安装程序导入受管节点清单;导入失败时须检查配置和服务日志,控制台不会回退到旧编辑入口.在确认升级后的服务和控制台正常前,保留持久数据的备份.
+从已支持的旧版本升级时,使用当前检出版本,并沿用原安装目录和模块选择重新运行安装程序.已安装代理的旧配置由安装程序导入受管节点清单;导入失败时须检查配置和服务日志,控制台不会回退到旧编辑入口.原先选择繁体中文,印地语,阿拉伯语或法语的安装会回退到英语;可在普通设置中改选简体中文或西班牙语.在确认升级后的服务和控制台正常前,保留持久数据的备份.
 
 ## 卸载
 

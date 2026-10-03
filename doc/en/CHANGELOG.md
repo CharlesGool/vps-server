@@ -10,7 +10,7 @@ metadata:
 
 ## Multi-language
 
-[简体中文](../CHANGELOG.md) | **English** | [繁體中文 (台灣)](../zh-TW/CHANGELOG.md) | [繁體中文 (香港)](../zh-HK/CHANGELOG.md) | [हिन्दी](../hi/CHANGELOG.md) | [Español](../es/CHANGELOG.md) | [العربية](../ar/CHANGELOG.md) | [Français](../fr/CHANGELOG.md)
+[简体中文](../CHANGELOG.md) | **English** | [Español](../es/CHANGELOG.md)
 
 ## Documentation
 
@@ -21,12 +21,60 @@ metadata:
 - Project status: [LOG](LOG.md)
 - Historical records: [HISTORY](HISTORY.md)
 - Version changelog: [CHANGELOG](CHANGELOG.md)
-- Commit history: [COMMITS](COMMITS.md)
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 
 ## Changelog
+
+### v5.1.0 — 2026-10-04
+
+#### Added
+
+- A complete source checkout bundles and checks x86-64 Linux FRPC, FRPS, and
+  iperf3 artifacts. Installing the FRPC and iperf3 modules no longer requires
+  separate GitHub downloads of executables.
+
+#### Changed
+
+- Documentation and interface languages now follow the current project
+  standard: Simplified Chinese, English, and Spanish. During upgrade, prior
+  selections of other languages fall back to English. Earlier translations
+  remain available through old tags and Git history.
+- The retired `COMMITS.md` listing was removed; Git history is the commit record.
+- The entire project now targets x86-64 Linux. Installed Web runtime code
+  remains at `$PREFIX/src/web/`, while the root compatibility entry point
+  retains the existing service names and data directories.
+- The proxy console reads only its managed-node registry and asks for migration
+  or repair when older configurations cannot be matched. The old node editor
+  and installation interaction paths that did not execute were retired.
+- A complete uninstall cleans up recognizable FRPC instances, related global
+  service files, and this project's `PORTS.md` entries. `KEEP_DATA=1` retains
+  FRPC instance configurations.
+
+#### Fixed
+
+- The FRPC module card detects installation from the local executable and
+  service template. Changelog recognizes numbered test candidate versions.
+- Administrator passwords containing Chinese or other non-ASCII characters
+  verify correctly. Periodic traffic resets also rebuild the kernel quota.
+- Applying a port forward no longer reports success after failure, and
+  partially applied rules are cleaned up. The console and node helper record
+  sanitized error types.
+- FRP, console, and iperf3 port registrations share one format. The installer
+  synchronizes the runtime directory's `config/VERSION`.
+
+#### Verification and limits
+
+- Local syntax checks, style build, artifact checksums, project structure,
+  multilingual structure, and isolated logic checks passed. The automated
+  test suite had previously been removed at the operator's request.
+- The operator reported passing the test host's complete FRPC uninstall and
+  port registry cleanup, Web login, iperf3, proxy nodes and traffic, port
+  forwarding, and upgrade from an older version. SSH was unavailable in this
+  session, so these host results were not independently checked. Recovery
+  after reboot, installation and Web startup on a Python 3.9 target, real
+  mobile devices, and combinations outside the reported scope remain unverified.
 
 ### v5.0.0 — 2026-10-03
 

@@ -10,7 +10,7 @@ metadata:
 
 ## 多语言
 
-**简体中文** | [English](en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](hi/THIRD_PARTY_NOTICES.md) | [Español](es/THIRD_PARTY_NOTICES.md) | [العربية](ar/THIRD_PARTY_NOTICES.md) | [Français](fr/THIRD_PARTY_NOTICES.md)
+**简体中文** | [English](en/THIRD_PARTY_NOTICES.md) | [Español](es/THIRD_PARTY_NOTICES.md)
 
 ## 文档
 
@@ -21,7 +21,6 @@ metadata:
 - 项目状态: [LOG](LOG.md)
 - 历史记录: [HISTORY](HISTORY.md)
 - 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
 
 - 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 

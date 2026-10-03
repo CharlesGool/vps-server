@@ -1,9 +1,0 @@
-{
-  "unsupported_list": "असमर्थित या अनुपस्थित आर्टिफ़ैक्ट सूची",
-  "empty_list": "खाली आर्टिफ़ैक्ट सूची",
-  "invalid_path_hash": "अमान्य या दोहराया गया आर्टिफ़ैक्ट पथ/हैश",
-  "missing_artifact": "FAIL {name}: अनुपस्थित है या चेकआउट से बाहर है",
-  "hash_mismatch": "FAIL {name}: SHA-256 मेल नहीं खाता",
-  "artifact_ok": "OK   {name}: {hash}",
-  "invalid_lock": "अमान्य निर्भरता लॉक: {error}"
-}

@@ -10,7 +10,7 @@ metadata:
 
 ## 多语言
 
-**简体中文** | [English](en/CHANGELOG.md) | [繁體中文(台灣)](zh-TW/CHANGELOG.md) | [繁體中文(香港)](zh-HK/CHANGELOG.md) | [हिन्दी](hi/CHANGELOG.md) | [Español](es/CHANGELOG.md) | [العربية](ar/CHANGELOG.md) | [Français](fr/CHANGELOG.md)
+**简体中文** | [English](en/CHANGELOG.md) | [Español](es/CHANGELOG.md)
 
 ## 文档
 
@@ -21,11 +21,36 @@ metadata:
 - 项目状态: [LOG](LOG.md)
 - 历史记录: [HISTORY](HISTORY.md)
 - 变更日志: [CHANGELOG](CHANGELOG.md)
-- 提交历史: [COMMITS](COMMITS.md)
 
 - 第三方声明:[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 ## 变更日志
+
+### v5.1.0 — 2026-10-04
+
+#### 新增
+
+- 完整源码检出随附并校验 x86-64 Linux FRPC,FRPS 和 iperf3 构件;FRPC 与 iperf3 模块安装无需单独从 GitHub 下载可执行文件.
+
+#### 变更
+
+- 按现行项目标准将文档与界面语言收敛为简体中文,英语和西班牙语;升级时原先选择的其他语言回退到英语.历史译文仍可从旧标签和 Git 历史查阅.
+- 移除已退役的 `COMMITS.md` 提交清单,以 Git 历史作为提交记录.
+- 项目安装目标限定为 x86-64 Linux.已安装的 Web 运行代码保持在 `$PREFIX/src/web/`,根目录兼容入口继续使用原有服务名称和数据目录.
+- 代理控制台只读取受管节点清单;无法匹配旧配置时提示迁移或修复.退役旧节点编辑入口和不会执行的安装交互路径.
+- 完整卸载会清理可识别的 FRPC 实例,相关全局服务文件与本项目在 `PORTS.md` 中的登记;`KEEP_DATA=1` 保留 FRPC 实例配置.
+
+#### 修复
+
+- 中文等非 ASCII 管理员密码可正常验证;周期流量重置会同步重建内核 quota.
+- 端口转发应用失败不再显示添加成功,并清理部分应用的规则;控制台和节点辅助程序记录脱敏错误类型.
+- 统一 FRP,控制台和 iperf3 的端口登记格式;安装器同步运行目录的 `config/VERSION`.
+- FRPC 模块卡按本机可执行文件和服务模板判断安装状态;变更日志能识别编号测试候选版本.
+
+#### 验证与限制
+
+- 本地语法,样式构建,构件摘要,项目结构,多语言结构和隔离逻辑检查已通过;项目此前按操作员要求移除了自动测试套件.
+- 操作员确认测试机上的 FRPC 完整卸载与端口登记清理,Web 登录,iperf3,代理节点与流量,端口转发和旧版升级均已通过;本会话因 SSH 不可达,未独立复核这些主机结果.Python 3.9 目标环境,主机重启恢复,真实移动设备和其他未在确认范围内的组合仍未验证.
 
 ### v5.0.0 — 2026-10-03
 

@@ -10,7 +10,7 @@ metadata:
 
 ## Multilingüe
 
-[简体中文](../DESIGN.md) | [English](../en/DESIGN.md) | [繁體中文(台灣)](../zh-TW/DESIGN.md) | [繁體中文(香港)](../zh-HK/DESIGN.md) | [हिन्दी](../hi/DESIGN.md) | **Español** | [العربية](../ar/DESIGN.md) | [Français](../fr/DESIGN.md)
+[简体中文](../DESIGN.md) | [English](../en/DESIGN.md) | **Español**
 
 ## Documentación
 
@@ -21,7 +21,6 @@ metadata:
 - Estado del proyecto: [LOG](LOG.md)
 - Registros históricos: [HISTORY](HISTORY.md)
 - Historial de cambios: [CHANGELOG](CHANGELOG.md)
-- Historial de commits: [COMMITS](COMMITS.md)
 
 - Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -54,11 +53,12 @@ La versión 2.0.0 también contiene rutas de instalación experimentales para fr
 - [x] 2026-09-29 Gestione la configuración de FRP local host-local. Un operador firmado puede cambiar el puerto de bind FRPS y señalizar, editar y verificar las instancias locales FRPC, y iniciar o detener esas instancias sin la verificación reciente del administrador-password. La página de instancia revela valores IP guardados y token sólo bajo petición. Un ayudante de raíz transitorio realiza operaciones fijas fuera de la caja de arena del sistema sólo lectura de la unidad Web. Se reserva el cambio de puertos locales de escucha en `~/apps/PORTS.md` antes de iniciarlos, libera asignaciones terminadas, restaura la configuración anterior sobre validación o fallo de servicio, y no modifica instancias FRPC en otros dispositivos. La página Módulos ahora instala una plantilla FRPC binaria y `frpc@.service` separadamente de FRPS; determina la instalación de esos archivos, en lugar de la presencia de una configuración de instancia. Desinstalar detiene las instancias y conserva sus configuraciones.
 - [x] 2026-09-29 Presente FRPS y los controles locales FRPC como tarjetas de operador. FRPS utiliza el patrón de edición en línea de la página del nodo y un interruptor de servicio. Cada instancia FRPC tiene un IP de destino enmascarado, indicador de conexión derivado de socket, y una acción de conexión de prueba independiente que hace un FRPC libre de proxy con credenciales guardadas. Su página muestra los campos del servidor y el tipo de cada proxy, IP local, puerto local y puerto remoto; La edición se abre sólo después de que el operador elija Editar, y ahorro de retornos a esa instancia. El editor de campo sólo acepta la configuración TCP/UDP simplificada con token-authenticated que puede representar y deja sin soporte TOML sin cambios. Una tarjeta de destino representa una instancia local de host, y el indicador de conexión inicial requiere un socket establecido propiedad del proceso principal sistema de esa instancia a su servidor y puerto configurados.
 
-FRPC revisión de la tarjeta, 2026-09-29: las cuatro capturas de operador mostraron la vieja plantilla de conexión, hechos enmascarados sin una revelación directa, un panel TOML avanzado, y una tarjeta servidor sin una acción de prueba. Chromium en el `test-d09835d` implementado en 390 y 1440 CSS px comprobó la lista de instancias, enmascarado y revelado hechos del servidor, colapsó y abrió los controles Editar, hechos proxy, estados de conexión y un ahorro de retorno a la misma instancia. Los paneles redundantes están ausentes, ambos revelan carga bajo petición, los cuatro hechos proxy son visibles, y ninguno mirador tiene flujo horizontal. La interfaz conserva el estilo de tarjeta existente del proyecto; real hardware móvil y tráfico proxy estaban fuera de esta revisión del navegador. - [x] 2026-09-29 Extender configuración de primera ejecución y añadir administración de módulos protegidos. Una instalación interactiva fresca abre un puerto HTTPS temporal aleatorio, imprime una contraseña de configuración única y requiere la consola Web en su selección del navegador. Después de la presentación, la página muestra el progreso de la instalación y enlaces al panel de control cuando es saludable. La página Ajustes → Seguridad → Los módulos pueden instalar un módulo omitido desde la carga útil instalada, de código de versión o habilitar y deshabilitar un módulo instalado. Un trabajo transitorio sistemad ejecuta el instalador original fuera del servicio Web; sus opciones de módulo conservan módulos y credenciales instalados previamente. Los interruptores de servicio de sistema conservan la configuración; el interruptor Web afecta sólo la página pública para que el panel de control siga siendo accesible. El flujo de primera y posterior instalación están cubiertos por pruebas locales y cheques del navegador, pero aún no han sido aceptados en un host limpio.
+FRPC revisión de la tarjeta, 2026-09-29: las cuatro capturas de operador mostraron la vieja plantilla de conexión, hechos enmascarados sin una revelación directa, un panel TOML avanzado, y una tarjeta servidor sin una acción de prueba. Chromium en el `test-d09835d` implementado en 390 y 1440 CSS px comprobó la lista de instancias, enmascarado y revelado hechos del servidor, colapsó y abrió los controles Editar, hechos proxy, estados de conexión y un ahorro de retorno a la misma instancia. Los paneles redundantes están ausentes, ambos revelan carga bajo petición, los cuatro hechos proxy son visibles, y ninguno mirador tiene flujo horizontal. La interfaz conserva el estilo de tarjeta existente del proyecto; real hardware móvil y tráfico proxy estaban fuera de esta revisión del navegador.
 - [x] 2026-09-29 Se retiró la configuración inicial en el navegador. Settings → Modules instala funciones ausentes desde el paquete de origen de la versión instalada y habilita o deshabilita las ya instaladas. Una tarea systemd separada ejecuta el instalador fuera del servicio Web; la selección explícita conserva las credenciales existentes. Los interruptores públicos HTTP y HTTPS afectan a sus respectivos escuchas y mantienen accesible la consola. Las pruebas del antiguo asistente se conservan en el historial.
 
 El escucha retirado de configuración inicial reservaba su puerto aleatorio en `~/apps/PORTS.md` antes de atender peticiones y liberaba la reserva al cerrarse; la contraseña temporal admitía una sola sesión de navegador. La página Modules actual está en los ajustes ordinarios y usa la sesión iniciada. Solo envía nombres y acciones de módulo fijos a una tarea systemd privilegiada separada. La tarea registra el progreso fuera del servicio Web y permite reiniciar Web durante la instalación. Deshabilitar un módulo proxy conserva nodos y credenciales; los controles de nodos no arrancan unidades deshabilitadas. Los interruptores iperf3 y de las páginas públicas reinician Web para aplicar cambios de escucha; la consola permanece accesible.
-- [ ] Delimitar la solicitud más amplia de funciones de `gdy666/lucky` registrada en la instantánea de estado del 2026-09-22. El árbol actual ya ofrece una ruta de instalación de Lucky, pero no se registraron una lista más amplia de funciones ni criterios de aceptación.
+- [ ] Delimitar la solicitud más amplia de funciones de `gdy666/lucky` registrada en la instantánea de estado del 2026-09-22. El árbol actual ya ofrece una ruta de instalación de Lucky; el operador aclaró el 2026-10-03 que los controles futuros solo deben reproducir las funciones necesarias, sin integrar toda la interfaz de Lucky. Falta concretar esas funciones y sus criterios de aceptación.
+- [ ] Añadir más adelante controles de Tailscale basados en la interfaz del complemento OpenWrt indicado por el operador. Quedan por definir la versión, las páginas y las operaciones permitidas; mostrar direcciones Tailscale no equivale a administrar Tailscale.
 - [x] Validación de los controles de nodos en un servidor real completada: los números visibles quedan consecutivos tras borrar nodos y vuelven a empezar en 1 cuando no queda ninguno, mientras que los UUID ocultos conservan la identidad; se pueden editar nombre, puerto, credencial y SNI TLS; Shadowsocks muestra SNI como no aplicable; el restablecimiento aleatorio de puerto y credencial conserva el SNI. Cada nodo puede desactivarse sin borrar su configuración ni sus registros de tráfico y reactivarse en el mismo puerto. Los controles superaron las pruebas en un servidor real el 2026-09-27.
 - [x] La interfaz Web comparte un sistema visual accesible para la consola y la página pública. Mantiene espacios y controles comunes, fuentes e iconos incluidos, foco visible y diseños adaptables. Los ajustes ordinarios ofrecen ocho colores de acento persistentes y modos claro y oscuro independientes; cambiar de modo conserva el color.
 
@@ -132,14 +132,14 @@ El diagrama muestra las unidades web y anytls; el servicio opcional `vps-server-
 
 `features/system.py` ofrece comandos del sistema y auxiliares de cortafuegos; `features/ui.py` ofrece renderización compartida. Los controladores de nodos y auxiliares FRP/de módulos siguen en `src/web/` y pueden reutilizarse fuera de los controladores HTTP. Cada JavaScript se vincula a los elementos de su función; los scripts compartidos gestionan tema, copia, contraseñas y selección. Las fuentes CSS ordenadas están en `src/web/static/styles/`; `python3 tools/build_styles/build_styles.py` genera `src/web/static/style.css` y conserva el orden. El instalador copia `features/` y `static/` junto a `$PREFIX/app.py`. La reutilización requiere adaptar el contexto y aportar estilos y scripts; estas rutas no tienen una política de autenticación independiente.
 
-### Why the public page and the console are separate listeners
+### Por qué la página pública y la consola usan escuchas distintas
 
 Tienen requisitos de seguridad opuestos: combinarlos obligaría a renunciar a uno de ellos. La consola está autenticada y en un puerto difícil de adivinar para evitar su descubrimiento casual; la página pública **DEBE** ser fácil de encontrar y
 **NO DEBE** pedir contraseña. Por ello se usan puertos, controladores de peticiones y tablas de rutas diferentes. Una petición recibida en 80/443 nunca puede alcanzar una ruta de la consola, porque `ProbeHandler` carece de esas rutas; no depende de que una comprobación la rechace. Ese es el objetivo: puede haber errores en una comprobación de autorización, pero no se puede acceder a una ruta inexistente.
 
 La página pública acepta `GET` y `HEAD` exactamente en dos rutas (`/` y `/favicon.ico`) y responde con 404 a cualquier otra petición. No lee cadenas de consulta, no analiza el cuerpo de la petición y no establece cookies.
 
-### Upgrading over an existing install
+### Actualización sobre una instalación existente
 
 `install.sh` detecta una instalación anterior y ofrece conservar su configuración. Responder que sí restaura los ajustes registrados en la instalación previa; responder que no vuelve a preguntar todo. En ambos casos sobreviven la contraseña de la consola, el puerto persistente, los certificados y el registro de visitantes: el instalador nunca modifica esos archivos.
 
@@ -154,27 +154,17 @@ Una instalación anterior a ese registro no contiene tal lista. En vez de presen
 
 El nodo anytls se conserva durante la actualización leyendo su puerto y contraseña de `config.json` y pasándolos al script. De lo contrario, `setup-anytls.sh` generaría nuevos valores aleatorios y todos los clientes configurados dejarían de funcionar por una actualización ordinaria; consulta el aviso más abajo, que sigue aplicándose a una reinstalación *deliberada*.
 
-### The console's anytls section
+### Desinstalación completa
 
-**Ahora está en `/proxy`, no en una página independiente** (2026-09-22): consulta «El módulo proxy» más abajo para saber por qué anytls y los protocolos proxy se unieron en una sola página. `/anytls` sigue existiendo como redirección a `/proxy` y `POST /anytls/reset` no ha cambiado; solo desaparecieron la página independiente `GET /anytls` y su enlace de navegación/tarjeta del panel. Lo siguiente sigue describiendo el comportamiento de la sección anytls de la página conjunta.
+`deploy/uninstall.sh` llama a `src/web/uninstall_cleanup.py` antes de borrar `$PREFIX`. Limpia FRPC cuando la unidad global coincide con la plantilla del proyecto, existe una marca de titularidad del binario o la desinstalación completa encuentra instancias nombradas que reconoce la consola. Primero detiene las instancias y luego retira la plantilla aplicable y el binario cuya suma SHA-256 coincide. Por defecto elimina `frpc-*.toml`, sus alias Unicode y las copias de recuperación `.deleted-frpc-*.toml`; `KEEP_DATA=1` conserva esos archivos. El desinstalador mantiene el bloqueo `.ports.lock` junto al directorio de instalación, reutiliza la validación de formato y la escritura atómica de `console_port.py` y libera las filas de `PORTS.md` identificadas como `vps-server`, conservando las de otros proyectos. Cuando encuentra instancias `frpc-*.toml` reconocibles, elimina también su plantilla antigua aunque difiera de la actual, el binario con la suma esperada y las configuraciones del proyecto. Sin instancias reconocibles ni prueba de titularidad, conserva los archivos FRPC y sus registros; una suma de binario incorrecta interrumpe la limpieza. `deploy/uninstall.sh` termina sin borrar más archivos ante ese error. `KEEP_DATA=1` conserva la configuración para reinstalar más tarde.
 
-La consola lee el nodo instalado de `VPSSRV_ANYTLS_CONFIG` y muestra su estado, una entrada Clash lista para pegar y un enlace `anytls://`.
+### Sección anytls de la consola
 
-Solo escribe una cosa: el botón «restablecer puerto y contraseña», que además delega la operación. La consola no modifica directamente `config.json`: ejecuta `setup-anytls.sh reset`, ya que es fácil equivocarse con el orden crítico; la regla del cortafuegos del puerto anterior debe retirarse *antes* de abrir el nuevo, o cada restablecimiento deja una regla `ACCEPT` para un puerto en el que nadie escucha. Esa lógica pertenece al script propietario del nodo, no a dos sitios distintos. El restablecimiento exige marcar una casilla de confirmación validada por el servidor: `required` en el HTML evita un clic accidental, pero no detiene a un cliente que no sea un navegador. Cambiar las credenciales deja inoperativos todos los clientes configurados hasta que reciban las nuevas.
+`/anytls` redirige a `/proxy`. La página proxy actual solo lee el inventario validado de nodos administrados. Si falta o no coincide con la configuración instalada, pide migrarlo o repararlo y no vuelve al editor antiguo. Durante la instalación, `node_control.py init` importa las configuraciones antiguas y conserva los ID de nodo. Cuando el operador modifica los datos de conexión, la política de tráfico o reinicia un nodo, un auxiliar privilegiado y restringido valida y aplica el cambio; si falla, restaura la configuración anterior. El antiguo uso de scripts de instalación desde la página para reiniciar credenciales se retiró. La implementación y sus motivos históricos están en [HISTORY](../HISTORY.md#retired-anytls-console).
 
-Además se ejecuta **fuera del aislamiento de este servicio**, como unidad transitoria mediante `systemd-run --pipe --wait --collect`. La unidad web tiene `ProtectSystem=strict` y solo `ReadWritePaths=$PREFIX`, por lo que no puede escribir en `/etc`; restablecer requiere modificar `/etc/vps-server-anytls` y un archivo de unidad. El primer intento real falló a mitad de proceso precisamente por eso, después de haber retirado la regla del puerto anterior. La alternativa de añadir `/etc/systemd/system` a `ReadWritePaths` ampliaría permanentemente los permisos de escritura del servicio para hacer funcionar un solo botón; mantener el aislamiento es más importante. Si no hay `systemd-run`, se hace la llamada directamente: los entornos que carecen de él son también aquellos en los que `install.sh` no aplica ese endurecimiento.
+El estado del servicio y el SNI del certificado todavía se leen de la configuración instalada. La escucha pública carece de rutas de administración de proxy; los ajustes de seguridad siguen requiriendo una verificación reciente de la contraseña de administrador. Al mostrar direcciones de nodos no se consulta la IP pública en Internet.
 
-`setup-anytls.sh reset` también comprueba que puede escribir antes de tocar el cortafuegos. Si falla después de retirar la regla anterior, quedaría un nodo en ejecución pero inaccesible, peor que uno que no llegó a arrancar.
-
-Dos detalles son esenciales. **La contraseña del nodo aparece en texto claro en esa sección de la consola**, lo que solo es aceptable porque la página reside en `ConsoleHandler`, detrás del inicio de sesión; `ProbeHandler` no tiene esa ruta, y una prueba verifica que la escucha pública responde 404 a `/anytls` y nunca incluye la contraseña. Y
-**la dirección del servidor procede de
-la cabecera `Host` de la petición**, no de una consulta: la dirección que alcanzó la consola puede alcanzar el nodo; consultar la IP externa al mostrar la página contradice la prohibición de solicitudes salientes, y quien necesite otra dirección puede editar la línea una vez copiada.
-
-Los ajustes de seguridad requieren verificar la contraseña de administrador antes de mostrar o cambiar los datos. La lista solo acepta direcciones individuales IPv4 privadas RFC 1918 o IPv6 locales únicas y tiene un interruptor propio; se rechazan las IP públicas y los rangos. El acceso por IP usa la dirección del extremo real de la conexión, nunca una cabecera de reenvío proporcionada por el cliente; con `VPSSRV_TRUST_PROXY=1` queda desactivado porque no hay un límite configurado para proxies de confianza. Permite entrar en páginas normales de la consola; para abrir los ajustes de seguridad hay que superar el desafío de contraseña, que concede un permiso fijo de 10 minutos y una nueva sesión autenticada. Cambiar la contraseña invalida todas las sesiones anteriores. Si una pasarela presenta varios dispositivos con una misma IP privada autorizada, todos podrán acceder. La persona autorizada debe elegir el acceso por IP en la página de inicio. La sesión queda vinculada a la IP de origen y la lista y el interruptor se comprueban en cada petición. Retirar la IP o desactivar el interruptor corta el acceso en la petición siguiente. Tras iniciar sesión, la página general de ajustes permite cambiar apariencia e idioma sin repetir la contraseña. Su página de Seguridad separada sigue exigiendo una verificación temporal vigente antes de mostrar la lista de IP o cambiar controles de seguridad.
-
-El SNI ni siquiera se almacena en la configuración de sing-box: `setup-anytls.sh` solo lo incorpora al CN del certificado autofirmado. La consola lo vuelve a leer del certificado, en lugar de conservar una segunda copia susceptible de divergir.
-
-### The proxy module
+### Módulo proxy
 
 <a id="vps-proxy-module"></a>
 
@@ -187,17 +177,17 @@ entradas simultáneas en un único `config.json`**, no cuatro copias del esquema
 
 `PROXY_PROTOCOLS` (separados por comas; los cuatro por defecto) se valida en una matriz global y no se devuelve por sustitución de comandos `$(...)`: una versión inicial lo validaba dentro de una función invocada como `read -ra x <<< "$(fn)"`, y `exit 1` dentro del subproceso de esa sustitución solo terminaba el subproceso. El script padre continuaba silenciosamente con una lista de protocolos vacía e iniciaba un servicio sin entradas. Es el mismo tipo de fallo que `prompt_new_settings()` en [Decisiones][local-link-006]. El puerto de cada protocolo procede de un intervalo distinto de 5000 números por debajo de 60000 (no de un intervalo de 10000 a partir de 60000, que desbordaba el `uint16 listen_port` de sing-box por encima de 65535 cuando se generaba un puerto alto; se detectó con cinco instalaciones nuevas consecutivas y no en la primera). Para conservar las credenciales al actualizar se sigue el mismo procedimiento que en `preserve_anytls()`: `preserve_proxy()` lee de `config.json` el puerto y la credencial de cada protocolo instalado, además del *conjunto* de protocolos, para que ejecutar de nuevo `VPSSRV_MODULES=proxy` no elimine ni añada protocolos sin avisar.
 
-La página `/proxy` de la consola muestra una sección por nodo instalado: puerto, UUID o contraseña, SNI leído del certificado de ese nodo, entrada Clash y enlace para compartir (`vmess://`, `vless://`, `trojan://`, `ss://`) para cada dirección detectada. **Cada protocolo dispone de su propio botón de restablecimiento**, no uno único que «restablece todo»: un operador señaló que el botón conjunto obliga a cambiar protocolos que nadie pidió tocar; por ejemplo, filtrar un UUID vmess no debería implicar reconfigurar también todos los clientes trojan/vless/shadowsocks. `setup-proxy.sh reset <protocol>` cambia solo el puerto y la credencial de ese protocolo; `load_installed_vars()` lee primero del disco los valores actuales de los *otros*, que quedan intactos. `reset` sin argumentos sigue cambiando todos los protocolos instalados, opción reservada a la terminal y scripts, no a la interfaz de consola. Ambas modalidades siguen el patrón `systemd-run` fuera del aislamiento utilizado por `anytls_reset()`, por el mismo motivo de `ProtectSystem=strict`. Una consecuencia real de compartir servicio systemd: restablecer un protocolo reinicia todo el servicio y corta brevemente las *conexiones* de los demás, aunque sus credenciales permanezcan iguales.
+La página `/proxy` muestra los nodos AnyTLS y de los otros cuatro protocolos mediante sus ID estables. `node_control.py` aplica los ajustes de conexión, reinicios y políticas de tráfico; restaura la configuración si falla. El instalador inicializa primero el inventario administrado al actualizar una instalación anterior. Si falta el inventario o difiere de la configuración real, la página pide migrar o reparar y no activa el editor antiguo. El diseño de las rutas anteriores de reinicio está archivado en [HISTORY](../HISTORY.md#retired-proxy-console).
 
 El instalador crea inicialmente una entrada por protocolo seleccionado. Después, la consola administrada puede crear varios nodos numerados de cualquier protocolo instalado, eliminarlos por separado y dejar un módulo instalado sin escuchas. Los ID de nodo permanecen estables y ocultos en la interfaz visible; cada formulario y suscripción Clash utiliza el ID, de modo que los nodos del mismo protocolo son independientes. El editor de conexión aparece en el lugar de los datos de la tarjeta; El formulario de tráfico independiente admite un límite en GiB, velocidades de subida y bajada en Mbps, la acción al llegar al límite, el intervalo de reinicio periódico y una duración de validez opcional. El reinicio borra el consumo del período y retira la medida del límite, sin renovar la validez. Al leer el inventario se migra de la versión uno a la dos: se eliminan las antiguas fechas absolutas para que su límite anterior de 1 Mbps no se convierta silenciosamente en bloqueo; se conservan identidades, contadores, límites y programas de reinicio. Al crear o eliminar un nodo, se actualizan la configuración de sing-box, el inventario, el cortafuegos y la contabilidad nft bajo un mismo bloqueo, con reversión si falla. Cada nodo TLS nuevo recibe su propio certificado autofirmado. La consola usa una pila de fuentes del sistema local para mantener las métricas del texto desde el primer renderizado y durante las recargas.
 
 `PortForwardManager.reserved_ports()` reserva el puerto de cada protocolo proxy instalado igual que ya reserva el del nodo anytls y el de la consola, para impedir que una regla de reenvío apunte a un puerto ocupado por un protocolo proxy.
 
-**La página `/proxy` de la consola también muestra el nodo anytls** si está instalado. Un operador consideró artificial mantener anytls en otra página, pues ambos son «nodos proxy» desde su punto de vista, aunque los sirvan dos módulos independientes. `/anytls` redirige aquí; `POST /anytls/reset` no cambia y después vuelve a `/proxy`. Los módulos mantienen estados completamente independientes y botones de restablecimiento distintos; solo comparten página.
+**La página `/proxy` de la consola también muestra el nodo anytls instalado.** El operador consideró artificial separarlo: aunque los módulos de servicio sean independientes, para quien los usa todos son nodos proxy. `/anytls` redirige aquí. Los dos módulos mantienen estados separados y las operaciones de nodo se distinguen mediante el ID compartiendo página.
 
 La página de nodos muestra las direcciones de las interfaces del servidor y, si existe, la de Tailscale. No muestra la IP pública registrada durante la instalación.
 
-### iperf3 window lifecycle
+### Ciclo de vida de la ventana iperf3
 
 1. El operador se autentica en la consola, selecciona una duración (10 minutos por defecto, limitada por `VPSSRV_IPERF_MAX_MINUTES`) y pulsa para abrir.
 2. La consola inicia `iperf3 -s -p <port>` como proceso hijo, abre el puerto en el cortafuegos activo y guarda el plazo en memoria.
@@ -210,7 +200,7 @@ La latencia se obtiene del `--json` de iperf3 (`mean_rtt` en el bloque de inform
 
 El puerto elegido se guarda por separado en el directorio de datos de la aplicación. Solo se puede cambiar desde la consola con la ventana cerrada; antes de guardarlo se comprueban los puertos de los servicios instalados, los reenvíos y los procesos que ya escuchan.
 
-### Port forwarding lifecycle
+### Ciclo de vida del reenvío de puertos
 
 Una regla redirige un puerto público TCP/UDP de este servidor a un dispositivo accesible por Tailscale o LAN; así, un equipo con IP pública puede actuar en nombre de otro que carece de ella. A diferencia de la ventana iperf3, esto es una configuración, no un préstamo temporal del enlace: debe persistir tras reiniciar el servicio o el servidor, por lo que su diseño es diferente.
 
@@ -237,13 +227,13 @@ o `tailscale ip` en dicho dispositivo.
 - Conservar credenciales de nodos y ajustes seleccionados al actualizar; utilizar los scripts propietarios para cambiarlas, fuera del aislamiento del sistema de archivos de la unidad web.
 - No separar el bloqueo compartido `_db_lock` sin pruebas de latencia perjudicial: la medición histórica con 60 emisores simultáneos no mostró ralentización. Consulta [Errores][local-link-008].
 
-## External Interfaces
+## Interfaces externas
 
 - HTTP/HTTPS: las escuchas públicas en 80/443 solo exponen la página de accesibilidad; la consola del operador usa otro puerto persistente. iperf3 solo escucha durante una ventana autenticada de duración limitada.
 - La consola lee `/proc/net/tcp[6]` para registrar conexiones TCP entrantes y no expone secretos de proxy en las rutas públicas.
 - `install.sh` usa el gestor de paquetes de la distribución y no consulta la IP pública; el servicio tampoco hace esa consulta durante la ejecución. `setup-anytls.sh` y `setup-proxy.sh` administran unidades y certificados sing-box. iptables gestiona la apertura temporal de iperf3 y los reenvíos habilitados; systemd supervisa servicios y ejecuta los cambios de credenciales fuera del aislamiento web.
 
-## Tech stack
+## Tecnologías
 
 | Capa | Elección | Versión | Motivo |
 |---|---|---|---|
@@ -253,42 +243,43 @@ o `tailscale ip` en dicho dispositivo.
 | Almacenamiento | `sqlite3` | stdlib | El registro de visitantes **DEBE** sobrevivir a los reinicios |
 | Motor de velocidad | LibreSpeed, incluido sin cambios | v6.2.1 | LGPL-3.0; ya estaba incluido y funcionaba en `vps-webserver` |
 | Generación de QR | kazuhikoarase/qrcode-generator, incluido sin cambios | js2.0.4 | MIT; pequeño, sin compilación, usa una etiqueta `<script>` como LibreSpeed |
-| Sonda de ancho de banda | `iperf3` de la distribución | este proyecto no fija la versión | Herramienta de referencia que los usuarios ya tienen en el cliente |
+| Sonda de ancho de banda | `iperf3` incluido para Linux x86-64 | 3.22 | Herramienta de referencia que los usuarios ya tienen en el cliente |
 | Núcleo proxy | sing-box, binario incluido (amd64) | v1.13.14 | GPL-3.0; incluir el binario permite instalar sin acceder al origen |
 | Inicio | systemd | — | Predeterminado del SO de destino |
 | Instalador | Bash | — | Heredado de ambos proyectos de origen |
 
 Las alternativas descartadas y el razonamiento de cada elección están en [Decisiones][local-link-009]; no se repiten aquí.
 
-## Reproduction requirements
+## Requisitos de reproducción
 
 <a id="vps-reproduction-requirements"></a>
 
-### Environment
+### Entorno
 
 - SO: Debian 11+ / Ubuntu 20.04+, systemd; ejecutar como root.
 - Entorno: Python 3.9+ (basta el python3 de la distribución).
-- Arquitectura: **solo x86-64** para los módulos anytls y proxy; ambos utilizan el mismo binario sing-box amd64 incluido. Los módulos web e iperf3 no dependen de la arquitectura.
+- Arquitectura: todo el proyecto requiere Linux x86-64; los ejecutables incluidos de FRPC, FRPS, iperf3, sing-box y Lucky se distribuyen para esa plataforma.
 - Hardware: sin GPU; unos 150 MB de disco (de los cuales unos 57 MB corresponden al binario sing-box); la cantidad de RAM habitual de un VPS.
-- Comprobación de integridad de los archivos incluidos: desde la raíz del repositorio, ejecutar `python3 tools/verify_dependencies/verify_dependencies.py`. Compara mediante SHA-256 los cinco archivos de distribución de terceros registrados con [dependencies.lock.json][local-link-010] sin ejecutarlos. Los campos de versión y revisión de origen proceden de registros anteriores del proyecto, no de una comprobación independiente de su identidad original. No se registra la revisión original exacta de LibreSpeed.
+- Comprobación de integridad de los archivos incluidos: desde la raíz del repositorio, ejecutar `python3 tools/verify_dependencies/verify_dependencies.py`. Compara mediante SHA-256 los nueve archivos de distribución de terceros registrados con [dependencies.lock.json][local-link-010] sin ejecutarlos. Los campos de versión y revisión de origen proceden de registros anteriores del proyecto, no de una comprobación independiente de su identidad original. No se registra la revisión original exacta de LibreSpeed.
 - No existe un bloqueo de paquetes de Python de terceros porque `app.py` usa la biblioteca estándar. Este archivo de bloqueo de artefactos no es un comando para restaurar dependencias ni un bloqueo completo de paquetes del sistema; consulta [THIRD_PARTY_NOTICES.md][local-link-011].
 
-### External dependencies
+### Dependencias externas
 
 | Elemento | Origen | Ubicación |
 |---|---|---|
-| `iperf3` | gestor de paquetes de la distribución (`apt-get install iperf3`) | ruta del sistema |
+| `iperf3` | artefacto estático incluido en el repositorio | `$PREFIX/vendor/iperf3/iperf3` |
+| `frpc`,`frps` | incluidos en el repositorio | `third_party/frp/`, copiados por cada módulo tras instalar |
 | `openssl`, `curl`, `jq`, `iproute2`, `procps`, `iptables`, `ca-certificates` | gestor de paquetes de la distribución o instalación existente en el servidor | ruta del sistema |
 | binario sing-box | incluido en este repositorio | `/usr/local/bin/sing-box-vps-server` |
-| motor LibreSpeed y biblioteca qrcode-generator | incluidos en este repositorio | `$PREFIX/static/` |
+| motor LibreSpeed y biblioteca qrcode-generator | incluidos en este repositorio | `$PREFIX/src/web/static/` |
 | certificados TLS | generados durante la primera ejecución por el instalador | `$VPSSRV_CERT_DIR` |
 
-El instalador incorpora los paquetes del sistema que falten (incluido `iperf3` opcional) desde los repositorios Debian/Ubuntu de destino, sin seleccionar versiones exactas ni instantáneas de repositorios. Python, OpenSSL, las herramientas del sistema y shell y systemd también los proporciona el SO de destino. El operador depende de los canales de paquetes de la distribución elegida, mantenidos con actualizaciones de seguridad. Esto evita incluir sus binarios, pero versiones, hashes y resolución transitiva pueden variar entre servidores y fechas; **no se consigue una
+El instalador usa los artefactos FRPC, FRPS e iperf3 incluidos. Los demás paquetes del sistema que falten pueden proceder de los repositorios Debian/Ubuntu de destino, sin seleccionar versiones exactas ni instantáneas. Python, OpenSSL, las herramientas del sistema y shell y systemd también los proporciona el SO de destino. El operador depende de los canales de paquetes de la distribución elegida, mantenidos con actualizaciones de seguridad. Esto evita incluir sus binarios, pero versiones, hashes y resolución transitiva pueden variar entre servidores y fechas; **no se consigue una
 restauración de dependencias estrictamente reproducible**. Conseguirla exigiría un cambio de instalador aprobado por separado y seleccionar una instantánea de distribución/repositorio. El campo `exclusions` del bloqueo, legible por máquina, registra este límite, no una fijación ficticia.
 
 Sin claves de API. Ni el servicio web ni el instalador consultan la IP pública en Internet.
 
-### Paths & mounts
+### Rutas y montajes
 
 <a id="vps-paths-mounts"></a>
 
@@ -300,7 +291,7 @@ Sin claves de API. Ni el servicio web ni el instalador consultan la IP pública 
 | `/etc/vps-server-anytls/` | instalador | `config.json` de sing-box y su certificado autofirmado |
 | `/etc/vps-server-proxy/` | instalador | `config.json` de sing-box (varias entradas) y su certificado autofirmado inicial; los certificados de nuevos nodos están en `/etc/vps-server-nodes/certs/` |
 
-### Configuration reference
+### Referencia de configuración
 
 <a id="vps-configuration-reference"></a>
 
@@ -336,19 +327,17 @@ Todas las variables usan el prefijo `VPSSRV_`. No es una cuestión estética: `v
 | `VPSSRV_WARMUP_SECONDS` | Tiempo de calentamiento descartado al principio de cada dirección | `2` | no |
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Flujos paralelos por dirección | `6` / `3` | no |
 | `VPSSRV_PING_SAMPLES` | Viajes de ida y vuelta usados para calcular la latencia | `20` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`; los valores antiguos vuelven a `en` al actualizar | `en` | no |
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | El módulo anytls conserva los nombres originales | consulta `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Ruta donde la consola lee el nodo instalado | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unidad cuya actividad del nodo consulta la consola | `vps-server-anytls.service` | no |
-| `VPSSRV_ANYTLS_SETUP` | Script que ejecuta la consola para cambiar las credenciales del nodo | `$PREFIX/anytls/setup-anytls.sh` | no |
 | `PROXY_PROTOCOLS`, `PROXY_SNI` | Ajustes del script del módulo proxy: código propio, sin obligación de compatibilidad con código incluido de terceros, pero sin prefijo para mantener la distinción entre script y consola de anytls | consulta `.env.example` | no |
 | `VPSSRV_PROXY_CONFIG` | Ruta donde la consola lee el conjunto de nodos instalados | `/etc/vps-server-proxy/config.json` | no |
 | `VPSSRV_PROXY_SERVICE` | Unidad cuya actividad del nodo consulta la consola | `vps-server-proxy.service` | no |
-| `VPSSRV_PROXY_SETUP` | Script que ejecuta la consola para cambiar las credenciales del protocolo elegido | `$PREFIX/proxy/setup-proxy.sh` | no |
 
 El módulo anytls conserva deliberadamente los nombres de variables de `Anytsl-Serve` en lugar de cambiarlos a `VPSSRV_ANYTLS_*`: los lee el generador de configuración incluido, y renombrarlos supondría modificar código de terceros incluido, precisamente lo que la política de inclusión intenta evitar.
 
-## Setup from scratch
+## Instalación desde cero
 
 1. Ejecuta `git clone <repo>` y entra con `cd`: comprueba que `ls -lh third_party/sing-box/sing-box` muestre un archivo de unos 57 MB.
 2. Ejecuta `bash deploy/install.sh`: la primera ejecución instala Web directamente e imprime la dirección y la contraseña; elige otros módulos de servidor con `VPSSRV_MODULES` o instálalos después desde Settings → Modules.
@@ -359,12 +348,12 @@ El módulo anytls conserva deliberadamente los nombres de variables de `Anytsl-S
 7. Abre desde la consola una ventana iperf3 de 5 minutos y ejecuta desde otra máquina `iperf3 -c <ip> -p 5201 --json`: comprueba que comunica la velocidad e incluye `mean_rtt`.
 8. Si se instaló el módulo anytls: ejecuta `systemctl status vps-server-anytls` y comprueba que indique `active (running)`; el resumen del instalador debe haber mostrado una línea de configuración del cliente.
 
-## Data Design
+## Diseño de datos
 
 La base de datos de visitantes y `portfwd.json` y `login-access.json` (reglas de reenvío habilitadas) permanecen en `$VPSSRV_DATA_DIR`.
-La página Ajustes, una vez iniciada la sesión, contiene la lista de nueve módulos operativos. Las instalaciones y desinstalaciones opcionales pasan por el asistente root que procesa una tarea cada vez; `data/module-job.json` muestra su estado y `data/module-job.log` conserva la salida más reciente del instalador, incluidos los fallos del gestor de paquetes. Antes de desinstalar un módulo, se archiva su configuración actual en `data/`. Home conserva un interruptor para cada función salvo Ajustes. Los indicadores de las funciones integradas se guardan en `data/`; el proceso Web en ejecución aplica el indicador de Reenvío de puertos retirando o restableciendo las reglas guardadas sin invalidar las sesiones de consola. Las rutas de funciones desactivadas llevan a una página de cierre traducida. Los formularios de acciones de módulos aceptan un solo envío por carga de página, y las tareas simultáneas devuelven al usuario a la página desde la que envió la acción. El indicador del grupo FRPC guarda los nombres de las instancias que estaban en ejecución antes de detenerlas y solo restaura esas instancias cuando se vuelve a habilitar. El grupo Nodos proxy controla AnyTLS y los demás servicios proxy sin alterar el inventario de nodos. Home abre FRPS en `/frps` y la lista de instancias FRPC en `/frpc`; el editor del cliente sigue en `/frp/client/edit`. La antigua ruta combinada `/frp` redirige a la lista FRPC para los marcadores existentes. La contraseña de la consola, el puerto elegido, los certificados web y `.install-state` residen en `$PREFIX`; las configuraciones de los módulos sing-box y sus certificados residen en `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Consulta [Rutas y montajes][local-link-012]. El plazo de iperf3 permanece en memoria y no sobrevive a un reinicio.
+La página Ajustes, una vez iniciada la sesión, contiene la lista de nueve módulos operativos. Las instalaciones y desinstalaciones opcionales pasan por el asistente root que procesa una tarea cada vez; `data/module-job.json` muestra su estado y `data/module-job.log` conserva la salida más reciente del instalador, incluidos los fallos del gestor de paquetes. Antes de desinstalar un módulo, se archiva su configuración actual en `data/`. Home conserva un interruptor para cada función salvo Ajustes. Los indicadores de las funciones integradas se guardan en `data/`; el proceso Web en ejecución aplica el indicador de Reenvío de puertos retirando o restableciendo las reglas guardadas sin invalidar las sesiones de consola. Las rutas de funciones desactivadas llevan a una página de cierre traducida. Los formularios de acciones de módulos aceptan un solo envío por carga de página, y las tareas simultáneas devuelven al usuario a la página desde la que envió la acción. El indicador del grupo FRPC guarda los nombres de las instancias que estaban en ejecución antes de detenerlas y solo restaura esas instancias cuando se vuelve a habilitar. El grupo Nodos proxy controla AnyTLS y los demás servicios proxy sin alterar el inventario de nodos. Home abre FRPS en `/frps` y la lista de instancias FRPC en `/frpc`; el editor del cliente sigue en `/frp/client/edit`. La antigua ruta combinada `/frp` redirige a la lista FRPC para los marcadores existentes. La contraseña de la consola, el puerto elegido, los certificados web y `.install-state` residen en `$PREFIX`; las configuraciones de los módulos sing-box y sus certificados residen en `/etc/vps-server-anytls/` y `/etc/vps-server-proxy/`. Consulta [Rutas y montajes][local-link-012]. El plazo de `iperf3` permanece en memoria y no sobrevive a un reinicio. Los datos y el estado de módulos se guardan en `data/` y la aplicación Web se ejecuta desde `$PREFIX/src/web/`.
 
-### Data model / file layout
+### Modelo de datos y disposición de archivos
 
 ```
 <project root>/
@@ -394,31 +383,30 @@ La página Ajustes, una vez iniciada la sesión, contiene la lista de nueve mód
     ├── config/dependencies.lock.json
     ├── config/upstream-version # records: vps-webserver v0.4.1
     ├── deploy/anytls/.upstream-version # records: Anytsl-Serve v1.2.0
-    ├── tests/
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
         ├── LOG.md             # current status, bugs, decisions, and handoff
         ├── HISTORY.md         # historical work and prior handoffs
         ├── CHANGELOG.md       # formal version changes
-        ├── COMMITS.md         # Git commit record
         ├── THIRD_PARTY_NOTICES.md
-        └── <lang>/            # translated docs (seven language directories)
+        ├── en/               # English translation
+        └── es/               # Spanish translation
 ```
 
-Estas rutas corresponden solo al repositorio: la instalación sigue usando `$PREFIX/app.py`, `$PREFIX/sing-box` y `$PREFIX/static/`. Las URL HTTP de los recursos no cambian. En el repositorio, el instalador y el desinstalador son `deploy/install.sh` y `deploy/uninstall.sh`; el punto de entrada web instalado sigue siendo `$PREFIX/app.py`.
+Estas rutas corresponden al repositorio: el código Web instalado se conserva en `$PREFIX/src/web/` y el ejecutable proxy en `$PREFIX/sing-box`. La entrada compatible sigue siendo el `ExecStart` de systemd, pero solo llama a `src.web.app.main()`, es decir, a `main()` de la aplicación. Los datos, certificados y `data/` conservan sus rutas. Las URL HTTP de los recursos no cambian. En el repositorio, el instalador y el desinstalador son `deploy/install.sh` y `deploy/uninstall.sh`; el punto de entrada web instalado sigue siendo `$PREFIX/app.py`.
 
 Solo `repo/` está bajo control de Git; `snapshots/` está separado y es privado. Empieza por [README][local-link-013], consulta [LOG][local-link-014] para verificaciones históricas e historial de versiones, y los [avisos de terceros][local-link-015] para conocer los archivos de origen. La documentación no convierte una instantánea ni un servidor instalado en un árbol de código reproducible.
 
 El esquema SQLite se hereda sin cambios de `vps-webserver`: una tabla `visits` limitada a las 1000 filas más recientes. `portfwd.json` es una lista JSON plana de objetos de reglas (`id`, `label`, `protocol`, `public_port`, `target_host`, `target_port`, `enabled`, `created`); consulta `PortForwardManager` en `src/web/app.py`.
 
-## Known limitations & gotchas
+## Límites conocidos y precauciones
 
 - **Para usar los puertos 80 y 443 se requiere root y que estén libres.** Si nginx, Apache, Caddy u otra instancia de `vps-webserver` ocupa cualquiera de ellos, el instalador se niega a disputar el puerto. Compruébalo con `ss -lntp '( sport = :80 or sport = :443 )'` antes de instalar.
 - **La página pública es realmente pública.** Cualquiera que adivine o explore la IP puede verla; cada acceso queda en el registro de visitantes. Es la finalidad de la función, pero también significa que un registro asociado a una IP explorada se llena de tráfico de fondo de Internet en pocas horas.
 - **Los nombres de las unidades difieren del proyecto original deliberadamente.** `Anytsl-Serve` instala `sing-box-anytls.service`; este proyecto instala `vps-server-anytls.service` y un binario con otro nombre, de modo que ambos puedan coexistir. El instalador aun así se niega a continuar si la unidad original funciona: dos entradas anytls en el mismo servidor casi siempre indican un error, no una decisión intencionada.
-- **La versión de `iperf3` no está fijada.** Procede de la distribución y varía según su versión. El protocolo de red se ha mantenido estable en la serie 3.x, pero un cliente mucho más antiguo que el servidor puede fallar en la negociación de versiones.
-- **Solo amd64 para anytls y proxy.** El binario incluido no sirve para varias arquitecturas; en arm64 el instalador omite el módulo con una explicación en vez de instalar un binario que no podría ejecutarse.
+- **El iperf3 incluido es la versión 3.22.** Se compiló como binario estático x86-64 sin SCTP ni autenticación OpenSSL. Quedan por comprobar la resolución de nombres y el tráfico TCP/UDP real en Debian 11 y Ubuntu 20.04.
+- **Todo el proyecto requiere Linux x86-64.** El instalador rechaza otras arquitecturas antes de escribir el estado del sistema.
 - **El TLS autofirmado provoca una advertencia del navegador en 443, siempre.** Es esperado y no conviene «solucionarlo» mediante excepciones ni una cabecera HSTS.
 - **Reiniciar cierra cualquier ventana iperf3 abierta.** Es intencionado; consulta su ciclo de vida.
 - **Detener el servicio retira todos los
@@ -433,21 +421,21 @@ reenvíos de puertos, incluso los habilitados.** Es intencionado y simétrico co
 - **El `body` pasado a `render_page()`** **DEBE** contener exactamente un elemento de nivel superior. `<main>` usa `display: flex` sin cambiar `flex-direction`; con varios elementos hermanos superiores (por ejemplo, un `<div class="card wide">` por protocolo), se colocan en paralelo en vez de apilados. Fue un fallo real publicado en una versión anterior de `/proxy`, descrito por un operador como «layout is messed up». Todas las páginas envuelven su contenido en una sola tarjeta exterior y anidan las secciones repetidas como elementos `.node-addr` dentro de ella.
 - **Para desinstalar se necesitan los mismos `PREFIX` y `SERVICE_NAME` usados al instalar.** `uninstall.sh` sin variables toma los valores predeterminados, no encuentra nada en esas rutas y comunica éxito sin quitar nada. La última línea del instalador imprime el comando exacto con los valores correspondientes: úsalo en lugar de escribirlo de memoria.
 
-## Extension
+## Ampliación
 
-### How to extend
+### Cómo ampliar
 
 - **Un módulo nuevo** (otro componente opcional del instalador): añade `deploy/<name>/setup-<name>.sh`, su unidad systemd (incluida en `deploy/systemd/` o generada por el script), una opción en el menú de módulos de `deploy/install.sh` y una rama de desinstalación en `deploy/uninstall.sh`. Los módulos no se invocan entre sí.
 - **Una página nueva de consola**: añade una ruta a `ConsoleHandler`. No añadas rutas a `ProbeHandler`: su tabla casi vacía de rutas es una propiedad de seguridad, no un descuido.
 - **Un idioma nuevo**: añade catálogos correspondientes en todos los directorios `lang/<component>/`, registra el código en el selector de idiomas web y el mapeo del historial de cambios, en el instalador, el asistente de configuración y los cargadores de los scripts de módulos; después añade el árbol correspondiente `doc/<BCP47>/`.
-- **Un color nuevo**: añade un token a `:root` en `src/web/static/style.css` *y* un valor de modo claro en el bloque `prefers-color-scheme: light`, y después utiliza el token. Nunca escribas un color hexadecimal literal en una regla de componente: un literal no sigue el tema y será correcto en el modo para el que se eligió visualmente e incorrecto en el otro, sin que nada lo detecte. Todo fondo de color necesita un valor de primer plano `--on-*`: un color adecuado para el texto rara vez sirve también de fondo para texto blanco. Comprueba ambos modos frente a WCAG AA (4.5:1) antes de hacer commit; `tests/test_app.py::StylesheetTest` verifica la estructura, pero no puede juzgar la relación de contraste.
+- **Un color nuevo**: añade un token a `:root` en `src/web/static/style.css` *y* un valor de modo claro en el bloque `prefers-color-scheme: light`, y después utiliza el token. Nunca escribas un color hexadecimal literal en una regla de componente: un literal no sigue el tema y será correcto en el modo para el que se eligió visualmente e incorrecto en el otro, sin que nada lo detecte. Todo fondo de color necesita un valor de primer plano `--on-*`: un color adecuado para el texto rara vez sirve también de fondo para texto blanco. Comprueba ambos modos frente a WCAG AA (4.5:1) antes de hacer commit; Los antiguos tests verificaban la estructura, pero no podían juzgar la relación de contraste. Las comprobaciones actuales requieren revisión visual.
 - **Actualizar un componente incluido de otro proyecto**: vuelve a copiar desde la etiqueta original, actualiza el archivo `.upstream-version` correspondiente en el mismo commit y anota la nueva versión en [LOG.md][local-link-016]. No modifiques el código incluido directamente sin registrar la desviación: un cambio local no reflejado en el origen causaría una regresión silenciosa en la siguiente actualización.
 
 [local-link-001]: ../LOG.md#交接
 [local-link-002]: LOG.md#errores
 [local-link-003]: HISTORY.md
 [local-link-004]: LOG.md#decisiones
-[local-link-005]: #the-proxy-module
+[local-link-005]: #vps-proxy-module
 [local-link-006]: LOG.md#decisiones
 [local-link-007]: LOG.md#decisiones
 [local-link-008]: LOG.md#errores

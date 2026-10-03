@@ -36,17 +36,12 @@ else
   CATALOG_DIR="${SCRIPT_DIR}/../../lang/anytls"
 fi
 ANYTLS_LANG="${VPSSRV_DEFAULT_LANG:-en}"
-case "$ANYTLS_LANG" in en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) ;; *) ANYTLS_LANG=en ;; esac
+case "$ANYTLS_LANG" in en|zh_cn|es) ;; *) ANYTLS_LANG=en ;; esac
 msg(){
   local key="$1" fmt; shift
   case "$ANYTLS_LANG" in
     zh_cn) source "$CATALOG_DIR/zh-CN.sh" ;;
-    zh_tw) source "$CATALOG_DIR/zh-TW.sh" ;;
-    zh_hk) source "$CATALOG_DIR/zh-HK.sh" ;;
-    hi) source "$CATALOG_DIR/hi.sh" ;;
     es) source "$CATALOG_DIR/es.sh" ;;
-    ar) source "$CATALOG_DIR/ar.sh" ;;
-    fr) source "$CATALOG_DIR/fr.sh" ;;
     *) source "$CATALOG_DIR/en.sh" ;;
   esac
   # fmt comes from a fixed, repository-owned catalog.

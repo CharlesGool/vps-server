@@ -25,7 +25,7 @@ INSTALL_LANG="${VPSSRV_DEFAULT_LANG:-}"
 if [ -z "$INSTALL_LANG" ] && [ -f "$UNIT_PATH" ]; then
   INSTALL_LANG="$(sed -n 's/^Environment=VPSSRV_DEFAULT_LANG=//p' "$UNIT_PATH" | tail -n 1)"
 fi
-case "$INSTALL_LANG" in en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) ;; *) INSTALL_LANG=en ;; esac
+case "$INSTALL_LANG" in en|zh_cn|es) ;; *) INSTALL_LANG=en ;; esac
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
@@ -39,7 +39,7 @@ msg() {
   local key="$1"; shift
   local fmt catalog
   case "$INSTALL_LANG" in
-    zh_cn) catalog=zh-CN ;; zh_tw) catalog=zh-TW ;; zh_hk) catalog=zh-HK ;;
+    zh_cn) catalog=zh-CN ;;
     *) catalog="$INSTALL_LANG" ;;
   esac
   # Keep the catalog in memory: a full uninstall removes PREFIX before the

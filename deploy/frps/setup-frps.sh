@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 INSTALL_LANG="${VPSSRV_DEFAULT_LANG:-en}"
 case "$INSTALL_LANG" in
-  zh_cn) CATALOG_LANG=zh-CN ;; zh_tw) CATALOG_LANG=zh-TW ;; zh_hk) CATALOG_LANG=zh-HK ;;
-  en|hi|es|ar|fr) CATALOG_LANG="$INSTALL_LANG" ;; *) CATALOG_LANG=en ;;
+  zh_cn) CATALOG_LANG=zh-CN ;;
+  en|es) CATALOG_LANG="$INSTALL_LANG" ;; *) CATALOG_LANG=en ;;
 esac
 CATALOG_ROOT="${VPSSRV_CATALOG_ROOT:-}"
 if [ -z "$CATALOG_ROOT" ]; then

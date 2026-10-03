@@ -14,8 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-LANGUAGE_TAGS = {"en": "en", "zh_cn": "zh-CN", "zh_tw": "zh-TW", "zh_hk": "zh-HK",
-                 "hi": "hi", "es": "es", "ar": "ar", "fr": "fr"}
+LANGUAGE_TAGS = {"en": "en", "zh_cn": "zh-CN", "es": "es"}
 LANGUAGE = LANGUAGE_TAGS.get(os.environ.get("VPSSRV_DEFAULT_LANG", "en"), "en")
 MESSAGES = json.loads((ROOT / "lang" / "verify_dependencies" / f"{LANGUAGE}.json").read_text(encoding="utf-8"))
 

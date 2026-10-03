@@ -380,12 +380,8 @@ def pick_lang(context, cookie_lang, query_lang, accept_language):
         # Only the first (highest-priority) tag matters here.
         primary = accept_language.split(",")[0].strip().lower()
         if primary.startswith("zh"):
-            if "hk" in primary or "mo" in primary:
-                return "zh_hk"
-            if "tw" in primary or "hant" in primary:
-                return "zh_tw"
             return "zh_cn"
-        for code in ("hi", "es", "ar", "fr", "en"):
+        for code in ("es", "en"):
             if primary == code or primary.startswith(code + "-"):
                 return code
     return context.DEFAULT_LANG

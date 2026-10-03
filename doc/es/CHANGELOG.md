@@ -10,7 +10,7 @@ metadata:
 
 ## Multilingüe
 
-[简体中文](../CHANGELOG.md) | [English](../en/CHANGELOG.md) | [繁體中文(台灣)](../zh-TW/CHANGELOG.md) | [繁體中文(香港)](../zh-HK/CHANGELOG.md) | [हिन्दी](../hi/CHANGELOG.md) | **Español** | [العربية](../ar/CHANGELOG.md) | [Français](../fr/CHANGELOG.md)
+[简体中文](../CHANGELOG.md) | [English](../en/CHANGELOG.md) | **Español**
 
 ## Documentación
 
@@ -21,7 +21,6 @@ metadata:
 - Estado del proyecto: [LOG](LOG.md)
 - Registros históricos: [HISTORY](HISTORY.md)
 - Historial de cambios: [CHANGELOG](CHANGELOG.md)
-- Historial de commits: [COMMITS](COMMITS.md)
 
 - Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -30,6 +29,32 @@ metadata:
 <a id="vps-changelog"></a>
 
 Aquí solo se enumeran los lanzamientos etiquetados. Las siguientes entradas conservan el historial completo del registro de cambios anterior y registran el contenido de la versión actual.
+
+### v5.1.0 — 2026-10-04
+
+#### Añadido
+
+- Una copia completa del código fuente incluye y verifica los ejecutables FRPC, FRPS e iperf3 para Linux x86-64. La instalación de los módulos FRPC e iperf3 no requiere descargar ejecutables por separado desde GitHub.
+
+#### Cambiado
+
+- Según el estándar actual del proyecto, los idiomas de documentación e interfaz se reducen a chino simplificado, inglés y español. Al actualizar, las preferencias antiguas de otros idiomas pasan a inglés; las traducciones históricas siguen disponibles en etiquetas anteriores y en el historial de Git.
+- Se elimina el listado retirado de commits `COMMITS.md`; el historial de Git pasa a ser el registro de commits.
+- El destino de instalación queda limitado a Linux x86-64. El código Web instalado permanece en `$PREFIX/src/web/`; la entrada compatible de la raíz conserva el nombre del servicio y los directorios de datos anteriores.
+- La consola proxy solo lee el inventario de nodos administrados. Si no puede asociar una configuración antigua, solicita migrarla o repararla. Se retiraron el editor antiguo de nodos y las rutas de instalación interactivas que ya no se ejecutaban.
+- La desinstalación completa limpia las instancias FRPC reconocibles, los archivos de servicio globales correspondientes y las entradas de este proyecto en `PORTS.md`. `KEEP_DATA=1` conserva las configuraciones de las instancias FRPC.
+
+#### Corregido
+
+- La tarjeta del módulo FRPC determina si está instalado mediante el ejecutable local y la plantilla del servicio; Changelog reconoce las versiones de prueba numeradas.
+- Las contraseñas de administrador con caracteres chinos u otros caracteres no ASCII se verifican correctamente; al restablecer el tráfico periódico también se reconstruye la cuota del kernel.
+- Un fallo al aplicar un reenvío de puerto ya no se muestra como una adición correcta y se limpian las reglas parcialmente aplicadas. La consola y los auxiliares de nodos registran tipos de error sin datos sensibles.
+- Se unifica el formato de las entradas de puertos de FRP, la consola e iperf3; el instalador sincroniza `config/VERSION` en el directorio de ejecución.
+
+#### Verificación y límites
+
+- Pasaron las comprobaciones locales de sintaxis, generación de estilos, sumas de artefactos, estructura del proyecto, estructura multilingüe y lógica aislada. La suite automática se había retirado anteriormente a petición del operador.
+- El operador confirmó que en el servidor de prueba pasaron la desinstalación completa de FRPC y la limpieza del registro de puertos, el inicio de sesión Web, iperf3, los nodos y el tráfico proxy, el reenvío de puertos y la actualización desde una versión anterior. En esta sesión no se pudieron comprobar esos resultados de forma independiente porque SSH no estaba accesible. Siguen sin verificarse el entorno de destino Python 3.9, la recuperación tras reiniciar, los dispositivos móviles reales y las combinaciones fuera del alcance confirmado.
 
 ### v5.0.0 — 2026-10-03
 

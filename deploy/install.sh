@@ -290,7 +290,7 @@ write_state() {
 # ---------------------------------------------------------------------------
 
 INSTALL_LANG="${VPSSRV_DEFAULT_LANG:-en}"
-case "$INSTALL_LANG" in en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) ;; *) INSTALL_LANG=en ;; esac
+case "$INSTALL_LANG" in en|zh_cn|es) ;; *) INSTALL_LANG=en ;; esac
 
 msg() {
   local key="$1"; shift
@@ -298,12 +298,7 @@ msg() {
   # Catalog filenames are fixed here; no user-supplied path is sourced.
   case "$INSTALL_LANG" in
     zh_cn) source "$SRC_DIR/lang/installer/zh-CN.sh" ;;
-    zh_tw) source "$SRC_DIR/lang/installer/zh-TW.sh" ;;
-    zh_hk) source "$SRC_DIR/lang/installer/zh-HK.sh" ;;
-    hi) source "$SRC_DIR/lang/installer/hi.sh" ;;
     es) source "$SRC_DIR/lang/installer/es.sh" ;;
-    ar) source "$SRC_DIR/lang/installer/ar.sh" ;;
-    fr) source "$SRC_DIR/lang/installer/fr.sh" ;;
     *) source "$SRC_DIR/lang/installer/en.sh" ;;
   esac
   # shellcheck disable=SC2059  # fmt comes from the trusted catalog.
@@ -323,7 +318,7 @@ command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
 if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
   PREV_LANG="$(unit_env VPSSRV_DEFAULT_LANG)"
   case "$PREV_LANG" in
-    en|zh_cn|zh_tw|zh_hk|hi|es|ar|fr) INSTALL_LANG="$PREV_LANG" ;;
+    en|zh_cn|es) INSTALL_LANG="$PREV_LANG" ;;
   esac
 fi
 # Pass the selected locale to every module setup script.
@@ -634,9 +629,7 @@ copy_selected_files() {
     # Documentation required by /changelog and third-party notices.
     local doc_items="doc/LOG.md doc/CHANGELOG.md doc/THIRD_PARTY_NOTICES.md
                      doc/en/LOG.md doc/en/CHANGELOG.md
-                     doc/zh-TW/CHANGELOG.md doc/zh-HK/CHANGELOG.md
-                     doc/hi/CHANGELOG.md doc/es/CHANGELOG.md
-                     doc/ar/CHANGELOG.md doc/fr/CHANGELOG.md"
+                     doc/es/LOG.md doc/es/CHANGELOG.md"
     for item in $doc_items; do
       [ -e "$SRC_DIR/$item" ] || continue
       mkdir -p "$PREFIX/$(dirname "$item")"

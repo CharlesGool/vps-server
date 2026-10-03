@@ -144,8 +144,7 @@ load_dotenv(BASE_DIR / ".env")
 
 def _load_strings():
     """Load reviewed interface catalogs from the checkout or installed prefix."""
-    files = {"en": "en", "zh_cn": "zh-CN", "zh_tw": "zh-TW",
-             "zh_hk": "zh-HK", "hi": "hi", "es": "es", "ar": "ar", "fr": "fr"}
+    files = {"en": "en", "zh_cn": "zh-CN", "es": "es"}
     catalogs = {}
     for code, tag in files.items():
         with (BASE_DIR / "lang" / "web" / f"{tag}.json").open(encoding="utf-8") as source:
@@ -608,21 +607,16 @@ PORTFWD_MESSAGE_KEYS = frozenset({
 })
 
 # ---------------------------------------------------------------------------
-# Internationalization (English / Simplified Chinese / Traditional Chinese)
+# Internationalization (English / Simplified Chinese / Spanish)
 # ---------------------------------------------------------------------------
 
 
 # Rendered in the navigation in display order.
-LANG_NAMES = {"en": "English", "zh_cn": "简体中文", "zh_tw": "繁體中文",
-              "zh_hk": "繁體中文 (香港)", "hi": "हिन्दी", "es": "Español",
-              "ar": "العربية", "fr": "Français"}
+LANG_NAMES = {"en": "English", "zh_cn": "简体中文", "es": "Español"}
 
-# The runtime language codes (zh_cn/zh_tw, with underscores) are legacy
-# identifiers; documentation directories use BCP-47 tags. These codes
-# aren't valid BCP-47 <html lang> values — that
-# needs a hyphen. Only used for the <html lang="..."> attribute.
-HTML_LANG_TAGS = {"zh_cn": "zh-CN", "zh_tw": "zh-TW", "zh_hk": "zh-HK"}
-RTL_ATTR = {"ar": ' dir="rtl"'}
+# The runtime code zh_cn is a legacy identifier; HTML uses BCP-47.
+HTML_LANG_TAGS = {"zh_cn": "zh-CN"}
+RTL_ATTR = {}
 
 
 def pick_lang(*args, **kwargs):
@@ -819,9 +813,7 @@ def save_server_label(value):
 
 CHANGELOG_PATHS = {
     code: BASE_DIR / "doc" / (tag or "") / "CHANGELOG.md"
-    for code, tag in (("en", "en"), ("zh_cn", None), ("zh_tw", "zh-TW"),
-                      ("zh_hk", "zh-HK"), ("hi", "hi"), ("es", "es"),
-                      ("ar", "ar"), ("fr", "fr"))
+    for code, tag in (("en", "en"), ("zh_cn", None), ("es", "es"))
 }
 CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 

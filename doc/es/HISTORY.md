@@ -10,7 +10,7 @@ metadata:
 
 ## Multilingüe
 
-[简体中文](../HISTORY.md) | [English](../en/HISTORY.md) | [繁體中文(台灣)](../zh-TW/HISTORY.md) | [繁體中文(香港)](../zh-HK/HISTORY.md) | [हिन्दी](../hi/HISTORY.md) | **Español** | [العربية](../ar/HISTORY.md) | [Français](../fr/HISTORY.md)
+[简体中文](../HISTORY.md) | [English](../en/HISTORY.md) | **Español**
 
 ## Documentación
 
@@ -21,7 +21,6 @@ metadata:
 - Estado del proyecto: [LOG](LOG.md)
 - Registros históricos: [HISTORY](HISTORY.md)
 - Historial de cambios: [CHANGELOG](CHANGELOG.md)
-- Historial de commits: [COMMITS](COMMITS.md)
 
 - Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -208,129 +207,30 @@ Estos elementos finalizados constituyen el registro fechado de implementación y
 - Comprobaciones: se superaron 313 pruebas automatizadas (8 omitidas), incluidas las pruebas del regreso desde el enlace de versión y de la visibilidad de las notas de desarrollo; el formato documental, los enlaces locales y la estructura multilingüe no presentaron errores. Pasaron la compilación Python y el control de espacios del diff. En ese momento el equipo de pruebas designado todavía ejecutaba `dev-c312456`. Siguiente paso: desplegar el cambio con una marca que coincida con el código confirmado, verificar por LAN la versión de inicio de sesión y el Changelog autenticado y documentar el resultado en el equipo.
 - Despliegue de prueba de versión y Changelog (2026-09-28): se instaló `2c0e4d7` como `dev-2c0e4d7` en el equipo LAN designado, después de guardar los puntos de entrada Web, documentos, catálogos de idiomas y marca de versión anteriores en una copia de seguridad con permisos 0600 fuera del directorio de la aplicación. Solo se reinició el servicio Web; el estado de los nodos, los datos de visitantes y la contraseña Web existente quedaron intactos. Web, proxy, node-meter y AnyTLS estaban activos después; Web seguía habilitado al arranque en su puerto anterior `the designated legacy console listener`. Desde la estación de trabajo, la página de inicio de sesión devolvió HTTP 200 e informó `dev-2c0e4d7`. Una solicitud autenticada en el equipo comprobó que el Changelog en chino muestra las notas de la versión de prueba actual sobre la entrada oficial localizada de `v3.0.0` y excluye el texto Handoff. El enlace de versión del inicio de sesión lleva al Changelog tras verificar la contraseña. Los hashes del código y los catálogos desplegados coincidieron con este commit y el registro Web reciente no mostró errores. No se reinició el equipo. Siguiente paso: revisar la página actualizada con el operador; siguen pendientes las comprobaciones anteriores de nodos, Clash y admisión por IP.
 
-## Historial de commits
 
-Las entradas conservan los títulos originales de los commits de Git en orden cronológico. La entrada final corresponde a este commit de documentación.
 
-- `b3cc391` docs: add documentation skeleton and agreed design
-- `63f1680` feat(web): vendor the web module and add the public page and iperf3 window
-- `c0def78` feat(anytls): vendor the anytls module and record third-party licences
-- `dc70d9b` feat(install): turn the installer into a module menu
-- `fcf7878` fix(install): print a teardown command that actually works
-- `6022737` docs: record that the iperf3 window works under systemd sandboxing
-- `790b7c6` fix(anytls): install the sing-box binary that was there all along
-- `f0862d0` feat(console): add an anytls node page, and stop the iperf buttons competing
-- `aa01a30` feat(console): show the anytls port, password and every usable address
-- `901cc0c` fix(ui): make the copy button quiet, and every colour survive light mode
-- `5c6e65a` feat(anytls): let the console rotate the node's port and password
-- `27e2c9d` docs(anytls): keep the upstream tag as the file's last line
-- `03bb980` feat(install): carry an existing install's settings across an upgrade
-- `33d8488` fix(anytls): run the reset outside this service's sandbox
-- `00bf933` fix(anytls): stop a raw iptables line leaking into the install summary
-- `c8330ba` fix: eleven defects from a full audit
-- `0be4851` docs(backlog): tick the anytls vendoring item, done since c0def78
-- `a9d6b1d` fix(ui): align the iperf form, and let the layout survive a narrow screen
-- `3843ccb` docs: correct two stale backlog ticks and the mean_rtt claim
-- `cc0cf4d` docs: record three more verifications, and what is left
-- `8e2ea5e` chore(release): v1.0.0
-- `40a4bc3` fix(changelog): stop rendering the maintainer comment to readers
-- `bbc7bd1` chore(release): v1.0.1
-- `98d3bf7` chore(release): v1.0.2
-- `aceecfd` chore(release): v1.0.3
-- `e723745` chore(release): v1.0.4
-- `4983c10` refactor(docs): migrate docs to doc/ + doc/<lang>/ layout
-- `a468514` docs(i18n): scaffold five extended-language placeholders, fix README Install
-- `42ffe49` docs(i18n): sync README Install one-liner to zh_cn/zh_tw translations
-- `0bbb682` feat(portfwd): console-managed iptables port forwarding
-- `2b3caee` docs(backlog): record web-based first-run setup page idea
-- `14608c6` chore(release): v1.1.0
-- `eace062` chore(release): v1.1.1
-- `9e09d8a` fix(install): stop install.sh silently dying mid-upgrade
-- `5451526` refactor(project): publish standardized project tree
-- `f300ab7` docs(log): record GitHub synchronization
-- `53c390c` chore(release): prepare v2.0.0 content
-- `f9eb612` docs(release): verify bundled artifact provenance
-- `5868549` docs(log): record v2.0.0 publication handoff
-- `56c9ed5` docs(readme): translate installation example comments
-- `51e89bc` feat(nodes): scaffold numbering and refresh proxy workspace
-- `ed58969` feat(nodes): add managed controls and traffic policing
-- `d0d6ae7` docs: restore required multilingual sections
-- `84b9599` fix(web): show development revision in checkout
-- `e986c51` fix(install): create flat entry during in-place install
-- `eaceed8` fix(install): stage modules during in-place install
-- `5ff2a6b` fix(web): condense mobile navigation
-- `2477fcc` docs: record node deployment handoff
-- `d31e40f` docs(log): synchronize commit history
-- `0696e4b` fix(nodes): keep sustained traffic within 1 Mbps
-- `da5f84f` docs(log): record measured node acceptance
-- `b74b412` feat(proxy): add Clash Meta import and GiB node controls
-- `773eedf` feat(web): unify console and setup interface design
-- `9a615ab` feat(nodes): support multiple nodes and in-place editing
-- `6c1459d` docs(log): record node management delivery
-- `47b3686` feat(console): refine nodes, login and iperf3 port
-- `3d69356` docs(log): record GitHub synchronization
-- `6e461a3` fix(iperf): clarify finished state
-- `a676537` feat(nodes): add per-node switch and compact numbering
-- `ab02c17` docs(log): record node switch acceptance
-- `860cdc4` feat(auth): add private-IP access and admin settings
-- `ad08a80` feat(web): refine access screens and proxy node cards
-- `be8b4a5` feat(nodes): add flexible limits and persistent IP login entry
-- `b0a9c6c` feat(web): copy Clash links and fit up to six node columns
-- `d07b40a` fix(web): mask configured values and align project documents
-- `7065e18` fix(web): honor installed version stamp
-- `b870053` fix(web): prioritize deployed stamp over stale git metadata
-- `81f1e13` feat(auth): align security settings and dashboard access
-- `7524ec3` docs(log): record security alignment checks and deployment
-- `b1a8f21` feat(web): separate preferences from security settings
-- `dd9627f` fix(web): keep security entry visible in settings
-- `0fc871a` fix(auth): return to requested settings page after login
-- `5c518c0` fix(web): add dashboard link and align security card
-- `9db2482` docs(log): record settings review and deployment
-- `fdf8fbc` feat(nodes): move access limits into dialog
-- `a785fe5` fix(nodes): keep action buttons on one row
-- `d03abb7` docs(log): record access dialog and test deployment
-- `2b7983f` fix(standards): align setup addresses and document links
-- `933bafa` docs(log): finish standards audit handoff
-- `e2778a5` docs(log): record formal branch publication
-- `abe8f0d` feat(web): align appearance with current theme standard
-- `2d624db` docs(log): record appearance deployment
-- `4e26aea` chore(release): prepare v3.0.0 content
-- `444924c` docs(log): record v3.0.0 publication
-- `c312456` fix(web): align login and password controls with current standard
-- `25f1f9e` docs(log): record Web UI test deployment
-- `2c0e4d7` feat(web): show current test build updates
-- `4d0db36` docs(log): record version and Changelog deployment
-- `95ca649` feat(web): align navigation and add FRP information
-- `598a386` fix(web): display test candidate version and notes
-- `5559417` docs(log): record FRP test deployment
-- `9f4ab98` docs(log): clarify concurrent node state
-- `fb077d3` feat(setup): add first-run and later module installation
-- `728ce0b` docs(log): record clean test-host reinstall
-- `3dd9d3d` feat(frp): manage server and local client configuration
-- `efbb4e9` docs(log): record FRP test deployment
-- `7d3e0fc` docs(frp): clarify remote port firewall access
-- `a73c5a8` feat(frp): add inline controls and client cards
-- `a113855` fix(frp): read established socket peer correctly
-- `672f2e7` fix(frp): finish client editor controls
-- `d76e6b1` docs(log): record FRP panel test deployment
-- `a2c1264` feat(frp): allow TCP and UDP proxy types
-- `605a5b6` docs(log): record final FRP panel deployment
-- `d09835d` feat(frp): streamline client cards and verify connections
-- `0d4b60e` docs(log): record FRPC refinement and live checks
-- `c086709` fix(frp): use a proper proxy section heading
-- `0708020` docs(log): record final FRPC card refinement deployment
-- `572b913` feat(console): refine FRPC controls and modular home
-- `380d7f3` fix(ui): align access controls and improve module state writes
-- `c9363f6` fix(ui): center password reveal and unify server port labels
-- `2cb98a7` docs(log): record modular Home deployment and checks
-- `7e365b9` fix(web): stop visitor collection when disabled
-- `3cc5c8c` docs(log): record final visitor switch verification
-- `1810c3d` fix(frpc): add independent client installation controls
-- `83064ca` fix(web): remove page transition animation
-- `8733548` docs(log): record route-animation test deployment
-- (this commit) chore(release): publish v4.0.0 source and translations
+### 2026-10-03: traspaso de `test-51dd1f2` solo preparado
 
-## v4.0.0 installation guide archive
+- Rama `main`, commit `51dd1f2` ya enviado. El candidato ejecutable `test-51dd1f2` todavía no era etiqueta formal ni GitHub Release.
+- Se comprobó la huella SSH del servidor de prueba y el operador la confirmó. El servidor aún ejecutaba `4.1.0-test.1`; Web, FRPS, proxy y node-meter estaban activos y habilitados y la consola escuchaba en la dirección y puerto LAN anteriores. FRPC tenía binario y plantilla instalados, sin instancias locales. Se exportó desde `51dd1f2` un candidato con la corrección FRPC, versión de prueba y notas inglesas de la aplicación; se transfirió a una carpeta de preparación independiente del servidor y su SHA-256 coincidió antes y después. Se archivaron fuera de la aplicación, para root y con modo `0600`, la aplicación antigua, registros de puertos, unidades systemd relevantes y configuraciones externas; el archivo se leyó para verificarlo. **Aún no se ejecutó el instalador ni se cambiaron servicios.**
+- El código fuente anterior había ejecutado 377 pruebas: 369 pasaron y 8 se omitieron. En el candidato exportado pasaron las dos pruebas enfocadas de tarjeta FRPC y catálogos, compilación Python, sintaxis Bash e interpretación de versión de prueba. Al ejecutar las 377 en una exportación sin metadatos Git, 365 pasaron, 8 se omitieron y 4 fallaron: dos esperaban notas formales o un borrador antiguo, una esperaba que `config/VERSION` fuese la última versión formal y otra requería el árbol Git. La documentación del candidato tuvo 0 errores y 2 advertencias anteriores. No hubo aceptación funcional del servidor.
+- Faltaba que el operador confirmase ubicación y permisos de las configuraciones externas de AnyTLS, proxy, nodos y FRPS, como exige el proceso de despliegue. Después debía usarse la selección de módulos existente para actualizar y revisar servicios, puertos, versión, tarjeta FRPC tras iniciar sesión, datos persistentes y ruta de recuperación. No se verificaron arranque tras reinicio, móviles reales ni tráfico proxy entre servidores. El cambio estructural entre la instalación y el código hacía necesario el paquete completo; prepararlo no equivalía a desplegarlo. El siguiente paso era confirmar configuraciones y copia, instalar `test-51dd1f2`, aceptar cada función y, si fallaba, restaurar la copia. No se encontraron reglas temporales.
+
+### 2026-10-03: traspaso de la corrección de la tarjeta FRPC
+
+- Rama `main`. `213a2a0` ya estaba en `origin/main` después de la etiqueta formal `v5.0.0`; no se creó otra versión ni se desplegó este cambio.
+- La página Módulos retiró el estado especial de FRPC sin instancias y la opción de crear instancia. La instalación se determina solo por el binario local y la plantilla systemd; el interruptor del grupo FRPC indica «habilitado» o «deshabilitado». El trabajo de instalación dejó de pedir la creación de una instancia. La página `/frpc` separada seguía gestionando instancias reales. Se limpiaron claves obsoletas en ocho catálogos de interfaz y se sincronizaron los ocho README y las pruebas.
+- De 377 pruebas, pasaron 369 y se omitieron 8. La prueba HTTP de tarjeta sin instancias confirmó estado de instalación y habilitación sin consultar la lista de instancias ni mostrar la creación. Estructura y multilingüismo dieron 0 errores, documentación 0 errores y 10 advertencias anteriores, enlaces locales 0 errores; 15 URL externas no se volvieron a comprobar individualmente. Pasaron compilación Python y revisión Git. No pudo generarse un paquete de traducción incremental porque la estructura de `doc/en/LOG.md` en `HEAD` estaba desincronizada del chino; los siete README traducidos se cotejaron frase por frase y pasaron el control estático.
+- El servidor de destino no recibió ni aceptó este código. Faltaban inspección visual en navegador de escritorio y 390 px, dispositivo real y conexión FRPC entre servidores. Playwright CLI no arrancó por falta de Chrome local. La base de traducción existente necesitaba sincronización y las nuevas versiones una revisión nativa. El navegador y el paquete incremental fueron los impedimentos de comprobación, sin bloquear el código o las pruebas automáticas. Si se entregaba una versión ejecutable, el siguiente paso era crear otro candidato, desplegarlo y, con Chrome disponible, revisar ambos anchos antes de aceptar FRPC real. No se encontraron reglas temporales.
+
+### 2026-10-03: traspaso posterior a la publicación de `v5.0.0`
+
+- Rama `main`. `v5.0.0` se había publicado el 2026-10-03. La rama antigua `refactor/feature-modules-repo` y el puntero `main` anterior se conservaron en ramas locales, referencias de archivo y stash para auditoría, sin incluirlos en la etiqueta pública. La antigua instalación del servidor de prueba ya se había retirado por completo; esta publicación no se desplegó otra vez.
+- Se corrigió el mensaje final de la desinstalación completa con una prueba de regresión, se movieron los recursos estáticos a `src/web/static/` mientras la instalación seguía usando `$PREFIX/static`, y se establecieron documentos raíz en chino simplificado con siete traducciones. Se envió a `main` el commit `b9314f5`, se creó y cotejó la etiqueta anotada `v5.0.0` sobre él y el [GitHub Release formal](https://github.com/CharlesGool/vps-server/releases/tag/v5.0.0), y se exportó `snapshots/v5.0.0/` desde la etiqueta. FRPC seguía usando el recurso ya verificado del Release `v4.0.0` y no se volvió a subir. El estado local permaneció sin cambios en `private/` ignorado.
+- De 377 pruebas, 369 pasaron y 8 se omitieron. Pasaron CSS, siete sumas de dependencias, Bash, Python, estructura, multilingüismo y enlaces documentales; había 10 advertencias documentales no bloqueantes. Una aplicación cargada desde la instantánea etiquetada mostró `5.0.0`, leyó el registro de cambios y los recursos estáticos en ocho idiomas y superó 19 pruebas relevantes. El cuerpo del Release coincidió exactamente con el archivo revisado y se comprobaron `main` remoto y destino de la etiqueta. Se revisaron los cinco commits de `3be7fcf` a `b9314f5` y los archivos finales sin encontrar identificadores de servidor privados o nuevos archivos grandes; la historia original no compartida no era accesible desde la etiqueta. El usuario había comunicado pruebas funcionales anteriores, pero no hubo instalación real nueva después de la migración.
+- Faltaban instalación o actualización de destino, persistencia tras reinicio, todas las combinaciones de proxy y reenvío entre servidores, móviles reales y revisión nativa de nuevas traducciones. El proceso de publicación no tuvo bloqueos. La historia local no compartida contenía registros de pruebas y no debía hacerse pública directamente. Para desplegar, el siguiente paso era instalar o actualizar desde `v5.0.0` siguiendo el proceso correspondiente y revisar las traducciones. No se encontraron reglas temporales.
+
+## Archivo de la guía de instalación v4.0.0
 
 ## Instalación
 
@@ -365,3 +265,165 @@ Si FRPC está instalado, abre la tarjeta **FRPS** o **FRPC** desde Home.
 **Editar FRPS** permite cambiar el puerto de escucha y el token; un campo vacío conserva su valor actual. Al cambiarlos, también hay que actualizar las instancias FRPC que se conectan a ese servidor. Cada tarjeta FRPC local tiene controles separados para Probar conexión, Editar y Eliminar con confirmación; hacer clic en el fondo de la tarjeta no hace nada. El interruptor de inicio está junto al nombre de la instancia. En Editar se pueden cambiar el nombre, el servidor y las asignaciones de proxy. Haz clic en una IP, un puerto o un token ocultos para revelarlos; Editar servidor carga los valores guardados. Probar conexión realiza un inicio de sesión temporal con esos valores sin iniciar ni modificar la instancia administrada. Guardar valida con `frpc verify`, reinicia una instancia activa y devuelve a su misma página. Las instancias nuevas se habilitan después del primer guardado válido. Desde la página también se puede iniciar o detener una instancia existente sin borrar su configuración. Los cambios en instancias FRPC locales no alteran clientes de otros dispositivos. Para un proxy TCP, permite su `remotePort` en cualquier cortafuegos activo del host y en el grupo de seguridad de la nube; el editor registra las asignaciones de puerto del mismo host, pero no modifica las reglas del cortafuegos de la nube.
 
 **Volver a ejecutarlo actualiza la instalación existente.** Detecta una instalación previa, ofrece conservar su configuración y solo pregunta por los ajustes inexistentes en la versión instalada, cada uno con su valor predeterminado, por lo que pulsar Intro es válido. Se conservan la contraseña de la consola, el puerto persistente, los certificados, el registro de visitantes, las credenciales del nodo anytls y el puerto y las credenciales de cada protocolo proxy instalado. Responde `n` a la pregunta de actualización para volver a configurar los ajustes.
+
+
+<a id="retired-anytls-console"></a>
+
+## 2026-10-03: despliegue de prueba `test-51dd1f2`
+
+- Rama `main`, con código candidato `51dd1f2` y extremo anterior del repositorio `fba4fb0`. El servidor de prueba pasó de `4.1.0-test.1` a `test-51dd1f2` sin crear etiqueta, Release ni instantánea. Conservó los módulos `web,iperf3,anytls,proxy,frps` y el ejecutable y plantilla FRPC; no se creó ninguna instancia FRPC. Antes de actualizar se guardó una copia root `0600` fuera de la aplicación y se compararon sumas SHA-256 del paquete.
+- El instalador actualizó el código y el paquete de instalación y se completó manualmente el antiguo `config/VERSION`. `VERSION`, `config/VERSION`, el paquete, la interfaz y `.install-state` mostraron `test-51dd1f2`; 12 archivos instalados coincidieron con el candidato. Se cerró la sesión de prueba.
+- Antes de exportar habían pasado 369 pruebas y se habían omitido 8 de 377. En el directorio exportado, 365 pasaron, 8 se omitieron y 4 fallaron por falta de metadatos Git o por expectativas de versión y registro formal. El instalador terminó sin errores. Web, FRPS, proxy, AnyTLS y node-meter estaban activos y habilitados; un reinicio real cambió el boot ID y recuperó los cinco servicios y las escuchas de consola, HTTP, HTTPS y FRPS. Las páginas públicas y de acceso devolvieron 200. En Chromium se revisaron tarjetas a 1440 y 390 CSS px sin desbordamiento horizontal. Las configuraciones proxy y AnyTLS, puertos, credenciales y certificados se conservaron.
+- Quedaron sin repetir las comprobaciones en móvil real, FRPC entre servidores, tráfico proxy y todas las combinaciones de reenvío. El operador propuso limitar el futuro control de Lucky a funciones necesarias y tomar como referencia un complemento OpenWrt para Tailscale; faltan los detalles de alcance. Los cuatro fallos de pruebas exportadas quedaron registrados sin tratarlos como aprobados.
+
+- Detalle de la comprobación del servidor: el instalador devolvió éxito y el registro no contenía líneas error/failed. La página de módulos no autenticada redirigía al inicio de sesión; tras iniciar sesión en chino simplificado, FRPC sin instancias mostraba «habilitado» y «desinstalar», sin opción para crear una instancia. `/frpc` y las notas de la versión eran accesibles. Los cuatro archivos de datos dinámicos cambiaron durante el arranque, la navegación y la medición; el journal Web de esta prueba no mostraba errores. Se verificó que la instalación conservaba los certificados y la configuración externa.
+- El siguiente paso registrado era obtener del operador las funciones exactas de Lucky y las páginas del complemento OpenWrt para diseñar controles de Lucky y Tailscale. Si se publicaba esta corrección de forma formal, había que preparar la versión desde el alcance de prueba realmente confirmado. No se identificaron reglas temporales del proyecto.
+
+## 2026-10-03: limpieza de directorios vacíos y del asistente retirado
+
+- Sobre `c289ea3` se quitaron 19 marcadores `.gitkeep` sin uso y los directorios vacíos correspondientes; se conservaron los datos privados ignorados. Se eliminó el antiguo asistente de configuración inicial, sus ocho catálogos y las pruebas exclusivas de ese flujo, además de tres mensajes sin uso. En esta fecha aún permanecían pruebas de regresión en `tests/`, pero el instalador dejó de copiarlas al entorno Web.
+- De 361 pruebas, 353 pasaron y 8 se omitieron. Pasaron las comprobaciones de estructura, CSS, Bash, Python, Git y multilingüismo. La documentación tuvo 0 errores y 10 advertencias históricas; los enlaces locales tuvieron 0 errores y 15 URL externas quedaron sin volver a comprobar. No se desplegó esta limpieza. El servidor seguía en `test-51dd1f2` y habría necesitado retirar por separado su antigua carpeta de pruebas.
+- Persistieron las verificaciones pendientes en móvil real, FRPC entre servidores, tráfico proxy y reenvío, así como el alcance de Lucky y Tailscale. No había bloqueo; el siguiente paso registrado era actualizar el servidor siguiendo el proceso de despliegue y verificar rutas y copias antes de borrar las pruebas instaladas.
+
+- Entre los directorios vacíos eliminados estaban `assets/`, `examples/`, `migrations/`, `public/`, `scripts/`, `doc/resources/`, `tests/fixtures/` y `dist/`. Se sincronizaron la guía de instalación, el diseño, los comentarios de variables y las pruebas relevantes. La limpieza todavía no había sido publicada ni desplegada.
+- La comprobación de la carpeta instalada y su copia de seguridad era condición previa a retirarla por separado. No se registraron bloqueos ni reglas temporales del proyecto.
+
+## 2026-10-03: retirada de las pruebas automáticas
+
+- Sobre `9687565` se retiraron 26 scripts de `tests/` del repositorio y la carpeta instalada `/root/apps/vps-server/tests` del servidor de prueba, por petición del operador. Git conserva su recuperación. Se quitaron referencias actuales a las pruebas, manteniendo el historial. La primera medición registró 67 archivos propios Python, JavaScript y CSS, 11,637 líneas, de ellas 10,118 Python; `app.py` tenía 1,406, `features/proxy.py` 816, `node_control.py` 675 y `deploy/install.sh` 1,127. No se reescribieron funciones de ejecución.
+- El servidor no tenía `tests/`, conservaba `data/` y Web seguía activo y habilitado como `test-51dd1f2` en `0.0.0.0:23111`; el acceso local devolvió 200. Pasaron estructura, CSS, Python, Bash, siete sumas de terceros, Git y multilingüismo. La documentación tuvo 0 errores y 10 advertencias y los enlaces locales 0 errores; las 15 URL externas no se comprobaron otra vez. No se reinició el servidor ni se volvió a aceptar FRPS, tráfico proxy o reenvíos.
+- La eliminación del código no se desplegó por completo; el servidor solo perdió su carpeta de pruebas. Las simplificaciones futuras requerían aceptación manual por módulos. La revisión siguiente debía empezar por las rutas antiguas de proxy, el instalador y la capa de compatibilidad, conservando el diseño y las copias necesarias.
+
+- La eliminación de `tests/` del servidor de prueba se hizo por separado del código no desplegado. No se verificó en ese turno la recuperación tras reiniciar, FRPS, tráfico proxy ni reenvío; tampoco se completaron las pruebas móviles, FRPC entre servidores, Lucky o la referencia Tailscale. No había bloqueos ni reglas temporales del proyecto. La próxima revisión debía conservar la aceptación manual por módulos y el historial Git como ruta de recuperación.
+
+## 2026-10-04: revisión del código
+
+- En `main`, base `1f18572`, se revisaron rutas Web, autenticación, configuración y contabilidad de nodos, FRP, módulos, instaladores y scripts frontend, sin modificar código de ejecución, restaurar pruebas, enviar cambios ni desplegar. El inventario propio fue de 75 archivos Python, Shell, JavaScript y CSS y 14,837 líneas, excluyendo CSS generado, recursos lingüísticos y terceros: Python 32 archivos/10,219 líneas, Shell 6/3,099, JavaScript 17/947 y CSS fuente 20/572. Se identificaron 81 funciones envoltorio de `app.py`, 145 atributos accedidos mediante `self.context` y cinco hallazgos de comportamiento.
+- Se recomendó retirar primero las ramas de instalación inaccesibles con `INTERACTIVE=0` y el antiguo cambio de servicio de `node_manager.py`, después de comprobar unidad y documentación. Las rutas antiguas de nodos seguían accesibles y exigían definir la migración antes de borrarlas. Se propuso hacer explícitas las dependencias y unificar puertos, formularios y diagnósticos, conservando la separación de escuchas, CSRF, ID estables, validación, reversión y protección del contador. Eran propuestas, no decisiones aprobadas.
+- Se compilaron en memoria 32 archivos Python; pasaron `bash -n` en 54 Shell, `node --check` en 21 JavaScript, el análisis de 17 JSON, la construcción CSS y siete sumas. Se reprodujeron aisladamente los fallos de contraseña china, cuota periódica y reenvío falsamente exitoso. No se ejecutó la suite eliminada, escuchas, systemd, nftables, tráfico proxy, navegador ni servidor de prueba. Documentación y enlaces locales: 0 errores, con 1 advertencia histórica; URL externas existentes: HTTP 200; multilingüismo y Git: aprobados. La comprobación de estructura falló por `dist/test-1f18572.tar.gz` en un directorio ignorado fuera de `dist/<component>/`, que no se tocó.
+- Seguían pendientes los cinco fallos, la simplificación por módulos y la aceptación manual. No había Python 3.9 local; la compatibilidad solo tenía evidencia estática. El siguiente paso era corregir contraseña, cuota, versión y reenvío en lotes pequeños, y simplificar por ramas efectivas y dependencias implícitas en lugar de contar solo líneas.
+
+- La revisión conservó como riesgos separados los cinco hallazgos, sin atribuir a la medición de líneas por sí sola una decisión de arquitectura. La siguiente implementación requería una indicación para modificar el código de ejecución; la revisión no otorgaba esa autorización. También seguían pendientes móvil real, FRPC entre servidores, tráfico proxy, reenvío y el alcance de Lucky/Tailscale. La ausencia de Python 3.9 fue el único bloqueo de comprobación señalado; no había reglas temporales del proyecto.
+
+## Antigua ruta de consola anytls
+
+El texto siguiente conserva el diseño anterior. Sus referencias a `POST /anytls/reset` y a los scripts de instalación son históricas; la consola actual ya no usa esas rutas.
+
+### Sección anytls de la consola
+
+**Ahora está en `/proxy`, no en una página independiente** (2026-09-22): consulta «El módulo proxy» más abajo para saber por qué anytls y los protocolos proxy se unieron en una sola página. `/anytls` sigue existiendo como redirección a `/proxy` y `POST /anytls/reset` no ha cambiado; solo desaparecieron la página independiente `GET /anytls` y su enlace de navegación/tarjeta del panel. Lo siguiente sigue describiendo el comportamiento de la sección anytls de la página conjunta.
+
+La consola lee el nodo instalado de `VPSSRV_ANYTLS_CONFIG` y muestra su estado, una entrada Clash lista para pegar y un enlace `anytls://`.
+
+Solo escribe una cosa: el botón «restablecer puerto y contraseña», que además delega la operación. La consola no modifica directamente `config.json`: ejecuta `setup-anytls.sh reset`, ya que es fácil equivocarse con el orden crítico; la regla del cortafuegos del puerto anterior debe retirarse *antes* de abrir el nuevo, o cada restablecimiento deja una regla `ACCEPT` para un puerto en el que nadie escucha. Esa lógica pertenece al script propietario del nodo, no a dos sitios distintos. El restablecimiento exige marcar una casilla de confirmación validada por el servidor: `required` en el HTML evita un clic accidental, pero no detiene a un cliente que no sea un navegador. Cambiar las credenciales deja inoperativos todos los clientes configurados hasta que reciban las nuevas.
+
+Además se ejecuta **fuera del aislamiento de este servicio**, como unidad transitoria mediante `systemd-run --pipe --wait --collect`. La unidad web tiene `ProtectSystem=strict` y solo `ReadWritePaths=$PREFIX`, por lo que no puede escribir en `/etc`; restablecer requiere modificar `/etc/vps-server-anytls` y un archivo de unidad. El primer intento real falló a mitad de proceso precisamente por eso, después de haber retirado la regla del puerto anterior. La alternativa de añadir `/etc/systemd/system` a `ReadWritePaths` ampliaría permanentemente los permisos de escritura del servicio para hacer funcionar un solo botón; mantener el aislamiento es más importante. Si no hay `systemd-run`, se hace la llamada directamente: los entornos que carecen de él son también aquellos en los que `install.sh` no aplica ese endurecimiento.
+
+`setup-anytls.sh reset` también comprueba que puede escribir antes de tocar el cortafuegos. Si falla después de retirar la regla anterior, quedaría un nodo en ejecución pero inaccesible, peor que uno que no llegó a arrancar.
+
+Dos detalles son esenciales. **La contraseña del nodo aparece en texto claro en esa sección de la consola**, lo que solo es aceptable porque la página reside en `ConsoleHandler`, detrás del inicio de sesión; `ProbeHandler` no tiene esa ruta, y una prueba verifica que la escucha pública responde 404 a `/anytls` y nunca incluye la contraseña. Y
+**la dirección del servidor procede de
+la cabecera `Host` de la petición**, no de una consulta: la dirección que alcanzó la consola puede alcanzar el nodo; consultar la IP externa al mostrar la página contradice la prohibición de solicitudes salientes, y quien necesite otra dirección puede editar la línea una vez copiada.
+
+Los ajustes de seguridad requieren verificar la contraseña de administrador antes de mostrar o cambiar los datos. La lista solo acepta direcciones individuales IPv4 privadas RFC 1918 o IPv6 locales únicas y tiene un interruptor propio; se rechazan las IP públicas y los rangos. El acceso por IP usa la dirección del extremo real de la conexión, nunca una cabecera de reenvío proporcionada por el cliente; con `VPSSRV_TRUST_PROXY=1` queda desactivado porque no hay un límite configurado para proxies de confianza. Permite entrar en páginas normales de la consola; para abrir los ajustes de seguridad hay que superar el desafío de contraseña, que concede un permiso fijo de 10 minutos y una nueva sesión autenticada. Cambiar la contraseña invalida todas las sesiones anteriores. Si una pasarela presenta varios dispositivos con una misma IP privada autorizada, todos podrán acceder. La persona autorizada debe elegir el acceso por IP en la página de inicio. La sesión queda vinculada a la IP de origen y la lista y el interruptor se comprueban en cada petición. Retirar la IP o desactivar el interruptor corta el acceso en la petición siguiente. Tras iniciar sesión, la página general de ajustes permite cambiar apariencia e idioma sin repetir la contraseña. Su página de Seguridad separada sigue exigiendo una verificación temporal vigente antes de mostrar la lista de IP o cambiar controles de seguridad.
+
+El SNI ni siquiera se almacena en la configuración de sing-box: `setup-anytls.sh` solo lo incorpora al CN del certificado autofirmado. La consola lo vuelve a leer del certificado, en lugar de conservar una segunda copia susceptible de divergir.
+
+
+
+<a id="retired-proxy-console"></a>
+
+## Antiguo reinicio de proxy desde la consola
+
+El texto siguiente conserva el diseño anterior, que delegaba el reinicio en `setup-proxy.sh reset`. La consola actual solo utiliza el auxiliar de nodos administrados; el comportamiento del script de terminal no cambió durante esta simplificación.
+
+La página `/proxy` de la consola muestra una sección por nodo instalado: puerto, UUID o contraseña, SNI leído del certificado de ese nodo, entrada Clash y enlace para compartir (`vmess://`, `vless://`, `trojan://`, `ss://`) para cada dirección detectada. **Cada protocolo dispone de su propio botón de restablecimiento**, no uno único que «restablece todo»: un operador señaló que el botón conjunto obliga a cambiar protocolos que nadie pidió tocar; por ejemplo, filtrar un UUID vmess no debería implicar reconfigurar también todos los clientes trojan/vless/shadowsocks. `setup-proxy.sh reset <protocol>` cambia solo el puerto y la credencial de ese protocolo; `load_installed_vars()` lee primero del disco los valores actuales de los *otros*, que quedan intactos. `reset` sin argumentos sigue cambiando todos los protocolos instalados, opción reservada a la terminal y scripts, no a la interfaz de consola. Ambas modalidades siguen el patrón `systemd-run` fuera del aislamiento utilizado por `anytls_reset()`, por el mismo motivo de `ProtectSystem=strict`. Una consecuencia real de compartir servicio systemd: restablecer un protocolo reinicia todo el servicio y corta brevemente las *conexiones* de los demás, aunque sus credenciales permanezcan iguales.
+
+
+
+## 2026-10-04: despliegue candidato `test-cfa9b8a`
+
+- `main` estaba en `cfa9b8a` y el servidor de prueba ejecutaba `test-cfa9b8a`. El paquete incluía 256 archivos seguidos por Git; solo el `config/VERSION` candidato y las notas chino/inglés cambiaban para la exportación. Antes de instalar se guardó una copia root externa con SHA-256 `53737c549e53110006e15ef000e83ee0d7b949c833bbab4e5058a3669f7e1831`. El paquete tuvo SHA-256 `a6e7f00037dd0408a612422da5a4c32c0db6921fcd10b4d0bb86182d38cb81fb` y coincidió tras la transferencia.
+- La instalación devolvió 0 y conservó `web,iperf3,anytls,proxy,frps`. `VERSION`, `config/VERSION`, `installer-source/config/VERSION` y `.install-state` quedaron en `test-cfa9b8a`. Los archivos instalados revisados coincidieron con el paquete, incluido el antiguo `doc/COMMITS.md` del código fuente del instalador. HTTP/HTTPS dieron 200; inicio de sesión, Home, Módulos, FRPC, FRPS, Changelog y CSS respondieron; se cerró la sesión. Cinco servicios estaban activos y habilitados; 80, 443 y 23111 escuchaban. Pasaron estructura, CSS, sintaxis, sumas y documentación; no se ejecutó la suite eliminada.
+- La aceptación manual por módulos seguía pendiente. No se verificaron reinicio, FRPC entre servidores, tráfico proxy, reenvío ni dispositivos reales. El instalador aún no actualizaba el `config/VERSION` de la raíz instalada, por lo que se había sincronizado manualmente. No había bloqueo de despliegue; el siguiente paso era la aceptación del operador y la corrección de los cinco hallazgos.
+
+- En esta instantánea no se había enviado la rama, creado etiqueta ni GitHub Release; los cambios sin confirmar del espacio de trabajo no formaban parte del paquete. El respaldo protegido y el registro instalado se conservaron fuera del paquete; los archivos temporales de transferencia y extracción se borraron. Se compararon sumas de la entrada Web, los módulos, los estilos, el registro de cambios y las versiones instaladas. La página de módulos no ofrecía «crear instancia FRPC». Las cinco unidades administradas estaban activas y habilitadas; el navegador y la consola mostraban la versión candidata.
+- Quedaban los cinco hallazgos de la revisión, además de móvil real, conexión FRPC entre servidores, tráfico proxy, reenvío y el alcance de Lucky/Tailscale. El defecto de sincronización de `config/VERSION` de la raíz instalada exigía una corrección posterior del instalador. El siguiente paso era que el operador probase cada módulo antes de simplificar el código. No había reglas temporales del proyecto.
+
+## 2026-10-04: artefactos sin conexión y limpieza de código
+
+- En `main` se prepararon `4974970` y `367bee4`, sin publicarlos ni desplegarlos entonces. Se corrigieron contraseña no ASCII, reconstrucción de cuota nft, falso éxito de reenvío y diagnósticos sin credenciales; `node_inventory.py` pospuso anotaciones para Python 3.9. El instalador se limitó a Linux x86-64 e incluyó FRPC v0.71.0 e iperf3 3.22 con sumas verificadas, conservando FRPS. Se quitaron interacción inaccesible, editores de nodos antiguos y un cambio de servicio no conectado. El proxy pasó a leer solo el inventario administrado y a pedir migración/reparación si falta; se unificaron registros de puertos y `config/VERSION` instalado.
+- Pasaron sintaxis Python/Shell, análisis de sintaxis 3.9, CSS, nueve sumas y multilingüismo. Comprobaciones aisladas cubrieron contraseña y sesiones, cuota, reenvío en éxito/fallo/limpieza parcial, FRPC/iperf3 sin conexión, inventario de nodos y puertos. `frpc --version` e iperf3 `--version` funcionaron tras copiar a un sistema de archivos ejecutable. Se probó la importación Web y las rutas de proxy en un directorio plano temporal. Documentación y enlaces locales: 0 errores, con 1 advertencia histórica; 15 enlaces externos respondieron HEAD 200. No hubo instalación completa, tráfico real, navegador ni aceptación de destino.
+- Quedaron por probar instalación sin conexión y actualización en Debian 11/Ubuntu 20.04/22.04, FRPC/FRPS, iperf3 TCP/UDP, cuota y fallo de reenvío. Quedaban 76 envoltorios `app.py` con llamadores, sin eliminación masiva. El CIFS local mostraba los nuevos binarios como 0644; las pruebas de versión se hicieron en un sistema ejecutable. Dos paquetes ignorados se movieron a `dist/web/`; no había intérprete Python 3.9 ni distribución antigua disponible.
+
+- La estructura instalada debía seguir aceptando los datos de la versión anterior. Los 76 envoltorios de contexto aún tenían referencias vigentes, por lo que no se eliminaron en bloque; la simplificación se reservaría para cada función. La prueba temporal del punto de entrada Web incluyó todos los catálogos de idioma y tanto el resultado correcto como la petición de migración en la página proxy.
+- `git diff --check` y la comprobación de estructura pasaron después de reubicar dos paquetes ignorados sin modificar; se cotejó la suma del paquete `test-cfa9b8a.tar.gz` con el traspaso anterior. Python 3.9 y las distribuciones antiguas no estaban disponibles. El siguiente paso registrado era confirmar la documentación y obtener aceptación manual en Linux x86-64, antes de asignar una versión de corrección. No había reglas temporales del proyecto.
+
+## 2026-10-04: revisión antes del envío a GitHub
+
+- `main` contenía `4974970`, `367bee4`, `f9a4804` y la documentación `3b40fb4`, aún sin publicar ni desplegar. Se revisó la corrección de los cinco hallazgos, los artefactos sin conexión, el inventario administrado, los puertos y la estructura instalada `$PREFIX/src/web/` con entrada compatible `$PREFIX/app.py`. Se conservaron contraseñas, certificados, puertos y `data/`, además de dos paquetes históricos en `dist/web/`.
+- Pasaron sintaxis Python/Shell/JavaScript, análisis 3.9, CSS, nueve sumas, estructura y pruebas aisladas de autenticación, cuota, reenvío, proxy, instalación FRPC/iperf3 y puertos. Se simuló la importación de la nueva estructura Web y de los auxiliares sin Web. Los binarios se comprobaron en un sistema de archivos ejecutable. Documentación y enlaces locales: 0 errores, 1 advertencia histórica, 15 enlaces externos HEAD 200. No se restauró la suite ni se hizo instalación completa o tráfico real.
+- `origin/main` se actualizó a `c289ea3` para revisar los commits pendientes hacia el repositorio público `CharlesGool/vps-server`. Autores y responsables usaban la identidad noreply del propietario; no aparecieron patrones nuevos de credenciales ni destinos internos. El FRPC nuevo medía 16,593,080 bytes, coincidía byte a byte con el archivo original y llevaba licencia y suma para x86-64. El sing-box existente coincidía con el blob de `v5.0.0`. El límite ordinario de GitHub era 100 MiB por archivo. Aún faltaba aceptación del servidor, Python 3.9 y distribuciones antiguas.
+- Se proponía enviar y verificar `origin/main` y luego aceptar instalación y actualización por módulos. Los 76 envoltorios todavía tenían llamadores y el código plano antiguo instalado no se borró para conservar una ruta de recuperación.
+
+- La revisión de publicación incluyó archivos, tipos de cambio, autores, responsables y pies de todos los commits pendientes; el destino `CharlesGool/vps-server` era PUBLIC. El puntero a commits no compartidos quedó en `archive/pre-public-cleanup-20261004`. La dirección del servidor de prueba y la ubicación de su copia privada se mantuvieron fuera de Git. Para el FRPC incluido se cotejaron archivo y SHA-256 originales, licencia, suma de instalación y plataforma Linux x86-64; las nueve sumas del bloqueo pasaron. La operación prevista era enviar primero la rama, verificar el remoto y solo después probar el código exacto por módulos.
+- Seguían pendientes las combinaciones de tráfico real, la aceptación en móvil y el alcance de Lucky. CIFS mostraba el binario como 0644 en el espacio de trabajo, aunque su versión sí se había probado tras copiarlo a un sistema ejecutable; nftables y otros paquetes básicos aún podían necesitar el repositorio de la distribución. No había reglas temporales del proyecto.
+
+## 2026-10-04: sincronización de la rama de GitHub
+
+- Once commits revisados se enviaron a `origin/main` público; `git ls-remote` devolvió `00d8240`, igual que el árbol local tras el primer envío. Incluían correcciones, estructura, FRPC/FRPS/iperf3 sin conexión y documentación. FRPC medía 16,593,080 bytes y se verificaron archivo original, resumen y licencia; el puntero original no compartido permaneció en una rama local, mientras que el servidor y sus copias privadas permanecieron fuera de Git.
+- Se comprobaron alcance, autores y cambios antes del envío, sin patrones nuevos de credenciales o destinos internos; pasaron nueve sumas, estructura, diferencias Git y licencias FRPC/iperf3. No se creó etiqueta, Release, instantánea ni se desplegó el código de ese momento. Seguían pendientes instalación, actualización y funcionamiento en el servidor de destino, Python 3.9 y distribuciones antiguas, dispositivos reales y conexión entre servidores. Si el destino no alcanzaba GitHub, había que transferir sin conexión el mismo commit.
+
+- El traspaso de ese envío se confirmó aparte en la misma rama. Se revisaron licencia, firma de cambios y contenido nuevo antes de publicar; el puntero a la historia original no compartida permaneció local. El siguiente paso era comprobar el SHA del traspaso y comunicarlo al operador para que probase el código exacto. Si el servidor no podía acceder a GitHub, el mismo commit debía transferirse desde una máquina conectada. No hubo bloqueo en el envío; el acceso del servidor a GitHub no se volvió a comprobar y no había reglas temporales del proyecto.
+
+## 2026-10-04: traspaso antes de enviar la primera corrección de desinstalación FRPC
+
+- Rama `main`; el código local `3335a7f` se basaba en `origin/main` sincronizado y la documentación aún no estaba confirmada. Esta corrección no se había enviado, etiquetado, publicado ni desplegado.
+- `deploy/uninstall.sh` recibió la limpieza de instancias FRPC y registros de puertos del proyecto durante la desinstalación completa. El auxiliar comprobaba la plantilla, la suma fija del binario y las marcas de titularidad, detenía instancias propias y restos de instancias cargadas, y conservaba o eliminaba configuraciones, alias Unicode y copias de recuperación según `KEEP_DATA`. Con los servicios administrados detenidos, mantenía `.ports.lock` para borrar atómicamente las filas vps-server de `PORTS.md` y conservar las ajenas. Los archivos FRPC ajenos o de titularidad incierta y sus filas se preservaban. Se podía repetir la limpieza aunque el script anterior ya hubiera borrado `$PREFIX`.
+- Pasaron sintaxis Bash, compilación Python, sintaxis de ocho catálogos del desinstalador, `git diff --check` y estructura. En un directorio temporal se probaron desinstalación completa, `KEEP_DATA=1`, prefijo ausente, instancia huérfana cargada, alias Unicode, copia de recuperación, repetición, filas de otros proyectos, plantilla ajena y binario alterado. No se ejecutó el script corregido en el servidor real; falló el intento de SSH y no se conocía el estado exacto de los residuos.
+- En el servidor de prueba faltaba actualizar la copia completa, comprobar la titularidad de plantilla y binario, ejecutar la desinstalación sin `KEEP_DATA=1` y revisar `/etc/frp`, unidad y binario globales y las filas del proyecto en `PORTS.md`. Las configuraciones FRPC creadas manualmente en otras rutas requerían adjudicación independiente. Los módulos restantes y las actualizaciones antiguas seguían sin aceptar. Una plantilla o un binario global alterados provocarían conservación o rechazo y necesitarían revisión humana.
+- Siguiente acción registrada: terminar las comprobaciones documentales y el envío a GitHub; después el operador debía repetir la desinstalación y comunicar salida y residuos. No se encontraron reglas temporales.
+
+## 2026-10-04: traspaso de la primera corrección FRPC enviada
+
+- Rama `main`. El código `3335a7f` y la documentación `8ed81a6` se enviaron al `origin/main` público y se verificó el remoto en `8ed81a6`; el registro de este traspaso se confirmó y envió por separado. No se creó etiqueta ni Release y aún no se desplegó la corrección en el servidor de prueba.
+- La desinstalación completa limpiaba las configuraciones de instancia FRPC del proyecto, alias Unicode, copias de recuperación, unidad y binario coincidentes y registros de `PORTS.md`. `KEEP_DATA=1` conservaba configuraciones FRPC. Los archivos cuya propiedad no se podía verificar y sus filas permanecían con un aviso; las filas de otros proyectos siempre permanecían. La operación admitía repetir el desinstalador si el script viejo había borrado antes `$PREFIX`.
+- Se comprobaron aisladamente la desinstalación completa, conservación de datos, prefijo ausente, unidad huérfana, ejecución repetida, plantilla externa, binario modificado, alias Unicode y filas ajenas. Pasaron Bash/Python, ocho catálogos, nueve sumas de terceros, estructura, formato documental y enlaces locales; quedó una advertencia histórica. Antes de enviar se revisaron ambos commits, sus archivos, autores, pies y contenido nuevo, así como el destino público; `git ls-remote` confirmó `8ed81a6`.
+- El servidor aún tenía recursos FRPC y filas de puertos sin limpiar. SSH no estuvo accesible; por tanto no hubo aceptación real. El operador debía descargar la revisión final completa y ejecutar `sudo PREFIX=/root/apps/vps-server SERVICE_NAME=vps-server-web bash deploy/uninstall.sh`, luego revisar archivos, unidad, binario y registros; si no accedía a GitHub, debía transferir la copia completa desde otra máquina. Las plantillas o binarios externos se conservarían o rechazarían hasta determinar titularidad. El siguiente paso era comunicar el SHA remoto y evaluar los recursos restantes tras la ejecución. No se encontraron reglas temporales.
+
+## 2026-10-04: traspaso antes de enviar la corrección de FRPC antiguo
+
+- Rama `main`; la revisión local `01b76ba` se basaba en `origin/main` sincronizado, con documentación pendiente. La corrección no se había enviado, etiquetado, publicado ni desplegado.
+- La salida terminal proporcionada por el operador mostró que la desinstalación completa de `a5fc51a` aún clasificaba como `unowned` un FRPC sin marca de titularidad y con plantilla distinta: conservaba la configuración y la fila del puerto. El código nuevo, al detectar `frpc-*.toml` reconocibles por la consola durante una desinstalación completa, detenía las instancias y borraba la plantilla global antigua, el binario FRPC con suma fija coincidente, las configuraciones nombradas del proyecto y las filas. Se mantuvieron la protección de `KEEP_DATA=1` y de archivos sin instancia reconocible; un binario cambiado seguía provocando rechazo.
+- El directorio temporal reprodujo la plantilla antigua, `$PREFIX` ausente, configuraciones y servicio y binario todavía presentes, y la ruta de reinstalación solo Web. Tras limpiar, la detección de FRPC global resultó falsa, desaparecieron las configuraciones y filas propias y quedaron las de otros proyectos. También pasaron desinstalación completa y conservación de datos con plantilla coincidente, protección con plantilla no verificada, compilación Python, sintaxis Bash, `git diff --check` y estructura. Una captura mostraba antiguos clientes en Web y su estado de conexión, pero la sesión no leyó directamente archivos del servidor ni verificó servicios reales.
+- El servidor debía recibir una copia completa con `01b76ba`, ejecutar otra vez la desinstalación y revisar `/etc/frp`, unidad y binario FRPC, filas de `PORTS.md` y lista FRPC tras reinstalar solo Web. SSH seguía inaccesible. Un binario con suma distinta obligaría a comprobar origen antes de borrarlo. El siguiente paso era confirmar y enviar código y documentación y solicitar al operador el código de salida y los restos. No se encontraron reglas temporales.
+
+## 2026-10-04: traspaso después de enviar la corrección de FRPC antiguo
+
+- Rama `main`; `01b76ba` y la documentación `cf84ea3` se enviaron al `origin/main` público, confirmado en `cf84ea3`. El traspaso se confirmó y envió después. Todavía no se había creado etiqueta ni Release ni desplegado la corrección en el servidor de prueba.
+- Se reprodujo con terminal y capturas del operador el defecto de titularidad de `a5fc51a`: la desinstalación devolvía `unowned` y conservaba FRPC antiguo; tras instalar solo Web, reaparecían los clientes. La corrección detenía instancias nombradas reconocibles y eliminaba plantilla global, binario con suma coincidente, configuraciones propias y registros de puertos aun si la plantilla difería o faltaba la marca. `KEEP_DATA=1` no ampliaba el alcance de eliminación y las filas ajenas seguían intactas.
+- En un directorio temporal se comprobaron plantilla antigua, ausencia de `$PREFIX`, detección de FRPC antes de reinstalar solo Web, filas de puerto, plantilla coincidente en ambos modos y rechazo de binario alterado. Pasaron estructura, sintaxis Python/Bash, Git, formato y enlaces locales; permaneció una advertencia histórica. Se revisaron antes de enviar los dos commits, autores y archivos sin encontrar patrones nuevos de direcciones privadas o credenciales; `git ls-remote` devolvió `cf84ea3`. No se leyeron archivos ni servicios directamente del servidor de prueba.
+- El servidor real seguía descrito solo por capturas y terminal del operador. Debía actualizarse el repositorio completo, comprobar la revisión, ejecutar desinstalación sin `KEEP_DATA=1` y revisar `frpc@*`, `/etc/frp`, `/usr/local/bin/frpc` y filas propias en `PORTS.md`. Si el binario FRPC difería de la suma fija, la operación lo rechazaría y requeriría identificar su procedencia. SSH permaneció inaccesible. La salida terminal del operador mostró una contraseña administrativa que debía rotarse; su contenido no se registró. El siguiente paso era comunicar el SHA de GitHub y esperar los residuos y el estado de salida reales. No se encontraron reglas temporales.
+
+## 2026-10-04: propuesta de prueba sustituida por petición de versión formal
+
+La entrega `v5.1.0-test.1` se propuso en un traspaso previo, pero el operador pidió después la versión formal `v5.1.0`. La propuesta no se etiquetó ni publicó. La versión formal seguía sujeta a la aceptación de los comportamientos de destino.
+
+
+## 2026-10-04: archivo de la preparación previa
+
+- En `main`, base `f306f6e`, la corrección del registro Web estaba en `87f0a5f` y se preparaban `config/VERSION` y notas chino/inglés para `v5.1.0-test.1`, sin etiqueta, Release ni instantánea. `v5.0.0` era la última etiqueta formal y el remoto coincidía con la base. El candidato con `test` reflejaba la falta de aceptación completa.
+- Se añadió lectura de versiones de prueba numeradas y de las notas candidatas de `LOG.md`. El código local mostró las notas chino/inglés sin incorporar la entrega. El borrador chino del candidato cubría FRPC, FRPS e iperf3 sin conexión; reparaciones de autenticación, cuota y reenvío; nodos, desinstalación y funciones aún no aceptadas. `check-doc-difference.py prepare` rechazó tanto `v5.0.0` como la base posterior: las traducciones inglesas de README y LOG se habían modificado por separado antes de esta tarea, así que no había una base incremental fiable. Había que sincronizar íntegramente los documentos afectados.
+- No se hicieron todavía construcción final ni pruebas completas en el servidor. Quedaban por completar traducciones, versiones, comprobaciones, revisión de cambios pendientes y publicación por etapas. SSH al servidor de prueba seguía inaccesible; la prueba de FRPC, tráfico proxy e iperf3, actualización y recuperación tras reinicio carecía de evidencia directa de esa sesión. El siguiente paso previsto entonces era publicar el candidato de prueba tras verificarlo; luego el operador lo sustituyó por la petición formal registrada arriba.
+
+
+- En esa propuesta antigua se hablaba todavía de siete traducciones y de publicar una versión previa. Se habían comprobado la ausencia de conflictos de etiqueta, Release e instantánea, pero no las funciones finales del servidor, el FRPC residual, las combinaciones proxy/iperf3 ni la actualización y recuperación tras reinicio. La falta de una base de traducción se debía a rutas históricas y cambios ingleses aislados; no se podía inventar una base para la herramienta incremental. La siguiente acción prevista entonces era sincronizar los siete idiomas, verificar código y artefacto final, y revisar y publicar `v5.1.0-test.1` con sus límites explícitos. Más tarde esa propuesta quedó sustituida por el encargo formal y el estándar de tres idiomas. No había reglas temporales del proyecto.
+
+## 2026-10-04: traspaso anterior a la normalización de tres idiomas de la versión formal
+
+- Rama `main`, base `f306f6e`; `87f0a5f` estaba confirmado localmente. El archivo de versión y las notas chinas de la versión formal `v5.1.0` estaban aún sin confirmar; no se habían enviado la rama ni publicado etiqueta, Release o instantánea.
+- El operador confirmó en el servidor de prueba la desinstalación completa de FRPC y la limpieza de los puertos registrados, el inicio de sesión Web, iperf3, los nodos y tráfico proxy, el reenvío de puertos y la actualización desde una versión antigua. La entrega anterior había previsto sincronizar siete idiomas, pero el usuario aclaró después que el estándar vigente solo admite chino simplificado, inglés y español.
+- Se confirmó que `v5.0.0` era la última etiqueta formal y que `v5.1.0` estaba libre. No se habían completado aún la construcción final ni la revisión de traducciones. No se pudo recuperar una base incremental de traducción fiable, por lo que se requería comparar las versiones completas con el chino vigente. La confirmación del servidor procedía del operador: esta sesión no pudo comprobarla por SSH. Reinicio, dispositivos móviles reales y otras combinaciones fuera de lo confirmado continuaban sin verificar.
+- El siguiente paso previsto era aplicar el estándar de tres idiomas al código y la documentación, completar las comprobaciones de publicación y, en orden, enviar la rama, crear etiqueta anotada, GitHub Release e instantánea.
+
+- La confirmación de las funciones procedía del operador, sin nueva conexión SSH independiente. La construcción final, la revisión de traducciones y el examen completo del alcance de publicación seguían sin concluir en esa instantánea. No había reglas temporales del proyecto.

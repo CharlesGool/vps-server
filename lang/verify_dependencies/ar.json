@@ -1,9 +1,0 @@
-{
-  "unsupported_list": "قائمة الملفات المطلوبة غير مدعومة أو مفقودة",
-  "empty_list": "قائمة الملفات المطلوبة فارغة",
-  "invalid_path_hash": "مسار الملف أو بصمته غير صالحة أو مكررة",
-  "missing_artifact": "FAIL {name}: مفقود أو خارج نسخة المستودع",
-  "hash_mismatch": "FAIL {name}: بصمة SHA-256 غير مطابقة",
-  "artifact_ok": "OK   {name}: {hash}",
-  "invalid_lock": "قفل التبعيات غير صالح: {error}"
-}

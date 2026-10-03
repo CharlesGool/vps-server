@@ -10,7 +10,7 @@ metadata:
 
 ## Multi-language
 
-[简体中文](../../README.md) | **English** | [繁體中文 (台灣)](../zh-TW/README.md) | [繁體中文 (香港)](../zh-HK/README.md) | [हिन्दी](../hi/README.md) | [Español](../es/README.md) | [العربية](../ar/README.md) | [Français](../fr/README.md)
+[简体中文](../../README.md) | **English** | [Español](../es/README.md)
 
 ## Documentation
 
@@ -21,7 +21,6 @@ metadata:
 - Project status: [LOG](LOG.md)
 - Historical records: [HISTORY](HISTORY.md)
 - Version changelog: [CHANGELOG](CHANGELOG.md)
-- Commit history: [COMMITS](COMMITS.md)
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
@@ -29,7 +28,7 @@ metadata:
 
 A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
 reachability, an operator console for speed tests and connection logging, an
-on-demand iperf3 window, and sing-box proxy nodes. Version 5.0.0 includes managed nodes, traffic policies, private-IP access,
+on-demand iperf3 window, and sing-box proxy nodes. Version 5.0.0 introduced managed nodes, traffic policies, private-IP access,
 independent HTTP/HTTPS controls, FRPS and local FRPC management, a Lucky
 installer, and direct terminal installation. See the [changelog][local-link-001] for release scope.
 
@@ -107,12 +106,11 @@ status. The Modules page checks the local FRPC executable and
 `frpc@.service` template separately from server-instance configurations. It
 offers Install if either executable or template is absent. Install uses the
 checksum-verified FRPC v0.71.0 release asset and creates no connection or listener.
-The module log records its download and verification. For an offline install,
-download [frpc-0.71.0-linux-amd64](https://github.com/CharlesGool/vps-server/releases/download/v4.0.0/frpc-0.71.0-linux-amd64)
-(16,593,080 bytes; SHA-256
-`f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068`)
-and place it at `~/apps/vps-server/vendor/frp/frpc` before choosing Install.
-The install job checks the same digest for a downloaded or manually placed file.
+The module log records installation and verification. FRPC and FRPS v0.71.0
+binaries ship with the repository. FRPC installation first checks the local
+`vendor/frp/frpc` and can use the bundled copy retained by the installer,
+without access to GitHub. Their sources and SHA-256 hashes are in the
+[third-party notices](THIRD_PARTY_NOTICES.md).
 Uninstall stops local FRPC instances, backs up their configurations under
 `data/`, and retains the configuration files for later reinstallation.
 
@@ -127,39 +125,54 @@ maintained, and their code is vendored here rather than absorbed.
 - OS: Debian 11+ or Ubuntu 20.04+, systemd, run as root
 - Runtime: Python 3.9+ (the distro's `python3` is enough — there are no Python
   dependencies to install)
-- Architecture: any for the web and iperf3 modules; **x86-64 only** for anytls,
-  proxy, frps, and Lucky, because the bundled executables target amd64
+- Architecture: the entire project supports x86-64 Linux only; the installer
+  rejects other platforms before changing system state
 - For the web module on its default public ports, 80 and 443 **MUST** be free — the
   installer refuses rather than competing with nginx, Apache, Caddy, or `vps-webserver`
-- External services: none at runtime. Installation needs your distro's package mirror; the node summaries use interface and optional Tailscale addresses without an outbound public-IP lookup.
-- Minimum: the OS, runtime, architecture, and free ports above. No additional recommended hardware requirement is recorded; a VPS with roughly 150 MB disk accommodates the vendored binary.
+- External services: none at runtime. FRPS, FRPC, and iperf3 install from bundled
+  artifacts; other missing system packages may still require a distro mirror.
+  Node summaries use interface and available Tailscale addresses without an outbound public-IP lookup.
+  The default interface language is `en`.
+- Minimum: the OS, runtime, architecture, and free ports above. No additional recommended hardware requirement is recorded; roughly 180 MB of VPS disk space accommodates the bundled binaries.
 
 ## Install
 
 ### Quick Install
 
-Run as root. By default, only the Web console is installed. The installer prints the generated management port and password.
+Run as root. By default, only the Web console is installed. The installer prints
+the generated management port and password. These commands target the `v5.1.0`
+release source; consult its changelog for verified scope and remaining limits.
 
 ```bash
-git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Normal Install
 
 ```bash
-git clone --branch v5.0.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
 ```
 
-`PREFIX` defaults to `/root/apps/vps-server`. There is no browser-based first-run wizard. Set `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` to select server modules explicitly; when omitted, only Web is installed. Install or remove optional modules later from Settings → Modules. Enable the HTTP and HTTPS public pages separately from Home. FRPC is installed separately when a local client is needed. Its release asset and offline installation path are described above.
+`PREFIX` defaults to `/root/apps/vps-server`. There is no browser-based first-run wizard. Set `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` to select server modules explicitly; when omitted, only Web is installed. Install or remove optional modules later from Settings → Modules. Enable the HTTP and HTTPS public pages separately from Home. FRPC is installed separately when a local client is needed, using the bundled binary.
 
 ## Guidance
 
 ### Quick start
 
-The Web implementation is in `src/web/`, static assets in `src/web/static/`, and installers in `deploy/`. Bundled binaries and license records are in `third_party/`; release metadata is in `config/`. The installed layout remains flat; the source-tree change does not migrate runtime data.
+The Web implementation is in `src/web/`, static assets in `src/web/static/`, and
+installers in `deploy/`. Bundled FRPC, FRPS, and iperf3 binaries and license
+records are in `third_party/`; release metadata is in `config/`. Installed
+runtime code remains in `$PREFIX/src/web/`, with only a compatibility entry
+point at `$PREFIX/app.py`. Data, certificates, and installation state remain
+at their existing paths and are preserved during an upgrade.
+
+There is no automated test suite in the source checkout. After changes, verify
+installation, console, and service behavior for the enabled modules manually.
+The v5.1.0 source includes FRPC, FRPS, and iperf3; the older `v5.0.0` tag retains
+the behavior documented for that version.
 
 ```bash
 bash deploy/install.sh                       # install the Web console by default
@@ -211,13 +224,21 @@ ones:
 | `VPSSRV_AUTH` | Require a password on the console | `1` | no |
 | `VPSSRV_IPERF_PORT` | Port an open iperf3 window listens on | `5201` | no |
 | `VPSSRV_IPERF_MAX_MINUTES` | Cap the console cannot exceed | `60` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `zh_tw` / `zh_hk` / `hi` / `es` / `ar` / `fr` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
 
 Full reference: [Configuration reference][local-link-002].
 
 ## Upgrade
 
-To upgrade, use a current checkout and rerun the installer with the same installation directory and module choices. Keep a backup of persistent data until the upgraded services and console have been verified.
+When upgrading from a supported older version, use a current checkout and
+rerun the installer with the same
+installation directory and module choices. The installer imports older proxy
+configurations into its managed-node registry. If import fails, inspect the
+configuration and service logs; the console does not fall back to the old
+editor. Installations previously set to Traditional Chinese, Hindi, Arabic,
+or French fall back to English; Simplified Chinese or Spanish can be selected
+in ordinary Settings. Keep a backup of persistent data until the upgraded services and
+console have been verified.
 
 ## Uninstall
 
@@ -231,14 +252,26 @@ KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
 To remove the installed modules and **delete data as well** (including the
-visitor log, console password, saved port, and certificates in `$PREFIX`):
+visitor log, console password, saved port, certificates, and this project's
+FRPC instance configurations in `$PREFIX`):
 
 ```bash
 bash deploy/uninstall.sh
 ```
 
-Both modes tear down the anytls/proxy services and their separate module
-configs if installed. `KEEP_DATA=1` retains `$PREFIX`, not those module configs.
+Both modes remove installed anytls/proxy services and their module
+configurations, stop this project's FRPC instances, remove its FRPC service
+template and matching binary, and atomically release vps-server entries from
+the sibling `PORTS.md` while retaining other projects' entries.
+`KEEP_DATA=1` retains `$PREFIX`, FRPC instance configurations such as
+`/etc/frp/frpc-*.toml`, and recovery copies, but not anytls/proxy module
+configurations. A complete uninstall also deletes project-named FRPC
+configurations, aliases, and recovery copies. Without `KEEP_DATA=1`, the
+project-named `frpc-*.toml` files are removed. When it finds instances the
+console can recognize, it stops them and removes their global FRPC files even
+if an older service template differs; confirm ownership first on a shared
+FRPC host. If no recognizable instance establishes ownership, global FRPC is
+retained with an explanation. A binary checksum mismatch stops cleanup.
 
 ## Acknowledgements
 

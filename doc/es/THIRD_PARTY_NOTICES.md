@@ -12,7 +12,7 @@ Este documento registra componentes de terceros incluidos y suministrados por el
 
 ## Multilingüe
 
-[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | [繁體中文(台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文(香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | **Español** | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | [English](../en/THIRD_PARTY_NOTICES.md) | **Español**
 
 ## Documentación
 
@@ -23,18 +23,17 @@ Este documento registra componentes de terceros incluidos y suministrados por el
 - Estado del proyecto: [LOG](LOG.md)
 - Registros históricos: [HISTORY](HISTORY.md)
 - Historial de cambios: [CHANGELOG](CHANGELOG.md)
-- Historial de commits: [COMMITS](COMMITS.md)
 
 - Avisos de terceros: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 ## Avisos de terceros
 
-La tabla inventaría los componentes incluidos y los proporcionados por el sistema operativo. Los siete artefactos incluidos tienen valores SHA-256 del repositorio en [dependencies.lock.json][local-link-001]; ejecuta `python3 tools/verify_dependencies/verify_dependencies.py` desde la raíz del repositorio para compararlos sin conexión. El 2026-09-27, los siete archivos del repositorio coincidían byte a byte con los miembros correspondientes de los archivos de publicación o con los archivos de las etiquetas originales. Los archivos de licencia incluidos también coincidían con los archivos originales comprobados más abajo. Estas verificaciones establecen la identidad de los artefactos, pero no constituyen una opinión jurídica ni un cierre completamente reproducible de las dependencias del sistema.
+La tabla inventaría los componentes incluidos y los proporcionados por el sistema operativo. Los nueve artefactos incluidos tienen valores SHA-256 del repositorio en [dependencies.lock.json][local-link-001]; ejecuta `python3 tools/verify_dependencies/verify_dependencies.py` desde la raíz del repositorio para compararlos sin conexión. La comprobación de los siete artefactos originales del 2026-09-27 sigue registrada. El 2026-10-04, el nuevo frpc coincidió byte a byte con el miembro del archivo oficial v0.71.0; el nuevo iperf3 se compiló localmente a partir del archivo fuente oficial 3.22 cuya suma SHA-256 se verificó. La suma de su binario solo identifica el artefacto incluido. Las rutas de las licencias se indican abajo. Estas comprobaciones no constituyen una opinión jurídica ni cierran de forma reproducible todas las dependencias del sistema.
 
 | Componente / recurso | Versión / hash | Fuente | Licencia registrada | Uso | Atribución / ruta de licencia original | Obligaciones a revisar antes de publicar | Verificado el |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, según la licencia original | Ejecutable frps incluido | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Conservar la licencia Apache-2.0 incluida; el archivo binario oficial no contenía un archivo NOTICE | 2026-09-27: coinciden el archivo de publicación, el binario y la licencia |
-| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, según la licencia original | Recurso independiente de GitHub Release `frpc-0.71.0-linux-amd64`, verificado antes de instalarlo | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Distribuir la misma licencia original con el código fuente y conservar la suma de verificación del recurso | 2026-09-29: el ejecutable cliente coincidió con el archivo del paquete original registrado |
+| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, según la licencia original | Ejecutable frpc incluido en el repositorio y verificado antes de instalarlo | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Distribuir la misma licencia original con el código fuente y conservar la suma de verificación del recurso | 2026-10-04: el ejecutable cliente incluido coincidió con un miembro del archivo original |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, según la licencia original | Ejecutable Lucky incluido | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | Conservar los avisos de copyright y la licencia MIT incluidos | 2026-09-27: coinciden el archivo de publicación, el binario y la licencia |
 | sing-box | `v1.13.14`; revisión `25a600db24f7680ad9806ce5427bd0ab8afe1114`; SHA-256 del binario `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL versión 3 o posterior, más la condición de denominación original (según el aviso) | Ejecutable incluido, compartido por anytls y proxy | [aviso original][local-link-002]; [texto íntegro de GPL][local-link-003] | Conservar los enlaces al código fuente correspondiente y la condición original de nombre y asociación | 2026-09-27: coinciden el archivo de publicación, el binario, la licencia y la revisión de la etiqueta |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0, según la licencia original | Motor de navegador incluido | [texto LGPL original][local-link-006] y [texto GPL][local-link-007] | Conservar el texto de la licencia y facilitar el código fuente original | 2026-09-27: coinciden los dos archivos de la etiqueta y la licencia |
@@ -42,11 +41,11 @@ La tabla inventaría los componentes incluidos y los proporcionados por el siste
 | Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Fuente latina incluida, pesos 400/600/700 | [license](../../src/web/static/licenses/OFL-Inter.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Fuente CJK incluida, pesos 400/700 | [license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos para la interfaz | [license](../../src/web/static/licenses/Lucide-ISC.txt) | Conservar la licencia y el aviso de derechos incluidos | 2026-09-27 |
-| iperf3 | Paquete de la distribución; versión sin fijar | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause, según registros anteriores | Invocado como programa independiente instalado desde el SO; no se redistribuye aquí | No registrado; el paquete del SO aporta la licencia original | Volver a evaluar si se incluye o redistribuye más adelante | No consta; volver a comprobar antes de distribuir |
+| iperf3 | `3.22`; SHA-256 del binario incluido `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | Ejecutable estático para Linux x86-64 compilado localmente desde el código oficial | [licencia original](../../third_party/iperf3/LICENSE); [registro de compilación](../../third_party/iperf3/component.txt) | Conservar el aviso de copyright y la licencia íntegra; falta comprobar la compatibilidad en las distribuciones de destino | 2026-10-04: suma del código fuente oficial, compilación local y ejecución en el equipo actual |
 
 El registro existente identifica GPL-3.0 como licencia de este proyecto ([LICENSE][local-link-009]) y señala como motivo la redistribución de un ejecutable sing-box bajo GPL; [Decisiones][local-link-010] conserva el razonamiento y las alternativas descartadas. El registro anterior describe `vps-webserver` como Apache-2.0 en origen y redistribuido aquí bajo GPL-3.0. Este inventario registra los archivos y condiciones comprobados para v2.0.0; no constituye una opinión jurídica independiente.
 
-No hay paquetes de Python de terceros. `src/web/app.py` usa la biblioteca estándar, por lo que no hay un archivo de bloqueo de paquetes Python. El bloqueo de artefactos incluidos anterior no fija Python, iperf3 ni otros paquetes del sistema proporcionados por el SO: sus versiones y actualizaciones de seguridad dependen de los canales de paquetes de la distribución Debian/Ubuntu de destino. El instalador no selecciona versiones exactas ni una instantánea del repositorio; la resolución completamente reproducible de dependencias del sistema sigue pendiente (consulta [Requisitos de reproducción][local-link-011]).
+No hay paquetes de Python de terceros. `src/web/app.py` usa la biblioteca estándar, por lo que no hay un archivo de bloqueo de paquetes Python. El bloqueo de los artefactos incluidos no fija Python ni otros paquetes del sistema proporcionados por el SO: sus versiones y actualizaciones de seguridad dependen de los canales de paquetes de la distribución Debian/Ubuntu de destino. El instalador no selecciona versiones exactas ni una instantánea del repositorio; la resolución completamente reproducible de dependencias del sistema sigue pendiente (consulta [Requisitos de reproducción][local-link-011]).
 
 ---
 
@@ -119,9 +118,11 @@ El aviso de copyright y la licencia MIT están incluidos con la biblioteca clien
 
 - Componente: `iperf3`
 - Proyecto original: https://github.com/esnet/iperf
-- Licencia: BSD 3-Clause
-- Modificado: no
-- **No redistribuido.** `iperf3` se instala desde el repositorio de paquetes del sistema operativo mediante `install.sh` y se invoca como programa independiente, mediante un proceso separado. Este repositorio no incluye código ni binarios de iperf3, por lo que, según el registro anterior, no se activa aquí la obligación de atribución BSD vinculada a la redistribución; vuelve a evaluarlo si cambia la distribución. Se incluye en esta lista porque el proyecto depende de él durante la ejecución.
+- Licencia: BSD-3-Clause
+- Procedencia: [archivo fuente oficial 3.22](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- Compilación: en Ubuntu 22.04 x86-64 se ejecutó `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` y luego `strip` sobre `src/iperf3`. No se modificó el código fuente; la suma del binario figura en la tabla.
+- Distribución: el ejecutable se incluye en `third_party/iperf3/iperf3` junto con el aviso de copyright y la [licencia íntegra `third_party/iperf3/LICENSE`](../../third_party/iperf3/LICENSE). Tras instalarse usa `$PREFIX/vendor/iperf3/iperf3`.
+- Límite: la compilación no incluye SCTP ni autenticación OpenSSL. La resolución de nombres con glibc enlazada estáticamente aún requiere validación en las distribuciones antiguas de destino. Las pruebas TCP/UDP de duración limitada de este proyecto no utilizan esas funciones opcionales.
 
 ---
 
@@ -137,7 +138,7 @@ No son componentes de terceros, pero se registran aquí porque el código no se 
 
 ---
 
-Las fuentes y los iconos de terceros incluidos se enumeran en la tabla anterior. No se incluyen conjuntos de imágenes ni pesos de modelos de terceros. Durante la instalación se puede descargar el recurso del cliente FRPC sujeto a verificación de suma de comprobación y, de forma opcional, consultar la dirección IP pública; si esta consulta falla, solo se muestra una advertencia.
+Las fuentes y los iconos de terceros incluidos se enumeran en la tabla anterior. No se incluyen conjuntos de imágenes ni pesos de modelos de terceros. FRPC y FRPS se distribuyen con el repositorio. La instalación de los componentes incluidos no requiere consultar GitHub.
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE
@@ -149,7 +150,7 @@ Las fuentes y los iconos de terceros incluidos se enumeran en la tabla anterior.
 [local-link-008]: ../../src/web/static/licenses/MIT.txt
 [local-link-009]: ../../LICENSE
 [local-link-010]: LOG.md#decisiones
-[local-link-011]: DESIGN.md#reproduction-requirements
+[local-link-011]: DESIGN.md#requisitos-de-reproducción
 [local-link-012]: ../../third_party/sing-box/LICENSE
 [local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
 [local-link-014]: ../../src/web/static/licenses/MIT.txt

@@ -10,7 +10,7 @@ metadata:
 
 ## Multi-language
 
-[简体中文](../THIRD_PARTY_NOTICES.md) | **English** | [繁體中文 (台灣)](../zh-TW/THIRD_PARTY_NOTICES.md) | [繁體中文 (香港)](../zh-HK/THIRD_PARTY_NOTICES.md) | [हिन्दी](../hi/THIRD_PARTY_NOTICES.md) | [Español](../es/THIRD_PARTY_NOTICES.md) | [العربية](../ar/THIRD_PARTY_NOTICES.md) | [Français](../fr/THIRD_PARTY_NOTICES.md)
+[简体中文](../THIRD_PARTY_NOTICES.md) | **English** | [Español](../es/THIRD_PARTY_NOTICES.md)
 
 ## Documentation
 
@@ -21,26 +21,28 @@ metadata:
 - Project status: [LOG](LOG.md)
 - Historical records: [HISTORY](HISTORY.md)
 - Version changelog: [CHANGELOG](CHANGELOG.md)
-- Commit history: [COMMITS](COMMITS.md)
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
 
 ## Third-Party-Notice
 
-The table inventories bundled and OS-supplied components. The seven bundled
+The table inventories bundled and OS-supplied components. The nine bundled
 artifacts have checkout SHA-256 values in [config/dependencies.lock.json][local-link-001];
 run `python3 tools/verify_dependencies/verify_dependencies.py` from the repository
-root to compare them offline. On 2026-09-27, all seven repository files matched
-their recorded upstream release archive members or tag files byte for byte.
-The included license files also matched the upstream files checked below.
+root to compare them offline. The 2026-09-27 checks of the original seven
+artifacts remain unchanged. The FRPC binary added on 2026-10-04 matches its
+v0.71.0 upstream archive member byte for byte. The new iperf3 binary was
+built locally from a checked SHA-256 upstream 3.22 source archive; its binary
+hash establishes only the identity of this repository's artifact. Included
+license paths are listed below.
 These checks establish artifact identity, not a legal opinion or a fully
 reproducible system dependency closure.
 
 | Component / resource | Version / hash | Source | License as recorded | How used | Attribution / original license path | Release obligations to review | Verified on |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frps executable | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Keep the included Apache-2.0 license; no NOTICE file was in the official binary archive | 2026-09-27: archive, binary, and license matched |
-| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Separate `frpc-0.71.0-linux-amd64` GitHub Release asset, verified before installation | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Distribute the same upstream license with the source and retain the asset checksum | 2026-09-29: client binary matched the recorded upstream archive member |
+| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frpc executable, verified before installation | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Distribute the same upstream license with the source and retain the asset checksum | 2026-10-04: bundled client binary matched the upstream archive member |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per upstream license | Bundled Lucky executable | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | Keep the included MIT copyright and license notice | 2026-09-27: archive, binary, and license matched |
 | sing-box | `v1.13.14`; revision `25a600db24f7680ad9806ce5427bd0ab8afe1114`; binary SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL version 3 or later plus upstream naming condition (as stated in notice) | Vendored executable, shared by anytls and proxy | [upstream notice][local-link-002]; [GPL full text][local-link-003] | Keep corresponding source links and upstream name/association condition | 2026-09-27: archive, binary, license, and tag revision matched |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 per upstream license | Vendored browser engine | [original LGPL text][local-link-006] and [GPL text][local-link-007] | Keep license text and upstream source available | 2026-09-27: two tag files and license matched |
@@ -48,13 +50,13 @@ reproducible system dependency closure.
 | Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Bundled Latin interface font, weights 400/600/700 | [included license](../../src/web/static/licenses/OFL-Inter.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Bundled CJK interface font, weights 400/700 | [included license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
 | Lucide icons | Upstream `main` on 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled interface SVG icons | [included license](../../src/web/static/licenses/Lucide-ISC.txt) | Keep the included copyright and license notice | 2026-09-27: upstream SVG files |
-| iperf3 | Distro package; version not pinned | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause as previously recorded | Invoked as separate OS-installed program; not redistributed here | Not recorded; OS package supplies original license | Reassess if bundled or redistributed later | Not recorded; reverify before distribution |
+| iperf3 | `3.22`; bundled binary SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | Locally built x86-64 Linux static executable from official source | [upstream LICENSE](../../third_party/iperf3/LICENSE); [build record](../../third_party/iperf3/component.txt) | Retain copyright and the full license with the binary; target-distro compatibility awaits acceptance | 2026-10-04: official source digest, local build, and local execution checked |
 
 The existing project record identifies GPL-3.0 for this project ([LICENSE][local-link-009]) and records the redistribution of a GPL-licensed sing-box executable as its reason; [Decisions][local-link-010] retains the rationale and rejected alternatives. The prior record describes `vps-webserver` as Apache-2.0 upstream and redistributed here under GPL-3.0. This inventory records the files and terms checked for v2.0.0; it does not provide an independent legal opinion.
 
 There are no third-party Python packages. `src/web/app.py` uses the standard library,
 so there is no Python package lock. The vendored-artifact lock above does not
-pin OS-supplied Python, iperf3, or other system packages: their versions and
+pin OS-supplied Python or other system packages: their versions and
 security updates are managed through the target Debian/Ubuntu distribution's
 package channels. The installer does not select exact package versions or a
 repository snapshot; a fully reproducible system dependency closure remains
@@ -154,12 +156,17 @@ The MIT copyright and license notice is bundled with the client library.
 - Component: `iperf3`
 - Upstream project: https://github.com/esnet/iperf
 - License: BSD 3-Clause
-- Modified: no
-- **Not redistributed.** `iperf3` is installed from the operating system's
-  package repository by `install.sh` and is invoked as a separate program over
-  a process boundary. No iperf3 code or binary ships in this repository, so the
-  BSD attribution requirement, which attaches to redistribution, is not
-  triggered here according to the prior record; reassess if distribution changes. It is listed because the project depends on it at runtime.
+- Source: [official 3.22 archive](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz),
+  SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- Build: on Ubuntu 22.04 x86-64, run
+  `./configure --enable-static-bin --disable-shared --without-sctp && make -j2`,
+  then `strip` `src/iperf3`. Source was unmodified; see the binary SHA-256 above.
+- Distribution: `third_party/iperf3/iperf3`, with BSD-3-Clause copyright and
+  full license in [`third_party/iperf3/LICENSE`](../../third_party/iperf3/LICENSE).
+  Installed at `$PREFIX/vendor/iperf3/iperf3`.
+- Limits: the build omits SCTP and OpenSSL authentication. Static glibc
+  address resolution on older target distributions still needs acceptance;
+  this project's time-limited TCP/UDP test uses neither optional feature.
 
 ---
 
@@ -178,7 +185,8 @@ repository and its provenance matters for updates:
 
 The bundled third-party fonts and icons are listed in the table above. No
 third-party image datasets or model weights are included. Installation can
-download the checksum-pinned FRPC client asset for module installation. It does not query a public IP address for node summaries.
+install bundled FRPC without a download. An optional public-IP lookup can
+still be requested; failures produce a warning.
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE
