@@ -29,7 +29,8 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-04 docs: explain full FRPC and port cleanup (pending commit)
+- `HEAD` 2026-10-04 docs: record verified uninstall fix sync (pending commit)
+- `8ed81a6` 2026-10-04 docs: explain full FRPC and port cleanup
 - `3335a7f` 2026-10-04 fix: purge managed FRPC and release project ports on full uninstall
 - `ae8858d` 2026-10-04 docs: record verified GitHub branch sync
 - `00d8240` 2026-10-04 docs: prepare reviewed public branch push
