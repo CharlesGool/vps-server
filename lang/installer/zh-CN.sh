@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<本机地址>' ;;
   error_prefix) fmt='错误：' ;;
-  noninteractive_modules) fmt='非交互安装需要设置 VPSSRV_MODULES(例如 VPSSRV_MODULES=web,iperf3).如需使用初次设置向导,请从终端运行.\n' ;;
   public_requires_openssl) fmt='公开页面的设置需要 openssl\n' ;;
-  wizard_failed) fmt='初次设置向导失败;安装尚未开始\n' ;;
-  wizard_invalid) fmt='初次设置向导返回无效结果\n' ;;
   lucky_public_warning) fmt='警告:公开的 Lucky 管理界面会通过未加密的 HTTP 传输凭据.\n' ;;
   lucky_public_confirm_prompt) fmt='在服务器终端输入 I ACCEPT PUBLIC HTTP 以继续: ' ;;
   lucky_public_confirm_required) fmt='公开 Lucky 管理界面需要确认\n' ;;

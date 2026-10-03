@@ -30,7 +30,7 @@ def wait_for(path):
 
 class NodeInstallerLockTest(unittest.TestCase):
     def test_web_only_upgrade_locks_before_loading_and_preserving_node_credentials(self):
-        # Execute the actual post-wizard installer block, including its lock
+        # Execute the installer block after module selection, including its lock
         # decision, against temporary install state and a competing rotation.
         block = INSTALLER.split('# 1a. An existing install, if there is one.\n', 1)[1]
         block = block.split('# Re-derived here, because apply_previous', 1)[0]

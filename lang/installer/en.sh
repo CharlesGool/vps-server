@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<this-server>' ;;
   error_prefix) fmt='error: ' ;;
-  noninteractive_modules) fmt='Non-interactive installation requires VPSSRV_MODULES (for example, VPSSRV_MODULES=web,iperf3). Run from a terminal for the setup wizard.\n' ;;
   public_requires_openssl) fmt='Public setup requires openssl\n' ;;
-  wizard_failed) fmt='Setup wizard failed; installation not started\n' ;;
-  wizard_invalid) fmt='Invalid wizard result\n' ;;
   lucky_public_warning) fmt='WARNING: Lucky public admin sends credentials over unencrypted HTTP.\n' ;;
   lucky_public_confirm_prompt) fmt='Type I ACCEPT PUBLIC HTTP on the server terminal to proceed: ' ;;
   lucky_public_confirm_required) fmt='Public Lucky admin confirmation required\n' ;;

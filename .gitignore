@@ -50,9 +50,7 @@ target/
 /frps/
 /lucky/
 dist/*
-!dist/.gitkeep
 private/*
-!private/.gitkeep
 build/
 *.egg-info/
 

@@ -45,23 +45,8 @@ class LocalizationTest(unittest.TestCase):
                     english_fields = [field for _, field, _, _ in formatter.parse(english[key]) if field is not None]
                     self.assertEqual(fields, english_fields, (tag, key))
 
-    def test_setup_wizard_catalogs_keep_html_and_format_slots(self):
-        catalog_dir = ROOT / "lang" / "setup_wizard"
-        catalogs = {tag: json.loads((catalog_dir / f"{tag}.json").read_text(encoding="utf-8"))
-                    for tag in TAGS}
-        english = catalogs["en"]
-        self.assertEqual(len(english), 44)
-        for tag, catalog in catalogs.items():
-            with self.subTest(tag=tag):
-                self.assertEqual(list(catalog), list(english))
-                for key, value in catalog.items():
-                    self.assertEqual(re.findall(r"%(?:s|d)", value),
-                                     re.findall(r"%(?:s|d)", english[key]), (tag, key))
-                    self.assertEqual(re.findall(r"<[^>]+>", value),
-                                     re.findall(r"<[^>]+>", english[key]), (tag, key))
-
     def test_shell_catalogs_keep_keys_and_printf_shapes(self):
-        expected_counts = {"installer": 96, "anytls": 71, "proxy": 49,
+        expected_counts = {"installer": 93, "anytls": 71, "proxy": 49,
                            "frps": 16, "lucky": 23, "uninstaller": 15}
         format_pattern = r"%(?:[0-9]+\$)?[-+ #0]*[0-9.]*(?:s|d|i|u|f|%)"
         for component, expected_count in expected_counts.items():

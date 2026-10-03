@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<este-servidor>' ;;
   error_prefix) fmt='error: ' ;;
-  noninteractive_modules) fmt='La instalación no interactiva requiere VPSSRV_MODULES (por ejemplo, VPSSRV_MODULES=web,iperf3). Ejecuta el instalador desde una terminal para usar el asistente de configuración.\n' ;;
   public_requires_openssl) fmt='La configuración pública requiere openssl\n' ;;
-  wizard_failed) fmt='Falló el asistente de configuración; no se inició la instalación\n' ;;
-  wizard_invalid) fmt='El resultado del asistente no es válido\n' ;;
   lucky_public_warning) fmt='ADVERTENCIA: la administración pública de Lucky envía credenciales por HTTP sin cifrar.\n' ;;
   lucky_public_confirm_prompt) fmt='Escribe I ACCEPT PUBLIC HTTP en la terminal del servidor para continuar: ' ;;
   lucky_public_confirm_required) fmt='Se requiere confirmación para habilitar la administración pública de Lucky\n' ;;

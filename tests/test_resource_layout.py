@@ -71,6 +71,7 @@ class ResourceLayoutTest(unittest.TestCase):
                             self.assertEqual((prefix / module / "sentinel").read_text(), "keep")
                     if "web" in modules:
                         self.assertTrue((prefix / "systemd/vps-server-web.service").is_file())
+                        self.assertFalse((prefix / "tests").exists())
                     if "anytls" in modules or "proxy" in modules:
                         self.assertEqual((prefix / "sing-box").read_bytes(),
                                          (ROOT / "third_party/sing-box/sing-box").read_bytes())

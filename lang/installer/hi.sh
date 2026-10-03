@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<यह-सर्वर>' ;;
   error_prefix) fmt='त्रुटि: ' ;;
-  noninteractive_modules) fmt='गैर-संवादात्मक इंस्टॉलेशन के लिए VPSSRV_MODULES आवश्यक है (जैसे VPSSRV_MODULES=web,iperf3)। सेटअप विज़ार्ड उपयोग करने के लिए टर्मिनल से चलाएँ।\n' ;;
   public_requires_openssl) fmt='सार्वजनिक सेटअप के लिए openssl आवश्यक है\n' ;;
-  wizard_failed) fmt='सेटअप विज़ार्ड विफल हुआ; इंस्टॉलेशन शुरू नहीं हुआ\n' ;;
-  wizard_invalid) fmt='सेटअप विज़ार्ड का परिणाम अमान्य है\n' ;;
   lucky_public_warning) fmt='चेतावनी: Lucky का सार्वजनिक व्यवस्थापन क्रेडेंशियल बिना एन्क्रिप्शन वाले HTTP से भेजता है।\n' ;;
   lucky_public_confirm_prompt) fmt='आगे बढ़ने के लिए सर्वर टर्मिनल में I ACCEPT PUBLIC HTTP लिखें: ' ;;
   lucky_public_confirm_required) fmt='Lucky के सार्वजनिक व्यवस्थापन के लिए पुष्टि आवश्यक है\n' ;;

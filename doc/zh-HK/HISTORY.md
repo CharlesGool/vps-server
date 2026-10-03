@@ -206,3 +206,16 @@ v2.0.0 包含實驗性的 frps 和 Lucky 安裝路徑.其行為尚未通過真�
 - `7e365b9` fix(web): stop visitor collection when disabled
 - `3cc5c8c` docs(log): record final visitor switch verification
 - `1810c3d` fix(frpc): add independent client installation controls
+
+
+## 2026-10-03 舊交接存檔
+
+目前交接以[簡體中文 LOG.md](../LOG.md#交接)為準.
+
+- 目前分支: `release/v5.0.0`,從已發佈的 `origin/main` 建立;原 `refactor/feature-modules-repo` 分支僅保留在本機供審計.2026-10-03 測試主機上既有的 vps-server 安裝已完整移除;本機原始碼保留.
+- 已完成: 修復完整移除的結束訊息,並新增隔離回歸測試;將靜態資源遷至 `src/web/static/`,安裝包仍沿用既有的 `$PREFIX/static` 路徑;將簡體中文文件整理為根目錄標準佈局,同步七種語言的文件及變更記錄;本機運行狀態原樣移入被忽略的 `private/`.
+- 檢查: 單元測試共執行 377 項,其中 369 項通過,8 項跳過;CSS 建構檢查,7 項相依檔案校驗,Shell 語法,Python 編譯,項目結構,多語言及文件連結檢查通過.文件檢查有 10 條非阻斷警告.用戶報告先前功能測試正常;本次遷移後尚未在真實主機重新安裝.
+- 剩餘: 完成發佈前審查,提交及推送,正式標籤,GitHub Release 和快照;發佈後復核遠端產物及交接.
+- 阻礙: 未共享的工作分支歷史包含測試環境記錄,不能直接公開;已審查的最終文件未發現對應地址.新增譯文尚未經獨立母語審閱.
+- 下一步: 核對發佈工作樹及最終產物,逐項完成發佈.
+- 臨時項目規則: 未發現.

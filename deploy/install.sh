@@ -640,7 +640,7 @@ copy_selected_files() {
     local copy_items item source
     copy_items="lang"
     if has_module web; then
-      copy_items="$copy_items static systemd tests README.md LICENSE"
+      copy_items="$copy_items static systemd README.md LICENSE"
     fi
     has_module anytls && copy_items="$copy_items anytls"
     has_module proxy && copy_items="$copy_items proxy"

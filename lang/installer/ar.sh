@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<هذا-الخادم>' ;;
   error_prefix) fmt='خطأ: ' ;;
-  noninteractive_modules) fmt='يتطلب التثبيت غير التفاعلي تحديد VPSSRV_MODULES (مثل VPSSRV_MODULES=web,iperf3). شغّل الأمر من طرفية لاستخدام معالج الإعداد.\n' ;;
   public_requires_openssl) fmt='يتطلب الإعداد العام openssl\n' ;;
-  wizard_failed) fmt='فشل معالج الإعداد؛ لم يبدأ التثبيت\n' ;;
-  wizard_invalid) fmt='نتيجة معالج الإعداد غير صالحة\n' ;;
   lucky_public_warning) fmt='تحذير: ترسل إدارة Lucky العامة بيانات الاعتماد عبر HTTP غير مشفّر.\n' ;;
   lucky_public_confirm_prompt) fmt='اكتب I ACCEPT PUBLIC HTTP في طرفية الخادم للمتابعة: ' ;;
   lucky_public_confirm_required) fmt='يلزم تأكيد إتاحة إدارة Lucky للعامة\n' ;;

@@ -73,10 +73,7 @@ case "$key" in
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<本機位址>' ;;
   error_prefix) fmt='錯誤：' ;;
-  noninteractive_modules) fmt='非互動安裝需要設定 VPSSRV_MODULES(例如 VPSSRV_MODULES=web,iperf3).如要使用初次設定精靈,請在終端機執行.\n' ;;
   public_requires_openssl) fmt='設定公開頁面需要 openssl\n' ;;
-  wizard_failed) fmt='初次設定精靈失敗;安裝尚未開始\n' ;;
-  wizard_invalid) fmt='初次設定精靈傳回無效結果\n' ;;
   lucky_public_warning) fmt='警告:公開的 Lucky 管理介面會透過未加密的 HTTP 傳送憑證.\n' ;;
   lucky_public_confirm_prompt) fmt='請在伺服器終端機輸入 I ACCEPT PUBLIC HTTP 以繼續: ' ;;
   lucky_public_confirm_required) fmt='公開 Lucky 管理介面需要確認\n' ;;

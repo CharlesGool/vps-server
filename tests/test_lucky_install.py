@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 import unittest
 
-from tools.setup_wizard.setup_wizard import validate
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -186,13 +185,6 @@ esac
         self.assertEqual(runtime.read_text(), '16601\n')
         self.assertEqual(self.owner.read_text(), 'firewalld 16601\n')
         self.assertEqual(json.loads(self.config.read_text())['BaseConfigure']['AdminWebListenPort'], 16601)
-
-    def test_wizard_selection(self):
-        self.assertEqual(validate({'modules': ['web,lucky']}, '', False)[-2:], ('16601', '0'))
-        with self.assertRaisesRegex(ValueError, 'requires Lucky'):
-            validate({'modules': ['web'], 'lucky_public': ['1']}, '', False)
-        self.assertEqual(validate({'modules': ['web,lucky'], 'lucky_public': ['1']}, '', False)[-1], '1')
-
 
 if __name__ == '__main__':
     unittest.main()
