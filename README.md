@@ -140,13 +140,13 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
-要移除模块并**删除数据**(包括 `$PREFIX` 中的访客日志,控制台密码,已保存端口及证书):
+要移除模块并**删除数据**(包括 `$PREFIX` 中的访客日志,控制台密码,已保存端口及证书,以及本项目管理的 FRPC 实例配置):
 
 ```bash
 bash deploy/uninstall.sh
 ```
 
-两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置.`KEEP_DATA=1` 保留 `$PREFIX`,不保留这些模块配置.
+两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置,停止本项目的 FRPC 实例,移除本项目安装的 FRPC 服务模板和匹配的二进制文件,并从安装目录同级的 `PORTS.md` 原子释放属于 vps-server 的登记行;其他项目的行保留.`KEEP_DATA=1` 保留 `$PREFIX` 和 `/etc/frp/frpc-*.toml` 等 FRPC 实例配置与恢复副本,不保留 anytls/proxy 模块配置.不带 `KEEP_DATA=1` 时,还会删除本项目命名的 FRPC 配置,别名与恢复副本;若全局 FRPC 服务模板已被其他程序修改,脚本保留该安装并提示人工核对.
 
 ## 致谢
 
