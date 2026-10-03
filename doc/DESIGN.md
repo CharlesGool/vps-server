@@ -189,7 +189,7 @@ anytls 节点在升级过程中之所以能被保留,是因为安装程序会把
 
 ### 完整卸载
 
-完整卸载由 `deploy/uninstall.sh` 在移除 `$PREFIX` 前调用 `src/web/uninstall_cleanup.py`.它只在全局 FRPC unit 与项目模板一致,或存在项目二进制归属标记时处理 FRPC;先停止实例,再移除匹配模板和经过固定 SHA-256 校验的二进制文件.默认完整卸载删除 `frpc-*.toml`,对应的 Unicode 别名和 `.deleted-frpc-*.toml` 恢复副本;`KEEP_DATA=1` 保留这些配置文件.卸载器持有安装目录同级的 `.ports.lock`,复用 `console_port.py` 的格式校验与原子写入,释放 `PORTS.md` 中以 `vps-server` 命名的行,同时保留其他项目的行.模板已变成外部版本时,FRPC 文件和其登记行保留,避免误删其他安装;本项目 Web 等其他行仍释放.
+完整卸载由 `deploy/uninstall.sh` 在移除 `$PREFIX` 前调用 `src/web/uninstall_cleanup.py`.它在全局 FRPC unit 与项目模板一致,存在项目二进制归属标记,或完整卸载发现控制台可识别的命名实例时处理 FRPC;先停止实例,再移除适用的模板和经过固定 SHA-256 校验的二进制文件.默认完整卸载删除 `frpc-*.toml`,对应的 Unicode 别名和 `.deleted-frpc-*.toml` 恢复副本;`KEEP_DATA=1` 保留这些配置文件.卸载器持有安装目录同级的 `.ports.lock`,复用 `console_port.py` 的格式校验与原子写入,释放 `PORTS.md` 中以 `vps-server` 命名的行,同时保留其他项目的行.完整卸载且发现控制台识别的 `frpc-*.toml` 时,即使旧 FRPC 模板与当前模板不同,也会停止这些实例并删除该模板,匹配摘要的二进制与项目命名配置;这是本项目完整卸载的显式范围.没有可识别实例且无法确认归属时,FRPC 文件和其登记行保留,其他项目的行始终保留;二进制校验失败则中止清理.
 
 ### 控制台的 anytls 区域
 
