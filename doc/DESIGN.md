@@ -143,7 +143,7 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 | Lucky 状态 | `features/lucky.py` | 共用卡片样式 |
 | 公开可达性页面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入响应 |
 
-`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 `features/` 与 `static/` 复制到平铺的 `$PREFIX/app.py` 旁.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
+`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.旧版安装留下的平铺代码文件不作为当前运行入口,数据仍留在根目录和 `data/`.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
 
 ### 为什么公开页面和控制台是两个独立的监听器
 
@@ -332,7 +332,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `frpc`,`frps` | 随本仓库分发 | `third_party/frp/`,安装后按模块复制 |
 | `openssl`,`curl`,`jq`,`iproute2`,`procps`,`iptables`,`ca-certificates` | 发行版包管理器或主机现有安装 | 系统路径 |
 | sing-box 二进制 | 随本仓库分发 | `/usr/local/bin/sing-box-vps-server` |
-| LibreSpeed 引擎和 qrcode-generator 库 | 随本仓库分发 | `$PREFIX/static/` |
+| LibreSpeed 引擎和 qrcode-generator 库 | 随本仓库分发 | `$PREFIX/src/web/static/` |
 | TLS 证书 | 由安装程序在首次运行时生成 | `$VPSSRV_CERT_DIR` |
 
 FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失的系统包仍可能由安装程序从目标 Debian/Ubuntu 仓库安装,不选择精确版本或仓库快照.Python,OpenSSL,shell/系统工具及 systemd 同样由目标系统提供.主机操作员依靠所选发行版持续维护安全更新的软件包渠道.这避免随附这些二进制文件,但不同主机,不同时刻的包版本,散列及传递依赖解析可能不同;**尚未实现严格,完全可复现的依赖
@@ -466,7 +466,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
         └── <lang>/            # translated docs (seven language directories)
 ```
 
-这些仅为检出目录路径:安装后,应用程序,代理可执行文件及浏览器资源仍分别位于 `$PREFIX/app.py`,`$PREFIX/sing-box` 和 `$PREFIX/static/`,资源的 HTTP URL 不变.在检出目录中,安装与卸载脚本为 `deploy/install.sh` 和 `deploy/uninstall.sh`;已安装的 Web 入口仍为 `$PREFIX/app.py`.
+安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.现有密码,端口,证书与 `data/` 不迁移.
 
 只有 `repo/` 由 Git 跟踪;`snapshots/` 独立且私有.由[README][local-link-013] 入门,使用 [LOG][local-link-014] 查阅历史验证和发布记录,并参考[第三方声明][local-link-015]了解上游构件.文档不会使快照或已安装主机变成可复现的源码检出.
 

@@ -29,7 +29,9 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-04 docs: record final validation and artifact relocation (pending commit)
+- `HEAD` 2026-10-04 docs: record installed layout migration and validation (pending commit)
+- `3241775` 2026-10-04 refactor: keep installed Web modules in source layout
+- `995b914` 2026-10-04 docs: record final validation and artifact relocation
 - `9403e81` 2026-10-04 docs: document offline assets and managed-node cleanup
 - `1293d7f` 2026-10-04 fix: require managed nodes and correct runtime state changes
 - `5dfd54a` 2026-10-04 feat: bundle offline FRPC and iperf3 for x86-64 Linux

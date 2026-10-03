@@ -79,7 +79,7 @@ bash deploy/install.sh
 
 ### 快速开始
 
-Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装目录仍采用既有平铺布局;更新源码布局不会迁移该目录中的运行数据.
+Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码仍位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;数据,证书和安装状态继续留在原有路径.从旧版升级时,安装程序保留这些运行数据.
 
 源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.当前源码的离线构件尚未进入上面的 v5.0.0 标签;使用该标签安装时,行为仍以对应版本的文档为准.
 
