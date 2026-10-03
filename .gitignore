@@ -16,8 +16,8 @@ credentials*
 secrets.*
 
 # Data & logs
-# `data/` (no leading slash) matches a data directory at ANY depth — data/,
-# src/data/, tests/data/. Keep it that way.
+# `data/` (no leading slash) matches a data directory at ANY depth, including
+# the repository root and component directories. Keep it that way.
 data/
 #
 # Seed-data exception. ONLY if the data is safe, public, and must be versioned

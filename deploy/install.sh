@@ -299,7 +299,7 @@ write_state() {
 # Installer output i18n
 #
 # Installer messages live in lang/installer/. Every string is a printf format,
-# so placeholders line up across all three languages; templates that end
+# so placeholders line up across all supported languages; templates that end
 # without \n are prompts.
 # ---------------------------------------------------------------------------
 

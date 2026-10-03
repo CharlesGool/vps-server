@@ -126,7 +126,7 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 
 ### 功能模块
 
-`src/web/app.py` 负责进程配置,认证边界,监听器和兼容旧调用方的名称.`ConsoleHandler` 组合 `src/web/features/` 中的功能 mixin;各模块包含对应路由,页面和操作.同一模块中的服务函数接收 `context` 参数;入口将自身模块作为 context 传入,保持现有测试替换点和公开 Python 导入可用.其他项目复用功能时,需提供所选功能引用的设置,服务函数和标准库对象,以及适用的 HTTP 辅助方法.功能模块不导入本应用入口.
+`src/web/app.py` 负责进程配置,认证边界,监听器和兼容旧调用方的名称.`ConsoleHandler` 组合 `src/web/features/` 中的功能 mixin;各模块包含对应路由,页面和操作.同一模块中的服务函数接收 `context` 参数;入口将自身模块作为 context 传入,保持现有公开 Python 导入可用.其他项目复用功能时,需提供所选功能引用的设置,服务函数和标准库对象,以及适用的 HTTP 辅助方法.功能模块不导入本应用入口.
 
 | 功能 | 后端模块 | 前端源文件 |
 | --- | --- | --- |
@@ -496,7 +496,6 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
     ├── config/dependencies.lock.json
     ├── config/upstream-version # records: vps-webserver v0.4.1
     ├── deploy/anytls/.upstream-version # records: Anytsl-Serve v1.2.0
-    ├── tests/
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
@@ -593,7 +592,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   拆卸分支.各模块之间互不调用.
 - **新增一个控制台页面**:给 `ConsoleHandler` 加一个路由.不要给
   `ProbeHandler` 加路由——它的路由表几乎为空是一个安全属性,不是疏漏.
-- **新增一种语言**:在每个 `lang/<component>/` 目录下添加对应的文案文件,并在 Web 语言选择器,变更日志映射,安装程序,初次设置向导及模块脚本的词条加载器中登记语言代码,然后添加对应的 `doc/<BCP47>/` 文档目录树.
+- **新增一种语言**:在每个 `lang/<component>/` 目录下添加对应的文案文件,并在 Web 语言选择器,变更日志映射,安装程序及模块脚本的词条加载器中登记语言代码,然后添加对应的 `doc/<BCP47>/` 文档目录树.
 - **新增一种颜色**:在 `:root` 中加一个 token(位于 `src/web/static/style.css`),*并且*
   在 `prefers-color-scheme: light` 区块里补上对应的浅色模式的值,然后使用
   这个 token.不要在组件规则里直接写十六进制颜色值——字面量没法跟着主题走,
@@ -601,8 +600,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   没有任何机制会报告这个问题.任何被用作填充背景的值都需要一个配对的
   `--on-*` 前景色:读起来适合作为文字的值,往往并不是在白色文字背后读起来
   合适的值.提交前请在两种模式下都对照 WCAG AA(4.5:1)检查一遍;
-  `tests/test_app.py::StylesheetTest` 会强制检查这里面结构性的那一半,但
-  没法判断对比度.
+  源码不再包含自动化测试,结构和对比度都需要人工检查.
 - **刷新一个内嵌的上游依赖**:从上游的 tag 重新拷贝,在同一个 commit 里更新
   对应的 `.upstream-version` 文件,并在 [LOG.md][local-link-016] 里记一笔这次升级.
   绝不要就地手改内嵌代码——一个没有反映回上游的本地改动,会让下一次刷新

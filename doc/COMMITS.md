@@ -29,7 +29,8 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-03 chore: remove empty placeholders and retired setup wizard (pending commit)
+- `HEAD` 2026-10-03 chore: remove automated test suite (pending commit)
+- `9687565` 2026-10-03 chore: remove empty placeholders and retired setup wizard
 - `c289ea3` 2026-10-03 docs: record FRPC test deployment and future controls
 - `fba4fb0` 2026-10-03 docs: record staged FRPC test deployment
 - `51dd1f2` 2026-10-03 docs: record FRPC module fix handoff

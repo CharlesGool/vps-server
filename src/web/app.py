@@ -1337,7 +1337,7 @@ def main():
         try:
             signal.signal(sig, request_shutdown)
         except ValueError:
-            pass  # not on the main thread; the tests import this module
+            pass  # signal handlers can only be installed on the main thread
 
     try:
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
