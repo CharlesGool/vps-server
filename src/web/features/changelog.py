@@ -19,12 +19,14 @@ class ChangelogMixin:
         source = path.read_text(encoding="utf-8") if path.exists() else ""
         section = self.context.changelog_section(source)
         development = ""
-        if self.context.VERSION.startswith(("dev-", "test-")):
-            log_path = self.context.BASE_DIR / "doc" / "en" / "LOG.md"
-            updates = self.context.development_updates_section(log_path.read_text(encoding="utf-8")) if log_path.exists() else None
-            if not updates and path != fallback:
-                english = self.context.BASE_DIR / "doc" / "LOG.md"
-                updates = self.context.development_updates_section(english.read_text(encoding="utf-8")) if english.exists() else None
+        if self.context.VERSION.startswith(("dev-", "test-")) or "-test." in self.context.VERSION:
+            localized_log = localized.with_name("LOG.md") if localized else None
+            updates = (self.context.development_updates_section(localized_log.read_text(encoding="utf-8"))
+                       if localized_log and localized_log.exists() else None)
+            if not updates and lang != "en":
+                english_log = self.context.BASE_DIR / "doc" / "en" / "LOG.md"
+                updates = (self.context.development_updates_section(english_log.read_text(encoding="utf-8"))
+                           if english_log.exists() else None)
                 if updates:
                     development = f'<p class="muted small">{self.context.html.escape(t["development_fallback"])}</p>'
             if updates:

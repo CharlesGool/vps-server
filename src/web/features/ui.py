@@ -61,7 +61,11 @@ def changelog_section(context, markdown):
 
 def development_updates_section(context, markdown):
     """Select the public test-build notes without exposing Handoff details."""
-    match = context.re.search(r"^## Development Updates[ \t]*$", markdown, context.re.MULTILINE)
+    match = context.re.search(r'^<a id="development-updates"></a>[ \t]*\n(?:[ \t]*\n)*## [^\n]+',
+                              markdown, context.re.MULTILINE)
+    if not match:
+        match = context.re.search(r"^## Development Updates[ \t]*$", markdown,
+                                  context.re.MULTILINE)
     if not match:
         return None
     tail = markdown[match.end():]
