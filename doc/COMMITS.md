@@ -29,7 +29,8 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-04 docs: prepare reviewed public branch push (pending commit)
+- `HEAD` 2026-10-04 docs: record verified GitHub branch sync (pending commit)
+- `00d8240` 2026-10-04 docs: prepare reviewed public branch push
 - `3b40fb4` 2026-10-04 docs: record installed layout migration and validation
 - `f9a4804` 2026-10-04 refactor: keep installed Web modules in source layout
 - `4076171` 2026-10-04 docs: record final validation and artifact relocation
