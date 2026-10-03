@@ -189,48 +189,9 @@ anytls 节点在升级过程中之所以能被保留,是因为安装程序会把
 
 ### 控制台的 anytls 区域
 
-**现在位于 `/proxy`,而非独立页面**(2026-09-22):下文“proxy 模块”解释为什么 anytls 与 proxy 模块的协议合并到同一页面.`/anytls` 仍可用,但重定向至 `/proxy`,`POST /anytls/reset` 不变;仅删除独立的 `GET /anytls` 页面及其导航链接/仪表盘磁贴.以下内容仍描述该合并页面中的 anytls 分区.
+`/anytls` 重定向到 `/proxy`.当前代理页面只读取经校验的受管节点清单;缺少清单或清单与已安装配置不一致时返回迁移/修复提示,不会回退到旧版节点编辑器.安装程序通过 `node_control.py init` 导入旧配置并保留稳定节点 ID.操作员在控制台修改连接信息,流量策略及重置节点时,由受限的特权辅助程序校验并应用,失败时恢复原配置.原先由页面调用安装脚本重置和修改凭据的做法已退役,历史实现与原因见[HISTORY](HISTORY.md#retired-anytls-console).
 
-
-控制台从 `VPSSRV_ANYTLS_CONFIG` 中读取已安装的节点信息,并渲染出它的状态,
-外加一份可直接粘贴使用的 Clash 配置条目和 `anytls://` 链接.
-
-它自己写入的东西只有一样:"重置端口和密码"这个按钮,而即便如此它也是委托出去
-执行的.控制台本身不会直接去动 `config.json`——它会运行 `setup-anytls.sh reset`,
-因为其中的执行顺序很容易出错:旧端口的防火墙规则要先撤销,*然后*才能开放
-新端口,否则每次重置都会留下一条对应端口已无人监听的 `ACCEPT` 规则.这部分逻辑
-留在拥有该节点的脚本里,而不是分散在两处.这个重置操作要求一个在服务端做校验的
-确认复选框——标记上 `required` 拦下的是误点,而不是非浏览器的客户端——因为
-轮换凭据会让所有已配置的客户端在拿到新凭据之前统统失效.
-
-它还会**在这个服务自身的沙箱之外**运行,通过 `systemd-run --pipe --wait --collect`
-作为一个临时 unit 执行.Web unit 启用了 `ProtectSystem=strict`,只对
-`ReadWritePaths=$PREFIX` 开放写权限,因此 `/etc` 对它来说是只读的,而一次重置
-需要写 `/etc/vps-server-anytls` 和一个 unit 文件.第一次真正尝试时就恰恰因为这个
-原因在中途挂掉了——而且是在它已经撤销了旧端口防火墙规则之后.另一种做法,把
-`/etc/systemd/system` 加进 `ReadWritePaths`,会为了让这一个按钮生效而永久放宽
-这个长期运行服务的写权限;沙箱的价值比这更高.不使用 systemd-run 时,调用会
-直接执行,这是正确的,因为缺少 `systemd-run` 的环境正好也是 `install.sh` 会
-省略加固措施的那些环境.
-
-`setup-anytls.sh reset` 还会在动防火墙之前先检查自己是否具备写权限.一次在撤销
-旧规则之后才失败的重置,会留下一个跑着却无法进入的节点,这比一个从未启动的节点
-还要糟糕.
-
-有两个细节是关键性的(load-bearing).**节点密码在这个控制台分区上是明文显示的**,
-这只有在这个页面挂在 `ConsoleHandler`,登录之后才能被接受;`ProbeHandler` 完全没有
-通往它的路由,并且有一个测试专门断言公开监听器对 `/anytls` 返回 404,且永远不会
-包含这个密码.而且**服务器地址取自请求的 `Host`
-  头**,而不是查出来的:不管是
-什么地址连到了控制台,同一个地址也能连到节点;在渲染时做一次出站 IP 查询会与
-"不发出站请求"这条规则相矛盾,而任何需要不同地址的人都可以在复制之后自己改一下
-那一行.
-
-只有经过管理员密码验证后才能查看或修改安全设置.名单仅接受单个 RFC 1918 私有 IPv4 或唯一本地 IPv6 地址,并有独立启用开关;公网 IP 和网段会被拒绝.免密判断直接使用连接对端地址,不相信客户端提供的转发请求头;启用 `VPSSRV_TRUST_PROXY=1` 时,由于未配置可信代理边界,IP 免密会停用.IP 免密可访问普通控制台页面;打开安全设置须完成管理员密码挑战,取得有效期固定为 10 分钟的权限,并换发新的密码会话.修改密码会使所有旧会话失效.同一网关若将多台设备映射到同一个获准的私有 IP,这些设备都会获得访问权.获准的访客须在登录页选择 IP 免密访问;会话绑定来源 IP,每次请求都会重新检查名单和开关.移出名单或关闭开关后,下次请求立即失去免密访问权. 普通设置页可在登录后直接调整外观和语言,无须再次验证密码.独立的安全设置页在显示 IP 名单或修改安全选项前,仍要求有效的限时密码验证.
-
-SNI 根本没有存在 sing-box 的配置里——`setup-anytls.sh` 只把它烘焙进了自签名证书的
-CN 字段——所以控制台是从证书里把它读回来的,而不是另外保留一份可能会漂移的
-副本.
+服务状态与证书 SNI 仍从已安装配置读取.公开监听器没有代理管理路由;安全设置仍要求近期管理员密码验证.节点的地址展示不做出站公网 IP 查询.
 
 ### proxy 模块
 
@@ -245,13 +206,13 @@ CN 字段——所以控制台是从证书里把它读回来的,而不是另外�
 
 `PROXY_PROTOCOLS`(逗号分隔,默认全部四种)会验证后存入全局数组,而不是通过 `$(...)` 命令替换输出.早期版本使用 `read -ra x <<< "$(fn)"` 调用验证函数:替换子 shell 中的 `exit 1` 只结束该子 shell,主脚本却带着空协议列表继续运行,启动零入站服务.属于与[决策][local-link-006]中的 `prompt_new_settings()` 相同类别的错误.每种协议的端口都从 60000 以下彼此独立,宽度 5000 的区间选择,而非从 60000 起宽度 10000 的区间:后一方案在抽到高位端口时会超出 sing-box 的 `uint16 listen_port` 上限 65535;五次重复的全新安装发现了该问题,首次安装未发现.升级时保留凭据的方式与 anytls 的 `preserve_anytls()` 相同:`preserve_proxy()` 从 `config.json` 中读回每种已装协议的端口,凭据和*协议集合*;重新运行时设置 `VPSSRV_MODULES=proxy` 不会暗中增删协议.
 
-控制台 `/proxy` 页面为每个已装节点显示一个分区,包括端口,UUID 或密码,逐节点 SNI(从各自证书读取),以及每个已检测到地址的 Clash 条目和分享链接(`vmess://`,`vless://`,`trojan://`,`ss://`).**每种协议都有自己的重置按钮**,而非统一的“全部重置”:操作员指出,泄露一个 vmess UUID 不应迫使所有 trojan/vless/shadowsocks 客户端重新配置.`setup-proxy.sh reset <protocol>` 只轮换指定协议的端口和凭据;`load_installed_vars()` 会先从磁盘读回*其他*协议的现有值,保持它们不变.无参数的 `reset` 仍轮换所有已安装协议,但仅供终端/脚本使用,控制台不提供该操作.两种形式都通过沙箱外的 `systemd-run` 执行,与 `anytls_reset()` 相同,因为同样受 `ProtectSystem=strict` 限制.共用 systemd 服务确有代价:重置一种协议仍会重启整个服务,其他协议的*连接*短暂中断,但其凭据不变.
+控制台 `/proxy` 按稳定节点 ID 展示已安装的 AnyTLS 与四种 proxy 协议.每个节点的连接设置,重置及流量策略通过 `node_control.py` 应用;操作失败时恢复原有配置.升级旧安装时,安装程序先初始化受管节点清单.该清单缺失或与实际配置不一致时,页面显示迁移/修复提示,不启用旧控制台编辑路径.早期重置路径的设计记录已移至[HISTORY](HISTORY.md#retired-proxy-console).
 
 安装程序最初为每种选定协议创建一个入站.之后,受管控制台可以为任何已安装协议创建多个编号节点,逐个删除节点,也允许模块保留但没有监听器.节点 ID 稳定,在可见界面中隐藏;所有表单和 Clash 订阅均按 ID 定位,使同协议的节点彼此独立.连接编辑框在卡片原有信息的位置展开;独立的流量表单支持 GiB 上限,分别设置上传/下载 Mbps 限速,达到上限后的处理方式,重复重置间隔和可选有效期.重置只清零周期流量并解除流量上限处罚,不延长有效期.读取时将第一版节点清单迁移到第二版:旧的绝对到期日期会清除,避免原本的 1 Mbps 限速被误当成停止使用;节点身份,计数,上限及重置计划会保留.新增或删除节点时,在同一把锁下更新 sing-box 配置,节点清单,防火墙和 nft 计量状态,失败时回滚.新建的 TLS 节点拥有独立的自签名证书.控制台使用本机系统字体组合,让首次绘制到刷新期间的文字尺寸保持一致.
 
 `PortForwardManager.reserved_ports()` 将所有已安装代理协议的端口,与 anytls 节点及控制台的端口一样视为保留端口;端口转发规则不能指向代理协议占用的端口.
 
-**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里;`POST /anytls/reset` 保持原样,但完成后返回 `/proxy`.两个模块的状态仍完全独立,重置按钮也独立;只是共享展示页面.
+**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里.两个模块的服务状态仍完全独立,节点操作在共享页面中按 ID 区分.
 
 节点页面列出主机网卡地址及可选的 Tailscale 地址,不再显示安装时记录的公网 IP.
 
@@ -330,7 +291,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 
 - HTTP/HTTPS:80/443 上的公开监听器只提供可达性页面;操作员控制台使用单独的持久化端口.iperf3 仅在鉴权后开启的限时窗口中监听.
 - 控制台读取 `/proc/net/tcp[6]` 记录入站 TCP 连接;公开路由不导出代理凭据.
-- `install.sh` 使用发行版包管理器,不查询公网 IP;服务运行时也不进行出站公网 IP 查询.`setup-anytls.sh` 与 `setup-proxy.sh` 管理 sing-box unit 和证书.iptables 管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外执行凭据重置.
+- `install.sh` 使用发行版包管理器,不查询公网 IP;服务运行时也不进行出站公网 IP 查询.`setup-anytls.sh` 与 `setup-proxy.sh` 管理 sing-box unit 和证书.iptables 管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外运行受限的节点操作辅助程序.
 
 ## 技术栈
 
@@ -342,7 +303,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | 存储 | `sqlite3` | stdlib | 访客日志**必须**在重启后保留 |
 | 测速引擎 | LibreSpeed,原样内嵌(vendored) | v6.2.1 | LGPL-3.0;已经在 `vps-webserver` 中内嵌并跑通 |
 | 二维码渲染 | kazuhikoarase/qrcode-generator,未修改的随附副本 | js2.0.4 | MIT;体积小,无需构建步骤,与 LibreSpeed 一样通过普通 `<script>` 标签使用 |
-| 带宽探测 | 发行版提供的 `iperf3` | 本项目未锁定版本 | 测试者在客户端一侧本来就已经普遍具备的事实标准工具 |
+| 带宽探测 | 随附的 x86-64 Linux `iperf3` | 3.22 | 测试者在客户端一侧本来就已经普遍具备的事实标准工具 |
 | 代理核心 | sing-box,内嵌二进制(amd64) | v1.13.14 | GPL-3.0;直接分发二进制能让安装保持离线可用 |
 | Init | systemd | — | 目标操作系统的默认选择 |
 | 安装脚本 | Bash | — | 继承自两个上游项目 |
@@ -357,24 +318,24 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 
 - 操作系统:Debian 11+ / Ubuntu 20.04+,systemd,以 root 身份运行
 - 运行时:Python 3.9+(发行版自带的 python3 即可)
-- 架构:anytls 和 proxy 模块**仅限 x86-64**——内嵌的 sing-box 二进制是 amd64 的.
-  Web 模块和 iperf3 模块与架构无关.
+- 架构:整个项目仅支持 x86-64 Linux;FRPC,FRPS,iperf3,sing-box 和 Lucky 的随附可执行文件都面向此平台.
 - 硬件:无需 GPU;磁盘约 150 MB(其中约 57 MB 是 sing-box 二进制),内存
   只需 VPS 通常具备的量即可
-- 随附构件完整性检查:在仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`.它会对照[dependencies.lock.json][local-link-010],通过 SHA-256 在不执行文件的情况下比对五个受版本控制的第三方可分发文件.已记录的版本与上游修订号来自先前项目记录,并非经独立核实的上游身份;LibreSpeed 的准确上游修订号未记录.
+- 随附构件完整性检查:在仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`.它会对照[dependencies.lock.json][local-link-010],通过 SHA-256 在不执行文件的情况下比对九个受版本控制的第三方可分发文件.已记录的版本与上游修订号来自先前项目记录,并非经独立核实的上游身份;LibreSpeed 的准确上游修订号未记录.
 - `app.py` 只使用标准库,因此没有第三方 Python 包锁.这个构件锁不是依赖恢复命令,也不是完整的系统包锁;见 [THIRD_PARTY_NOTICES.md][local-link-011].
 
 ### 外部依赖
 
 | 项目 | 来源 | 存放位置 |
 |---|---|---|
-| `iperf3` | 发行版包管理器(`apt-get install iperf3`) | 系统路径 |
+| `iperf3` | 随本仓库分发的静态构件 | `$PREFIX/vendor/iperf3/iperf3` |
+| `frpc`,`frps` | 随本仓库分发 | `third_party/frp/`,安装后按模块复制 |
 | `openssl`,`curl`,`jq`,`iproute2`,`procps`,`iptables`,`ca-certificates` | 发行版包管理器或主机现有安装 | 系统路径 |
 | sing-box 二进制 | 随本仓库分发 | `/usr/local/bin/sing-box-vps-server` |
 | LibreSpeed 引擎和 qrcode-generator 库 | 随本仓库分发 | `$PREFIX/static/` |
 | TLS 证书 | 由安装程序在首次运行时生成 | `$VPSSRV_CERT_DIR` |
 
-安装程序从目标 Debian/Ubuntu 仓库安装缺失的系统包(包括可选的 `iperf3`),不选择精确版本或仓库快照.Python,OpenSSL,shell/系统工具及 systemd 同样由目标系统提供.主机操作员依靠所选发行版持续维护安全更新的软件包渠道.这避免随附这些二进制文件,但不同主机,不同时刻的包版本,散列及传递依赖解析可能不同;**尚未实现严格,完全可复现的依赖
+FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失的系统包仍可能由安装程序从目标 Debian/Ubuntu 仓库安装,不选择精确版本或仓库快照.Python,OpenSSL,shell/系统工具及 systemd 同样由目标系统提供.主机操作员依靠所选发行版持续维护安全更新的软件包渠道.这避免随附这些二进制文件,但不同主机,不同时刻的包版本,散列及传递依赖解析可能不同;**尚未实现严格,完全可复现的依赖
 恢复**.要实现它,需要另行批准安装程序修改并选择发行版/仓库快照.锁文件可机读的 `exclusions` 记录了这一边界,而非虚构的锁定.
 
 无需 API 密钥.Web 服务和安装程序均不进行出站公网 IP 查询.
@@ -433,11 +394,9 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 | `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
 | `VPSSRV_ANYTLS_CONFIG` | 控制台从哪里读取已安装的节点信息 | `/etc/vps-server-anytls/config.json` | 否 |
 | `VPSSRV_ANYTLS_SERVICE` | 控制台用来检查节点存活状态的 unit | `vps-server-anytls.service` | 否 |
-| `VPSSRV_ANYTLS_SETUP` | 控制台用来轮换该节点凭据所运行的脚本 | `$PREFIX/anytls/setup-anytls.sh` | 否 |
 | `PROXY_PROTOCOLS`,`PROXY_SNI` | proxy 模块自有的脚本级变量;不受随附上游代码的限制,但为保持 anytls 的脚本与控制台之分而保留不带前缀的名称 | 见 `.env.example` | 否 |
 | `VPSSRV_PROXY_CONFIG` | 控制台读取已安装节点集合的位置 | `/etc/vps-server-proxy/config.json` | 否 |
 | `VPSSRV_PROXY_SERVICE` | 控制台检查节点存活状态的 unit | `vps-server-proxy.service` | 否 |
-| `VPSSRV_PROXY_SETUP` | 控制台运行以轮换指定协议凭据的脚本 | `$PREFIX/proxy/setup-proxy.sh` | 否 |
 
 anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
 `VPSSRV_ANYTLS_*`:因为内嵌的配置生成器要读这些变量,重命名就意味着要去改动
@@ -574,7 +533,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   这两个值都能在控制台 `/proxy` 的 anytls 分区上找到:
   `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
   这是刻意继承下来的上游行为.`setup-anytls.sh reset` 才是有意去轮换它们的,
-  控制台上的重置按钮是官方支持的,用来达到这个目的的方式.
+  控制台通过受管节点辅助程序重置所选节点.
 - **节点页面列出网卡和 Tailscale 地址.** 旧的安装时公网地址区块已移除:它在 VPS 上重复显示网卡地址,在 NAT 后也可能误导用户.设置脚本会清除旧安装留下的 `public-ip.txt`;控制台不读取它.
 - **`body` 传给 `render_page()` 时** **必须**恰好包含一个顶层元素. `<main>` 使用 `display: flex`,未覆盖 `flex-direction`,因此多个顶层兄弟元素(例如每个协议一个 `<div class="card wide">`)会并排而非上下堆叠.这是 `/proxy` 页面早期版本真实发布过的缺陷,操作员报告为“布局乱了”.每个页面都用一个外层卡片包住全部内容,重复分区则在其内部以 `.node-addr` div 嵌套.
 - **拆卸时需要用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`.** 不带任何环境变量

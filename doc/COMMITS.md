@@ -29,7 +29,10 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-04 docs: record test-cfa9b8a deployment (pending commit)
+- `HEAD` 2026-10-04 docs: document offline assets and managed-node cleanup (pending commit)
+- `1293d7f` 2026-10-04 fix: require managed nodes and correct runtime state changes
+- `5dfd54a` 2026-10-04 feat: bundle offline FRPC and iperf3 for x86-64 Linux
+- `eadfe63` 2026-10-04 docs: record test-cfa9b8a deployment
 - `cfa9b8a` 2026-10-04 docs: record code review findings and simplification priorities
 - `1f18572` 2026-10-03 chore: remove automated test suite
 - `9687565` 2026-10-03 chore: remove empty placeholders and retired setup wizard

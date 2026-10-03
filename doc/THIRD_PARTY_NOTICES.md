@@ -27,12 +27,12 @@ metadata:
 
 ## 第三方声明
 
-下表列出随附组件及由操作系统提供的组件.七个随附构件在 [dependencies.lock.json][local-link-001] 中记录了检出文件的 SHA-256;从仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`,可离线比较其字节.2026-09-27,仓库中的全部七个文件均与记录的上游发布归档成员或标签文件逐字节一致.随附的许可证文件也与下文核验的上游文件一致.这些检查确认构件身份,不构成法律意见,也不能建立完全可复现的系统依赖闭包.
+下表列出随附组件及由操作系统提供的组件.九个随附构件在 [dependencies.lock.json][local-link-001] 中记录了检出文件的 SHA-256;从仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`,可离线比较其字节.原有七个构件的 2026-09-27 核验记录保持不变.2026-10-04 新增的 frpc 与 v0.71.0 上游归档成员逐字节一致;新增的 iperf3 是从 SHA-256 已核对的上游 3.22 源码包本地编译,其二进制摘要只证明本仓库构件身份.随附的许可证路径见下文.这些检查确认构件身份,不构成法律意见,也不能建立完全可复现的系统依赖闭包.
 
 | 组件/资源 | 版本/散列 | 来源 | 所记录的许可证 | 用途 | 署名/原始许可证路径 | 待审核的发布义务 | 核验日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0,依据上游许可证 | 随附的 frps 可执行文件 | [included license](../third_party/frp/LICENSE); [artifact record](../third_party/frp/component.txt) | 保留随附的 Apache-2.0 许可证;官方二进制归档中没有 NOTICE 文件 | 2026-09-27:归档,二进制文件及许可证一致 |
-| frpc | `v0.71.0`;二进制文件 SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | 上游许可证为 Apache-2.0 | 独立提供的 `frpc-0.71.0-linux-amd64` GitHub Release 资源,安装前验证 | [随附许可证](../third_party/frp/LICENSE);[资源记录](../third_party/frp/component.txt) | 随源码分发相同的上游许可证,并保留资源校验和 | 2026-09-29:客户端二进制文件与记录的上游归档成员一致 |
+| frpc | `v0.71.0`;二进制文件 SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | 上游许可证为 Apache-2.0 | 随仓库分发的 frpc 可执行文件,安装前验证 | [随附许可证](../third_party/frp/LICENSE);[资源记录](../third_party/frp/component.txt) | 随源码分发相同的上游许可证,并保留资源校验和 | 2026-10-04:随附客户端二进制文件与上游归档成员一致 |
 | Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT,依据上游许可证 | 随附的 Lucky 可执行文件 | [included license](../third_party/lucky/LICENSE); [artifact record](../third_party/lucky/component.txt) | 保留随附的 MIT 版权及许可声明 | 2026-09-27:归档,二进制文件及许可证一致 |
 | sing-box | `v1.13.14`;修订号 `25a600db24f7680ad9806ce5427bd0ab8afe1114`;二进制 SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL 第 3 版或更高版本,另附上游命名条件(据声明所述) | 供 anytls 和 proxy 共用的随附可执行文件 | [上游声明][local-link-002];[GPL 全文][local-link-003] | 保留对应源码链接及上游名称/关联条件 | 2026-09-27:归档,二进制文件,许可证及标签修订号一致 |
 | LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0,依据上游许可证 | 随附的浏览器引擎 | [原始 LGPL 文本][local-link-006]和[GPL 文本][local-link-007] | 保留许可证文本并确保上游源码可获得 | 2026-09-27:两个标签文件及许可证一致 |
@@ -40,11 +40,11 @@ metadata:
 | Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | 随附的拉丁界面字体,400/600/700 字重 | [license](../src/web/static/licenses/OFL-Inter.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | 随附的 CJK 界面字体,400/700 字重 | [license](../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 随附的界面 SVG 图标 | [license](../src/web/static/licenses/Lucide-ISC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
-| iperf3 | 发行版软件包;未锁定版本 | [ESnet/iperf](https://github.com/esnet/iperf) | 此前记录为 BSD-3-Clause | 作为独立的操作系统安装程序调用;本项目不重新分发 | 未记录版权;操作系统软件包提供原始许可证 | 若以后随附或重新分发,须重新评估 | 未记录;分发前重新核实 |
+| iperf3 | `3.22`;随附二进制 SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | 从官方源码本地构建的 x86-64 Linux 静态可执行文件 | [上游 LICENSE](../third_party/iperf3/LICENSE);[构建记录](../third_party/iperf3/component.txt) | 随二进制保留版权和完整许可声明;目标发行版兼容性仍待验收 | 2026-10-04:官方源码摘要,本地构建与本机执行已核对 |
 
 现有项目记录将本项目的许可证标为 GPL-3.0([LICENSE][local-link-009]),并将重新分发 GPL 许可的 sing-box 可执行文件作为选择该许可证的理由;[决策][local-link-010]保留了其理由及被否决的替代方案.先前记录称 `vps-webserver` 上游采用 Apache-2.0,在本项目中以 GPL-3.0 重新分发.本清单记录了为 v2.0.0 核验的文件与条款;不提供独立的法律意见.
 
-本项目没有第三方 Python 包.`src/web/app.py` 使用标准库,因此没有 Python 包锁.上述随附构件的锁文件没有锁定由操作系统提供的 Python,iperf3 或其他系统包:其版本和安全更新由目标 Debian/Ubuntu 发行版的软件包渠道管理.安装程序不选择精确的包版本或仓库快照;完整可复现的系统依赖闭包仍未解决(见[复现要求][local-link-011]).
+本项目没有第三方 Python 包.`src/web/app.py` 使用标准库,因此没有 Python 包锁.上述随附构件的锁文件没有锁定由操作系统提供的 Python 或其他系统包:其版本和安全更新由目标 Debian/Ubuntu 发行版的软件包渠道管理.安装程序不选择精确的包版本或仓库快照;完整可复现的系统依赖闭包仍未解决(见[复现要求][local-link-011]).
 
 ---
 
@@ -118,8 +118,10 @@ MIT 版权及许可声明与客户端库一同随附.
 - 组件:`iperf3`
 - 上游项目:https://github.com/esnet/iperf
 - 许可证:BSD 3-Clause
-- 是否修改:否
-- **未重新分发.** `iperf3` 由 `install.sh` 从操作系统软件包仓库安装,通过进程边界作为独立程序调用.本仓库不包含 iperf3 的代码或二进制文件,因此按先前记录,随重新分发而产生的 BSD 署名要求在此并未触发;若分发方式改变,须重新评估.之所以列出,是因为本项目运行时依赖它.
+- 来源:[官方 3.22 源码包](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256:`1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- 构建:在 Ubuntu 22.04 x86-64 上运行 `./configure --enable-static-bin --disable-shared --without-sctp && make -j2`,随后对 `src/iperf3` 运行 `strip`;源码未修改,二进制 SHA-256 见上表.
+- 分发: `third_party/iperf3/iperf3`,BSD-3-Clause 版权和完整许可声明随同放在 [`third_party/iperf3/LICENSE`](../third_party/iperf3/LICENSE).安装后使用 `$PREFIX/vendor/iperf3/iperf3`.
+- 边界:构建不含 SCTP 和 OpenSSL 身份验证;glibc 静态链接的地址解析在较旧发行版上仍需实际验收.项目的限时 TCP/UDP 测试不使用这两项可选能力.
 
 ---
 
