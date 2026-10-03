@@ -29,7 +29,8 @@ metadata:
 
 本表列出 `main` 可达的提交,最新在前.使用 `git show <SHA>` 查看单次提交,使用 `git log --all --oneline` 查看完整历史.
 
-- `HEAD` 2026-10-04 docs: record legacy FRPC uninstall reproduction (pending commit)
+- `HEAD` 2026-10-04 docs: record verified legacy FRPC cleanup sync (pending commit)
+- `cf84ea3` 2026-10-04 docs: record legacy FRPC uninstall reproduction
 - `01b76ba` 2026-10-04 fix(web): purge legacy FRPC instances on full uninstall
 - `a5fc51a` 2026-10-04 docs: record verified uninstall fix sync
 - `8ed81a6` 2026-10-04 docs: explain full FRPC and port cleanup
