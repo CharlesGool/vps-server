@@ -26,7 +26,7 @@ metadata:
 
 ## 简介
 
-这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.最近的正式版本是 v5.1.0;当前 `main` 正在准备 v5.1.1 的独立持久状态目录和 FRPS 编辑修正,尚未正式发布.版本范围与检查结果见[变更日志][local-link-001]和[项目状态](doc/LOG.md).
+这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.最近的正式版本是 v5.1.0;`v5.1.1-test.1` 用于验收独立持久状态目录和 FRPS 编辑修正,尚非正式版本.版本范围与检查结果见[变更日志][local-link-001]和[项目状态](doc/LOG.md).
 
 ## 功能
 
@@ -57,22 +57,33 @@ metadata:
 
 ### 快速安装
 
-以 root 身份在全新测试机运行;默认仅安装 Web 控制台,首次安装时在终端打印随机管理端口和密码.以下命令检出当前 `main` 测试源码,运行版本显示 `test-<SHA>`.v5.1.1 尚未正式发布;已安装的 v5.1.0 及更早版本不支持自动迁移,请先读[升级](#升级).
+以 root 身份在全新测试机运行;默认仅安装 Web 控制台,首次安装时在终端打印随机管理端口和密码.以下命令检出 `v5.1.1-test.1` 测试标签,运行版本应显示同一标识.已安装的 v5.1.0 及更早版本不支持自动迁移,请先读[升级](#升级).
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### 常规安装
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # 可选: 按注释设置覆盖值
 bash deploy/install.sh
 ```
 
-当前测试源码中,`PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.首次安装无需浏览器设置向导.可用 `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` 明确选择服务端模块;省略时只安装 Web.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装;安装直接使用仓库随附的二进制文件.
+本测试版中,`PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.首次安装无需浏览器设置向导.可用 `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` 明确选择服务端模块;省略时只安装 Web.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装;安装直接使用仓库随附的二进制文件.
+
+### 离线测试包
+
+GitHub Release 提供完整源码与随附二进制文件的 `vps-server-v5.1.1-test.1.tar.gz`,预期大小约 48 MB.在可访问 GitHub 的电脑从[测试版资产](https://github.com/CharlesGool/vps-server/releases/download/v5.1.1-test.1/vps-server-v5.1.1-test.1.tar.gz) 下载,复制到干净测试机的 `/root/`,再按 Release 页面公布的 SHA-256 核对.将包解压到独立的 `/root/vps-server-v5.1.1-test.1/` 源码目录,不要直接覆盖已安装的 `$PREFIX`:
+
+```bash
+mkdir -p /root/vps-server-v5.1.1-test.1
+tar -xzf /root/vps-server-v5.1.1-test.1.tar.gz -C /root/vps-server-v5.1.1-test.1 --strip-components=1
+cd /root/vps-server-v5.1.1-test.1
+bash deploy/install.sh
+```
 
 ## 指南
 
@@ -80,7 +91,7 @@ bash deploy/install.sh
 
 Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;持久状态位于 `$VPSSRV_STATE_DIR`.重新检出或替换程序目录不会删除该状态根.
 
-源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.当前测试源码仍随附 FRPC,FRPS 和 iperf3;正式标签的行为以各自版本文档为准.
+源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.本测试版仍随附 FRPC,FRPS 和 iperf3;正式标签的行为以各自版本文档为准.
 
 ```bash
 bash deploy/install.sh                       # 首次仅安装 Web 控制台
@@ -129,7 +140,7 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 
 ## 升级
 
-计划中的 `v5.1.1` 是持久状态布局 `1` 的起点.v5.1.0 及更早版本**不支持自动迁移**:若仍有旧数据,先在安装目录外备份,再明确执行全新安装;已删除且没有备份的数据无法恢复.安装器发现旧服务或状态缺失时,会在修改服务前停止,不会替旧安装生成新密码或端口.
+`v5.1.1-test.1` 是持久状态布局 `1` 的验收候选;计划中的正式 `v5.1.1` 将以此布局为起点.v5.1.0 及更早版本**不支持自动迁移**:若仍有旧数据,先在安装目录外备份,再明确执行全新安装;已删除且没有备份的数据无法恢复.安装器发现旧服务或状态缺失时,会在修改服务前停止,不会替旧安装生成新密码或端口.
 
 从 v5.1.1 升级后续版本时,在独立源码目录检出新版本,保留 `$VPSSRV_STATE_DIR` 和 `/etc` 下已安装模块的配置,再使用相同 `PREFIX` 运行安装程序.安装器沿用状态根中的密码,端口,证书,运行数据和已记录模块;升级时不会再次打印旧密码.不要通过删除 `$PREFIX` 内的旧数据来准备升级.若自定义了持久路径,后续安装**必须**沿用同一路径;改变位置需要操作员手动转移并核验.在确认新服务正常前,保留原有代码与数据的独立备份.
 

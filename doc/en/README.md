@@ -29,8 +29,9 @@ metadata:
 A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
 reachability, an operator console for speed tests and connection logging, an
 on-demand iperf3 window, and sing-box proxy nodes. The latest formal release is
-v5.1.0. Current `main` is preparing the separate persistent state directory
-and FRPS editor correction for v5.1.1; it has not been formally released. See
+v5.1.0. The `v5.1.1-test.1` candidate is for acceptance of the separate
+persistent state directory and FRPS editor correction; it is not a formal
+release. See
 the [changelog][local-link-001] and [project status](../LOG.md) for release
 scope and verification results.
 
@@ -142,25 +143,25 @@ maintained, and their code is vendored here rather than absorbed.
 
 Run as root on a fresh test host. By default, only the Web console is installed.
 On first install, the installer prints the generated management port and
-password. These commands check out the current `main` test source; the running
-version displays `test-<SHA>`. v5.1.1 has not been formally released.
+password. These commands check out the `v5.1.1-test.1` test tag; the running
+version should display the same identifier.
 Installations of v5.1.0 or earlier cannot be migrated automatically; read
 [Upgrade](#upgrade) first.
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Normal Install
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
 ```
 
-In this test source, `PREFIX` defaults to `/root/apps/vps-server` and holds replaceable program files.
+In this test release, `PREFIX` defaults to `/root/apps/vps-server` and holds replaceable program files.
 Passwords, the console port, certificates, runtime data, installation records,
 and `.env` default to `/var/lib/vps-server`. Set `VPSSRV_STATE_DIR` in the command
 environment before the first install to use another external directory. There
@@ -170,6 +171,23 @@ explicitly; when omitted, only Web is installed. Install or remove optional
 modules later from Settings → Modules. Enable the HTTP and HTTPS public pages
 separately from Home. FRPC is installed separately when a local client is
 needed, using the bundled binary.
+
+### Offline test package
+
+The GitHub Release provides `vps-server-v5.1.1-test.1.tar.gz`, containing the
+complete source and bundled executables, with an expected size of about 48 MB.
+Download the [test release asset](https://github.com/CharlesGool/vps-server/releases/download/v5.1.1-test.1/vps-server-v5.1.1-test.1.tar.gz)
+on a computer that can reach GitHub, copy it to `/root/` on a clean test host,
+and verify its SHA-256 against the value published on the Release page. Extract
+it into a separate `/root/vps-server-v5.1.1-test.1/` source directory; do not
+overwrite the installed `$PREFIX` directly:
+
+```bash
+mkdir -p /root/vps-server-v5.1.1-test.1
+tar -xzf /root/vps-server-v5.1.1-test.1.tar.gz -C /root/vps-server-v5.1.1-test.1 --strip-components=1
+cd /root/vps-server-v5.1.1-test.1
+bash deploy/install.sh
+```
 
 ## Guidance
 
@@ -184,7 +202,7 @@ replacing the program directory does not delete that state root.
 
 There is no automated test suite in the source checkout. After changes, verify
 installation, console, and service behavior for the enabled modules manually.
-The current test source still bundles FRPC, FRPS, and iperf3. Formal tags retain
+This test release still bundles FRPC, FRPS, and iperf3. Formal tags retain
 the behavior documented for their respective versions.
 
 ```bash
@@ -245,7 +263,8 @@ Full reference: [Configuration reference][local-link-002].
 
 ## Upgrade
 
-The planned `v5.1.1` starts persistent state layout `1`. **Automatic migration is not supported**
+`v5.1.1-test.1` is an acceptance candidate for persistent state layout `1`;
+the planned formal `v5.1.1` will start with that layout. **Automatic migration is not supported**
 from v5.1.0 or earlier. If old data remains, back it up outside
 the installation directory and explicitly perform a fresh install. Data that
 was deleted without a backup cannot be recovered. If the installer finds an

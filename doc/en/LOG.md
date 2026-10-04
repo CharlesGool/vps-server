@@ -83,7 +83,7 @@ The dated decisions below preserve both rejected alternatives and their costs. A
 
 - FRPS editing registers this project's current port when its `PORTS.md` entry is missing, while continuing to reject ports owned by other services. A failed port change removes the new reservation; the operator reports that this correction passed manual testing.
 - New installations store the password, console port, certificates, runtime data, and installation record under `/var/lib/vps-server`. Later versions retain layout `1`; old layouts are not migrated automatically, and the installer stops before changing services if state is missing.
-- The new layout has passed only isolated local checks. A fresh installation, reinstall after replacing the program directory, and uninstall on the target host remain to be accepted.
+- The new layout has passed only isolated local checks. Fresh installation on the target host, reinstall and uninstall after replacing the program directory, a Python 3.9 runtime, reboot recovery, and real mobile devices still need acceptance.
 
 ## Handoff
 

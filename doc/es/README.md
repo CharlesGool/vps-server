@@ -26,7 +26,7 @@ metadata:
 
 ## Introducción
 
-Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: página pública para comprobar la accesibilidad de los puertos web, consola para medir velocidad y registrar conexiones, ventana iperf3 bajo demanda y nodos proxy sing-box. La versión formal más reciente es v5.1.0; la rama `main` prepara un directorio independiente para el estado persistente y la corrección de la edición de FRPS en v5.1.1, que aún no se ha publicado. Consulta el alcance de las versiones y las comprobaciones en el [historial de cambios][local-link-001] y el [estado del proyecto](LOG.md).
+Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: página pública para comprobar la accesibilidad de los puertos web, consola para medir velocidad y registrar conexiones, ventana iperf3 bajo demanda y nodos proxy sing-box. La versión formal más reciente es v5.1.0; `v5.1.1-test.1` permite aceptar el directorio independiente del estado persistente y la corrección de la edición de FRPS, y aún no es una versión formal. Consulta el alcance de las versiones y las comprobaciones en el [historial de cambios][local-link-001] y el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
@@ -56,28 +56,40 @@ La página FRPS autenticada muestra el estado del servicio local, las direccione
 
 ### Instalación rápida
 
-Ejecuta como root en una máquina de prueba nueva; de forma predeterminada solo se instala la consola Web y, en la primera instalación, el terminal muestra un puerto administrativo y una contraseña aleatorios. Estos comandos obtienen el código de prueba actual de `main`; la versión en ejecución muestra `test-<SHA>`. v5.1.1 aún no se ha publicado. Las instalaciones de v5.1.0 y versiones anteriores no admiten migración automática; lee primero [Actualización](#actualización).
+Ejecuta como root en una máquina de prueba nueva; de forma predeterminada solo se instala la consola Web y, en la primera instalación, el terminal muestra un puerto administrativo y una contraseña aleatorios. Estos comandos obtienen la etiqueta de prueba `v5.1.1-test.1`; la versión en ejecución debe mostrar el mismo identificador. Las instalaciones de v5.1.0 y versiones anteriores no admiten migración automática; lee primero [Actualización](#actualización).
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Instalación estándar
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
 ```
 
-En el código de prueba actual, `PREFIX` vale `/root/apps/vps-server` de forma predeterminada y solo contiene archivos de programa reemplazables. La contraseña, el puerto de la consola, los certificados, los datos de ejecución, el registro de instalación y `.env` se guardan de forma predeterminada en `/var/lib/vps-server`. En la primera instalación se puede establecer `VPSSRV_STATE_DIR` en el entorno del comando para usar otro directorio externo. La primera instalación se hace en el terminal, sin asistente en el navegador. Usa `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` para elegir módulos de servidor; si se omite, solo se instala Web. Instala o retira funciones opcionales desde Settings → Modules. Activa los sitios públicos HTTP y HTTPS por separado desde Home; la consola administrativa usa otro puerto. Instala FRPC por separado cuando necesites un cliente local; la instalación usa directamente el binario incluido.
+En esta versión de prueba, `PREFIX` vale `/root/apps/vps-server` de forma predeterminada y solo contiene archivos de programa reemplazables. La contraseña, el puerto de la consola, los certificados, los datos de ejecución, el registro de instalación y `.env` se guardan de forma predeterminada en `/var/lib/vps-server`. En la primera instalación se puede establecer `VPSSRV_STATE_DIR` en el entorno del comando para usar otro directorio externo. La primera instalación se hace en el terminal, sin asistente en el navegador. Usa `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` para elegir módulos de servidor; si se omite, solo se instala Web. Instala o retira funciones opcionales desde Settings → Modules. Activa los sitios públicos HTTP y HTTPS por separado desde Home; la consola administrativa usa otro puerto. Instala FRPC por separado cuando necesites un cliente local; la instalación usa directamente el binario incluido.
+
+
+### Paquete de prueba sin conexión
+
+GitHub Release ofrece `vps-server-v5.1.1-test.1.tar.gz` con el código fuente completo y los binarios incluidos; su tamaño previsto es de unos 48 MB. Descarga el [recurso de la versión de prueba](https://github.com/CharlesGool/vps-server/releases/download/v5.1.1-test.1/vps-server-v5.1.1-test.1.tar.gz) en un equipo con acceso a GitHub, cópialo a `/root/` de una máquina de prueba limpia y verifica su SHA-256 con el publicado en la página del Release. Extrae el paquete en un directorio independiente de código fuente, `/root/vps-server-v5.1.1-test.1/`; no sobrescribas directamente el `$PREFIX` instalado:
+
+```bash
+mkdir -p /root/vps-server-v5.1.1-test.1
+tar -xzf /root/vps-server-v5.1.1-test.1.tar.gz -C /root/vps-server-v5.1.1-test.1 --strip-components=1
+cd /root/vps-server-v5.1.1-test.1
+bash deploy/install.sh
+```
 
 ## Orientaciones
 
 ### Quick start
 
-La implementación Web está en `src/web/`, los recursos estáticos en `src/web/static/` y el instalador en `deploy/`. Los binarios y licencias incluidos están en `third_party/`; los metadatos de versión están en `config/`. El código Web instalado está en `$PREFIX/src/web/`, con la entrada compatible `$PREFIX/app.py` en la raíz. El estado persistente está en `$VPSSRV_STATE_DIR`; volver a clonar o sustituir el directorio del programa no borra esa raíz de estado. El código de prueba actual sigue incluyendo FRPC, FRPS e iperf3; el comportamiento de las etiquetas formales se describe en la documentación de cada versión.
+La implementación Web está en `src/web/`, los recursos estáticos en `src/web/static/` y el instalador en `deploy/`. Los binarios y licencias incluidos están en `third_party/`; los metadatos de versión están en `config/`. El código Web instalado está en `$PREFIX/src/web/`, con la entrada compatible `$PREFIX/app.py` en la raíz. El estado persistente está en `$VPSSRV_STATE_DIR`; volver a clonar o sustituir el directorio del programa no borra esa raíz de estado. Esta versión de prueba sigue incluyendo FRPC, FRPS e iperf3; el comportamiento de las etiquetas formales se describe en la documentación de cada versión.
 
 ```bash
 bash deploy/install.sh                       # primera instalación de la consola Web en el terminal
@@ -126,7 +138,7 @@ Referencia completa: [Referencia de configuración][local-link-002].
 
 ## Actualización
 
-La versión prevista `v5.1.1` establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, guárdalos fuera del directorio de instalación antes de realizar expresamente una instalación nueva. Los datos ya eliminados sin copia de seguridad no pueden recuperarse. Si el instalador detecta un servicio antiguo o falta el estado, se detiene antes de modificar los servicios y no genera una nueva contraseña ni un nuevo puerto para una instalación anterior.
+`v5.1.1-test.1` es el candidato de aceptación de la disposición `1` del estado persistente; se prevé que la versión formal `v5.1.1` establezca esa disposición. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, guárdalos fuera del directorio de instalación antes de realizar expresamente una instalación nueva. Los datos ya eliminados sin copia de seguridad no pueden recuperarse. Si el instalador detecta un servicio antiguo o falta el estado, se detiene antes de modificar los servicios y no genera una nueva contraseña ni un nuevo puerto para una instalación anterior.
 
 Para actualizar desde v5.1.1 a una versión posterior, clona el código nuevo en un directorio independiente, conserva `$VPSSRV_STATE_DIR` y las configuraciones de los módulos instalados bajo `/etc`, y ejecuta el instalador con el mismo `PREFIX`. El instalador reutiliza la contraseña, el puerto, los certificados, los datos de ejecución y los módulos registrados en la raíz de estado; no vuelve a mostrar la contraseña antigua. No borres los datos antiguos de `$PREFIX` para preparar la actualización. Si personalizaste la ruta persistente, **DEBES** usar la misma ruta en las instalaciones posteriores; cambiarla requiere que el operador traslade y verifique los datos manualmente. Conserva copias independientes del código y los datos anteriores hasta verificar el servicio nuevo.
 

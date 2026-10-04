@@ -82,7 +82,7 @@ Las decisiones fechadas conservan tanto las alternativas descartadas como sus co
 
 - La edición de FRPS registra el puerto actual del proyecto si falta su entrada en `PORTS.md`, sigue rechazando puertos asignados a otros servicios y elimina la nueva reserva si falla un cambio de puerto. El operador comunicó que pasó la prueba manual de esta corrección.
 - La contraseña, el puerto de la consola, los certificados, los datos de ejecución y el registro de instalación de una nueva instalación pasan a `/var/lib/vps-server`. Las versiones posteriores conservan la disposición `1`; no se migran automáticamente las disposiciones antiguas y el instalador se detiene antes de modificar servicios cuando falta estado esencial.
-- La nueva disposición de estado solo ha pasado comprobaciones locales aisladas; siguen pendientes de aceptación en la máquina de destino la instalación nueva, la reinstalación tras reemplazar el directorio del programa y la desinstalación.
+- La nueva disposición de estado solo ha pasado comprobaciones locales aisladas; siguen pendientes de aceptación en la máquina de destino la instalación nueva, la reinstalación tras reemplazar el directorio del programa y la desinstalación, el entorno de ejecución Python 3.9, la recuperación tras reiniciar el servidor y los dispositivos móviles reales.
 
 ## Traspaso
 
