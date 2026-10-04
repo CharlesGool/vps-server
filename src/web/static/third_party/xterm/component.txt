@@ -1,0 +1,9 @@
+Components: @xterm/xterm 6.0.0 and @xterm/addon-fit 0.11.0
+Source: https://github.com/xtermjs/xterm.js
+xterm npm archive: https://registry.npmjs.org/@xterm/xterm/-/xterm-6.0.0.tgz
+xterm archive SHA256: 908e66e04af6c8dc6b00dd3b54de088e2e81e5ed866284fd6c2fb3c2d1c7a3f6
+Fit Addon npm archive: https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.11.0.tgz
+Fit Addon archive SHA256: 26003b4517a132b64e4ff228fd88a5fda3fff5e606c76093f6dcff772e9ecec0
+Extracted members: package/lib/xterm.js, package/css/xterm.css, package/lib/addon-fit.js
+License members: package/LICENSE from each archive (MIT; both retained separately)
+Extracted file hashes: config/dependencies.lock.json

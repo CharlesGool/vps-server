@@ -142,6 +142,7 @@ Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理
 | 变更日志 | `features/changelog.py` | `src/web/static/styles/changelog.css` |
 | Lucky 状态 | `features/lucky.py` | 共用卡片样式 |
 | Tailscale 状态,设置与设备 | `features/tailscale.py`, `tailscale_control.py` | `src/web/static/styles/modules.css`,共用私有值控件 |
+| 浏览器 root 终端 | `features/terminal.py`, `terminal_session.py` | 随附 xterm.js 与 Fit Addon,`src/web/static/terminal.js` |
 | 公开可达性页面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入响应 |
 
 `features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.v6 候选的持久数据位于独立状态根,旧版平铺代码文件不作为当前运行入口.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
@@ -187,9 +188,11 @@ Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理
 
 ### Tailscale 模块
 
-离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置使用 Linux 版 `tailscale set`,退出登录需要显式确认;设备列表可刷新.实验性低内存选项经固定参数辅助任务写入独立 systemd drop-in `GOGC=10`,重启服务并在失败时尝试恢复原配置;较低 GOGC 可能增加 CPU 开销.这些控制不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
+离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置在同一表单中收集更改,用一次 Linux `tailscale set` 调用应用;空白的路由,出口节点与中继端口输入保持原值,清除由独立复选框表达.设备 IPv4/IPv6 分别按需读取,本机子网和可用出口节点可快速填入.实验性低内存选项经固定参数辅助任务写入独立 systemd drop-in `GOGC=10`,重启服务并在失败时尝试恢复原配置;较低 GOGC 可能增加 CPU 开销.这些控制不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
 
-Lucky 保留原生管理页面.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.控制台按钮从认证接口取得遮盖的管理端口,跳转到当前服务器地址;当前网络无法直连时,操作员可自行建立 SSH 端口转发.Lucky HTTP 登录不提供传输加密.
+Lucky 保留原生管理页面;本项目只显示管理地址,运行状态及打开按钮,不展示由 Lucky 自身管理的账户和密码.页面每 5 秒读取当前配置端口,Web 进程也每 5 秒检查端口变化;特权助手确认 Lucky 进程实际监听后,原子更新 `PORTS.md` 中仅属于 Lucky 的行,监听消失时移除旧行.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.Lucky HTTP 登录不提供传输加密.
+
+浏览器终端只在已启用 Web 管理功能且管理员密码会话的短期验证有效时开放,IP 免密会话不能打开.root PTY 通过同源且带 CSRF 令牌的 WebSocket 建立,连接断开,离开页面或验证到期即终止进程;命令内容不写入控制台访问日志.xterm.js 静态文件与许可证随离线包提供,不使用 CDN.
 
 ### iperf3 窗口生命周期
 
@@ -396,7 +399,7 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 
 ## 数据设计
 
-已登录的 Settings 页面列出已安装的运行模块.可选模块的安装与卸载由串行 root 辅助程序执行;`data/module-job.json` 保存任务状态,`data/module-job.log` 保存当前输出,`data/module-history.log` 追加操作历史.模块页仅在当前操作页面短时显示安装/卸载进度,最后输出后 30 秒收起,刷新或重新进入不重现完成提示.独立的 `/settings/logs` 页面读取模块历史与 Web,节点计量,Singbox,FRPS,FRPC,Lucky,Tailscale 的 journal;服务日志范围由主机 journal 设置决定.
+已登录的 Settings 页面直接显示运行模块卡片,旧 `/settings/modules` 路径重定向到对应锚点.可选模块的安装与卸载由串行 root 辅助程序执行;`data/module-job.json` 保存任务状态,`data/module-job.log` 保存当前输出,`data/module-history.log` 追加操作历史.模块区仅在当前操作页面短时显示安装/卸载进度,最后输出后 30 秒收起,刷新或重新进入不重现完成提示.独立的 `/settings/logs` 页面汇总模块操作历史及 Web,Singbox(含节点流量与访问管理),FRPS,FRPC,Lucky,Tailscale 的 journal;服务日志可按 journal 优先级筛选.模块历史不含优先级.清空模块历史会截断本项目记录文件;清空服务日志只在 `data/log-clear.json` 写入显示截止时间,不删除整机 journal.
 
 Home 的功能开关独立于模块安装状态.公开 Web 监听器,代理节点,Tailscale,FRPS,FRPC,端口转发和临时 iperf3 窗口占用的主机端口登记在安装目录同级的 `PORTS.md`;运行时开关和节点操作共用 `.ports.lock` 与原子写入,失败时回滚新登记,停止或删除后只释放本项目的行.Web 沙盒保持安装目录上级只读,运行时登记交给固定参数的 systemd 辅助任务.iperf3 只有窗口实际打开时登记端口,关闭或 Web 重启时释放.FRPC 组开关在停止实例前记录活跃实例,重新启用时仅恢复它们.Proxy nodes 组只控制统一 sing-box 服务.Home 的 FRPS 入口为 `/frps`,FRPC 列表入口为 `/frpc`,Tailscale 入口为 `/tailscale`;旧 `/frp` 书签重定向到 FRPC 列表.
 

@@ -87,6 +87,7 @@ from module_manager import iperf_binary
 from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
+from console_port import lucky_listener_active
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
@@ -584,6 +585,27 @@ def lucky_admin(*args, **kwargs):
     return _feature_lucky.lucky_admin(sys.modules[__name__], *args, **kwargs)
 
 
+def watch_lucky_port(stop_event):
+    owner = "vps-server Lucky"
+    while not stop_event.is_set():
+        try:
+            data = lucky_admin()
+            active = (bool(data) and _run_quiet(["systemctl", "is-active", "--quiet", LUCKY_SERVICE])
+                      and lucky_listener_active(data["AdminWebListenPort"]))
+            desired = data["AdminWebListenPort"] if active else None
+            rows, _ = console_port_rows(BASE_DIR.parent / "PORTS.md")
+            recorded = [row[0] for row in rows if row[1] == owner]
+            if recorded != ([desired] if desired else []):
+                unit = "vps-server-lucky-port-" + secrets.token_hex(6)
+                subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                                "--unit=" + unit, "/usr/bin/python3",
+                                str(WEB_CODE_DIR / "console_port.py"), "sync-lucky", str(BASE_DIR)],
+                               capture_output=True, text=True, timeout=30, check=True)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass  # The next poll retries without modifying Lucky's own configuration.
+        stop_event.wait(5)
+
+
 
 def frps_node(*args, **kwargs):
     return _feature_frp.frps_node(sys.modules[__name__], *args, **kwargs)
@@ -876,6 +898,11 @@ STATIC_FILES = {
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
     "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
+    "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
+    "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),
+    "/static/third_party/xterm/xterm.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "xterm.js"),
+    "/static/third_party/xterm/addon-fit.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "addon-fit.js"),
+    "/static/third_party/xterm/xterm.css": ("text/css", STATIC_DIR / "third_party" / "xterm" / "xterm.css"),
     "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
@@ -920,6 +947,7 @@ from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.lucky import LuckyMixin
+from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
 from features.proxy import ProxyMixin
@@ -928,7 +956,7 @@ from features.visitors import VisitorsMixin
 from features.public import PublicMixin
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, LuckyMixin, TailscaleMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, LuckyMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1017,11 +1045,13 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self.end_headers()
         self.wfile.write(data)
 
-    def send_json(self, status, obj):
+    def send_json(self, status, obj, extra_headers=None):
         data = json.dumps(obj).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(data)
 
@@ -1126,7 +1156,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return self.redirect(destination)
 
         page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
-                        "/portfwd": "portfwd", "/visitors": "visitors",
+                        "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
                         "/changelog": "changelog"}
         if method == "GET" and path in page_modules:
             module = page_modules[path]
@@ -1149,7 +1179,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if self.route_module_admin(method, path, lang, query_lang):
             return
 
-        for route in (self.route_modules, self.route_speedtest, self.route_proxy,
+        for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
                       self.route_lucky, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
@@ -1370,6 +1400,7 @@ def main():
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
+        threading.Thread(target=watch_lucky_port, args=(stop_event,), daemon=True).start()
 
         console.serve_forever()
     except KeyboardInterrupt:

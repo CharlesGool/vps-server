@@ -36,6 +36,7 @@ class SettingsMixin:
             f'<a class="preferences-choice" href="/settings?lang={code}"'
             + (' aria-current="true"' if code == lang else '')
             + f'>{esc(name)}</a>' for code, name in self.context.LANG_NAMES.items())
+        modules = self.module_section(lang)
         body = f'''<div class="access-workspace preferences-workspace">
           <h1 class="access-page-title">{esc(t['settings'])}</h1>
           <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['settings'], quote=True)}">
@@ -74,9 +75,7 @@ class SettingsMixin:
             <section id="settings-language" class="card access-card preferences-card"><h2>{esc(t['login_language'])}</h2>
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
             </section>
-            <section id="settings-modules" class="card access-card preferences-card"><h2>{esc(t['modules_heading'])}</h2>
-              <a class="module-manage" href="/settings/modules">{esc(t['modules_manage'])}</a>
-            </section>
+            {modules}
             <section id="settings-security" class="card access-card preferences-card preferences-security-card">
               <span class="preferences-security-heading">{self.context.ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>
               <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>

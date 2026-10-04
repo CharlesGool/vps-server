@@ -266,6 +266,52 @@ def register_current(prefix, port, unit=UNIT):
         write_rows(registry, rows)
 
 
+def sync_lucky_port(prefix):
+    """Reconcile Lucky's native admin port after its own UI changes it."""
+    owner = "vps-server Lucky"
+    prefix = Path(prefix)
+    registry = prefix.parent / "PORTS.md"
+    active = subprocess.run(["systemctl", "is-active", "--quiet", "vps-server-lucky.service"],
+                            check=False, timeout=5).returncode == 0
+    wanted = None
+    if active:
+        config = json.loads(Path("/etc/vps-server-lucky/config.json").read_text())
+        wanted = config["BaseConfigure"]["AdminWebListenPort"]
+        if type(wanted) is not int or not 1 <= wanted <= 65535:
+            raise ValueError("invalid Lucky admin port")
+        if not lucky_listener_active(wanted):
+            wanted = None
+    with (prefix.parent / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows, _ = read_rows(registry)
+        existing = [row[0] for row in rows if row[1] == owner]
+        if existing == ([wanted] if wanted else []):
+            return False
+        if wanted and any(row[0] == wanted and row[1] != owner for row in rows):
+            raise ValueError("Lucky admin port belongs to another service")
+        replacement = [row for row in rows if row[1] != owner]
+        if wanted:
+            replacement.append((wanted, owner, "0.0.0.0", date.today().isoformat()))
+        write_rows(registry, replacement)
+        return True
+
+
+def lucky_listener_active(port):
+    if type(port) is not int or not 1 <= port <= 65535:
+        return False
+    try:
+        pid = subprocess.run(["systemctl", "show", "-p", "MainPID", "--value",
+                              "vps-server-lucky.service"], capture_output=True, text=True,
+                             check=True, timeout=5).stdout.strip()
+        if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
+            return False
+        listening = subprocess.run(["ss", "-H", "-ltnp", f"( sport = :{port} )"],
+                                   capture_output=True, text=True, check=True, timeout=5).stdout
+        return f"pid={pid}," in listening
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def main(argv=None):
     args = sys.argv[1:] if argv is None else argv
     if len(args) == 4 and args[0] in ("reserve", "release"):
@@ -275,6 +321,8 @@ def main(argv=None):
         changed = (reserve_owned_port(prefix, int(raw_port), owner) if action == "reserve"
                    else release_owned_port(prefix, int(raw_port), owner))
         print("changed" if changed else "unchanged")
+    elif len(args) == 2 and args[0] == "sync-lucky":
+        print("changed" if sync_lucky_port(args[1]) else "unchanged")
     elif len(args) == 4 and args[0] == "register" and re.fullmatch(r"[A-Za-z0-9@_.-]+\.service", args[3]):
         register_current(args[1], int(args[2]), args[3])
     elif len(args) == 5 and args[0] == "change":

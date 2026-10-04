@@ -81,11 +81,38 @@ def set_relay_port(value):
 
 
 def set_exit_node(value):
+    call("set", "--exit-node=" + normalize_exit_node(value))
+
+
+def normalize_exit_node(value):
     value = value.strip()
     if value and not (re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}", value)
                       or _valid_tail_ip(value)):
         raise ValueError("invalid exit node")
-    call("set", "--exit-node=" + value)
+    return value
+
+
+def set_many(values):
+    """Apply one group of validated settings in a single Tailscale request."""
+    names = BOOL_SETTINGS | {"advertise-routes", "exit-node", "relay-server-port"}
+    if not values or set(values) - names:
+        raise ValueError("invalid Tailscale settings")
+    flags = []
+    for name, value in values.items():
+        if name in BOOL_SETTINGS:
+            if type(value) is not bool:
+                raise ValueError("invalid Tailscale setting")
+            flags.append(f"--{name}={'true' if value else 'false'}")
+        elif name == "advertise-routes":
+            flags.append("--advertise-routes=" + normalize_routes(value))
+        elif name == "exit-node":
+            flags.append("--exit-node=" + normalize_exit_node(value))
+        else:
+            value = value.strip()
+            if value and (not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 65535):
+                raise ValueError("invalid peer relay port")
+            flags.append("--relay-server-port=" + value)
+    call("set", *flags)
 
 
 def connect(login_server="", auth_key=""):
@@ -186,6 +213,8 @@ def peers(snapshot):
             rx = tx = 0
         result.append({"id": str(peer.get("ID") or ""),
                        "name": str(peer.get("HostName") or peer.get("DNSName") or ""),
+                       "exit_option": peer.get("ExitNodeOption") is True,
+                       "selector": str(peer.get("DNSName") or "").rstrip("."),
                        "addresses": [str(ip) for ip in peer.get("TailscaleIPs", []) if isinstance(ip, str)],
                        "online": peer.get("Online") is True,
                        "os": str(peer.get("OS") or ""),
@@ -194,6 +223,27 @@ def peers(snapshot):
                        "tx": tx,
                        "last_seen": str(peer.get("LastSeen") or "")})
     return sorted(result, key=lambda peer: (not peer["online"], peer["name"].lower()))
+
+
+def local_subnets():
+    """Suggest directly connected IPv4 networks without changing routing."""
+    try:
+        result = subprocess.run(["ip", "-j", "-4", "route", "show", "scope", "link"],
+                                capture_output=True, text=True, timeout=5, check=True)
+        routes = json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
+    found = set()
+    for route in routes if isinstance(routes, list) else []:
+        if not isinstance(route, dict):
+            continue
+        try:
+            network = ipaddress.ip_network(route.get("dst", ""), strict=True)
+        except ValueError:
+            continue
+        if network.version == 4 and not (network.is_loopback or network.is_multicast or network.is_unspecified):
+            found.add(str(network))
+    return sorted(found)[:8]
 
 
 if __name__ == "__main__":

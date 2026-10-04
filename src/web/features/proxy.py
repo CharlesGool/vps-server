@@ -215,14 +215,7 @@ class ProxyMixin:
         if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi', 'public-port', 'target-port', 'account', 'address'):
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         try:
-            if identifier == 'lucky' and field in ('port', 'account', 'credential'):
-                data = self.context.lucky_admin()
-                if data is None:
-                    raise ValueError('no Lucky admin')
-                value = str(data['AdminWebListenPort'] if field == 'port' else
-                            data.get('AdminAccount', '') if field == 'account' else
-                            data.get('AdminPassword', ''))
-            elif identifier.startswith('interface-') and field == 'address':
+            if identifier.startswith('interface-') and field == 'address':
                 index = identifier[10:]
                 if not index.isascii() or not index.isdecimal():
                     raise ValueError('invalid interface')

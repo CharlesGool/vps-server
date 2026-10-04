@@ -7,9 +7,82 @@ from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 
 import tailscale_control as control
+from features.modules import LOG_LEVELS, log_clear_form, log_cutoffs, log_level_form, service_log_text
 
 
 class TailscaleMixin:
+    def apply_tailscale_batch(self, form):
+        previous = control.prefs()
+        state = control.status().get("BackendState")
+        changes = {}
+        for name in control.BOOL_SETTINGS:
+            if form.get("available_" + name) != ["1"]:
+                continue
+            if type(previous.get(name)) is not bool or name == "webclient" and state != "Running":
+                raise ValueError("Tailscale setting unavailable")
+            value = form.get("enabled_" + name) == ["1"]
+            if value != previous[name]:
+                changes[name] = value
+        for kind, name in (("routes", "advertise-routes"), ("exit", "exit-node"),
+                           ("relay", "relay-server-port")):
+            typed = form[kind + "_value"][0].strip()
+            clear = form.get(kind + "_clear") == ["1"]
+            if typed and clear:
+                raise ValueError("conflicting Tailscale setting")
+            if not typed and not clear:
+                continue
+            value = "" if clear else typed
+            if name == "advertise-routes":
+                value = control.normalize_routes(value)
+            elif name == "exit-node":
+                value = control.normalize_exit_node(value)
+            elif value and (not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 65535):
+                raise ValueError("invalid peer relay port")
+            if value != str(previous.get(name) or ""):
+                changes[name] = value
+        if changes.get("webclient") is True or changes.get("relay-server-port"):
+            if state != "Running":
+                raise ValueError("Tailscale is not connected")
+        old_memory = control.memory_mode()
+        new_memory = form.get("memory_enabled") == ["1"] if form.get("memory_available") == ["1"] else old_memory
+        reserved = []
+
+        def change_memory(enabled):
+            unit = "vps-server-tail-memory-" + self.context.secrets.token_hex(6)
+            result = subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                                     "--unit=" + unit, "/usr/bin/python3",
+                                     str(self.context.WEB_CODE_DIR / "tailscale_control.py"),
+                                     "memory", "on" if enabled else "off"], capture_output=True, text=True,
+                                    check=False, timeout=90)
+            if result.returncode:
+                raise RuntimeError("Tailscale memory setting failed")
+
+        try:
+            if new_memory != old_memory:
+                change_memory(new_memory)
+            if changes.get("webclient") is True and self.context.reserve_owned_port(
+                    self.context.BASE_DIR, 5252, "vps-server Tailscale Web"):
+                reserved.append((5252, "vps-server Tailscale Web"))
+            relay = changes.get("relay-server-port")
+            if relay and self.context.reserve_owned_port(
+                    self.context.BASE_DIR, int(relay), "vps-server Tailscale Relay"):
+                reserved.append((int(relay), "vps-server Tailscale Relay"))
+            if changes:
+                control.set_many(changes)
+        except BaseException:
+            for port, owner in reversed(reserved):
+                self.context.release_owned_port(self.context.BASE_DIR, port, owner)
+            if new_memory != old_memory:
+                change_memory(old_memory)
+            raise
+        if changes.get("webclient") is False:
+            self.context.release_owned_port(self.context.BASE_DIR, 5252, "vps-server Tailscale Web")
+        old_relay = str(previous.get("relay-server-port") or "")
+        if old_relay and "relay-server-port" in changes and old_relay != changes["relay-server-port"]:
+            self.context.release_owned_port(self.context.BASE_DIR, int(old_relay), "vps-server Tailscale Relay")
+        if "webclient" in changes or "relay-server-port" in changes:
+            self.context.snapshot_tailscale_ports()
+
     def page_tailscale(self, lang, query_lang, parsed):
         t = self.context.STRINGS[lang]
         esc = html.escape
@@ -56,7 +129,7 @@ class TailscaleMixin:
                        ("tailscale_public_endpoint", net.get("GlobalV4") or ""))
             facts = "".join(f'<div class="tailscale-fact"><span>{esc(t[key])}</span><strong>' +
                             (self.private_value_control("tailscale-" + key, "address", t, endpoint="/tailscale/private-value")
-                             if key in ("tailscale_ipv4", "tailscale_ipv6", "tailscale_account", "tailscale_public_endpoint") and value else esc(str(value or "—"))) + '</strong></div>'
+                            if key in ("tailscale_control_server", "tailscale_ipv4", "tailscale_ipv6", "tailscale_account", "tailscale_public_endpoint") and value else esc(str(value or "—"))) + '</strong></div>'
                             for key, value in details)
             auth_url = snapshot.get("AuthURL") or ""
             if state != "Running":
@@ -105,45 +178,48 @@ class TailscaleMixin:
                        ("webclient", "tailscale_webclient", "RunWebClient"))
             # `tailscale get --json` uses CLI flag names. An unknown value stays
             # unselected instead of implying that an option is disabled.
+            options_html = ""
             for name, label, _ in choices:
                 value = settings.get(name)
                 checked = 'checked' if value is True else ''
                 disabled = 'disabled' if type(value) is not bool or name == "webclient" and state != "Running" else ''
-                token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:set:" + name)
-                content += (f'<form method="post" action="/tailscale/action" class="tailscale-setting">'
-                            f'<label><input type="checkbox" name="enabled" value="1" {checked} {disabled}>'
-                            f'{esc(t[label])}</label><input type="hidden" name="action" value="set">'
-                            f'<input type="hidden" name="name" value="{name}"><input type="hidden" name="csrf" value="{token}">'
-                            f'<button type="submit" {disabled}>{esc(t["frp_save"])}</button></form>')
+                options_html += (f'<label class="tailscale-option"><input type="checkbox" name="enabled_{name}" value="1" {checked} {disabled}>'
+                                 f'<span>{esc(t[label])}</span></label>'
+                                 + (f'<input type="hidden" name="available_{name}" value="1">' if not disabled else ''))
             try:
                 memory_enabled = control.memory_mode()
             except (OSError, ValueError):
                 memory_enabled = None
-            token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:memory")
-            content += (f'<form method="post" action="/tailscale/action" class="tailscale-setting">'
-                        f'<label><input type="checkbox" name="enabled" value="1" '
-                        f'{"checked" if memory_enabled is True else ""} {"disabled" if memory_enabled is None else ""}>'
-                        f'{esc(t["tailscale_memory"])}</label>'
-                        f'<span class="muted">{esc(t["tailscale_memory_note"])}</span>'
-                        f'<input type="hidden" name="action" value="memory"><input type="hidden" name="csrf" value="{token}">'
-                        f'<button type="submit" {"disabled" if memory_enabled is None else ""}>{esc(t["frp_save"])}</button></form>')
+            options_html += (f'<label class="tailscale-option"><input type="checkbox" name="memory_enabled" value="1" '
+                             f'{"checked" if memory_enabled is True else ""} {"disabled" if memory_enabled is None else ""}>'
+                             f'<span>{esc(t["tailscale_memory"])}<small>{esc(t["tailscale_memory_note"])}</small></span></label>'
+                             + ('<input type="hidden" name="memory_available" value="1">' if memory_enabled is not None else ''))
+            fields_html = ""
+            subnets = control.local_subnets()
+            exit_nodes = [peer for peer in control.peers(snapshot) if peer["exit_option"] and peer["selector"]]
             for kind, label, current in (("routes", "tailscale_routes", settings.get("advertise-routes", "")),
                                          ("exit", "tailscale_exit_node", settings.get("exit-node", "")),
                                          ("relay", "tailscale_peer_relay", settings.get("relay-server-port", ""))):
-                token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:" + kind)
                 current_html = (f'<span>{esc(t["tailscale_current"])}: '
                                 f'{self.private_value_control("tailscale-setting-" + kind, "value", t, endpoint="/tailscale/private-value")}</span>'
                                 if current else "")
-                clear_token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:" + kind + "-clear")
                 field = ('<input name="value" type="number" min="1" max="65535" required>' if kind == "relay" else
-                         '<input name="value" value="" maxlength="255" required>')
-                content += (f'<form method="post" action="/tailscale/action" class="tailscale-setting">'
-                            f'<label>{esc(t[label])}{field}</label>{current_html}'
-                            f'<input type="hidden" name="action" value="{kind}"><input type="hidden" name="csrf" value="{token}">'
-                            f'<button type="submit">{esc(t["frp_save"])}</button></form>'
-                            f'<form method="post" action="/tailscale/action" class="tailscale-clear">'
-                            f'<input type="hidden" name="action" value="{kind}-clear"><input type="hidden" name="csrf" value="{clear_token}">'
-                            f'<button type="submit" {"" if current else "disabled"}>{esc(t["tailscale_clear"])}</button></form>')
+                         '<input name="value" value="" maxlength="255">')
+                field = field.replace('name="value"', f'name="{kind}_value"').replace(' required', '')
+                suggestions = ("".join(f'<button type="button" class="tailscale-choice" data-route-choice="{esc(route, quote=True)}">{esc(route)}</button>'
+                                       for route in subnets) if kind == "routes" else
+                               "".join(f'<button type="button" class="tailscale-choice" data-exit-choice="{esc(peer["selector"], quote=True)}">{esc(peer["name"])}</button>'
+                                       for peer in exit_nodes) if kind == "exit" else "")
+                fields_html += (f'<div class="tailscale-setting-card"><label>{esc(t[label])}{field}</label>'
+                                f'<small class="muted">{esc(t["tailscale_blank_keep"])}</small>{current_html}'
+                                f'{"<div class=tailscale-suggestions>" + suggestions + "</div>" if suggestions else ""}'
+                                f'<label class="tailscale-clear-choice"><input type="checkbox" name="{kind}_clear" value="1" '
+                                f'{"" if current else "disabled"}>{esc(t["tailscale_clear"])}</label></div>')
+            token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:batch")
+            content += (f'<form method="post" action="/tailscale/action" class="tailscale-batch">'
+                        f'<input type="hidden" name="action" value="batch"><input type="hidden" name="csrf" value="{token}">'
+                        f'<div class="tailscale-options">{options_html}</div><div class="tailscale-setting-fields">{fields_html}</div>'
+                        f'<div class="tailscale-save"><button type="submit">{esc(t["frp_save"])}</button></div></form>')
         elif tab == "devices":
             devices = control.peers(snapshot)
             content += (f'<div class="tailscale-head"><h2>{esc(t["tailscale_devices"])} ({len(devices)})</h2>'
@@ -152,25 +228,35 @@ class TailscaleMixin:
                 content += f'<p class="muted">{esc(t["tailscale_no_devices"])}</p>'
             else:
                 rows = "".join(f'<tr><td>{esc(p["name"])}</td><td>{esc(t["tailscale_online"] if p["online"] else t["tailscale_offline"])}</td>'
-                               f'<td>{self.private_value_control("tailscale-peer-" + p["id"], "address", t, endpoint="/tailscale/private-value") if p["addresses"] and p["id"] else "—"}</td>'
+                               f'<td><div class="tailscale-peer-addresses">' + "".join(
+                                   f'<div class="tailscale-peer-address"><small>{family}</small>'
+                                   f'{self.private_value_control("tailscale-peer-" + p["id"], field, t, endpoint="/tailscale/private-value")}</div>'
+                                   for family, field, marker in (("IPv4", "ipv4", False), ("IPv6", "ipv6", True))
+                                   if p["id"] and any((":" in address) == marker for address in p["addresses"])) +
+                               '</div></td>'
                                f'<td>{esc(p["os"])}</td><td>{esc(p["relay"] or "—")}</td>'
-                               f'<td>{p["rx"]:,} / {p["tx"]:,}</td><td>{esc(p["last_seen"] or "—")}</td></tr>'
+                               f'<td>{p["rx"]:,} / {p["tx"]:,}</td><td>{esc(t["tailscale_online"] if p["online"] else p["last_seen"] or "—")}</td></tr>'
                                for p in devices)
                 content += (f'<div class="tailscale-table"><table><thead><tr>'
                             + "".join(f'<th scope="col">{esc(t[key])}</th>' for key in
                                       ("tailscale_device", "tailscale_state", "tailscale_address", "tailscale_os", "tailscale_relay", "tailscale_rx_tx", "tailscale_last_seen"))
                             + f'</tr></thead><tbody>{rows}</tbody></table></div>')
         else:
-            try:
-                result = subprocess.run(["journalctl", "--no-pager", "-o", "short-iso", "-n", "500", "-u", control.UNIT],
-                                        capture_output=True, text=True, timeout=15, check=False)
-                output = result.stdout if result.returncode == 0 else t["logs_unavailable"]
-            except (OSError, subprocess.TimeoutExpired):
-                output = t["logs_unavailable"]
-            content += f'<pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre>'
+            level = parse_qs(parsed.query).get("level", ["all"])[0]
+            if level not in dict(LOG_LEVELS):
+                level = "all"
+            output = service_log_text(self.context, (control.UNIT,), level, 500,
+                                      log_cutoffs(self.context).get("tailscale"))
+            content += (f'{"<p class=notice role=status>" + esc(t["logs_clear_done"]) + "</p>" if parse_qs(parsed.query).get("cleared") == ["1"] else ""}'
+                        '<div class="logs-actions">' +
+                        log_clear_form(self.context, t, self.get_cookie("session"), "tailscale", "tailscale") +
+                        f'<small>{esc(t["logs_clear_note"])}</small></div>' +
+                        log_level_form(t, "/tailscale", {"tab": "logs"}, level) +
+                        f'<pre class="logs-output" role="log">{esc((output or t["logs_empty"]) if output is not None else t["logs_unavailable"])}</pre>')
         body = (f'<div class="card wide tailscale-page">{headline}<nav class="log-sources" aria-label="Tailscale">{nav}</nav>'
                 f'{content}</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
-                '<script src="/static/password-fields.js"></script><script src="/static/tailscale.js" defer></script>')
+                '<script src="/static/password-fields.js"></script><script src="/static/tailscale.js" defer></script>'
+                '<script src="/static/log-controls.js" defer></script>')
         self.send_html(200, self.render_page("Tailscale", body, lang, back_href="/"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -197,7 +283,15 @@ class TailscaleMixin:
                    "connect": {"action", "csrf", "login_server", "auth_key"},
                    "logout": {"action", "csrf", "confirm"},
                    "memory": {"action", "csrf", "enabled"}}
+        allowed["batch"] = ({"action", "csrf", "routes_value", "exit_value", "relay_value", "memory_available", "memory_enabled"}
+                            | {kind + "_clear" for kind in ("routes", "exit", "relay")}
+                            | {prefix + name for name in control.BOOL_SETTINGS for prefix in ("available_", "enabled_")})
         if action not in allowed or set(form) - allowed[action] or any(len(v) != 1 for v in form.values()):
+            return self.send_html(400, "Invalid request")
+        if action == "batch" and (not {"routes_value", "exit_value", "relay_value"} <= set(form) or
+                                  any(value != ["1"] for key, value in form.items()
+                                      if key.endswith("_clear") or key.startswith(("available_", "enabled_")) or
+                                      key in ("memory_available", "memory_enabled"))):
             return self.send_html(400, "Invalid request")
         if action == "set" and name not in control.BOOL_SETTINGS:
             return self.send_html(400, "Invalid request")
@@ -212,7 +306,9 @@ class TailscaleMixin:
         if not self.context.hmac.compare_digest(form.get("csrf", [""])[0], expected):
             return self.send_html(403, "Forbidden")
         try:
-            if action == "set":
+            if action == "batch":
+                self.apply_tailscale_batch(form)
+            elif action == "set":
                 enabled = form.get("enabled") == ["1"]
                 reserved = False
                 if name == "webclient" and enabled:
@@ -284,7 +380,7 @@ class TailscaleMixin:
                 subprocess.run(["systemctl", "restart", control.UNIT], check=True, timeout=60)
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
             return self.send_html(400, self.render_page("Tailscale", f'<div class="card"><p class="error">{html.escape(t["tailscale_action_failed"])}</p></div>', lang, back_href="/tailscale"))
-        self.redirect("/tailscale?tab=" + ("settings" if action in ("set", "routes", "exit", "routes-clear", "exit-clear", "relay", "relay-clear", "memory") else "overview"), {"Cache-Control": "no-store"})
+        self.redirect("/tailscale?tab=" + ("settings" if action in ("batch", "set", "routes", "exit", "routes-clear", "exit-clear", "relay", "relay-clear", "memory") else "overview"), {"Cache-Control": "no-store"})
 
     def route_tailscale(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/tailscale":
@@ -295,8 +391,9 @@ class TailscaleMixin:
             query = parse_qs(parsed.query)
             identifier = query.get("id", [""])[0]
             settings_value = identifier in ("tailscale-setting-routes", "tailscale-setting-exit", "tailscale-setting-relay") and query.get("field") == ["value"]
-            address_value = query.get("field") == ["address"] and (identifier in ("tailscale-tailscale_ipv4", "tailscale-tailscale_ipv6", "tailscale-tailscale_account", "tailscale-tailscale_public_endpoint")
-                                                               or identifier.startswith("tailscale-peer-"))
+            address_value = (query.get("field") == ["address"] and identifier in
+                             ("tailscale-tailscale_control_server", "tailscale-tailscale_ipv4", "tailscale-tailscale_ipv6", "tailscale-tailscale_account", "tailscale-tailscale_public_endpoint")) or (
+                             query.get("field") in (["ipv4"], ["ipv6"]) and identifier.startswith("tailscale-peer-"))
             if not (settings_value or address_value):
                 return self.send_html(400, "Invalid request") or True
             try:
@@ -305,6 +402,8 @@ class TailscaleMixin:
                     preferences = control.prefs()
                     value = preferences["advertise-routes" if identifier.endswith("routes") else
                                         "relay-server-port" if identifier.endswith("relay") else "exit-node"]
+                elif identifier == "tailscale-tailscale_control_server":
+                    value = (snapshot.get("CurrentTailnet") or {})["Name"]
                 elif identifier == "tailscale-tailscale_account":
                     self_info = snapshot.get("Self") or {}
                     value = (snapshot.get("User") or {})[str(self_info.get("UserID"))]["LoginName"]
@@ -312,7 +411,7 @@ class TailscaleMixin:
                     value = control.netcheck()["GlobalV4"]
                 elif identifier.startswith("tailscale-peer-"):
                     peer = next(p for p in control.peers(snapshot) if p["id"] == identifier[len("tailscale-peer-"):])
-                    value = ", ".join(peer["addresses"])
+                    value = next(address for address in peer["addresses"] if (":" in address) == (query.get("field") == ["ipv6"]))
                 else:
                     ips = (snapshot.get("Self") or {}).get("TailscaleIPs") or []
                     value = next(ip for ip in ips if (":" in ip) == identifier.endswith("ipv6"))

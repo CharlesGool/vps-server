@@ -38,7 +38,7 @@ except ImportError:  # Installed helpers are copied into one flat directory.
 
 MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale")
 STANDALONE_MODULES = ("frpc",)
-FEATURES = ("speedtest", "portfwd", "visitors")
+FEATURES = ("speedtest", "portfwd", "visitors", "terminal")
 GROUPS = ("proxy_nodes", "frpc")
 PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {

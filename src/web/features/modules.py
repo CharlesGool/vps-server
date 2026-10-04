@@ -5,6 +5,66 @@ can be reused with another application context.
 """
 
 import os
+import json
+import time
+
+
+LOG_LEVELS = (("all", "logs_level_all"), ("err", "logs_level_error"),
+              ("warning", "logs_level_warning"), ("info", "logs_level_info"),
+              ("debug", "logs_level_debug"))
+
+
+LOG_SOURCES = ("modules", "web", "proxy", "frps", "frpc", "lucky", "tailscale")
+
+
+def log_cutoffs(context):
+    try:
+        data = json.loads((context.DATA_DIR / "log-clear.json").read_text())
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items()
+                    if key in LOG_SOURCES and type(value) in (int, float) and 0 < value <= time.time() + 1}
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def service_log_text(context, units, level, limit, since=None):
+    if level not in dict(LOG_LEVELS) or not units or not context.shutil.which("journalctl"):
+        return None
+    command = ["journalctl", "--no-pager", "-o", "short-iso", "-n", str(limit)]
+    if level != "all":
+        command.extend(("-p", level))
+    if since:
+        command.append(f"--since=@{since:.6f}")
+    for unit in units:
+        command.extend(("-u", unit))
+    try:
+        result = context.subprocess.run(command, capture_output=True, text=True, timeout=15)
+        return result.stdout if result.returncode == 0 else None
+    except (OSError, context.subprocess.TimeoutExpired):
+        return None
+
+
+def log_level_form(t, action, hidden, level):
+    from html import escape
+    options = "".join(f'<option value="{value}" {"selected" if level == value else ""}>{escape(t[key])}</option>'
+                      for value, key in LOG_LEVELS)
+    fields = "".join(f'<input type="hidden" name="{escape(name, quote=True)}" value="{escape(value, quote=True)}">'
+                     for name, value in hidden.items())
+    return (f'<form class="log-filter" method="get" action="{escape(action, quote=True)}">{fields}'
+            f'<label>{escape(t["logs_level"])}<select name="level">{options}</select></label>'
+            f'<button type="submit">{escape(t["logs_filter"])}</button></form>')
+
+
+def log_clear_form(context, t, token, source, return_to="logs"):
+    from html import escape
+    csrf = context.access_csrf_token(token, "logs:clear:" + source)
+    return (f'<form class="log-clear-form" method="post" action="/settings/logs/clear" '
+            f'data-confirm="{escape(t["logs_clear_confirm"], quote=True)}">'
+            f'<input type="hidden" name="source" value="{escape(source, quote=True)}">'
+            f'<input type="hidden" name="return" value="{escape(return_to, quote=True)}">'
+            f'<input type="hidden" name="csrf" value="{escape(csrf, quote=True)}">'
+            f'<button type="submit" class="danger">{escape(t["logs_clear"])}</button></form>')
 
 
 def module_job_text(t, job, names):
@@ -23,15 +83,60 @@ def module_job_recent(job, now, seconds):
 
 
 class ModulesMixin:
+    def clear_logs(self):
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request")
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+            if not 0 < length <= 1024:
+                raise ValueError
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True)
+            if set(form) != {"source", "return", "csrf"} or any(len(value) != 1 for value in form.values()):
+                raise ValueError
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request")
+        source = form["source"][0]
+        if source not in LOG_SOURCES + ("all",) or form["return"][0] not in ("logs", "tailscale"):
+            return self.send_html(400, "Invalid request")
+        if form["return"][0] == "tailscale" and source != "tailscale":
+            return self.send_html(400, "Invalid request")
+        expected = self.context.access_csrf_token(self.get_cookie("session"), "logs:clear:" + source)
+        if not self.context.hmac.compare_digest(form["csrf"][0], expected):
+            return self.send_html(403, "Forbidden")
+        try:
+            if source in ("modules", "all"):
+                path = self.context.module_history_path(self.context.BASE_DIR)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open("w", encoding="utf-8"):
+                    pass
+                os.chmod(path, 0o600)
+            if source != "modules":
+                cutoffs = log_cutoffs(self.context)
+                for key in (LOG_SOURCES[1:] if source == "all" else (source,)):
+                    cutoffs[key] = time.time()
+                self.context._atomic_private_text(self.context.DATA_DIR / "log-clear.json",
+                                                  json.dumps(cutoffs, sort_keys=True) + "\n")
+        except OSError:
+            return self.send_html(500, "Could not clear logs")
+        destination = ("/tailscale?tab=logs" if form["return"][0] == "tailscale" else
+                       "/settings/logs?source=" + source)
+        return self.redirect(destination + "&cleared=1" if "?" in destination else destination + "?cleared=1",
+                             {"Cache-Control": "no-store"})
+
     def page_logs(self, lang, query_lang, parsed):
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
-        source = self.context.parse_qs(parsed.query).get("source", ["modules"])[0]
+        source = self.context.parse_qs(parsed.query).get("source", ["all"])[0]
+        level = self.context.parse_qs(parsed.query).get("level", ["all"])[0]
+        if source == "meter":
+            return self.redirect("/settings/logs?source=proxy", {"Cache-Control": "no-store"})
+        if level not in dict(LOG_LEVELS):
+            level = "all"
         sources = (
+            ("all", t["logs_source_all"], ()),
             ("modules", t["logs_source_modules"], ()),
             ("web", "Web", ("vps-server-web.service",)),
-            ("meter", t["logs_source_meter"], ("vps-server-node-meter.service",)),
-            ("proxy", "Singbox", ("vps-server-proxy.service",)),
+            ("proxy", t["logs_source_proxy"], ("vps-server-proxy.service", "vps-server-node-meter.service")),
             ("frps", "FRPS", ("vps-server-frps.service",)),
             ("frpc", "FRPC", tuple(self.context.frpc_unit(name) for name in self.context.frpc_names())),
             ("lucky", "Lucky", ("vps-server-lucky.service",)),
@@ -40,22 +145,30 @@ class ModulesMixin:
         selected = next((item for item in sources if item[0] == source), None)
         if selected is None:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
-        if source == "modules":
+        cutoffs = log_cutoffs(self.context)
+        if source in ("modules", "all"):
             try:
-                output = self.context.module_history_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
+                history = self.context.module_history_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
             except FileNotFoundError:
                 try:
-                    output = self.context.module_log_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
+                    history = self.context.module_log_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
                 except FileNotFoundError:
-                    output = ""
-        elif selected[2] and self.context.shutil.which("journalctl"):
-            try:
-                command = ["journalctl", "--no-pager", "-o", "short-iso", "-n", "1000"]
-                for unit in selected[2]:
-                    command.extend(("-u", unit))
-                result = self.context.subprocess.run(command, capture_output=True, text=True, timeout=15)
-                output = result.stdout if result.returncode == 0 else t["logs_unavailable"]
-            except (OSError, self.context.subprocess.TimeoutExpired):
+                    history = ""
+            output = history
+        if source == "all":
+            sections = []
+            for key, label, units in sources[2:]:
+                service_output = service_log_text(self.context, units, level, 250, cutoffs.get(key)) if units else ""
+                text = ((service_output or t["logs_empty"]) if service_output is not None else t["logs_unavailable"])
+                sections.append(f'<section class="logs-group"><h2>{esc(label)}</h2>'
+                                f'<pre class="logs-output" role="log">{esc(text)}</pre></section>')
+            log_content = (f'{log_level_form(t, "/settings/logs", {"source": source}, level)}'
+                           f'<section class="logs-group"><h2>{esc(t["logs_source_modules"])}</h2>'
+                           f'<pre class="logs-output" role="log">{esc(history or t["logs_empty"])}</pre></section>'
+                           + "".join(sections))
+        elif selected[2]:
+            output = service_log_text(self.context, selected[2], level, 1000, cutoffs.get(source))
+            if output is None:
                 output = t["logs_unavailable"]
         else:
             output = ""
@@ -63,10 +176,17 @@ class ModulesMixin:
             f'<a href="/settings/logs?source={key}" {"aria-current=page" if key == source else ""}>{esc(label)}</a>'
             for key, label, _ in sources
         )
+        if source != "all":
+            log_content = (f'<h2>{esc(selected[1])}</h2>'
+                           f'{log_level_form(t, "/settings/logs", {"source": source}, level) if selected[2] else ""}'
+                           f'<pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre>')
         body = (f'<div class="card wide logs-page"><h1>{esc(t["module_detailed_logs"])}</h1>'
                 f'<p class="muted">{esc(t["logs_recent_note"])}</p>'
                 f'<nav class="log-sources" aria-label="{esc(t["module_detailed_logs"], quote=True)}">{links}</nav>'
-                f'<h2>{esc(selected[1])}</h2><pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre></div>')
+                f'{"<p class=notice role=status>" + esc(t["logs_clear_done"]) + "</p>" if self.context.parse_qs(parsed.query).get("cleared") == ["1"] else ""}'
+                f'<div class="logs-actions">{log_clear_form(self.context, t, self.get_cookie("session"), source)}'
+                f'<small>{esc(t["logs_clear_note"])}</small></div>{log_content}</div>'
+                '<script src="/static/log-controls.js" defer></script>')
         return self.send_html(200, self.render_page(t["module_detailed_logs"], body, lang,
                                                     active="module_detailed_logs", back_href="/settings/modules"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -94,7 +214,7 @@ class ModulesMixin:
                         else ("https", self.context.PUBLIC_HTTPS_PORT))
         return f"{scheme}://{host}{':' + str(port) if port != (80 if scheme == 'http' else 443) else ''}/"
 
-    def page_modules(self, lang, query_lang):
+    def module_section(self, lang):
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
         token = self.get_cookie("session")
@@ -170,13 +290,14 @@ class ModulesMixin:
                          f'<h2>{esc(t["module_progress"])}</h2><pre role="log">{esc(progress)}</pre></section>'
                          if progress_job else "")
         refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or show_operation and (progress_recent or notice_visible) else ''
-        body = (f'<div class="card module-page" data-busy="{str(busy).lower()}"><h1>{esc(t["modules_heading"])}</h1>'
-                f'{notice}<div class="module-grid">{"".join(cards)}</div>{progress_html}</div>'
+        body = (f'<section id="settings-modules" class="card access-card preferences-card module-page" data-busy="{str(busy).lower()}"><h2>{esc(t["modules_heading"])}</h2>'
+                f'{notice}<div class="module-grid">{"".join(cards)}</div>{progress_html}</section>'
                 f'<script src="/static/module-controls.js" defer></script>'
                 f'{refresh_script}')
-        return self.send_html(200, self.render_page(t["modules_heading"], body, lang,
-                                                    active="settings", back_href="/settings"),
-                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+        return body
+
+    def page_modules(self, lang, query_lang):
+        return self.redirect("/settings#settings-modules", {"Cache-Control": "no-store"})
 
     def handle_module_action(self, lang):
         esc = self.context.html.escape
@@ -199,7 +320,7 @@ class ModulesMixin:
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
         if not self.context.hmac.compare_digest(form["csrf"][0], expected):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        destination = "/" if form.get("return", [""])[0] == "home" else "/settings/modules"
+        destination = "/" if form.get("return", [""])[0] == "home" else "/settings#settings-modules"
         installed = self.context.installed_modules(self.context.BASE_DIR)
         present = ("proxy" in installed if module == "proxy_nodes" else module in installed)
         if action in ("install", "uninstall") and (action == "install") == present:
@@ -241,7 +362,9 @@ class ModulesMixin:
                 self.context.save_module_status(self.context.BASE_DIR, module, "failed", action=action)
                 return self.send_html(503, esc(self.context.STRINGS[lang]["module_job_failed"]),
                                       {"Cache-Control": "no-store"})
-        return self.redirect(f'{destination}{"?" if "?" not in destination else "&"}operation={module}-{action}',
+        operation_url = (f'/?operation={module}-{action}' if destination == "/" else
+                         f'/settings?operation={module}-{action}#settings-modules')
+        return self.redirect(operation_url,
                              {"Cache-Control": "no-store"})
 
     def page_module_closed(self, lang, query_lang, parsed):
@@ -249,7 +372,7 @@ class ModulesMixin:
         destinations = {"web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "lucky": "/lucky", "tailscale": "/tailscale", "portfwd": "/portfwd",
-                        "visitors": "/visitors", "changelog": "/changelog"}
+                        "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
         if self.context.module_states()[module]:
@@ -259,7 +382,7 @@ class ModulesMixin:
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
-                 "visitors": t["visitors"], "changelog": t["changelog"]}
+                 "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
         body = (f'<div class="card access-card"><h1>{self.context.html.escape(t["module_closed_title"])}</h1>'
                 f'<p>{self.context.html.escape(t["module_closed_help"].format(name=names[module]))}</p></div>')
         return self.send_html(200, self.render_page(t["module_closed_title"], body, lang,
@@ -283,6 +406,7 @@ class ModulesMixin:
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
+            ("terminal", t["terminal_title"], "/terminal", "activity", states["terminal"]),
             ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
             ("settings", t["settings"], "/settings", "settings-2", True),
         )
@@ -299,6 +423,8 @@ class ModulesMixin:
         show_operation = marker == f'{job.get("module")}-{job.get("action")}'
         tiles = []
         for module, title, href, icon, enabled in items:
+            if module == "terminal" and not self.context.AUTH_ENABLED:
+                continue
             switch = ""
             if module not in ("settings", "changelog"):
                 action = "disable" if enabled else "enable"
@@ -361,6 +487,8 @@ class ModulesMixin:
             self.page_modules(lang, query_lang)
         elif method == "GET" and path == "/settings/logs":
             self.page_logs(lang, query_lang, self.context.urlsplit(self.path))
+        elif method == "POST" and path == "/settings/logs/clear":
+            self.clear_logs()
         elif method == "POST" and path == "/settings/modules/action":
             self.handle_module_action(lang)
         else:
@@ -414,6 +542,7 @@ def module_states(context, installed=None):
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["tailscale"]]),
         "portfwd": context.portfwd_enabled(),
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
+        "terminal": context.AUTH_ENABLED and context.module_feature_enabled(context.BASE_DIR, "terminal"),
         "changelog": True,
     }
     states["frp"] = states["frps"] or states["frpc"]
