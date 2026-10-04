@@ -374,7 +374,7 @@
   "module_job_done": "Completed",
   "module_job_failed": "Failed",
   "module_source_missing": "Installer files are unavailable. Upgrade from a complete checkout first.",
-  "module_tailscale_asset_missing": "The bundled Tailscale archive is missing. Git source downloads do not include it. Download the complete offline Release bundle for the current version, extract it into a separate directory, and rerun deploy/install.sh while preserving the existing installation and state directories, then retry.",
+  "module_tailscale_asset_missing": "The bundled Tailscale archive is missing. Rerun deploy/install.sh from complete source or an offline Release bundle containing the third_party/tailscale archive, extracted into a separate directory, while preserving the existing installation and state directories, then retry.",
   "module_web": "Public reachability page",
   "module_web_http": "HTTP page",
   "module_web_https": "HTTPS page",

@@ -26,7 +26,7 @@ metadata:
 
 ## 第三方声明
 
-下表列出随附组件及由操作系统提供的组件.原有九个仓库构件在 [dependencies.lock.json][local-link-001] 中记录了 SHA-256;从仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py` 可离线比较字节.Tailscale 与 nftables 归档只进入生成的离线包,构建器按固定摘要验证,来源和许可证见各自的 `component.txt`.原有七个构件的 2026-09-27 核验记录保持不变;新增 FRPC 和 iperf3 的来源记录见下表.这些检查确认构件身份,不证明跨发行版兼容性或完整系统依赖闭包.
+下表列出随附组件及由操作系统提供的组件.原有九个仓库构件在 [dependencies.lock.json][local-link-001] 中记录了 SHA-256;从仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py` 可离线比较字节.Tailscale 归档随当前源码提供并由锁文件验证;nftables 归档进入生成的离线包,构建器按固定摘要验证,来源和许可证见各自的 `component.txt`.原有七个构件的 2026-09-27 核验记录保持不变;新增 FRPC 和 iperf3 的来源记录见下表.这些检查确认构件身份,不证明跨发行版兼容性或完整系统依赖闭包.
 
 | 组件/资源 | 版本/散列 | 来源 | 所记录的许可证 | 用途 | 署名/原始许可证路径 | 待审核的发布义务 | 核验日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -41,7 +41,7 @@ metadata:
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 随附的界面 SVG 图标 | [license](../src/web/static/licenses/Lucide-ISC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | xterm.js 与 Fit Addon | `@xterm/xterm` 6.0.0,`@xterm/addon-fit` 0.11.0;JavaScript SHA-256 分别为 `14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972`,`ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527` | [xtermjs/xterm.js](https://github.com/xtermjs/xterm.js) | MIT,依据 npm 归档随附许可证 | 离线浏览器终端渲染和尺寸适配 | [xterm 许可证](../src/web/static/third_party/xterm/LICENSE-xterm);[Fit Addon 许可证](../src/web/static/third_party/xterm/LICENSE-addon-fit);[构件记录](../src/web/static/third_party/xterm/component.txt) | 随同静态文件保留两份上游版权及许可声明 | 2026-10-05:npm 固定版本归档成员逐字节复制并记录 SHA-256 |
 | iperf3 | `3.22`;随附二进制 SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | 从官方源码本地构建的 x86-64 Linux 静态可执行文件 | [上游 LICENSE](../third_party/iperf3/LICENSE);[构建记录](../third_party/iperf3/component.txt) | 随二进制保留版权和完整许可声明;目标发行版兼容性仍待验收 | 2026-10-04:官方源码摘要,本地构建与本机执行已核对 |
-| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | v5.2.0 离线包构建时纳入归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md);[专利授权](../third_party/tailscale/PATENTS);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可,专利授权和对应版本依赖清单;随附依赖许可证正文和来源摘要清单 | 2026-10-04:官方归档摘要与本机运行版本一致;上游标签中的声明文件已随附 |
+| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | 当前源码和离线包随附归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md);[专利授权](../third_party/tailscale/PATENTS);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可,专利授权和对应版本依赖清单;随附依赖许可证正文和来源摘要清单 | 2026-10-04:官方归档摘要与本机运行版本一致;上游标签中的声明文件已随附 |
 | nftables 及 10 个运行库 | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`;运行归档 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`;对应源码归档 SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [Debian 官方软件包仓库](https://deb.debian.org/debian/) | 各包许可证见归档内 `usr/share/doc/<package>/copyright` | v5.2.0 离线包中供节点计量使用的私有 nft 运行时,不安装到系统软件包数据库 | [包名与 SHA-256 记录](../third_party/nft/component.txt);[源码清单](../third_party/nft/source-manifest.json) | 随同一离线包提供对应原始源码及 Debian 打包补丁;跨发行版兼容性仍待目标机验收 | 2026-10-04:各 `.deb` 与源码文件均和 Debian 索引散列匹配;本机解析配额语法通过 |
 
 现有项目记录将本项目的许可证标为 GPL-3.0([LICENSE][local-link-009]),并将重新分发 GPL 许可的 sing-box 可执行文件作为选择该许可证的理由;[决策][local-link-010]保留了其理由及被否决的替代方案.先前记录称 `vps-webserver` 上游采用 Apache-2.0,在本项目中以 GPL-3.0 重新分发.本清单记录了为 v2.0.0 核验的文件与条款;不提供独立的法律意见.
@@ -153,7 +153,7 @@ MIT 版权及许可声明与客户端库一同随附.
 
 ---
 
-随附的第三方字体和图标列于上表.没有包含第三方图像数据集或模型权重.离线包构建时在联网构建机下载并校验 Tailscale 与 nftables 资源;目标机安装不下载 FRPC 或其他可执行文件,也不查询公网 IP 地址.
+随附的第三方字体和图标列于上表.没有包含第三方图像数据集或模型权重.Tailscale 归档随源码保存;离线包构建时在联网构建机下载并校验 nftables 资源;目标机安装不下载 FRPC 或其他可执行文件,也不查询公网 IP 地址.
 
 [local-link-001]: ../config/dependencies.lock.json
 [local-link-002]: ../third_party/sing-box/LICENSE

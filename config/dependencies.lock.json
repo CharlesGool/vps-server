@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "coverage": "Fourteen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
+  "coverage": "Fifteen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
   "artifacts": [
     {
       "component": "Lucky",
@@ -113,6 +113,14 @@
       "recorded_upstream_revision": null,
       "path": "src/web/static/third_party/xterm/LICENSE-addon-fit",
       "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f"
+    },
+    {
+      "component": "Tailscale",
+      "version": "1.102.4 Linux amd64",
+      "upstream": "https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
+      "recorded_upstream_revision": null,
+      "path": "third_party/tailscale/tailscale_1.102.4_amd64.tgz",
+      "sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
     }
   ],
   "exclusions": [

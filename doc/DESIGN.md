@@ -188,7 +188,7 @@ Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理
 
 ### Tailscale 模块
 
-离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置在同一表单中收集更改,用一次 Linux `tailscale set` 调用应用;空白的路由,出口节点与中继端口输入保持原值,清除由独立复选框表达.设备 IPv4/IPv6 分别按需读取,本机子网和可用出口节点可快速填入.实验性低内存选项经固定参数辅助任务写入独立 systemd drop-in `GOGC=10`,重启服务并在失败时尝试恢复原配置;较低 GOGC 可能增加 CPU 开销.这些控制不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
+源码与离线包包含官方 Linux amd64 静态归档.Web 安装始终将归档保留在 `installer-source`,供后续安装模块使用.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置在同一表单中收集更改,用一次 Linux `tailscale set` 调用应用;空白的路由,出口节点与中继端口输入保持原值,清除由独立复选框表达.设备 IPv4/IPv6 分别按需读取,本机子网和可用出口节点可快速填入.实验性低内存选项经固定参数辅助任务写入独立 systemd drop-in `GOGC=10`,重启服务并在失败时尝试恢复原配置;较低 GOGC 可能增加 CPU 开销.这些控制不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
 
 Lucky 保留原生管理页面;本项目只显示管理地址,运行状态及打开按钮,不展示由 Lucky 自身管理的账户和密码.Lucky 的 `config.json` 只是启动配置,原生页面的持久设置另存在 `lucky_base.lkcf`;页面与后台每 5 秒从原生命令 `-baseConfInfo` 读取当前端口,再确认 Lucky 主进程持有该端口且返回管理页,确定 HTTP/HTTPS 协议.旧端口可能与新端口短时同时监听,只匹配进程端口不足以判定当前管理地址.特权助手原子更新 `PORTS.md` 中仅属于 Lucky 的行,监听消失时移除旧行.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.HTTP 登录不提供传输加密.
 

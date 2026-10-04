@@ -6,4 +6,4 @@ Patent grant: https://github.com/tailscale/tailscale/blob/v1.102.4/PATENTS
 Dependency notices: https://github.com/tailscale/tailscale/blob/v1.102.4/licenses/tailscale.md
 DEPENDENCY_NOTICES.md SHA-256: 9467842c7b63c53ca102a9485075ee375f3ac3a03b51764ed2d247d530df5fa2
 PATENTS SHA-256: debc5ca73d082a6c7de743fecdba6f75deafdf9200acfbddeb8ca32d66e6e128
-The verified archive is inserted into the generated offline package. It is not downloaded on the target host.
+The verified archive is tracked with the source and included in generated offline packages. Web installation retains it in installer-source even when Tailscale is not initially selected. It is not downloaded on the target host.

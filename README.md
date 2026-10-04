@@ -60,7 +60,7 @@ vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连�
 git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
-Git 源码下载不包含 Tailscale 与私有 nftables 归档.需要从控制台安装 Tailscale 时,先使用下方完整离线 Release 包安装或升级;仅重新运行 Git 源码安装器不会补齐该归档.
+当前 main 源码随附 Tailscale 1.102.4 安装归档,即使首次只安装 Web,控制台后续也可离线安装 Tailscale.v5.2.0 标签的源码仍缺少该归档;该版本请使用完整 Release 包.私有 nftables 归档及对应源码仍由完整离线包提供.
 
 ### 常规安装
 

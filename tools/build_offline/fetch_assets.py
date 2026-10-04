@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -49,7 +50,12 @@ def fetch(output):
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     tailscale = output / "tailscale_1.102.4_amd64.tgz"
-    download(TAILSCALE[0], tailscale, TAILSCALE[1])
+    bundled_tailscale = ROOT / "third_party" / "tailscale" / tailscale.name
+    if verified(bundled_tailscale, TAILSCALE[1]):
+        if bundled_tailscale != tailscale:
+            shutil.copy2(bundled_tailscale, tailscale)
+    else:
+        download(TAILSCALE[0], tailscale, TAILSCALE[1])
     runtime = output / "nft-runtime-bullseye.tar.gz"
     if not verified(runtime, NFT_RUNTIME_SHA256):
         with tempfile.TemporaryDirectory(prefix="vps-nft-build-") as temporary:
