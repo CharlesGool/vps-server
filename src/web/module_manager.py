@@ -788,6 +788,10 @@ def run_uninstall(prefix, module):
             path = Path(paths[item]) if item in paths else None
             if path and path.exists():
                 output.add(path, arcname=f"etc/{path.name}")
+        if module == "tailscale":
+            memory = Path("/etc/systemd/system/vps-server-tailscale.service.d/30-memory.conf")
+            if memory.is_file() and not memory.is_symlink():
+                output.add(memory, arcname="etc/systemd/system/vps-server-tailscale.service.d/30-memory.conf")
         if module == "proxy_nodes":
             state_path = Path("/etc/vps-server-nodes/state.json")
             if state_path.is_file():

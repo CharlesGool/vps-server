@@ -40,7 +40,7 @@ v6.0.0 test candidate; v5.1.0 remains the latest formal release. See
 - **Proxy nodes:** One sing-box service hosts AnyTLS, VMess, VLESS, Trojan, and Shadowsocks. The console manages node connections, traffic caps, rate limits, periodic resets, and validity periods. Clash Meta configurations can be imported over the LAN.
 - **FRP:** The console manages the local FRPS port, token, and service state, as well as local FRPC instances and simple token-authenticated TCP/UDP proxies. It validates edits and restores the previous configuration on failure. It does not monitor clients on other devices. FRPC installs from bundled resources.
 - **Lucky:** Install or remove it with other modules and open Lucky's native management page from the console. This project does not recreate its DDNS or reverse-proxy features.
-- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, with Linux settings for DNS, subnet routes, exit nodes, shields-up, and SSH. Joining a Tailnet still requires access to the selected control server.
+- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, with Linux controls for DNS, subnet routes, exit nodes, shields-up, SSH, logout, and an experimental low-memory mode. Joining a Tailnet still requires access to the selected control server.
 
 The first installation enables only the Web console; other modules are installed
 as needed. See the [design document](DESIGN.md) for feature boundaries, login

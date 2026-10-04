@@ -512,5 +512,13 @@
   "tailscale_webclient": "启用 Tailscale Web 管理界面",
   "tailscale_peer_relay": "节点中继 UDP 端口",
   "tailscale_open_web": "打开 Tailscale Web 管理",
-  "tailscale_web_open_failed": "无法打开 Tailscale Web 管理页面"
+  "tailscale_web_open_failed": "无法打开 Tailscale Web 管理页面",
+  "tailscale_logout": "退出 Tailscale",
+  "tailscale_logout_confirm": "确认退出;当前 Tailscale 连接可能中断,下次连接需重新认证.",
+  "tailscale_refresh": "刷新设备",
+  "tailscale_memory": "减少内存占用（实验性）",
+  "tailscale_memory_note": "使用 GOGC=10;可能增加 CPU 开销,保存时会重启服务.",
+  "tailscale_varies": "端点变化",
+  "tailscale_hairpinning": "回环连接",
+  "tailscale_tun": "TUN 模式"
 }

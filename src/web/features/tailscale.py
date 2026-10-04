@@ -48,6 +48,8 @@ class TailscaleMixin:
         if tab == "overview":
             details = (("tailscale_control_server", tailnet.get("Name") or "—"),
                        ("tailscale_version", snapshot.get("Version") or "—"),
+                       ("tailscale_tun", t["tailscale_yes"] if snapshot.get("TUN") is True else
+                        t["tailscale_no"] if snapshot.get("TUN") is False else "—"),
                        ("tailscale_ipv4", next((ip for ip in addresses if ":" not in ip), "")),
                        ("tailscale_ipv6", next((ip for ip in addresses if ":" in ip), "")),
                        ("tailscale_account", user.get("LoginName", "")),
@@ -75,9 +77,17 @@ class TailscaleMixin:
                             f'data-error="{esc(t["tailscale_web_open_failed"], quote=True)}">'
                             f'{esc(t["tailscale_open_web"])}</button>'
                             '<span class="error tailscale-web-status" role="status" hidden></span></p>')
-            checks = (("IPv4", net.get("IPv4")), ("IPv6", net.get("IPv6")),
+            if state == "Running":
+                token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:logout")
+                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout">'
+                            f'<input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="{token}">'
+                            f'<label><input type="checkbox" name="confirm" value="yes" required>{esc(t["tailscale_logout_confirm"])}</label>'
+                            f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></form>')
+            checks = ((t["tailscale_varies"], net.get("MappingVariesByDestIP")),
+                      ("IPv4", net.get("IPv4")), ("IPv6", net.get("IPv6")),
                       ("UDP", net.get("UDP")), ("UPnP", net.get("UPnP")),
-                      ("PCP", net.get("PCP")), ("NAT-PMP", net.get("PMP")))
+                      ("PCP", net.get("PCP")), ("NAT-PMP", net.get("PMP")),
+                      (t["tailscale_hairpinning"], net.get("HairPinning")))
             badges = "".join(f'<span class="tailscale-check" data-ok="{str(value is True).lower()}">{esc(name)}: '
                              f'{esc(t["tailscale_yes"] if value is True else t["tailscale_no"] if value is False else "—")}</span>'
                              for name, value in checks)
@@ -105,6 +115,18 @@ class TailscaleMixin:
                             f'{esc(t[label])}</label><input type="hidden" name="action" value="set">'
                             f'<input type="hidden" name="name" value="{name}"><input type="hidden" name="csrf" value="{token}">'
                             f'<button type="submit" {disabled}>{esc(t["frp_save"])}</button></form>')
+            try:
+                memory_enabled = control.memory_mode()
+            except (OSError, ValueError):
+                memory_enabled = None
+            token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:memory")
+            content += (f'<form method="post" action="/tailscale/action" class="tailscale-setting">'
+                        f'<label><input type="checkbox" name="enabled" value="1" '
+                        f'{"checked" if memory_enabled is True else ""} {"disabled" if memory_enabled is None else ""}>'
+                        f'{esc(t["tailscale_memory"])}</label>'
+                        f'<span class="muted">{esc(t["tailscale_memory_note"])}</span>'
+                        f'<input type="hidden" name="action" value="memory"><input type="hidden" name="csrf" value="{token}">'
+                        f'<button type="submit" {"disabled" if memory_enabled is None else ""}>{esc(t["frp_save"])}</button></form>')
             for kind, label, current in (("routes", "tailscale_routes", settings.get("advertise-routes", "")),
                                          ("exit", "tailscale_exit_node", settings.get("exit-node", "")),
                                          ("relay", "tailscale_peer_relay", settings.get("relay-server-port", ""))):
@@ -124,7 +146,8 @@ class TailscaleMixin:
                             f'<button type="submit" {"" if current else "disabled"}>{esc(t["tailscale_clear"])}</button></form>')
         elif tab == "devices":
             devices = control.peers(snapshot)
-            content += f'<h2>{esc(t["tailscale_devices"])} ({len(devices)})</h2>'
+            content += (f'<div class="tailscale-head"><h2>{esc(t["tailscale_devices"])} ({len(devices)})</h2>'
+                        f'<a class="button-link" href="/tailscale?tab=devices">{esc(t["tailscale_refresh"])}</a></div>')
             if not devices:
                 content += f'<p class="muted">{esc(t["tailscale_no_devices"])}</p>'
             else:
@@ -171,12 +194,18 @@ class TailscaleMixin:
                    "exit": {"action", "value", "csrf"}, "routes-clear": {"action", "csrf"},
                    "exit-clear": {"action", "csrf"}, "relay": {"action", "value", "csrf"},
                    "relay-clear": {"action", "csrf"}, "restart": {"action", "csrf"},
-                   "connect": {"action", "csrf", "login_server", "auth_key"}}
+                   "connect": {"action", "csrf", "login_server", "auth_key"},
+                   "logout": {"action", "csrf", "confirm"},
+                   "memory": {"action", "csrf", "enabled"}}
         if action not in allowed or set(form) - allowed[action] or any(len(v) != 1 for v in form.values()):
             return self.send_html(400, "Invalid request")
         if action == "set" and name not in control.BOOL_SETTINGS:
             return self.send_html(400, "Invalid request")
+        if action == "logout" and form.get("confirm") != ["yes"]:
+            return self.send_html(400, "Invalid request")
         if action == "set" and form.get("enabled", ["1"]) != ["1"]:
+            return self.send_html(400, "Invalid request")
+        if action == "memory" and form.get("enabled", ["1"]) != ["1"]:
             return self.send_html(400, "Invalid request")
         subject = "tailscale:" + ("set:" + name if action == "set" else action)
         expected = self.context.access_csrf_token(self.get_cookie("session"), subject)
@@ -239,11 +268,23 @@ class TailscaleMixin:
                     # A login URL can be issued while `up` waits for browser approval.
                     if not control.status().get("AuthURL"):
                         raise
+            elif action == "logout":
+                control.call("logout")
+            elif action == "memory":
+                toggle = "on" if form.get("enabled") == ["1"] else "off"
+                unit = "vps-server-tail-memory-" + self.context.secrets.token_hex(6)
+                result = subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                                         "--unit=" + unit, "/usr/bin/python3",
+                                         str(self.context.WEB_CODE_DIR / "tailscale_control.py"),
+                                         "memory", toggle], capture_output=True, text=True,
+                                        check=False, timeout=90)
+                if result.returncode:
+                    raise RuntimeError("Tailscale memory setting failed")
             else:
                 subprocess.run(["systemctl", "restart", control.UNIT], check=True, timeout=60)
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
             return self.send_html(400, self.render_page("Tailscale", f'<div class="card"><p class="error">{html.escape(t["tailscale_action_failed"])}</p></div>', lang, back_href="/tailscale"))
-        self.redirect("/tailscale?tab=" + ("settings" if action in ("set", "routes", "exit", "routes-clear", "exit-clear", "relay", "relay-clear") else "overview"), {"Cache-Control": "no-store"})
+        self.redirect("/tailscale?tab=" + ("settings" if action in ("set", "routes", "exit", "routes-clear", "exit-clear", "relay", "relay-clear", "memory") else "overview"), {"Cache-Control": "no-store"})
 
     def route_tailscale(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/tailscale":

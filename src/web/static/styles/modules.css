@@ -35,6 +35,8 @@
 .tailscale-setting label:has(input:not([type="checkbox"])) { display:grid; }
 .tailscale-setting input:not([type="checkbox"]) { width:100%; }
 .tailscale-clear { margin:.5rem 0 1rem; }
+.tailscale-logout { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; margin-top:1.25rem; }
+.tailscale-logout label { display:inline-flex; align-items:center; gap:.5rem; }
 .tailscale-table { overflow-x:auto; }
 .tailscale-table table { width:100%; border-collapse:collapse; }
 .tailscale-table th,.tailscale-table td { padding:.75rem; border-bottom:1px solid var(--card-border); text-align:start; white-space:nowrap; }

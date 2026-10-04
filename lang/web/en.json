@@ -512,5 +512,13 @@
   "tailscale_webclient": "Enable Tailscale web interface",
   "tailscale_peer_relay": "Peer relay UDP port",
   "tailscale_open_web": "Open Tailscale web interface",
-  "tailscale_web_open_failed": "Could not open the Tailscale web interface"
+  "tailscale_web_open_failed": "Could not open the Tailscale web interface",
+  "tailscale_logout": "Log out of Tailscale",
+  "tailscale_logout_confirm": "Confirm logout; the current Tailscale connection may drop and reauthentication will be required.",
+  "tailscale_refresh": "Refresh devices",
+  "tailscale_memory": "Reduce memory use (experimental)",
+  "tailscale_memory_note": "Uses GOGC=10; may increase CPU use and restarts the service.",
+  "tailscale_varies": "Mapping varies",
+  "tailscale_hairpinning": "Hairpinning",
+  "tailscale_tun": "TUN mode"
 }

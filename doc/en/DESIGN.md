@@ -317,9 +317,13 @@ arguments to read status, preferences, connectivity, devices, and the systemd
 journal. Private addresses and account names are masked by default. An auth
 key is passed to the CLI only through a temporary root-owned file and deleted
 after the command; it is not stored in project state. Ordinary settings use
-Linux `tailscale set`; they do not simulate OpenWrt dnsmasq forwarding or
-router-firewall options. Binary installation can be offline, but joining a
-Tailnet requires access to the selected control server.
+Linux `tailscale set`; logout requires explicit confirmation, and the device
+list can be refreshed. An experimental low-memory option uses a helper with
+fixed arguments to write a separate systemd drop-in with `GOGC=10`, restarts
+the service, and attempts to restore the previous configuration on failure.
+A lower GOGC may increase CPU use. These controls do not simulate OpenWrt
+dnsmasq forwarding or router-firewall options. Binary installation can be
+offline, but joining a Tailnet requires access to the selected control server.
 
 Lucky retains its native management page. On the test host, it still listened
 on a wildcard address with `AllowInternetaccess=false`, and its HTTP management

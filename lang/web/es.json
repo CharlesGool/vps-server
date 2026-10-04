@@ -512,5 +512,13 @@
   "tailscale_webclient": "Activar la interfaz web de Tailscale",
   "tailscale_peer_relay": "Puerto UDP de retransmisión entre pares",
   "tailscale_open_web": "Abrir la interfaz web de Tailscale",
-  "tailscale_web_open_failed": "No se pudo abrir la interfaz web de Tailscale"
+  "tailscale_web_open_failed": "No se pudo abrir la interfaz web de Tailscale",
+  "tailscale_logout": "Cerrar sesión de Tailscale",
+  "tailscale_logout_confirm": "Confirme la salida; la conexión actual de Tailscale puede interrumpirse y será necesaria una nueva autenticación.",
+  "tailscale_refresh": "Actualizar dispositivos",
+  "tailscale_memory": "Reducir el uso de memoria (experimental)",
+  "tailscale_memory_note": "Usa GOGC=10; puede aumentar el uso de CPU y reinicia el servicio.",
+  "tailscale_varies": "Cambio de asignación",
+  "tailscale_hairpinning": "Conexión de retorno",
+  "tailscale_tun": "Modo TUN"
 }

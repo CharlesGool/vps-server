@@ -83,6 +83,14 @@ if [ -f "/etc/systemd/system/$TAILSCALE_SERVICE" ]; then
         /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server
   systemctl daemon-reload
 fi
+if [ "${KEEP_DATA:-0}" != 1 ]; then
+  memory_dropin=/etc/systemd/system/vps-server-tailscale.service.d/30-memory.conf
+  if [ -f "$memory_dropin" ]; then
+    rm -f "$memory_dropin"
+    rmdir /etc/systemd/system/vps-server-tailscale.service.d 2>/dev/null || true
+    systemctl daemon-reload
+  fi
+fi
 
 # Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
 if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-lucky/firewall-owned ]; then
