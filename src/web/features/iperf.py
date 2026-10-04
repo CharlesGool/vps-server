@@ -11,7 +11,7 @@ class IperfMixin:
 
     def page_iperf(self, lang, query_lang, client_result=None, client_values=None):
         t = self.context.STRINGS[lang]
-        if (self.context.BASE_DIR / ".install-state").is_file() and "iperf3" not in self.context.installed_modules(self.context.BASE_DIR):
+        if self.context.STATE_FILE.is_file() and "iperf3" not in self.context.installed_modules(self.context.BASE_DIR):
             return self.page_module_not_installed(lang, query_lang, "iperf3", "iperf3", active="iperf")
         if client_result is None and self.context.parse_qs(
                 self.context.urlsplit(self.path).query).get('client') == ['done']:

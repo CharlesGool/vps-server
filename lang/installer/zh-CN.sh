@@ -3,6 +3,8 @@ case "$key" in
   need_root) fmt='必须以 root 运行（试试：sudo bash deploy/install.sh）\n' ;;
   no_systemd) fmt='找不到 systemd；本安装脚本只支持使用 systemd 的主机\n' ;;
   platform_unsupported) fmt='仅支持 x86-64 Linux.\n' ;;
+  legacy_state_unsupported) fmt='发现旧版或不完整的安装.本版本不自动迁移旧状态.请恢复备份或明确执行全新安装;现有服务尚未改变.\n' ;;
+  state_layout_invalid) fmt='持久状态目录无效或已有无关文件;安装在修改服务前停止.\n' ;;
   no_python) fmt='找不到 python3（apt install python3）\n' ;;
   no_openssl) fmt='找不到 openssl（apt install openssl）；也可以设置 VPSSRV_CONSOLE_TLS=0 改用明文 HTTP\n' ;;
   installing) fmt='正在安装到 %s ...\n' ;;
@@ -20,6 +22,7 @@ case "$key" in
   line_url_unknown) fmt='  地址：    %s://%s:<端口>/   （读不到 %s —— 请查看 journalctl -u %s）\n' ;;
   line_pw_none) fmt='  密码：    无 —— 密码保护已关闭（VPSSRV_AUTH=0）\n' ;;
   line_pw) fmt='  密码：    %s   （保存在 %s）\n' ;;
+  line_pw_preserved) fmt='  密码:     已保留 %s 中的现有文件(不打印内容)\n' ;;
   line_pw_seefile) fmt='  密码：    见 %s\n' ;;
   line_lang) fmt='  语言：    %s （没有 cookie/查询参数/浏览器语言匹配时的默认值）\n' ;;
   cert_note) fmt='\n注意：使用的是自签证书，浏览器会弹出警告，需要手动点继续。\n想用真实证书的话，设置 VPSSRV_TLS_CERT 和 VPSSRV_TLS_KEY 后\n重新运行本安装脚本。\n' ;;
@@ -56,7 +59,7 @@ case "$key" in
   upgrade_new_item) fmt='  %s = %s （已采用默认值）\n' ;;
   ask_new_var) fmt='  %s [%s]： ' ;;
   upgrade_vars_unknown) fmt='旧安装没有记录它支持哪些配置项，因此无法判断哪些是新增的。它记录过的都会沿用，其余按 .env.example 里的默认值。想逐项复核就重跑一次、在上面回答 n。\n' ;;
-  language_menu) fmt='Language / 语言 / 語言:\n  1) English\n  2) 简体中文 (Simplified Chinese)\n  3) 繁體中文 (Traditional Chinese)\n  4) 繁體中文 (香港)\n  5) हिन्दी\n  6) Español\n  7) العربية\n  8) Français\n' ;;
+  language_menu) fmt='语言:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<本机地址>' ;;
   error_prefix) fmt='错误：' ;;

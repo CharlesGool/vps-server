@@ -143,7 +143,7 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 | Lucky 状态 | `features/lucky.py` | 共用卡片样式 |
 | 公开可达性页面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入响应 |
 
-`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.旧版安装留下的平铺代码文件不作为当前运行入口,数据仍留在根目录和 `data/`.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
+`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.v5.1.1 的持久数据位于独立状态根,旧版平铺代码文件不作为当前运行入口.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
 
 ### 为什么公开页面和控制台是两个独立的监听器
 
@@ -160,36 +160,17 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 
 ### 在已有安装上升级
 
-`install.sh` 会检测已有的安装,并提供"保留其配置"的选项.选"是"会重放上一次
-安装记录下来的内容;选"否"则重新询问所有内容.无论哪种情况,控制台密码,
-持久化端口,证书和访客日志都会保留下来——因为安装程序从来不会去动这些文件.
+`v5.1.1` 建立持久状态布局 `1`:程序文件仍位于 `$PREFIX`,默认状态根位于 `/var/lib/vps-server`.密码,控制台端口,证书,运行数据,安装记录及 `.env` 保存在状态根;`/etc/vps-server/state-dir` 记录状态根位置.状态根由 root 管理,目录权限为 `0700`.版本 `v5.1.1` 之后的安装程序**必须**继续读取布局 `1`,并在替换程序文件时保留这些状态.
 
-有两份记录,因为它们回答的问题不同:
+安装器通过状态根的 `.layout-version`, `install-state` 和 `paths.json` 辨认受支持安装.三者缺失或不一致,以及关键密码,会话密钥或端口文件丢失时,它在修改服务前拒绝升级.带有 v5.1.0 及更早布局的安装不自动迁移;操作员须先备份原有数据并明确执行全新安装.已经删除且没有备份的旧数据无法恢复.正常升级从独立源码目录运行安装器,**禁止**以删除 `$PREFIX` 作为保留数据的方式.若只替换代码目录,保留的状态根仍可供同一布局的后续版本读取.
 
-- **systemd unit 的 `Environment=` 那几行**记录的是"曾经被设置成什么".重放它们
-  是为了防止某个只设置过一次的项(比如自定义的公开端口,控制台上的 TLS)
-  在下一次升级时悄悄回退到默认值.
-- **`$PREFIX/.install-state`** 记录的是已安装版本"当时知道哪些东西":它的版本号,
-  它的模块列表,以及它所理解的每一个配置项的名字.unit 本身回答不了这个问题,
-  因为它只记录被赋过值的配置项,这说不出当时到底存在哪些配置项.
-
-第二份文件正是用来计算"这个版本新增了什么"的依据:拿这个版本所知道的配置项
-减去印记(stamp)里列出的那些.每一个新增项都会附带其 `.env.example` 中的
-默认值一并询问,直接按回车即可采用默认值.
-
-一次早于这份印记出现的安装没有这样的列表.安装程序不会把一个猜测当作差异呈现,
-而是明说自己无法判断,原样带过 unit 记录的一切,并指向重新询问的路径.模块检测
-的降级方式也一样:没有印记时,它就从磁盘上现有的内容推断模块列表——
-是否有 Web unit,是否有 anytls unit,是否装了 `iperf3`.
-
-anytls 节点在升级过程中之所以能被保留,是因为安装程序会把它的端口和密码从
-`config.json` 里读回来并重新传入.少了这一步,`setup-anytls.sh` 就会给
-两者都默认生成新的随机值,导致每一个已配置的客户端都会在一次例行升级中失效——
-见下面"已知限制与坑"那一节里的说明,这一点在*刻意*重新安装的情形下依然成立.
+应用内设置及模块管理都使用状态根,直接读取 `$PREFIX/data` 等旧路径的入口已改为统一的状态路径.其他模块在 `/etc/vps-server-anytls/`, `/etc/vps-server-proxy/`, `/etc/vps-server-nodes/` 和 `/etc/frp/` 中的配置继续独立存在;`PORTS.md` 仍位于安装目录的上一级.自定义持久路径写入 `paths.json`,后续安装若发现它们变化则拒绝静默切换,由操作员手动处理.
 
 ### 完整卸载
 
 完整卸载由 `deploy/uninstall.sh` 在移除 `$PREFIX` 前调用 `src/web/uninstall_cleanup.py`.它在全局 FRPC unit 与项目模板一致,存在项目二进制归属标记,或完整卸载发现控制台可识别的命名实例时处理 FRPC;先停止实例,再移除适用的模板和经过固定 SHA-256 校验的二进制文件.默认完整卸载删除 `frpc-*.toml`,对应的 Unicode 别名和 `.deleted-frpc-*.toml` 恢复副本;`KEEP_DATA=1` 保留这些配置文件.卸载器持有安装目录同级的 `.ports.lock`,复用 `console_port.py` 的格式校验与原子写入,释放 `PORTS.md` 中以 `vps-server` 命名的行,同时保留其他项目的行.完整卸载且发现控制台识别的 `frpc-*.toml` 时,即使旧 FRPC 模板与当前模板不同,也会停止这些实例并删除该模板,匹配摘要的二进制与项目命名配置;这是本项目完整卸载的显式范围.没有可识别实例且无法确认归属时,FRPC 文件和其登记行保留,其他项目的行始终保留;二进制校验失败则中止清理.
+
+`KEEP_DATA=1` 保留 `$PREFIX` 和 `$VPSSRV_STATE_DIR`;默认完整卸载在完成服务与端口清理后,只删除带有布局标记 `1` 的状态根.自定义到状态根之外的路径不自动清除,以免误删其他应用的数据.
 
 ### 控制台的 anytls 区域
 
@@ -289,6 +270,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 - iperf3 需要有时间限制,并在关闭或停止服务时撤销防火墙规则.
 - 每次进程启动时从 JSON 重放持久化的转发;干净停止时撤销运行时规则,不重置主机级 `ip_forward` 开关.
 - 升级须保留节点凭据和选定设置;轮换应使用所属模块的配置脚本,在 Web unit 文件系统沙箱外运行.
+- 从 v5.1.1 起,后续版本**必须**保持持久状态布局 `1` 可读,**禁止**把默认持久状态移回 `$PREFIX`.安装器**禁止**自动迁移 v5.1.0 及更早布局;检测到旧服务或关键状态缺失时**必须**先于服务变更拒绝安装.自定义状态路径改变时**必须**由操作员手动转移,**禁止**静默重置.
 - 没有有害延迟的证据,不要拆分共用的 `_db_lock`:历史上 60 个并发请求的测量未重现减速.见[缺陷][local-link-008].
 
 ## 外部接口
@@ -350,9 +332,11 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 
 | 路径 | 由谁提供 | 用途 |
 |---|---|---|
-| `$PREFIX` | 安装程序;root 账户默认 `~/apps/vps-server` | 代码,静态资源,持久化端口文件 |
-| `$VPSSRV_DATA_DIR` | 安装程序,默认 `$PREFIX/data` | `visitors.db`,`session_secret.txt`,`portfwd.json`, `login-access.json` (私有 IP 免密名单) |
-| `$VPSSRV_CERT_DIR` | 安装程序,默认 `$PREFIX/certs` | 443 用的自签名证书和密钥 |
+| `$PREFIX` | 安装程序;root 账户默认 `~/apps/vps-server` | 可替换的程序代码,静态资源和随附构件 |
+| `$VPSSRV_STATE_DIR` | 安装程序;默认 `/var/lib/vps-server` | 布局标记,安装记录,路径清单,密码,端口,证书和运行数据 |
+| `$VPSSRV_DATA_DIR` | 安装程序,默认 `$VPSSRV_STATE_DIR/data` | `visitors.db`,`session_secret.txt`,`portfwd.json`,`login-access.json` |
+| `$VPSSRV_CERT_DIR` | 安装程序,默认 `$VPSSRV_STATE_DIR/certs` | Web 自签名证书和密钥 |
+| `/etc/vps-server/state-dir` | 安装程序 | 保存状态根位置,供独立辅助程序读取 |
 | `/etc/vps-server-anytls/` | 安装程序 | sing-box 的 `config.json` 及其自身的自签名证书 |
 | `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(多个入站)及初始自签名证书;新节点证书位于 `/etc/vps-server-nodes/certs/` |
 
@@ -366,19 +350,20 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 
 | 变量 | 含义 | 默认值 | 是否必需 |
 |---|---|---|---|
-| `PREFIX` | 安装根目录.传给 `install.sh`/`uninstall.sh`,**不会**从 `.env` 读取——安装前须先确定目录,才能读取其中的 `.env` | root 主目录中的 `apps/vps-server` | 否 |
-| `VPSSRV_DATA_DIR` | SQLite + 会话密钥 | `$PREFIX/data` | 否 |
+| `PREFIX` | 程序安装根目录,通过安装/卸载命令设置,不从 `.env` 读取 | root 主目录中的 `apps/vps-server` | 否 |
+| `VPSSRV_STATE_DIR` | 持久状态根,首次安装前在命令环境设置;`.env` 不能修改该位置 | `/var/lib/vps-server` | 否 |
+| `VPSSRV_DATA_DIR` | SQLite,会话密钥和功能状态 | `$VPSSRV_STATE_DIR/data` | 否 |
 | `VPSSRV_HOST` | 所有监听器的绑定地址 | `0.0.0.0` | 否 |
 | `VPSSRV_PUBLIC_HTTP_PORT` | 公开可达性页面,明文 | `80` | 否 |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | 公开可达性页面,TLS | `443` | 否 |
-| `VPSSRV_PUBLIC_ENABLE` | 是否提供公开页面 | `1` | 否 |
+| `VPSSRV_PUBLIC_ENABLE` | 首次安装是否提供公开页面 | `0` | 否 |
 | `VPSSRV_CONSOLE_PORT` | 控制台端口;`0` = 生成一次并持久化 | `0` | 否 |
-| `VPSSRV_CONSOLE_PORT_FILE` | 生成的控制台端口记在哪里 | `$PREFIX/console_port.txt` | 否 |
+| `VPSSRV_CONSOLE_PORT_FILE` | 生成的控制台端口记在哪里 | `$VPSSRV_STATE_DIR/console_port.txt` | 否 |
 | `VPSSRV_CONSOLE_TLS` | 控制台是否走 HTTPS | `0` | 否 |
 | `VPSSRV_AUTH` | 控制台是否要求登录 | `1` | 否 |
-| `VPSSRV_PASSWORD_FILE` | 明文控制台密码;在设置中修改时需验证当前密码 | `$PREFIX/admin_password.txt` | 否 |
+| `VPSSRV_PASSWORD_FILE` | 明文控制台密码;在设置中修改时需验证当前密码 | `$VPSSRV_STATE_DIR/admin_password.txt` | 否 |
 | `VPSSRV_IP_ALLOWLIST_FILE` | 私有 IP 免密名单的可选路径 | `$VPSSRV_DATA_DIR/login-access.json` | 否 |
-| `VPSSRV_CERT_DIR` | 自签名证书的位置 | `$PREFIX/certs` | 否 |
+| `VPSSRV_CERT_DIR` | 自签名证书的位置 | `$VPSSRV_STATE_DIR/certs` | 否 |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | 改用操作员自备的证书 | — | 否 |
 | `VPSSRV_IPERF_PORT` | iperf3 窗口监听的端口 | `5201` | 否 |
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | 预填的窗口时长 | `10` | 否 |
@@ -394,7 +379,7 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 | `VPSSRV_WARMUP_SECONDS` | 每个方向开始时被丢弃的预热时长 | `2` | 否 |
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | 每个方向的并行流数 | `6` / `3` | 否 |
 | `VPSSRV_PING_SAMPLES` | 用于计算延迟数值的往返次数 | `20` | 否 |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`;升级时旧语言值回退到 `en` | `en` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | 否 |
 | `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
 | `VPSSRV_ANYTLS_CONFIG` | 控制台从哪里读取已安装的节点信息 | `/etc/vps-server-anytls/config.json` | 否 |
 | `VPSSRV_ANYTLS_SERVICE` | 控制台用来检查节点存活状态的 unit | `vps-server-anytls.service` | 否 |
@@ -427,7 +412,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
 
 已登录的 Settings 页面负责列出九项运行模块.可选模块的安装与卸载通过串行执行的 root 辅助程序完成;`data/module-job.json` 提供任务状态,`data/module-job.log` 保存最近的安装输出,包括包管理器错误.卸载前会将当前模块配置归档到 `data/`.除 Settings 外,Home 的每项功能都有开关.内置功能标志保存在 `data/`;运行中的 Web 进程会协调 Port forward 标志,撤销或重新应用已保存的规则,不使控制台会话失效.已停用功能的路径会进入本地化的“页面已关闭”页面.模块操作表单在每次页面载入后只接受一次提交;并行任务会返回请求来源页面.FRPC 组开关在停止实例前保存正在运行的实例名称,重新启用时只恢复这些实例.Proxy nodes 组控制 AnyTLS 和代理 unit,同时保留节点清单.Home 的 FRPS 入口为 `/frps`,FRPC 实例列表入口为 `/frpc`;客户端编辑器仍在 `/frp/client/edit`.旧的合并页面 `/frp` 会将现有书签重定向到 FRPC 列表.
 
-访客数据库与 `portfwd.json` 及 `login-access.json`(已启用的转发规则)持久保存在 `$VPSSRV_DATA_DIR`.控制台密码,选定端口,Web 证书和 `.install-state` 位于 `$PREFIX`;sing-box 模块的配置及证书分别位于 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
+访客数据库,`portfwd.json` 和 `login-access.json` 保存在 `$VPSSRV_DATA_DIR`.控制台密码,选定端口,Web 证书及 `install-state` 保存在 `$VPSSRV_STATE_DIR`;程序安装目录可独立替换.sing-box 模块的配置及证书分别位于 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
 
 ### 数据模型与文件布局
 
@@ -470,7 +455,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
         └── es/               # Spanish translation
 ```
 
-安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.现有密码,端口,证书与 `data/` 不迁移.
+安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.v5.1.1 的持久状态根与安装目录分开;先前版本的目录内数据不自动迁移.
 
 只有 `repo/` 由 Git 跟踪;`snapshots/` 独立且私有.由[README][local-link-013] 入门,使用 [LOG][local-link-014] 查阅历史验证和发布记录,并参考[第三方声明][local-link-015]了解上游构件.文档不会使快照或已安装主机变成可复现的源码检出.
 

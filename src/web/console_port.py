@@ -18,6 +18,11 @@ import tempfile
 import time
 from datetime import date
 
+try:
+    from .state_paths import data_dir as state_data_dir
+except ImportError:
+    from state_paths import data_dir as state_data_dir
+
 
 HEADER = "| Host Port | Project / Service | Bind Address | Registration Date |\n| --- | --- | --- | --- |\n"
 ROW = re.compile(r"\|\s*(\d{1,5})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|")
@@ -91,7 +96,7 @@ def available(port):
 
 
 def reserved_ports(prefix):
-    data = Path(prefix) / "data"
+    data = state_data_dir()
     ports = {80, 443, 5201}
     iperf = data / "iperf-port.txt"
     if iperf.exists():
@@ -148,7 +153,7 @@ def wait_healthy(port, seconds=20, unit=UNIT):
 
 
 def write_job(prefix, state, port, reason=""):
-    path = Path(prefix) / "data" / "console-port-job.json"
+    path = state_data_dir() / "console-port-job.json"
     atomic_bytes(path, (json.dumps({"state": state, "port": port, "reason": reason}) + "\n").encode())
 
 
@@ -156,7 +161,7 @@ def change_port(prefix, old, new, port_file, *, restart=None, wait=None, probe=N
     if not valid_port(old) or not valid_port(new) or new == old:
         raise ValueError("invalid console port")
     prefix, port_file = Path(prefix), Path(port_file)
-    override = prefix / "data" / "console-port-override"
+    override = state_data_dir() / "console-port-override"
     registry = prefix.parent / "PORTS.md"
     restart = restart or (lambda: subprocess.run(["systemctl", "restart", UNIT], check=True, timeout=60))
     wait = wait or wait_healthy

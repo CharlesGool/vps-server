@@ -62,6 +62,7 @@ The current installer installs only the Web console by default. Select other ser
 - [x] 2026-09-19 Browser-based first-run setup was previously provided by `tools/setup_wizard/setup_wizard.py` and has been retired. v5.0.0 installation runs directly in the terminal and installs only the Web console when `VPSSRV_MODULES` is unset.
 - [x] 2026-09-22 Provide FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device.
 - [x] 2026-09-29 Manage host-local FRP configuration. A signed-in operator can change the FRPS bind port and token, edit and verify local FRPC instances, and start or stop those instances without recent administrator-password verification. The instance page reveals saved IP and token values only on request. A transient root helper performs fixed operations outside the Web unit's read-only system sandbox. It reserves changed local listener ports in `~/apps/PORTS.md` before starting them, releases ended assignments, restores the previous configuration on validation or service failure, and does not modify FRPC instances on other devices. The Modules page now installs a checksum-pinned FRPC binary and `frpc@.service` template separately from FRPS; it determines installation from those files, rather than from the presence of an instance configuration. Module uninstall stops instances and retains their configurations; complete `deploy/uninstall.sh` without `KEEP_DATA=1` removes this project's instance configurations and recovery copies.
+- The FRPS edit helper holds the port registry lock. If an older installation lacks an entry for the current FRPS port, it registers that port from the existing configuration; it refuses the edit if another service owns the port. It reserves a new port before changing the configuration, removes that reservation if saving fails, and releases the old registration after success. A token-only edit keeps the current port registration.
 - [x] 2026-09-29 Present FRPS and local FRPC controls as operator cards. FRPS uses the node page's inline edit pattern and a service switch. Each FRPC instance has a masked target IP, socket-derived connection indicator, and a separate Test connection action that makes a proxy-free FRPC login with saved credentials. Its page shows the server fields and every proxy's type, local IP, local port, and remote port; editing opens only after the operator chooses Edit, and saving returns to that instance. The field editor accepts only simple token-authenticated TCP/UDP configuration it can represent and leaves unsupported TOML unchanged. A target card represents a host-local instance, and the initial connection indicator requires an established socket owned by that instance's systemd main process to its configured server and port.
 
 FRPC card review, 2026-09-29: the four operator screenshots showed the old connection template, masked facts without a direct reveal, an advanced TOML panel, and a server card without a test action. Chromium on the deployed `test-d09835d` build at 390 and 1440 CSS px checked the instance list, masked and revealed server facts, collapsed and open Edit controls, proxy facts, connection-test states, and a save returning to the same instance. The redundant panels are absent, both reveals load on request, all four proxy facts are visible, and neither viewport has horizontal overflow. The interface retains the project's existing card styling; real mobile hardware and proxy traffic were outside this browser review.
@@ -172,8 +173,9 @@ selection controls. Ordered CSS source files under `src/web/static/styles/` buil
 the former rule order and does not add a runtime CSS dependency. The Web
 installer keeps the Python package, `features/`, and `static/` under
 `$PREFIX/src/web/`. The root `$PREFIX/app.py` compatibility entry point calls
-the package's `main()`. Older flat code is no longer the runtime entry point;
-data stays at the root and under `data/`. Reusing a feature in another project requires its context adapter and
+the package's `main()`. In v5.1.1, persistent data lives in the separate state
+root; older flat code files are not the current runtime entry point. Reusing a
+feature in another project requires its context adapter and
 the shared styles or scripts it references; the routes are not a standalone
 package with an independent authentication policy.
 
@@ -214,37 +216,32 @@ parses no request body, and sets no cookie.
 
 ### Upgrading over an existing install
 
-`install.sh` detects an existing install and offers to keep its configuration.
-Saying yes replays what the previous install recorded; saying no re-asks
-everything. Either way the console password, the persisted port, the
-certificates and the visitor log survive — those are files the installer never
-touches.
+`v5.1.1` establishes persistent state layout `1`. Program files remain at
+`$PREFIX`; the default state root is `/var/lib/vps-server`. It holds the
+password, console port, certificates, runtime data, installation record, and
+`.env`. `/etc/vps-server/state-dir` records the location of the state root.
+Root manages that directory with mode `0700`. Installers after `v5.1.1` **MUST**
+continue to read layout `1` and preserve its state when replacing program
+files.
 
-Two records, because they answer different questions:
+The installer identifies a supported installation using `.layout-version`,
+`install-state`, and `paths.json` in the state root. If those files are
+missing or inconsistent, or a critical password, session key, or port file
+is missing, it refuses the upgrade before changing services. Installations
+using the layout from v5.1.0 or earlier are not migrated automatically. The
+operator has to back up old data and explicitly perform a fresh install; deleted
+data without a backup cannot be recovered. A normal upgrade runs the installer
+from a separate source directory. You **MUST NOT** delete `$PREFIX` as a way to preserve
+data. If only the code directory is replaced, the retained state root can
+still be read by later versions using the same layout.
 
-- **The systemd unit's `Environment=` lines** say what was *set*. Replaying
-  them is what stops a setting chosen once — a custom public port, TLS on the
-  console — from silently reverting to its default on the next upgrade.
-- **`$PREFIX/.install-state`** says what the installed version *knew about*:
-  its version, its module list, and the names of every setting it understood.
-  The unit cannot answer this, because it only records settings that were
-  given a value, which says nothing about which settings existed.
-
-That second file is how "what is new in this version" is computed: the
-settings this version knows minus the ones the stamp lists. Each one is
-offered with its `.env.example` default, and pressing Enter accepts it.
-
-An install that predates the stamp has no such list. Rather than presenting a
-guess as a diff, the installer says it cannot tell, carries forward everything
-the unit recorded, and points at the re-ask path. Module detection degrades
-the same way: with no stamp it infers the module list from what is on disk —
-the web unit, the anytls unit, whether `iperf3` is installed.
-
-The anytls node is preserved across an upgrade by reading its port and
-password back out of `config.json` and passing them in. Without that step
-`setup-anytls.sh` would default both to fresh randoms and every configured
-client would break on a routine upgrade — see the gotcha below, which still
-applies to a *deliberate* re-install.
+In-app settings and module management use the state root. Entries that read
+old paths such as `$PREFIX/data` directly have been changed to use unified
+state paths. Module configurations under `/etc/vps-server-anytls/`,
+`/etc/vps-server-proxy/`, `/etc/vps-server-nodes/`, and `/etc/frp/` remain
+separate; `PORTS.md` remains in the parent of the installation directory.
+Custom persistent paths are recorded in `paths.json`; a later installer
+rejects an unannounced path change for the operator to resolve manually.
 
 ### Complete uninstall
 
@@ -262,6 +259,11 @@ instances and their `frpc-*.toml` files are included even when an old FRPC templ
 current project template. Without recognizable instances or confirmed
 ownership, global FRPC files and registrations remain. A binary checksum
 failure stops cleanup.
+
+`KEEP_DATA=1` retains `$PREFIX` and `$VPSSRV_STATE_DIR`. After cleaning up
+services and ports, a default complete uninstall removes only a state root
+marked with layout `1`. Paths customized outside that root are not removed
+automatically, to avoid deleting another application's data.
 
 ### The console's anytls section
 
@@ -446,6 +448,7 @@ or `tailscale ip` on that device.
 - Keep iperf3 time-boxed and remove the firewall rule on close or shutdown.
 - Reapply persisted forwards from JSON at process start; withdraw runtime rules at a clean stop without resetting the host-wide `ip_forward` toggle.
 - Preserve node credentials and selected settings on upgrade; use the owning setup scripts for rotation, outside the web unit's filesystem sandbox.
+- From v5.1.1 onward, later versions **MUST** keep persistent state layout `1` readable and **MUST NOT** move the default persistent state back into `$PREFIX`. The installer **MUST NOT** automatically migrate layouts from v5.1.0 or earlier and **MUST** refuse an old service or missing critical state before changing services. The operator **MUST** transfer changed custom state paths manually; the installer **MUST NOT** silently reset them.
 - Do not decouple the shared `_db_lock` without evidence of harmful latency: the historical 60-flooder measurement did not reproduce a slowdown. See [Bugs][local-link-008].
 
 ## External Interfaces
@@ -526,9 +529,11 @@ The installer does not perform an outbound public-IP lookup.
 
 | Path | Provided by | Purpose |
 |---|---|---|
-| `$PREFIX` | installer, default `~/apps/vps-server` for the root account | Code, static assets, persisted port files |
-| `$VPSSRV_DATA_DIR` | installer, default `$PREFIX/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, private-IP allowlist `login-access.json` |
-| `$VPSSRV_CERT_DIR` | installer, default `$PREFIX/certs` | Self-signed cert and key for 443 |
+| `$PREFIX` | installer, default `~/apps/vps-server` for the root account | Replaceable program code, static assets, and bundled artifacts |
+| `$VPSSRV_STATE_DIR` | installer, default `/var/lib/vps-server` | Layout marker, installation record, path inventory, password, port, certificates, and runtime data |
+| `$VPSSRV_DATA_DIR` | installer, default `$VPSSRV_STATE_DIR/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, `login-access.json` |
+| `$VPSSRV_CERT_DIR` | installer, default `$VPSSRV_STATE_DIR/certs` | Web self-signed certificate and key |
+| `/etc/vps-server/state-dir` | installer | Records the state root location for separate helpers |
 | `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
 | `/etc/vps-server-proxy/` | installer | sing-box `config.json` (multiple inbounds) and its initial self-signed cert; new node certs live under `/etc/vps-server-nodes/certs/` |
 
@@ -543,19 +548,20 @@ reconfigure another.
 
 | Variable | Meaning | Default | Required |
 |---|---|---|---|
-| `PREFIX` | Install root. Passed to `install.sh`/`uninstall.sh`, **not** read from `.env` — the path is needed before there is an install to read a `.env` from | root home `apps/vps-server` | no |
-| `VPSSRV_DATA_DIR` | SQLite + session secret | `$PREFIX/data` | no |
+| `PREFIX` | Program installation root, set in install/uninstall commands and not read from `.env` | root home `apps/vps-server` | no |
+| `VPSSRV_STATE_DIR` | Persistent state root, set in the command environment before first install; `.env` cannot move it | `/var/lib/vps-server` | no |
+| `VPSSRV_DATA_DIR` | SQLite, session key, and feature state | `$VPSSRV_STATE_DIR/data` | no |
 | `VPSSRV_HOST` | Bind address for all listeners | `0.0.0.0` | no |
 | `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Public reachability page, TLS | `443` | no |
-| `VPSSRV_PUBLIC_ENABLE` | Serve the public page at all | `1` | no |
+| `VPSSRV_PUBLIC_ENABLE` | Serve the public page on first install | `0` | no |
 | `VPSSRV_CONSOLE_PORT` | Console port; `0` = generate once and persist | `0` | no |
-| `VPSSRV_CONSOLE_PORT_FILE` | Where the generated console port is remembered | `$PREFIX/console_port.txt` | no |
+| `VPSSRV_CONSOLE_PORT_FILE` | Where the generated console port is remembered | `$VPSSRV_STATE_DIR/console_port.txt` | no |
 | `VPSSRV_CONSOLE_TLS` | Serve the console over HTTPS | `0` | no |
 | `VPSSRV_AUTH` | Require login on the console | `1` | no |
-| `VPSSRV_PASSWORD_FILE` | Plaintext console password; Settings verifies the current password before changing it | `$PREFIX/admin_password.txt` | no |
+| `VPSSRV_PASSWORD_FILE` | Plaintext console password; Settings verifies the current password before changing it | `$VPSSRV_STATE_DIR/admin_password.txt` | no |
 | `VPSSRV_IP_ALLOWLIST_FILE` | Optional path for the private-IP allowlist | `$VPSSRV_DATA_DIR/login-access.json` | no |
-| `VPSSRV_CERT_DIR` | Self-signed cert location | `$PREFIX/certs` | no |
+| `VPSSRV_CERT_DIR` | Self-signed cert location | `$VPSSRV_STATE_DIR/certs` | no |
 | `VPSSRV_TLS_CERT` / `VPSSRV_TLS_KEY` | Use an operator-supplied cert instead | — | no |
 | `VPSSRV_IPERF_PORT` | Port the iperf3 window listens on | `5201` | no |
 | `VPSSRV_IPERF_DEFAULT_MINUTES` | Pre-filled window duration | `10` | no |
@@ -571,7 +577,7 @@ reconfigure another.
 | `VPSSRV_WARMUP_SECONDS` | Discarded warmup at the start of each direction | `2` | no |
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Parallel streams per direction | `6` / `3` | no |
 | `VPSSRV_PING_SAMPLES` | Round trips used for the latency figure | `20` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`; old language values fall back to `en` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
 | `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | The anytls module keeps these upstream names | see `.env.example` | no |
 | `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
 | `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
@@ -599,7 +605,7 @@ exists to avoid.
 
 The signed-in Settings page lists nine running functions. Optional module installation and removal run through a serialized root helper. `data/module-job.json` holds job status and `data/module-job.log` stores the latest installer output, including package-manager errors. Before removal, the helper archives a module's current configuration under `data/`. Home provides a switch for every function other than Settings. Built-in feature flags persist under `data/`. The running Web process coordinates the Port forward flag, withdrawing or reapplying saved rules without invalidating the console session. Disabled feature routes show a localized closed-page notice. A module form accepts one submission per page load; concurrent jobs return to their originating page. The FRPC group switch records running instance names before stopping them and restores only those instances on re-enabling. The Proxy nodes group controls the AnyTLS and proxy units while retaining node inventory. Home links to FRPS at `/frps` and the FRPC list at `/frpc`; the client editor remains at `/frp/client/edit`. The old combined `/frp` route redirects bookmarks to the FRPC list.
 
-The visitor database, `portfwd.json`, and `login-access.json` persist under `$VPSSRV_DATA_DIR`. The console password, selected port, Web certificate, and `.install-state` are under `$PREFIX`. Sing-box configurations and certificates live under `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`. See [Paths and mounts][local-link-012]. The iperf3 deadline is in memory only and does not survive restart.
+The visitor database, `portfwd.json`, and `login-access.json` persist under `$VPSSRV_DATA_DIR`. The console password, selected port, Web certificate, and `install-state` are under `$VPSSRV_STATE_DIR`; the program directory can be replaced independently. Sing-box configurations and certificates live under `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`. See [Paths and mounts][local-link-012]. The iperf3 deadline is in memory only and does not survive restart.
 
 ### Data model / file layout
 
@@ -647,8 +653,9 @@ These are checkout paths. Installation places Web code and browser assets at
 compatibility entry point `$PREFIX/app.py` remains systemd's `ExecStart`,
 but only calls `src.web.app.main()`. HTTP asset URLs do not change. The
 checkout's installer and uninstaller are `deploy/install.sh` and
-`deploy/uninstall.sh`. Existing passwords, ports, certificates, and `data/`
-are not migrated.
+`deploy/uninstall.sh`. In v5.1.1 the persistent state root is separate from
+the installation directory; earlier in-directory data is not migrated
+automatically.
 
 Only `repo/` is tracked by Git; `snapshots/` is separate and private. Start at
 [README][local-link-013], use [HISTORY][local-link-014] for historical verification and

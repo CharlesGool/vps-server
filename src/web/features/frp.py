@@ -8,7 +8,7 @@ can be reused with another application context.
 class FrpMixin:
     def page_frps(self, lang, query_lang):
         t = self.context.STRINGS[lang]
-        if (self.context.BASE_DIR / ".install-state").is_file() and "frps" not in self.context.installed_modules(self.context.BASE_DIR):
+        if self.context.STATE_FILE.is_file() and "frps" not in self.context.installed_modules(self.context.BASE_DIR):
             return self.page_module_not_installed(lang, query_lang, "FRPS", "FRPS")
         node = self.context.frps_node()
         esc = self.context.html.escape
@@ -60,7 +60,7 @@ class FrpMixin:
 
     def page_frpc(self, lang, query_lang):
         t = self.context.STRINGS[lang]
-        if (self.context.BASE_DIR / ".install-state").is_file() and "frpc" not in self.context.installed_modules(self.context.BASE_DIR):
+        if self.context.STATE_FILE.is_file() and "frpc" not in self.context.installed_modules(self.context.BASE_DIR):
             return self.page_module_not_installed(lang, query_lang, "FRPC", "FRPC")
         esc = self.context.html.escape
         clients = []

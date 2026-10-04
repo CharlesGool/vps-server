@@ -26,7 +26,7 @@ metadata:
 
 ## 简介
 
-这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.v5.1.0 包含受管节点,流量策略,内网 IP 免密访问,分开的 HTTP/HTTPS 开关,FRPS/本机 FRPC 管理,Lucky 安装入口和直接运行的安装程序.版本范围与检查结果见[变更日志][local-link-001].
+这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.最近的正式版本是 v5.1.0;当前 `main` 正在准备 v5.1.1 的独立持久状态目录和 FRPS 编辑修正,尚未正式发布.版本范围与检查结果见[变更日志][local-link-001]和[项目状态](doc/LOG.md).
 
 ## 功能
 
@@ -57,30 +57,30 @@ metadata:
 
 ### 快速安装
 
-以 root 身份运行;默认仅安装 Web 控制台,并在终端打印随机管理端口和密码.以下命令对应 `v5.1.0` 的正式发布源码;实际可安装范围与尚未验证的行为以该版本变更日志为准.
+以 root 身份在全新测试机运行;默认仅安装 Web 控制台,首次安装时在终端打印随机管理端口和密码.以下命令检出当前 `main` 测试源码,运行版本显示 `test-<SHA>`.v5.1.1 尚未正式发布;已安装的 v5.1.0 及更早版本不支持自动迁移,请先读[升级](#升级).
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### 常规安装
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # 可选: 按注释设置覆盖值
 bash deploy/install.sh
 ```
 
-`PREFIX` 默认是 `/root/apps/vps-server`.首次安装无需浏览器设置向导.可用 `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` 明确选择服务端模块;省略时只安装 Web.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装;安装直接使用仓库随附的二进制文件.
+当前测试源码中,`PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.首次安装无需浏览器设置向导.可用 `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` 明确选择服务端模块;省略时只安装 Web.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装;安装直接使用仓库随附的二进制文件.
 
 ## 指南
 
 ### 快速开始
 
-Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码仍位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;数据,证书和安装状态继续留在原有路径.从旧版升级时,安装程序保留这些运行数据.
+Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;持久状态位于 `$VPSSRV_STATE_DIR`.重新检出或替换程序目录不会删除该状态根.
 
-源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.v5.1.0 源码包含随附 FRPC,FRPS 和 iperf3;使用旧的 `v5.0.0` 标签时,行为仍以旧版文档为准.
+源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.当前测试源码仍随附 FRPC,FRPS 和 iperf3;正式标签的行为以各自版本文档为准.
 
 ```bash
 bash deploy/install.sh                       # 首次仅安装 Web 控制台
@@ -111,10 +111,11 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 
 ### 配置
 
-每个变量都有可用的默认值;`.env` 可选.关键变量如下:
+每个变量都有可用的默认值;首次安装可从源码目录的 `.env` 导入,之后由状态根中的 `.env` 保存.关键变量如下:
 
 | 变量 | 含义 | 默认值 | 是否必需 |
 |---|---|---|---|
+| `VPSSRV_STATE_DIR` | 首次安装前在命令环境设置的持久状态根;不从 `.env` 改动位置 | `/var/lib/vps-server` | 否 |
 | `VPSSRV_PUBLIC_HTTP_PORT` | 公开可达性页面的明文端口 | `80` | 否 |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | 公开可达性页面的 TLS 端口 | `443` | 否 |
 | `VPSSRV_PUBLIC_ENABLE` | 首次安装是否提供公开页面;安装后 HTTP/HTTPS 可分别在 Home 开关 | `0` | 否 |
@@ -122,30 +123,31 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 | `VPSSRV_AUTH` | 控制台是否要求密码 | `1` | 否 |
 | `VPSSRV_IPERF_PORT` | 已开启的 iperf3 窗口监听的端口 | `5201` | 否 |
 | `VPSSRV_IPERF_MAX_MINUTES` | 控制台不可超过的时长上限 | `60` | 否 |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`;升级时旧语言值回退到 `en` | `en` | 否 |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | 否 |
 
 完整说明:[配置参考][local-link-002].
 
 ## 升级
 
-从已支持的旧版本升级时,使用当前检出版本,并沿用原安装目录和模块选择重新运行安装程序.已安装代理的旧配置由安装程序导入受管节点清单;导入失败时须检查配置和服务日志,控制台不会回退到旧编辑入口.原先选择繁体中文,印地语,阿拉伯语或法语的安装会回退到英语;可在普通设置中改选简体中文或西班牙语.在确认升级后的服务和控制台正常前,保留持久数据的备份.
+计划中的 `v5.1.1` 是持久状态布局 `1` 的起点.v5.1.0 及更早版本**不支持自动迁移**:若仍有旧数据,先在安装目录外备份,再明确执行全新安装;已删除且没有备份的数据无法恢复.安装器发现旧服务或状态缺失时,会在修改服务前停止,不会替旧安装生成新密码或端口.
+
+从 v5.1.1 升级后续版本时,在独立源码目录检出新版本,保留 `$VPSSRV_STATE_DIR` 和 `/etc` 下已安装模块的配置,再使用相同 `PREFIX` 运行安装程序.安装器沿用状态根中的密码,端口,证书,运行数据和已记录模块;升级时不会再次打印旧密码.不要通过删除 `$PREFIX` 内的旧数据来准备升级.若自定义了持久路径,后续安装**必须**沿用同一路径;改变位置需要操作员手动转移并核验.在确认新服务正常前,保留原有代码与数据的独立备份.
 
 ## 卸载
 
-以 root 身份从安装程序的检出目录运行卸载脚本,使用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`(安装摘要会打印准确的卸载命令).要移除已安装的模块及 unit,**同时
-保留** `$PREFIX` 中的数据供以后重装:
+以 root 身份从安装程序的检出目录运行卸载脚本,使用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`(安装摘要会打印准确的卸载命令).要移除服务及 unit,**同时保留**程序目录和 `$VPSSRV_STATE_DIR` 供以后重装:
 
 ```bash
 KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
-要移除模块并**删除数据**(包括 `$PREFIX` 中的访客日志,控制台密码,已保存端口及证书,以及本项目管理的 FRPC 实例配置):
+要移除模块并**删除默认状态根中的数据**(包括访客日志,控制台密码,已保存端口及证书,以及本项目管理的 FRPC 实例配置):
 
 ```bash
 bash deploy/uninstall.sh
 ```
 
-两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置,停止本项目的 FRPC 实例,移除本项目安装的 FRPC 服务模板和匹配的二进制文件,并从安装目录同级的 `PORTS.md` 原子释放属于 vps-server 的登记行;其他项目的行保留.`KEEP_DATA=1` 保留 `$PREFIX` 和 `/etc/frp/frpc-*.toml` 等 FRPC 实例配置与恢复副本,不保留 anytls/proxy 模块配置.不带 `KEEP_DATA=1` 时,还会删除本项目命名的 FRPC 配置,别名与恢复副本;完整卸载发现控制台可识别的 `frpc-*.toml` 时,即使旧 FRPC 服务模板与当前项目模板不同,也会停止对应实例并删除这些全局 FRPC 文件;请在共享 FRPC 的主机上先确认这些实例确实属于本项目.若没有可识别的实例且无法确认归属,脚本会保留全局 FRPC 并提示;二进制校验失败时会拒绝继续清理.
+两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置,停止本项目的 FRPC 实例,移除本项目安装的 FRPC 服务模板和匹配的二进制文件,并从安装目录同级的 `PORTS.md` 原子释放属于 vps-server 的登记行;其他项目的行保留.`KEEP_DATA=1` 保留 `$PREFIX`,`$VPSSRV_STATE_DIR` 和 `/etc/frp/frpc-*.toml` 等 FRPC 实例配置与恢复副本,不保留 anytls/proxy 模块配置.不带 `KEEP_DATA=1` 时,还会删除本项目命名的 FRPC 配置,别名与恢复副本,以及带布局标记 `1` 的默认状态根;自定义到该根以外的数据路径不会自动删除.完整卸载发现控制台可识别的 `frpc-*.toml` 时,即使旧 FRPC 服务模板与当前项目模板不同,也会停止对应实例并删除这些全局 FRPC 文件;请在共享 FRPC 的主机上先确认这些实例确实属于本项目.若没有可识别的实例且无法确认归属,脚本会保留全局 FRPC 并提示;二进制校验失败时会拒绝继续清理.
 
 ## 致谢
 

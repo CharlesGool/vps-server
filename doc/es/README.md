@@ -26,7 +26,7 @@ metadata:
 
 ## Introducción
 
-Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: página pública para comprobar la accesibilidad de los puertos web, consola para medir velocidad y registrar conexiones, ventana iperf3 bajo demanda y nodos proxy sing-box. v5.1.0 incluye nodos administrados, políticas de tráfico, acceso sin contraseña desde IP privadas, interruptores HTTP/HTTPS separados, gestión de FRPS y FRPC local, instalación de Lucky e instalador directo en terminal. Consulta el alcance de la versión y las comprobaciones en el [historial de cambios][local-link-001].
+Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: página pública para comprobar la accesibilidad de los puertos web, consola para medir velocidad y registrar conexiones, ventana iperf3 bajo demanda y nodos proxy sing-box. La versión formal más reciente es v5.1.0; la rama `main` prepara un directorio independiente para el estado persistente y la corrección de la edición de FRPS en v5.1.1, que aún no se ha publicado. Consulta el alcance de las versiones y las comprobaciones en el [historial de cambios][local-link-001] y el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
@@ -56,28 +56,28 @@ La página FRPS autenticada muestra el estado del servicio local, las direccione
 
 ### Instalación rápida
 
-Ejecuta como root; de forma predeterminada solo se instala la consola Web y el terminal muestra un puerto administrativo y una contraseña aleatorios. Estos comandos corresponden al código fuente de la versión formal `v5.1.0`; consulta el historial de cambios para conocer el alcance de las comprobaciones y los comportamientos aún sin verificar.
+Ejecuta como root en una máquina de prueba nueva; de forma predeterminada solo se instala la consola Web y, en la primera instalación, el terminal muestra un puerto administrativo y una contraseña aleatorios. Estos comandos obtienen el código de prueba actual de `main`; la versión en ejecución muestra `test-<SHA>`. v5.1.1 aún no se ha publicado. Las instalaciones de v5.1.0 y versiones anteriores no admiten migración automática; lee primero [Actualización](#actualización).
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Instalación estándar
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
 ```
 
-`PREFIX` vale `/root/apps/vps-server` de forma predeterminada. La primera instalación se hace en el terminal, sin asistente en el navegador. Usa `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` para elegir módulos de servidor; si se omite, solo se instala Web. Instala o retira funciones opcionales desde Settings → Modules. Activa los sitios públicos HTTP y HTTPS por separado desde Home; la consola administrativa usa otro puerto. Instala FRPC por separado cuando necesites un cliente local; la instalación usa directamente el binario incluido.
+En el código de prueba actual, `PREFIX` vale `/root/apps/vps-server` de forma predeterminada y solo contiene archivos de programa reemplazables. La contraseña, el puerto de la consola, los certificados, los datos de ejecución, el registro de instalación y `.env` se guardan de forma predeterminada en `/var/lib/vps-server`. En la primera instalación se puede establecer `VPSSRV_STATE_DIR` en el entorno del comando para usar otro directorio externo. La primera instalación se hace en el terminal, sin asistente en el navegador. Usa `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` para elegir módulos de servidor; si se omite, solo se instala Web. Instala o retira funciones opcionales desde Settings → Modules. Activa los sitios públicos HTTP y HTTPS por separado desde Home; la consola administrativa usa otro puerto. Instala FRPC por separado cuando necesites un cliente local; la instalación usa directamente el binario incluido.
 
 ## Orientaciones
 
 ### Quick start
 
-La implementación Web está en `src/web/`, los recursos estáticos en `src/web/static/` y el instalador en `deploy/`. Los binarios y licencias incluidos están en `third_party/`; los metadatos de versión están en `config/`. El código Web instalado permanece en `$PREFIX/src/web/`, con la entrada compatible `$PREFIX/app.py` en la raíz. Los datos, certificados y el estado de instalación conservan sus rutas anteriores durante la actualización. El código fuente de v5.1.0 incluye FRPC, FRPS e iperf3; la etiqueta anterior `v5.0.0` conserva el comportamiento descrito en su documentación.
+La implementación Web está en `src/web/`, los recursos estáticos en `src/web/static/` y el instalador en `deploy/`. Los binarios y licencias incluidos están en `third_party/`; los metadatos de versión están en `config/`. El código Web instalado está en `$PREFIX/src/web/`, con la entrada compatible `$PREFIX/app.py` en la raíz. El estado persistente está en `$VPSSRV_STATE_DIR`; volver a clonar o sustituir el directorio del programa no borra esa raíz de estado. El código de prueba actual sigue incluyendo FRPC, FRPS e iperf3; el comportamiento de las etiquetas formales se describe en la documentación de cada versión.
 
 ```bash
 bash deploy/install.sh                       # primera instalación de la consola Web en el terminal
@@ -108,10 +108,11 @@ Después de `bash deploy/install.sh`, comprueba la dirección administrativa, la
 
 ### Configuration
 
-Cada variable tiene un valor predeterminado funcional; `.env` es opcional. Las más importantes:
+Cada variable tiene un valor predeterminado funcional. La primera instalación puede importar `.env` desde el directorio del código fuente; después se conserva en el archivo `.env` de la raíz de estado. Las más importantes:
 
 | Variable | Significado | Predeterminado | Obligatoria |
 |---|---|---|---|
+| `VPSSRV_STATE_DIR` | Raíz de estado persistente definida en el entorno antes de la primera instalación; `.env` no cambia su ubicación | `/var/lib/vps-server` | no |
 | `VPSSRV_PUBLIC_HTTP_PORT` | Página pública de accesibilidad, sin cifrar | `80` | no |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Página pública de accesibilidad, TLS | `443` | no |
 | `VPSSRV_PUBLIC_ENABLE` | Mostrar la página pública al instalar; después, HTTP y HTTPS se controlan por separado desde Home | `0` | no |
@@ -119,30 +120,31 @@ Cada variable tiene un valor predeterminado funcional; `.env` es opcional. Las m
 | `VPSSRV_AUTH` | Exigir contraseña en la consola | `1` | no |
 | `VPSSRV_IPERF_PORT` | Puerto donde escucha la ventana iperf3 abierta | `5201` | no |
 | `VPSSRV_IPERF_MAX_MINUTES` | Límite que la consola no puede superar | `60` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es`; los valores antiguos vuelven a `en` | `en` | no |
+| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
 
 Referencia completa: [Referencia de configuración][local-link-002].
 
 ## Actualización
 
-Para actualizar, usa el código fuente de la versión actual y vuelve a ejecutar el instalador con el mismo directorio de instalación y la misma selección de módulos. El instalador importa las configuraciones proxy antiguas al inventario de nodos administrados. Una instalación que tenía seleccionados zh-TW, zh-HK, hi, ar o fr pasa a inglés; después se puede elegir chino simplificado o español en Settings. Si la importación falla, examina la configuración y el registro del servicio: la consola no vuelve al editor anterior. Conserva una copia de los datos persistentes hasta verificar los servicios y la consola actualizados.
+La versión prevista `v5.1.1` establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, guárdalos fuera del directorio de instalación antes de realizar expresamente una instalación nueva. Los datos ya eliminados sin copia de seguridad no pueden recuperarse. Si el instalador detecta un servicio antiguo o falta el estado, se detiene antes de modificar los servicios y no genera una nueva contraseña ni un nuevo puerto para una instalación anterior.
+
+Para actualizar desde v5.1.1 a una versión posterior, clona el código nuevo en un directorio independiente, conserva `$VPSSRV_STATE_DIR` y las configuraciones de los módulos instalados bajo `/etc`, y ejecuta el instalador con el mismo `PREFIX`. El instalador reutiliza la contraseña, el puerto, los certificados, los datos de ejecución y los módulos registrados en la raíz de estado; no vuelve a mostrar la contraseña antigua. No borres los datos antiguos de `$PREFIX` para preparar la actualización. Si personalizaste la ruta persistente, **DEBES** usar la misma ruta en las instalaciones posteriores; cambiarla requiere que el operador traslade y verifique los datos manualmente. Conserva copias independientes del código y los datos anteriores hasta verificar el servicio nuevo.
 
 ## Desinstalación
 
-Ejecuta como root desde el directorio del instalador, con los mismos valores `PREFIX` y `SERVICE_NAME` usados al instalar (el resumen del instalador muestra el comando exacto de desinstalación). Para eliminar los módulos y unidades instalados **conservando
-los datos** en `$PREFIX` para una reinstalación posterior:
+Ejecuta como root desde el directorio del instalador, con los mismos valores `PREFIX` y `SERVICE_NAME` usados al instalar (el resumen del instalador muestra el comando exacto de desinstalación). Para eliminar los servicios y unidades **conservando** el directorio del programa y `$VPSSRV_STATE_DIR` para una reinstalación posterior:
 
 ```bash
 KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
-Para eliminar los módulos instalados y **también borrar los datos** (incluidos el registro de visitantes, la contraseña de la consola, el puerto guardado y los certificados en `$PREFIX`):
+Para eliminar los módulos instalados y **también borrar los datos de la raíz de estado predeterminada** (incluidos el registro de visitantes, la contraseña de la consola, el puerto guardado, los certificados y las configuraciones de instancias FRPC administradas por el proyecto):
 
 ```bash
 bash deploy/uninstall.sh
 ```
 
-Ambas modalidades eliminan los servicios anytls/proxy y sus configuraciones separadas, si están instalados. También detienen las instancias FRPC de este proyecto, retiran su plantilla de servicio y el binario coincidente, y liberan de forma atómica sus entradas en `PORTS.md` sin tocar las de otros proyectos. `KEEP_DATA=1` conserva `$PREFIX`, las configuraciones `/etc/frp/frpc-*.toml` y sus copias de recuperación, pero no las configuraciones anytls/proxy. Sin `KEEP_DATA=1`, la desinstalación completa elimina también las configuraciones FRPC, los alias y las copias reconocidas como propias. Si encuentra instancias `frpc-*.toml` reconocibles por la consola, las detiene y elimina los archivos FRPC globales incluso cuando la plantilla antigua difiere de la actual: confirma antes la titularidad de esas instancias en servidores que compartan FRPC. Si no reconoce instancias y no puede determinar la titularidad, conserva los archivos FRPC globales e informa de ello. Un binario cuya suma de verificación no coincide detiene la limpieza.
+Ambas modalidades eliminan los servicios anytls/proxy y sus configuraciones separadas, si están instalados. También detienen las instancias FRPC de este proyecto, retiran su plantilla de servicio y el binario coincidente, y liberan de forma atómica sus entradas en `PORTS.md` sin tocar las de otros proyectos. `KEEP_DATA=1` conserva `$PREFIX`, `$VPSSRV_STATE_DIR`, las configuraciones `/etc/frp/frpc-*.toml` y sus copias de recuperación, pero no las configuraciones anytls/proxy. Sin `KEEP_DATA=1`, la desinstalación completa elimina también las configuraciones FRPC, los alias y las copias reconocidas como propias, así como la raíz de estado predeterminada marcada con la disposición `1`. No borra automáticamente las rutas de datos personalizadas situadas fuera de esa raíz. Si encuentra instancias `frpc-*.toml` reconocibles por la consola, las detiene y elimina los archivos FRPC globales incluso cuando la plantilla antigua difiere de la actual: confirma antes la titularidad de esas instancias en servidores que compartan FRPC. Si no reconoce instancias y no puede determinar la titularidad, conserva los archivos FRPC globales e informa de ello. Un binario cuya suma de verificación no coincide detiene la limpieza.
 
 ## Agradecimientos
 

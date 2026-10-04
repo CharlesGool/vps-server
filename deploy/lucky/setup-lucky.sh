@@ -102,10 +102,12 @@ if unit.exists():
     for key in ('VPSSRV_CONSOLE_PORT', 'VPSSRV_PUBLIC_HTTP_PORT', 'VPSSRV_PUBLIC_HTTPS_PORT', 'VPSSRV_IPERF_PORT'):
         match = re.search(r'^Environment=' + key + r'=(\d+)$', text, re.M)
         if match: reserved.add(int(match[1]))
-console = pathlib.Path(prefix) / 'console_port.txt'
+locator = pathlib.Path('/etc/vps-server/state-dir')
+state_root = pathlib.Path(os.environ.get('VPSSRV_STATE_DIR') or (locator.read_text().strip() if locator.is_file() else '/var/lib/vps-server'))
+console = pathlib.Path(os.environ.get('VPSSRV_CONSOLE_PORT_FILE') or state_root / 'console_port.txt')
 if unit.exists():
     match = re.search(r'^Environment=VPSSRV_CONSOLE_PORT_FILE=(.+)$', unit.read_text(), re.M)
-    if match: console = pathlib.Path(match[1])
+    if match and not os.environ.get('VPSSRV_CONSOLE_PORT_FILE'): console = pathlib.Path(match[1])
 if console.exists():
     value = console.read_text().strip()
     if not value.isdecimal(): raise SystemExit(os.environ['LUCKY_MSG_CANNOT_CONSOLE'])
@@ -119,10 +121,10 @@ if frps.exists():
     match = re.search(r'^bindPort\s*=\s*(\d+)\s*$', frps.read_text(), re.M)
     if not match: raise SystemExit(os.environ['LUCKY_MSG_CANNOT_FRPS'])
     reserved.add(int(match[1]))
-forward = pathlib.Path(prefix) / 'data/portfwd.json'
+forward = pathlib.Path(os.environ.get('VPSSRV_DATA_DIR') or state_root / 'data') / 'portfwd.json'
 if unit.exists():
     match = re.search(r'^Environment=VPSSRV_DATA_DIR=(.+)$', unit.read_text(), re.M)
-    if match: forward = pathlib.Path(match[1]) / 'portfwd.json'
+    if match and not os.environ.get('VPSSRV_DATA_DIR'): forward = pathlib.Path(match[1]) / 'portfwd.json'
 if forward.exists():
     try:
         rules = json.loads(forward.read_text())

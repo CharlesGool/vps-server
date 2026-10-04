@@ -3,6 +3,8 @@ case "$key" in
   need_root) fmt='Debe ejecutarse como root (prueba: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='No se encontró systemd; este instalador está dirigido a hosts con systemd\n' ;;
   platform_unsupported) fmt='Solo se admite Linux x86-64.\n' ;;
+  legacy_state_unsupported) fmt='Existe una instalación antigua o incompleta. Esta versión no migra su estado automáticamente. Restaura una copia o realiza una instalación nueva de forma deliberada; los servicios no se han modificado.\n' ;;
+  state_layout_invalid) fmt='La ubicación de datos persistentes no es válida o contiene archivos ajenos; la instalación se detuvo antes de modificar servicios.\n' ;;
   no_python) fmt='No se encontró python3 (apt install python3)\n' ;;
   no_openssl) fmt='No se encontró openssl (apt install openssl), o configura VPSSRV_CONSOLE_TLS=0 para usar HTTP sin cifrar\n' ;;
   installing) fmt='Instalando en %s ...\n' ;;
@@ -20,6 +22,7 @@ case "$key" in
   line_url_unknown) fmt='  url:       %s://%s:<port>/   (no se pudo leer %s; comprueba journalctl -u %s)\n' ;;
   line_pw_none) fmt='  contraseña: ninguna; la protección por contraseña está desactivada (VPSSRV_AUTH=0)\n' ;;
   line_pw) fmt='  contraseña: %s   (guardada en %s)\n' ;;
+  line_pw_preserved) fmt='  contraseña: se conserva el archivo en %s (no se muestra su contenido)\n' ;;
   line_pw_seefile) fmt='  contraseña: consulta %s\n' ;;
   line_lang) fmt='  idioma: %s (predeterminado si no coinciden cookie, consulta ni navegador)\n' ;;
   cert_note) fmt='\nAviso: se usa un certificado autofirmado, por lo que los navegadores mostrarán una advertencia\nque tendrás que aceptar. Para usar un certificado real, configura VPSSRV_TLS_CERT\ny VPSSRV_TLS_KEY y vuelve a ejecutar este instalador.\n' ;;
@@ -56,7 +59,7 @@ case "$key" in
   upgrade_new_item) fmt='  %s = %s (se aplicó el valor predeterminado)\n' ;;
   ask_new_var) fmt='  %s [%s]: ' ;;
   upgrade_vars_unknown) fmt='La versión instalada no registró qué ajustes admitía, por lo que no se puede saber cuáles son nuevos. Se conserva todo lo que registró; lo demás usa el valor predeterminado documentado en .env.example. Vuelve a ejecutar y responde "n" arriba para revisar todos los ajustes.\n' ;;
-  language_menu) fmt='Language / 语言 / 語言:\n  1) English\n  2) 简体中文 (Simplified Chinese)\n  3) 繁體中文 (Traditional Chinese)\n  4) 繁體中文 (香港)\n  5) हिन्दी\n  6) Español\n  7) العربية\n  8) Français\n' ;;
+  language_menu) fmt='Idioma:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<este-servidor>' ;;
   error_prefix) fmt='error: ' ;;

@@ -3,18 +3,21 @@
 # Remove the vps-server systemd service and everything it installed.
 #
 #   sudo bash deploy/uninstall.sh                # stop + disable the service, delete $PREFIX
-#   sudo KEEP_DATA=1 bash deploy/uninstall.sh    # keep $PREFIX (password, certs, visitor log)
+#   sudo KEEP_DATA=1 bash deploy/uninstall.sh    # keep code and /var/lib/vps-server
 #
-# Uninstalling means uninstalling: $PREFIX — including the admin password,
-# the generated port, certificates and the visitor log — is deleted by
-# default. Pass KEEP_DATA=1 to leave it behind (e.g. to reinstall later and
-# keep the visitor history).
+# A full uninstall removes the code and this project's marked state directory.
+# KEEP_DATA=1 retains both for a later reinstall.
 
 set -euo pipefail
 
 PREFIX="${PREFIX:-/root/apps/vps-server}"
 SERVICE_NAME="${SERVICE_NAME:-vps-server-web}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+STATE_LOCATOR=/etc/vps-server/state-dir
+STATE_DIR="${VPSSRV_STATE_DIR:-}"
+if [ -z "$STATE_DIR" ] && [ -f "$STATE_LOCATOR" ]; then STATE_DIR="$(cat "$STATE_LOCATOR")"; fi
+STATE_DIR="${STATE_DIR:-/var/lib/vps-server}"
+export VPSSRV_STATE_DIR="$STATE_DIR"
 ANYTLS_SERVICE="vps-server-anytls.service"
 PROXY_SERVICE="vps-server-proxy.service"
 FRPS_SERVICE="vps-server-frps.service"
@@ -55,10 +58,14 @@ msg() {
 die() { msg error_prefix "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
+if [ -f "$STATE_DIR/.layout-version" ] &&
+   { [ ! -f "$STATE_LOCATOR" ] || [ "$(cat "$STATE_LOCATOR")" != "$STATE_DIR" ]; }; then
+  die "$(msg cleanup_failed)"
+fi
 
 # This helper validates PORTS.md before changing services, then removes only
 # the FRPC template and data managed by this project. Run it before PREFIX is
-# removed because the ownership marker lives in PREFIX/data.
+# removed because the ownership marker lives in the persistent data directory.
 FRPC_CLEANUP="$SCRIPT_DIR/../src/web/uninstall_cleanup.py"
 [ -f "$FRPC_CLEANUP" ] || die "$(msg cleanup_failed)"
 python3 "$FRPC_CLEANUP" check-ports "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME" >/dev/null || die "$(msg cleanup_failed)"
@@ -180,6 +187,20 @@ elif [ -d "$PREFIX" ]; then
   msg purged "$PREFIX"
 else
   msg nothing_left "$PREFIX"
+fi
+
+if [ "${KEEP_DATA:-0}" != "1" ] && [ -f "$STATE_DIR/.layout-version" ] &&
+   [ "$(cat "$STATE_DIR/.layout-version")" = 1 ]; then
+  python3 - "$PREFIX" "$STATE_DIR" <<'PY'
+from pathlib import Path
+import sys
+prefix, state = (Path(value).resolve(strict=False) for value in sys.argv[1:])
+if state == Path('/') or state == prefix or prefix in state.parents:
+    raise SystemExit('unsafe state directory')
+PY
+  rm -rf -- "$STATE_DIR"
+  if [ -f "$STATE_LOCATOR" ]; then rm -f -- "$STATE_LOCATOR"; fi
+  rmdir "$(dirname "$STATE_LOCATOR")" 2>/dev/null || true
 fi
 
 msg "done"

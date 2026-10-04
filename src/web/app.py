@@ -58,17 +58,23 @@ def load_dotenv(path):
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
+        if key.strip() == "VPSSRV_STATE_DIR":
+            continue  # The installer selects this before locating .env.
         os.environ.setdefault(key.strip(), value.strip())
 
 
 # Source and installed code both live under src/web. The installed root keeps
-# only a small entry point and all persistent data remains beside it.
+# only a small entry point; persistent state has a separate host directory.
 WEB_CODE_DIR = Path(__file__).resolve().parent
 BASE_DIR = WEB_CODE_DIR
 if BASE_DIR.parent.name == "src" and (BASE_DIR.parent.parent / "README.md").is_file():
     BASE_DIR = BASE_DIR.parent.parent
 STATIC_DIR = WEB_CODE_DIR / "static"
 sys.path.insert(0, str(WEB_CODE_DIR))
+from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
+                         password_file as host_password_file,
+                         console_port_file as host_console_port_file,
+                         cert_dir as host_cert_dir, install_state_file)
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
@@ -104,7 +110,7 @@ def _read_version():
     reports that — the console just keeps claiming the previous version to
     whoever is looking at it three deploys later.
 
-    An in-place Git checkout reports its exact release tag or dev-<short sha>.
+    An in-place Git checkout reports its exact release tag or test-<short sha>.
     A flat deployment reads the version stamped by install.sh, or the
     committed release copy when Git metadata is absent. A build that cannot
     establish what it is says so rather than guessing.
@@ -125,7 +131,7 @@ def _read_version():
                                    "--short=7", "HEAD"], capture_output=True,
                                   text=True, timeout=5, check=False)
         if revision.returncode == 0 and re.fullmatch(r"[0-9a-f]{7,}", revision.stdout.strip()):
-            return "dev-" + revision.stdout.strip()
+            return "test-" + revision.stdout.strip()
     try:
         value = (BASE_DIR / "config" / "VERSION").read_text().strip()
     except OSError:
@@ -140,7 +146,8 @@ def display_version(version):
 VERSION = _read_version()
 VERSION_LABEL = display_version(VERSION)
 
-load_dotenv(BASE_DIR / ".env")
+STATE_DIR = host_state_dir()
+load_dotenv(STATE_DIR / ".env")
 
 def _load_strings():
     """Load reviewed interface catalogs from the checkout or installed prefix."""
@@ -174,7 +181,8 @@ def _log_text(key, **values):
     return STRINGS[DEFAULT_LANG][key].format(**values)
 
 HOST = os.environ.get("VPSSRV_HOST", "0.0.0.0")
-DATA_DIR = Path(os.environ.get("VPSSRV_DATA_DIR", str(BASE_DIR / "data")))
+DATA_DIR = host_data_dir()
+STATE_FILE = install_state_file()
 TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
 MAX_TEST_MB = int(os.environ.get("VPSSRV_MAX_TEST_MB", "200"))
 
@@ -188,10 +196,8 @@ CONSOLE_TLS = os.environ.get("VPSSRV_CONSOLE_TLS", "0") == "1"
 # _write_secret_file, defined below) — with no VPSSRV_CONSOLE_PORT set it
 # generates and persists a random port rather than defaulting to 80 or 443,
 # which now belong to the public page.
-CONSOLE_PORT_FILE = Path(
-    os.environ.get("VPSSRV_CONSOLE_PORT_FILE", str(BASE_DIR / "console_port.txt"))
-)
-CERT_DIR = Path(os.environ.get("VPSSRV_CERT_DIR", str(BASE_DIR / "certs")))
+CONSOLE_PORT_FILE = host_console_port_file()
+CERT_DIR = host_cert_dir()
 TLS_CERT = os.environ.get("VPSSRV_TLS_CERT", "")
 TLS_KEY = os.environ.get("VPSSRV_TLS_KEY", "")
 
@@ -225,9 +231,9 @@ OVERHEAD_FACTOR = 1.06  # compensate for TCP/IP/HTTP header overhead
 TRACK_CONNECTIONS = os.environ.get("VPSSRV_TRACK_CONNECTIONS", "1") == "1"
 CONN_POLL_SECONDS = float(os.environ.get("VPSSRV_CONN_POLL_SECONDS", "5"))
 
-# The admin password lives next to the app by default so it is easy to find
-# and edit when deploying on another machine (VPSSRV_PASSWORD_FILE overrides).
-PASSWORD_FILE = Path(os.environ.get("VPSSRV_PASSWORD_FILE", str(BASE_DIR / "admin_password.txt")))
+# The admin password lives in persistent host state, outside the code tree.
+# VPSSRV_PASSWORD_FILE can select another external path.
+PASSWORD_FILE = host_password_file()
 IP_ALLOWLIST_FILE = Path(os.environ.get("VPSSRV_IP_ALLOWLIST_FILE") or
                          str(DATA_DIR / "login-access.json"))
 # Login can be turned off at install time (see install.sh) for setups relying
@@ -247,7 +253,7 @@ LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30")
 # unauthenticated public `iperf3 -s` lets any stranger saturate the uplink for
 # as long as they like, and nothing about the host surfaces that it is
 # happening. See doc/LOG.md#decisions (2026-09-12).
-IPERF_MODULE_SWITCH = BASE_DIR / "data" / "iperf3-enabled"
+IPERF_MODULE_SWITCH = DATA_DIR / "iperf3-enabled"
 IPERF_BINARY = iperf_binary(BASE_DIR)
 IPERF_ENABLED = (IPERF_MODULE_SWITCH.read_text().strip() == "1" if IPERF_MODULE_SWITCH.exists()
                  else os.environ.get("VPSSRV_IPERF_ENABLE", "1") == "1")
@@ -267,6 +273,20 @@ def portfwd_enabled(*args, **kwargs):
     return _feature_modules.portfwd_enabled(sys.modules[__name__], *args, **kwargs)
 PORTFWD_MAX_RULES = int(os.environ.get("VPSSRV_PORTFWD_MAX_RULES", "20"))
 
+def _check_persisted_state():
+    marker = STATE_DIR / ".layout-version"
+    if (BASE_DIR / "app.py").is_file() or STATE_FILE.is_file():
+        if not marker.is_file() or marker.read_text(encoding="utf-8").strip() != "1":
+            raise RuntimeError("installed persistent state layout is missing")
+    if STATE_FILE.is_file():
+        if not PASSWORD_FILE.is_file() or not (DATA_DIR / "session_secret.txt").is_file() or not CERT_DIR.is_dir():
+            raise RuntimeError("installed persistent state is incomplete")
+        fixed_port = os.environ.get("VPSSRV_CONSOLE_PORT", "").strip()
+        if not CONSOLE_PORT_FILE.is_file() and not (DATA_DIR / "console-port-override").is_file() and fixed_port in ("", "0"):
+            raise RuntimeError("installed console port is missing")
+
+
+_check_persisted_state()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 os.chmod(DATA_DIR, 0o700)
 

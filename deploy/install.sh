@@ -17,8 +17,8 @@
 # Installation uses safe defaults without a browser or terminal questions.
 # VPSSRV_MODULES and other environment values may override those defaults.
 #
-# Re-running is safe: it refreshes the program files and restarts the service,
-# leaving admin_password.txt, console_port.txt, certs/ and data/ alone.
+# Re-running a v5.1.1-or-newer installation keeps its persistent state under
+# /var/lib/vps-server. Earlier layouts require a deliberate clean install.
 
 set -euo pipefail
 
@@ -50,7 +50,7 @@ KNOWN_VARS="VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSS
             VPSSRV_IPERF_ENABLE VPSSRV_IPERF_PORT VPSSRV_IPERF_DEFAULT_MINUTES
             VPSSRV_IPERF_MAX_MINUTES
             VPSSRV_PORTFWD_ENABLE VPSSRV_PORTFWD_MAX_RULES
-            VPSSRV_DATA_DIR VPSSRV_PASSWORD_FILE VPSSRV_IP_ALLOWLIST_FILE VPSSRV_AUTH VPSSRV_DEFAULT_LANG
+            VPSSRV_STATE_DIR VPSSRV_DATA_DIR VPSSRV_PASSWORD_FILE VPSSRV_IP_ALLOWLIST_FILE VPSSRV_AUTH VPSSRV_DEFAULT_LANG
             VPSSRV_LOGIN_MAX_ATTEMPTS VPSSRV_LOGIN_WINDOW_SECONDS VPSSRV_LOGIN_LOCKOUT_SECONDS
             VPSSRV_CERT_DIR VPSSRV_TLS_CERT VPSSRV_TLS_KEY VPSSRV_TRUST_PROXY
             VPSSRV_MAX_TEST_MB VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS
@@ -62,7 +62,11 @@ KNOWN_VARS="VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSS
 # What this install left behind, so the next one can tell what changed.
 # Deliberately not the unit file: the unit records only settings that were
 # given a value, which says nothing about which settings the version knew of.
-STATE_FILE="$PREFIX/.install-state"
+STATE_LOCATOR=/etc/vps-server/state-dir
+STATE_DIR="${VPSSRV_STATE_DIR:-}"
+if [ -z "$STATE_DIR" ] && [ -f "$STATE_LOCATOR" ]; then STATE_DIR="$(cat "$STATE_LOCATOR")"; fi
+STATE_DIR="${STATE_DIR:-/var/lib/vps-server}"
+STATE_FILE="$STATE_DIR/install-state"
 ANYTLS_UNIT="/etc/systemd/system/vps-server-anytls.service"
 ANYTLS_CONFIG_PATH="/etc/vps-server-anytls/config.json"
 PROXY_UNIT="/etc/systemd/system/vps-server-proxy.service"
@@ -88,7 +92,7 @@ resolve_version() {
     if [ -n "$v" ]; then
       printf '%s' "${v#v}"   # tags carry a leading v, the displayed version does not
     else
-      printf 'dev-%s' "$(git -C "$SRC_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+      printf 'test-%s' "$(git -C "$SRC_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
     fi
     return
   fi
@@ -110,7 +114,7 @@ unit_env() {
 }
 
 existing_install() {
-  [ -f "$UNIT_PATH" ] || [ -f "$ANYTLS_UNIT" ] || [ -f "$PROXY_UNIT" ] || [ -f "$FRPS_UNIT" ] || [ -f "$PREFIX/app.py" ]
+  [ -f "$STATE_FILE" ] || [ -f "$UNIT_PATH" ] || [ -f "$ANYTLS_UNIT" ] || [ -f "$PROXY_UNIT" ] || [ -f "$FRPS_UNIT" ] || [ -f "$PREFIX/app.py" ]
 }
 
 load_previous() {
@@ -125,6 +129,9 @@ load_previous() {
       esac
     done < "$UNIT_PATH"
   fi
+
+  STATE_DIR="${VPSSRV_STATE_DIR:-${PREV[VPSSRV_STATE_DIR]:-$STATE_DIR}}"
+  STATE_FILE="$STATE_DIR/install-state"
 
   if [ -f "$STATE_FILE" ]; then
     PREV_STATE_KNOWN=1
@@ -309,6 +316,152 @@ msg() {
 # substitution strips msg's trailing newline, so put it back here.
 die() { printf '%s%s\n' "$(msg error_prefix)" "$*" >&2; exit 1; }
 
+# The first external-state layout is a versioned baseline. Do not guess how
+# to migrate an older installation whose files may already be missing.
+prepare_state_layout() {
+  STATE_DIR="${VPSSRV_STATE_DIR:-$STATE_DIR}"
+  STATE_FILE="$STATE_DIR/install-state"
+  if [ "$UPGRADE" = 1 ] && { [ ! -f "$STATE_DIR/.layout-version" ] || [ ! -f "$STATE_FILE" ] || [ ! -f "$STATE_DIR/paths.json" ]; }; then
+    die "$(msg legacy_state_unsupported)"
+  fi
+  if [ -e "$STATE_DIR/.layout-version" ] && [ "$(cat "$STATE_DIR/.layout-version")" != 1 ]; then
+    die "$(msg state_layout_invalid)"
+  fi
+  if [ -f "$STATE_DIR/.layout-version" ] && [ ! -f "$STATE_FILE" ] && [ "$UPGRADE" = 0 ]; then
+    die "$(msg state_layout_invalid)"
+  fi
+  if [ "$UPGRADE" = 0 ] && [ ! -f "$STATE_DIR/.layout-version" ]; then
+    for old in "$PREFIX/admin_password.txt" "$PREFIX/console_port.txt" "$PREFIX/data" "$PREFIX/certs" "$PREFIX/.install-state"; do
+      [ ! -e "$old" ] && [ ! -L "$old" ] || die "$(msg legacy_state_unsupported)"
+    done
+    if [ -d "$STATE_DIR" ] && [ -n "$(ls -A "$STATE_DIR")" ]; then
+      die "$(msg state_layout_invalid)"
+    fi
+  fi
+  python3 - "$PREFIX" "$STATE_DIR" <<'PY'
+from pathlib import Path
+import sys
+prefix, state = (Path(value) for value in sys.argv[1:])
+if not state.is_absolute() or any(char.isspace() for char in str(state)):
+    raise SystemExit("invalid state directory")
+prefix, state = prefix.resolve(strict=False), state.resolve(strict=False)
+if state == prefix or prefix in state.parents or state == Path("/"):
+    raise SystemExit("state directory must be outside the application")
+PY
+  if [ -f "$STATE_LOCATOR" ] && [ "$(cat "$STATE_LOCATOR")" != "$STATE_DIR" ]; then
+    die "$(msg state_layout_invalid)"
+  fi
+  export VPSSRV_STATE_DIR="$STATE_DIR"
+}
+
+load_state_env() {
+  local line key value env_file="$STATE_DIR/.env"
+  if [ ! -f "$env_file" ] && [ "$UPGRADE" = 0 ]; then env_file="$SRC_DIR/.env"; fi
+  [ -f "$env_file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in ''|\#*) continue ;; *=*) ;; *) continue ;; esac
+    key="${line%%=*}"; value="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    case " $KNOWN_VARS " in *" $key "*) ;; *) continue ;; esac
+    [ "$key" != VPSSRV_STATE_DIR ] || continue
+    [ -n "${!key:-}" ] || export "$key=$value"
+  done < "$env_file"
+}
+
+load_state_paths() {
+  local values kv key value
+  [ -f "$STATE_DIR/paths.json" ] || return 0
+  values="$(python3 - "$STATE_DIR/paths.json" <<'PY'
+import json, sys
+from pathlib import Path
+paths = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for key in ("VPSSRV_DATA_DIR", "VPSSRV_PASSWORD_FILE", "VPSSRV_CONSOLE_PORT_FILE", "VPSSRV_CERT_DIR"):
+    value = paths[key]
+    if not isinstance(value, str) or not value.startswith("/") or "\n" in value:
+        raise SystemExit("invalid persisted path")
+    print(key + "=" + value)
+PY
+)" || die "$(msg state_layout_invalid)"
+  while IFS= read -r kv; do
+    key="${kv%%=*}"; value="${kv#*=}"
+    [ -n "${!key:-}" ] || export "$key=$value"
+  done <<< "$values"
+}
+
+set_state_defaults() {
+  export VPSSRV_DATA_DIR="${VPSSRV_DATA_DIR:-$STATE_DIR/data}"
+  export VPSSRV_PASSWORD_FILE="${VPSSRV_PASSWORD_FILE:-$STATE_DIR/admin_password.txt}"
+  export VPSSRV_CONSOLE_PORT_FILE="${VPSSRV_CONSOLE_PORT_FILE:-$STATE_DIR/console_port.txt}"
+  export VPSSRV_CERT_DIR="${VPSSRV_CERT_DIR:-$STATE_DIR/certs}"
+  export VPSSRV_IP_ALLOWLIST_FILE="${VPSSRV_IP_ALLOWLIST_FILE:-$VPSSRV_DATA_DIR/login-access.json}"
+  python3 - "$PREFIX" "$VPSSRV_DATA_DIR" "$VPSSRV_PASSWORD_FILE" "$VPSSRV_CONSOLE_PORT_FILE" "$VPSSRV_CERT_DIR" "$VPSSRV_IP_ALLOWLIST_FILE" <<'PY'
+from pathlib import Path
+import sys
+prefix = Path(sys.argv[1]).resolve(strict=False)
+for raw in sys.argv[2:]:
+    path = Path(raw)
+    if not path.is_absolute() or any(char.isspace() for char in raw):
+        raise SystemExit("persistent path must be absolute without spaces")
+    resolved = path.resolve(strict=False)
+    if resolved == prefix or prefix in resolved.parents:
+        raise SystemExit("persistent path must be outside the application")
+PY
+  if [ "$UPGRADE" = 1 ] && [[ ",$PREV_MODULES," == *,web,* ]]; then
+    [ -f "$VPSSRV_PASSWORD_FILE" ] && [ -f "$VPSSRV_DATA_DIR/session_secret.txt" ] &&
+      [ -d "$VPSSRV_CERT_DIR" ] || die "$(msg state_layout_invalid)"
+    if [ ! -f "$VPSSRV_DATA_DIR/console-port-override" ] &&
+       [ ! -f "$VPSSRV_CONSOLE_PORT_FILE" ] &&
+       { [ -z "${VPSSRV_CONSOLE_PORT:-}" ] || [ "${VPSSRV_CONSOLE_PORT:-0}" = 0 ]; }; then
+      die "$(msg state_layout_invalid)"
+    fi
+  fi
+  python3 - "$STATE_DIR/paths.json" "$VPSSRV_DATA_DIR" "$VPSSRV_PASSWORD_FILE" "$VPSSRV_CONSOLE_PORT_FILE" "$VPSSRV_CERT_DIR" <<'PY'
+import json, pathlib, sys
+record = pathlib.Path(sys.argv[1])
+wanted = dict(zip(("VPSSRV_DATA_DIR", "VPSSRV_PASSWORD_FILE", "VPSSRV_CONSOLE_PORT_FILE", "VPSSRV_CERT_DIR"), sys.argv[2:]))
+if record.is_file() and json.loads(record.read_text(encoding="utf-8")) != wanted:
+    raise SystemExit("persistent paths changed; manual transfer is required")
+PY
+}
+
+commit_state_layout() {
+  mkdir -p "$STATE_DIR/data" "$STATE_DIR/certs" "$VPSSRV_DATA_DIR" "$VPSSRV_CERT_DIR" \
+           "$(dirname "$VPSSRV_PASSWORD_FILE")" "$(dirname "$VPSSRV_CONSOLE_PORT_FILE")" \
+           "$(dirname "$VPSSRV_IP_ALLOWLIST_FILE")" "$(dirname "$STATE_LOCATOR")"
+  chmod 0700 "$STATE_DIR" "$STATE_DIR/data" "$STATE_DIR/certs" "$VPSSRV_DATA_DIR" "$VPSSRV_CERT_DIR"
+  if [ ! -f "$STATE_DIR/.env" ] && [ -f "$SRC_DIR/.env" ]; then
+    install -m 0600 "$SRC_DIR/.env" "$STATE_DIR/.env"
+  fi
+  python3 - "$STATE_DIR/paths.json" "$VPSSRV_DATA_DIR" "$VPSSRV_PASSWORD_FILE" "$VPSSRV_CONSOLE_PORT_FILE" "$VPSSRV_CERT_DIR" <<'PY'
+import json, os, pathlib, sys, tempfile
+record = pathlib.Path(sys.argv[1])
+wanted = dict(zip(("VPSSRV_DATA_DIR", "VPSSRV_PASSWORD_FILE", "VPSSRV_CONSOLE_PORT_FILE", "VPSSRV_CERT_DIR"), sys.argv[2:]))
+if not record.is_file():
+    fd, name = tempfile.mkstemp(prefix=".paths-", dir=record.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            json.dump(wanted, output, sort_keys=True)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(name, record)
+    finally:
+        pathlib.Path(name).unlink(missing_ok=True)
+PY
+  if [ ! -f "$STATE_DIR/.layout-version" ]; then
+    (umask 077; printf '1\n' > "$STATE_DIR/.layout-version")
+  fi
+  local locator_tmp
+  locator_tmp="$(mktemp "$(dirname "$STATE_LOCATOR")/.state-dir.XXXXXX")"
+  chmod 0600 "$locator_tmp"
+  printf '%s\n' "$STATE_DIR" > "$locator_tmp"
+  mv -f -- "$locator_tmp" "$STATE_LOCATOR"
+}
+
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
@@ -354,8 +507,22 @@ if existing_install; then
   msg found_install "${PREV_VERSION:-?}" "$PREV_MODULES"
   UPGRADE=1
   apply_previous
+fi
+
+prepare_state_layout
+load_state_env
+load_state_paths
+set_state_defaults
+commit_state_layout
+PASSWORD_WAS_PRESENT=0
+[ -f "$VPSSRV_PASSWORD_FILE" ] && PASSWORD_WAS_PRESENT=1
+if [ "$UPGRADE" = 1 ]; then
   preserve_anytls
   preserve_proxy
+fi
+if [ -n "${VPSSRV_DEFAULT_LANG:-}" ]; then
+  INSTALL_LANG="$VPSSRV_DEFAULT_LANG"
+  case "$INSTALL_LANG" in en|zh_cn|es) ;; *) INSTALL_LANG=en ;; esac
 fi
 
 if [ "$UPGRADE" = "0" ]; then
@@ -504,10 +671,10 @@ EOF
 check_frps_console_collision() {
 if has_module web && [ -f /etc/vps-server-frps/frps.toml ]; then
   console_candidate="${VPSSRV_CONSOLE_PORT:-}"
-  if [ -f "$PREFIX/data/console-port-override" ]; then
-    console_candidate="$(tr -d '[:space:]' < "$PREFIX/data/console-port-override")"
+  if [ -f "$VPSSRV_DATA_DIR/console-port-override" ]; then
+    console_candidate="$(tr -d '[:space:]' < "$VPSSRV_DATA_DIR/console-port-override")"
   fi
-  console_file="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
+  console_file="$VPSSRV_CONSOLE_PORT_FILE"
   if [ -z "$console_candidate" ] && [ -f "$console_file" ]; then
     console_candidate="$(tr -d '[:space:]' < "$console_file")"
   fi
@@ -724,10 +891,10 @@ check_frps_console_collision
 # Resolve the console choice after the prompt and before probing/stopping web.
 if has_module web && [ -f /etc/vps-server-lucky/config.json ]; then
   console_candidate="${VPSSRV_CONSOLE_PORT:-}"
-  if [ -f "$PREFIX/data/console-port-override" ]; then
-    console_candidate="$(tr -d '[:space:]' < "$PREFIX/data/console-port-override")"
+  if [ -f "$VPSSRV_DATA_DIR/console-port-override" ]; then
+    console_candidate="$(tr -d '[:space:]' < "$VPSSRV_DATA_DIR/console-port-override")"
   fi
-  console_file="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
+  console_file="$VPSSRV_CONSOLE_PORT_FILE"
   if [ -z "$console_candidate" ] && [ -f "$console_file" ]; then
     console_candidate="$(tr -d '[:space:]' < "$console_file")"
   fi
@@ -779,11 +946,11 @@ fi
 msg installing "$PREFIX"
 mkdir -p "$PREFIX"
 if [ "$UPGRADE" = "0" ] && has_module web; then
-  mkdir -p "$PREFIX/data"
-  chmod 700 "$PREFIX/data"
+  mkdir -p "$VPSSRV_DATA_DIR"
+  chmod 700 "$VPSSRV_DATA_DIR"
   for feature in speedtest portfwd visitors; do
-    printf '0\n' > "$PREFIX/data/$feature-enabled"
-    chmod 600 "$PREFIX/data/$feature-enabled"
+    printf '0\n' > "$VPSSRV_DATA_DIR/$feature-enabled"
+    chmod 600 "$VPSSRV_DATA_DIR/$feature-enabled"
   done
 fi
 
@@ -830,7 +997,13 @@ else
   HARDENING="NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=$PREFIX"
+ReadWritePaths=$PREFIX
+ReadWritePaths=$STATE_DIR
+ReadWritePaths=$VPSSRV_DATA_DIR
+ReadWritePaths=$(dirname "$VPSSRV_PASSWORD_FILE")
+ReadWritePaths=$(dirname "$VPSSRV_CONSOLE_PORT_FILE")
+ReadWritePaths=$VPSSRV_CERT_DIR
+ReadWritePaths=$(dirname "$VPSSRV_IP_ALLOWLIST_FILE")"
 fi
 
 if has_module iperf3; then
@@ -867,14 +1040,14 @@ if ! systemctl is-active --quiet "$SERVICE_NAME"; then
   exit 1
 fi
 
-PW_FILE="${VPSSRV_PASSWORD_FILE:-$PREFIX/admin_password.txt}"
-PORT_FILE="${VPSSRV_CONSOLE_PORT_FILE:-$PREFIX/console_port.txt}"
+PW_FILE="$VPSSRV_PASSWORD_FILE"
+PORT_FILE="$VPSSRV_CONSOLE_PORT_FILE"
 if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 # VPSSRV_CONSOLE_PORT, if set, was carried into the unit verbatim. Otherwise app.py
 # picked a random port on this first start and persisted it to PORT_FILE.
 PORT=""
-if [ -f "$PREFIX/data/console-port-override" ]; then
-  PORT="$(cat "$PREFIX/data/console-port-override")"
+if [ -f "$VPSSRV_DATA_DIR/console-port-override" ]; then
+  PORT="$(cat "$VPSSRV_DATA_DIR/console-port-override")"
 else
   PORT="${VPSSRV_CONSOLE_PORT:-}"
 fi
@@ -948,7 +1121,8 @@ fi
 if [ "$VPSSRV_AUTH" = "0" ]; then
   msg line_pw_none
 elif [ -f "$PW_FILE" ]; then
-  msg line_pw "$(cat "$PW_FILE")" "$PW_FILE"
+  if [ "$PASSWORD_WAS_PRESENT" = 1 ]; then msg line_pw_preserved "$PW_FILE"
+  else msg line_pw "$(cat "$PW_FILE")" "$PW_FILE"; fi
 else
   msg line_pw_seefile "$PW_FILE"
 fi

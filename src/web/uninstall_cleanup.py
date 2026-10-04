@@ -11,6 +11,7 @@ import sys
 
 from console_port import read_rows, write_rows
 from frp_control import client_names, client_unit, valid_client_name
+from state_paths import data_dir as state_data_dir
 
 
 FRPC_SHA256 = "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
@@ -66,7 +67,7 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
     prefix, directory, unit, binary, template = map(Path, (prefix, directory, unit, binary, template))
     if directory.is_symlink():
         raise CleanupError("FRPC configuration directory is a symlink")
-    marker = prefix / "data/frpc-binary-owned"
+    marker = state_data_dir() / "frpc-binary-owned"
     owned_binary = marker.is_file() and marker.read_text().strip() == FRPC_SHA256
     matching_unit = (unit.is_file() and not unit.is_symlink() and
                      template.is_file() and unit.read_bytes() == template.read_bytes())

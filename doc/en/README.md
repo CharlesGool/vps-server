@@ -28,9 +28,11 @@ metadata:
 
 A module-selecting bundle for a Debian/Ubuntu VPS: a public page to check web-port
 reachability, an operator console for speed tests and connection logging, an
-on-demand iperf3 window, and sing-box proxy nodes. Version 5.0.0 introduced managed nodes, traffic policies, private-IP access,
-independent HTTP/HTTPS controls, FRPS and local FRPC management, a Lucky
-installer, and direct terminal installation. See the [changelog][local-link-001] for release scope.
+on-demand iperf3 window, and sing-box proxy nodes. The latest formal release is
+v5.1.0. Current `main` is preparing the separate persistent state directory
+and FRPS editor correction for v5.1.1; it has not been formally released. See
+the [changelog][local-link-001] and [project status](../LOG.md) for release
+scope and verification results.
 
 ## Features
 
@@ -132,31 +134,42 @@ maintained, and their code is vendored here rather than absorbed.
 - External services: none at runtime. FRPS, FRPC, and iperf3 install from bundled
   artifacts; other missing system packages may still require a distro mirror.
   Node summaries use interface and available Tailscale addresses without an outbound public-IP lookup.
-  The default interface language is `en`.
 - Minimum: the OS, runtime, architecture, and free ports above. No additional recommended hardware requirement is recorded; roughly 180 MB of VPS disk space accommodates the bundled binaries.
 
 ## Install
 
 ### Quick Install
 
-Run as root. By default, only the Web console is installed. The installer prints
-the generated management port and password. These commands target the `v5.1.0`
-release source; consult its changelog for verified scope and remaining limits.
+Run as root on a fresh test host. By default, only the Web console is installed.
+On first install, the installer prints the generated management port and
+password. These commands check out the current `main` test source; the running
+version displays `test-<SHA>`. v5.1.1 has not been formally released.
+Installations of v5.1.0 or earlier cannot be migrated automatically; read
+[Upgrade](#upgrade) first.
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Normal Install
 
 ```bash
-git clone --branch v5.1.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
 ```
 
-`PREFIX` defaults to `/root/apps/vps-server`. There is no browser-based first-run wizard. Set `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` to select server modules explicitly; when omitted, only Web is installed. Install or remove optional modules later from Settings → Modules. Enable the HTTP and HTTPS public pages separately from Home. FRPC is installed separately when a local client is needed, using the bundled binary.
+In this test source, `PREFIX` defaults to `/root/apps/vps-server` and holds replaceable program files.
+Passwords, the console port, certificates, runtime data, installation records,
+and `.env` default to `/var/lib/vps-server`. Set `VPSSRV_STATE_DIR` in the command
+environment before the first install to use another external directory. There
+is no browser-based first-run wizard. Set
+`VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` to select server modules
+explicitly; when omitted, only Web is installed. Install or remove optional
+modules later from Settings → Modules. Enable the HTTP and HTTPS public pages
+separately from Home. FRPC is installed separately when a local client is
+needed, using the bundled binary.
 
 ## Guidance
 
@@ -165,14 +178,14 @@ bash deploy/install.sh
 The Web implementation is in `src/web/`, static assets in `src/web/static/`, and
 installers in `deploy/`. Bundled FRPC, FRPS, and iperf3 binaries and license
 records are in `third_party/`; release metadata is in `config/`. Installed
-runtime code remains in `$PREFIX/src/web/`, with only a compatibility entry
-point at `$PREFIX/app.py`. Data, certificates, and installation state remain
-at their existing paths and are preserved during an upgrade.
+runtime code is in `$PREFIX/src/web/`, with only a compatibility entry point at
+`$PREFIX/app.py`. Persistent state is in `$VPSSRV_STATE_DIR`; checking out or
+replacing the program directory does not delete that state root.
 
 There is no automated test suite in the source checkout. After changes, verify
 installation, console, and service behavior for the enabled modules manually.
-The v5.1.0 source includes FRPC, FRPS, and iperf3; the older `v5.0.0` tag retains
-the behavior documented for that version.
+The current test source still bundles FRPC, FRPS, and iperf3. Formal tags retain
+the behavior documented for their respective versions.
 
 ```bash
 bash deploy/install.sh                       # install the Web console by default
@@ -212,11 +225,13 @@ After `bash deploy/install.sh`, check the printed management address, password, 
 
 ### Configuration
 
-Every variable has a working default; `.env` is optional. The most load-bearing
-ones:
+Every variable has a working default. The first installation can import
+`.env` from the source directory; afterward it is stored as `.env` in the state root.
+Key variables:
 
 | Variable | Meaning | Default | Required |
 |---|---|---|---|
+| `VPSSRV_STATE_DIR` | Persistent state root, set in the command environment before first install; `.env` cannot move it | `/var/lib/vps-server` | no |
 | `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
 | `VPSSRV_PUBLIC_HTTPS_PORT` | Public reachability page, TLS | `443` | no |
 | `VPSSRV_PUBLIC_ENABLE` | Whether to serve public pages at first install; Home controls HTTP and HTTPS separately afterward | `0` | no |
@@ -230,30 +245,37 @@ Full reference: [Configuration reference][local-link-002].
 
 ## Upgrade
 
-When upgrading from a supported older version, use a current checkout and
-rerun the installer with the same
-installation directory and module choices. The installer imports older proxy
-configurations into its managed-node registry. If import fails, inspect the
-configuration and service logs; the console does not fall back to the old
-editor. Installations previously set to Traditional Chinese, Hindi, Arabic,
-or French fall back to English; Simplified Chinese or Spanish can be selected
-in ordinary Settings. Keep a backup of persistent data until the upgraded services and
-console have been verified.
+The planned `v5.1.1` starts persistent state layout `1`. **Automatic migration is not supported**
+from v5.1.0 or earlier. If old data remains, back it up outside
+the installation directory and explicitly perform a fresh install. Data that
+was deleted without a backup cannot be recovered. If the installer finds an
+old service or missing state, it stops before changing services; it does not
+generate a new password or port for the old installation.
+
+To upgrade from v5.1.1 to a later version, check out the new version in a
+separate source directory. Preserve `$VPSSRV_STATE_DIR` and installed module
+configurations under `/etc`, then run the installer with the same `PREFIX`.
+It retains the state root's password, port, certificates, runtime data, and
+recorded modules. An upgrade does not print the old password again. Do not
+delete old data inside `$PREFIX` to prepare an upgrade. If you customized
+persistent paths, you **MUST** use the same paths in later installs; moving them requires
+manual transfer and verification. Keep separate backups of the old code and
+data until the new services have been checked.
 
 ## Uninstall
 
 Run as root, from the installer checkout, with the same `PREFIX` and
 `SERVICE_NAME` values used at install time (the installer's summary prints
-the exact removal command). To remove the installed modules and units **while
-keeping data** in `$PREFIX` for a later reinstall:
+the exact removal command). To remove services and units **while keeping**
+the program directory and `$VPSSRV_STATE_DIR` for a later reinstall:
 
 ```bash
 KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
-To remove the installed modules and **delete data as well** (including the
-visitor log, console password, saved port, certificates, and this project's
-FRPC instance configurations in `$PREFIX`):
+To remove the installed modules and **delete data in the default state root**
+(including the visitor log, console password, saved port, certificates, and
+this project's FRPC instance configurations):
 
 ```bash
 bash deploy/uninstall.sh
@@ -263,11 +285,13 @@ Both modes remove installed anytls/proxy services and their module
 configurations, stop this project's FRPC instances, remove its FRPC service
 template and matching binary, and atomically release vps-server entries from
 the sibling `PORTS.md` while retaining other projects' entries.
-`KEEP_DATA=1` retains `$PREFIX`, FRPC instance configurations such as
+`KEEP_DATA=1` retains `$PREFIX`, `$VPSSRV_STATE_DIR`, FRPC instance configurations such as
 `/etc/frp/frpc-*.toml`, and recovery copies, but not anytls/proxy module
 configurations. A complete uninstall also deletes project-named FRPC
-configurations, aliases, and recovery copies. Without `KEEP_DATA=1`, the
-project-named `frpc-*.toml` files are removed. When it finds instances the
+configurations, aliases, and recovery copies, as well as the default state
+root if it has layout marker `1`. Data paths customized outside that root
+are not deleted automatically. Without `KEEP_DATA=1`, the project-named
+`frpc-*.toml` files are removed. When it finds instances the
 console can recognize, it stops them and removes their global FRPC files even
 if an older service template differs; confirm ownership first on a shared
 FRPC host. If no recognizable instance establishes ownership, global FRPC is

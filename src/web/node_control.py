@@ -27,6 +27,10 @@ from node_inventory import InvalidInventory, validate_inventory
 from console_port import read_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
+try:
+    from .state_paths import data_dir as state_data_dir, console_port_file as state_console_port_file
+except ImportError:
+    from state_paths import data_dir as state_data_dir, console_port_file as state_console_port_file
 
 
 LOCK_PATH = Path("/etc/vps-server-node.lock")
@@ -36,7 +40,7 @@ PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 APP_DIR = Path(__file__).resolve().parent
 if APP_DIR.parent.name == "src":
     APP_DIR = APP_DIR.parent.parent
-IPERF_PORT_FILE = Path(os.environ.get("VPSSRV_DATA_DIR", str(APP_DIR / "data"))) / "iperf-port.txt"
+IPERF_PORT_FILE = state_data_dir() / "iperf-port.txt"
 EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
                          "cap_action", "upload_limit_bps", "download_limit_bps",
                          "expiry_count", "expiry_unit", "expires_at",
@@ -88,12 +92,12 @@ def _reserved_ports():
         reserved.add(int(os.environ.get("VPSSRV_IPERF_PORT", "5201")))
     except (OSError, ValueError) as exc:
         raise NodeControlError("cannot read iperf port") from exc
-    for path in (APP_DIR / "console_port.txt",):
+    for path in (state_console_port_file(),):
         try:
             reserved.add(int(path.read_text().strip()))
         except (OSError, ValueError):
             pass
-    state = APP_DIR / "data" / "portfwd.json"
+    state = state_data_dir() / "portfwd.json"
     try:
         rules = json.loads(state.read_text())
     except FileNotFoundError:

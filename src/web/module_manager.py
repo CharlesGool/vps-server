@@ -18,6 +18,11 @@ import tarfile
 import time
 
 try:
+    from .state_paths import data_dir as state_data_dir, install_state_file
+except ImportError:
+    from state_paths import data_dir as state_data_dir, install_state_file
+
+try:
     from .node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
 except ImportError:
     from node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
@@ -57,7 +62,7 @@ def frpc_installed():
 
 def frpc_group_enabled(prefix):
     """The module switch is independent of its individual instance units."""
-    data = Path(prefix) / "data"
+    data = state_data_dir()
     flag = data / "frpc-group-enabled"
     if flag.is_file():
         return flag.read_text().strip() == "1"
@@ -66,7 +71,7 @@ def frpc_group_enabled(prefix):
 
 
 def installed_modules(prefix):
-    state = Path(prefix) / ".install-state"
+    state = install_state_file()
     if not state.is_file():
         return set()
     for line in state.read_text(encoding="utf-8").splitlines():
@@ -87,34 +92,34 @@ def installed_modules(prefix):
 
 
 def status_path(prefix):
-    return Path(prefix) / "data" / "module-job.json"
+    return state_data_dir() / "module-job.json"
 
 
 def log_path(prefix):
-    return Path(prefix) / "data" / "module-job.log"
+    return state_data_dir() / "module-job.log"
 
 
 def feature_enabled(prefix, feature):
     if feature not in FEATURES:
         raise ValueError("unknown feature")
-    flag = Path(prefix) / "data" / f"{feature}-enabled"
+    flag = state_data_dir() / f"{feature}-enabled"
     return not flag.is_file() or flag.read_text().strip() != "0"
 
 
 def public_listener_enabled(prefix, listener, default=True):
     if listener not in PUBLIC_LISTENERS:
         raise ValueError("unknown public listener")
-    flag = Path(prefix) / "data" / f"{listener.replace('_', '-')}-enabled"
+    flag = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
     if flag.is_file():
         return flag.read_text().strip() == "1"
-    legacy = Path(prefix) / "data" / "web-public-enabled"
+    legacy = state_data_dir() / "web-public-enabled"
     return legacy.read_text().strip() == "1" if legacy.is_file() else default
 
 
 def set_feature(prefix, feature, enabled):
     if feature not in FEATURES:
         raise ValueError("unknown feature")
-    flag = Path(prefix) / "data" / f"{feature}-enabled"
+    flag = state_data_dir() / f"{feature}-enabled"
     flag.parent.mkdir(parents=True, exist_ok=True)
     previous = flag.read_bytes() if flag.exists() else None
     temp = flag.with_suffix(".tmp")
@@ -137,7 +142,7 @@ def set_feature(prefix, feature, enabled):
 def wait_portfwd_applied(prefix, enabled, flag):
     state = flag.stat()
     revision = [state.st_ino, state.st_mtime_ns]
-    applied = Path(prefix) / "data" / "portfwd-applied.json"
+    applied = state_data_dir() / "portfwd-applied.json"
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         try:
@@ -166,7 +171,7 @@ class PublicPortOccupied(RuntimeError):
 
 
 def wait_public_listener_applied(prefix, listener, enabled, old_pid):
-    status_file = Path(prefix) / "data" / "public-listeners.json"
+    status_file = state_data_dir() / "public-listeners.json"
     name = "http" if listener == "web_http" else "https"
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
@@ -202,8 +207,8 @@ def switch_web_setting(path, enabled):
 
 
 def switch_public_listener(prefix, listener, enabled):
-    path = Path(prefix) / "data" / f"{listener.replace('_', '-')}-enabled"
-    status_file = Path(prefix) / "data" / "public-listeners.json"
+    path = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
+    status_file = state_data_dir() / "public-listeners.json"
     try:
         old_pid = json.loads(status_file.read_text()).get("pid")
     except (OSError, ValueError, TypeError):
@@ -241,7 +246,7 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
                 ("anytls" if node["protocol"] == "anytls" else "proxy") in installed]
         if len(kept) == len(inventory["nodes"]):
             return
-        backup = Path(prefix) / "data" / f"node-inventory-before-reinstall-{time.time_ns()}.json"
+        backup = state_data_dir() / f"node-inventory-before-reinstall-{time.time_ns()}.json"
         backup.write_bytes(state_path.read_bytes())
         os.chmod(backup, 0o600)
         inventory["nodes"] = kept
@@ -302,7 +307,7 @@ def install_iperf3(prefix):
         raise RuntimeError("the console module is unavailable")
     if "iperf3" in installed_modules(prefix):
         raise RuntimeError("module already installed")
-    state = prefix / ".install-state"
+    state = install_state_file()
     if not state.is_file():
         raise RuntimeError("installed-module record is unavailable")
     lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -327,7 +332,7 @@ def install_iperf3(prefix):
         os.replace(staged, destination)
     finally:
         staged.unlink(missing_ok=True)
-    switch_web_setting(prefix / "data" / "iperf3-enabled", True)
+    switch_web_setting(state_data_dir() / "iperf3-enabled", True)
     temp = state.with_suffix(".tmp")
     temp.write_text("".join(lines), encoding="utf-8")
     os.chmod(temp, state.stat().st_mode & 0o777)
@@ -348,7 +353,7 @@ def install_frps(prefix):
     subprocess.run(["/usr/bin/bash", str(source)], env=env,
                    stdin=subprocess.DEVNULL, stdout=sys.stdout, stderr=subprocess.STDOUT,
                    check=True, timeout=300)
-    state = prefix / ".install-state"
+    state = install_state_file()
     lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
     for index, line in enumerate(lines):
         if line.startswith("modules="):
@@ -386,7 +391,7 @@ def install_frpc(prefix):
         raise RuntimeError("An existing FRPC service template differs from the bundled version")
     created_binary = not FRPC_BINARY.exists()
     created_unit = not FRPC_UNIT.exists()
-    owned = Path(prefix) / "data" / "frpc-binary-owned"
+    owned = state_data_dir() / "frpc-binary-owned"
     try:
         if created_binary:
             staged = FRPC_BINARY.with_suffix(".tmp")
@@ -428,8 +433,8 @@ def run_toggle(prefix, module, enabled):
         if not frpc_installed():
             raise RuntimeError("FRPC is not installed")
         names = frpc_names(FRPC_CONFIG_DIR)
-        state = Path(prefix) / "data" / "frpc-group-active.json"
-        flag = Path(prefix) / "data" / "frpc-group-enabled"
+        state = state_data_dir() / "frpc-group-active.json"
+        flag = state_data_dir() / "frpc-group-enabled"
         if enabled:
             saved = json.loads(state.read_text()) if state.is_file() else []
             for name in names:
@@ -463,7 +468,7 @@ def run_toggle(prefix, module, enabled):
     if module not in installed_modules(prefix):
         raise RuntimeError("module is not installed")
     if module == "iperf3":
-        target = Path(prefix) / "data" / "iperf3-enabled"
+        target = state_data_dir() / "iperf3-enabled"
         switch_web_setting(target, enabled)
         return
     unit = UNITS[module]
@@ -506,7 +511,7 @@ def run_uninstall(prefix, module):
     targets = ({"proxy", "anytls"} & present) if module == "proxy_nodes" else {module} & present
     if not targets:
         raise RuntimeError("module is not installed")
-    archive = Path(prefix) / "data" / f"module-backup-{module}-{int(time.time())}.tar.gz"
+    archive = state_data_dir() / f"module-backup-{module}-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         paths = {"proxy": "/etc/vps-server-proxy", "anytls": "/etc/vps-server-anytls",
                  "frps": "/etc/vps-server-frps"}
@@ -521,7 +526,7 @@ def run_uninstall(prefix, module):
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
     if module == "iperf3":
-        switch_web_setting(Path(prefix) / "data" / "iperf3-enabled", False)
+        switch_web_setting(state_data_dir() / "iperf3-enabled", False)
         bundled = Path(prefix) / "vendor" / "iperf3" / "iperf3"
         if bundled.is_file() and hashlib.sha256(bundled.read_bytes()).hexdigest() == IPERF_SHA256:
             bundled.unlink()
@@ -555,7 +560,7 @@ def run_uninstall(prefix, module):
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
         # Keep bind port and token so a later reinstall can restore clients.
         Path("/usr/local/bin/frps-vps-server").unlink(missing_ok=True)
-    state = Path(prefix) / ".install-state"
+    state = install_state_file()
     lines = state.read_text().splitlines()
     kept = present - targets
     next_state = "\n".join("modules=" + ",".join(item for item in MODULES if item in kept)
@@ -575,7 +580,7 @@ def uninstall_frpc(prefix):
         raise RuntimeError("FRPC service template changed; refusing to remove it")
     configs = sorted(FRPC_CONFIG_DIR.glob("frpc-*.toml"))
     names = frpc_names(FRPC_CONFIG_DIR)
-    archive = Path(prefix) / "data" / f"module-backup-frpc-{int(time.time())}.tar.gz"
+    archive = state_data_dir() / f"module-backup-frpc-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         for config in configs:
             if config.is_file() and not config.is_symlink():
@@ -592,7 +597,7 @@ def uninstall_frpc(prefix):
         os.chmod(FRPC_UNIT, 0o644)
         subprocess.run(["systemctl", "daemon-reload"], check=False, timeout=30)
         raise
-    owned = Path(prefix) / "data" / "frpc-binary-owned"
+    owned = state_data_dir() / "frpc-binary-owned"
     if owned.is_file() and owned.read_text().strip() == FRPC_SHA256 and FRPC_BINARY.is_file():
         if hashlib.sha256(FRPC_BINARY.read_bytes()).hexdigest() == FRPC_SHA256:
             FRPC_BINARY.unlink()
@@ -608,9 +613,9 @@ def main(argv=None):
     if module in PUBLIC_LISTENERS and action not in ("enable", "disable"):
         raise SystemExit("invalid public listener action")
     prefix = str(Path(prefix).resolve(strict=True))
-    if os.geteuid() != 0 or not (Path(prefix) / ".install-state").is_file():
+    if os.geteuid() != 0 or not (install_state_file()).is_file():
         raise SystemExit("root and an installed console are required")
-    lock_path = Path(prefix) / "data" / "module-job.lock"
+    lock_path = state_data_dir() / "module-job.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

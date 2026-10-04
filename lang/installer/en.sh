@@ -3,6 +3,8 @@ case "$key" in
   need_root) fmt='must run as root (try: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='systemd not found; this installer targets systemd hosts\n' ;;
   platform_unsupported) fmt='Only x86-64 Linux is supported.\n' ;;
+  legacy_state_unsupported) fmt='An older or incomplete installation exists. Automatic state migration is not supported. Restore a backup or perform a deliberate clean install; services were not changed.\n' ;;
+  state_layout_invalid) fmt='Persistent state location is invalid or already contains unrelated files; installation stopped before changing services.\n' ;;
   no_python) fmt='python3 not found (apt install python3)\n' ;;
   no_openssl) fmt='openssl not found (apt install openssl), or set VPSSRV_CONSOLE_TLS=0 to serve plain HTTP\n' ;;
   installing) fmt='Installing to %s ...\n' ;;
@@ -20,6 +22,7 @@ case "$key" in
   line_url_unknown) fmt='  url:      %s://%s:<port>/   (could not read %s — check journalctl -u %s)\n' ;;
   line_pw_none) fmt='  password: none — password protection is disabled (VPSSRV_AUTH=0)\n' ;;
   line_pw) fmt='  password: %s   (stored in %s)\n' ;;
+  line_pw_preserved) fmt='  password: existing file retained at %s (value not printed)\n' ;;
   line_pw_seefile) fmt='  password: see %s\n' ;;
   line_lang) fmt='  language: %s (default when no cookie/query/browser match)\n' ;;
   cert_note) fmt='\nNote: using a self-signed certificate, so browsers will show a warning\nyou must click through. To use a real certificate, set VPSSRV_TLS_CERT\nand VPSSRV_TLS_KEY and re-run this installer.\n' ;;
@@ -56,7 +59,7 @@ case "$key" in
   upgrade_new_item) fmt='  %s = %s (default applied)\n' ;;
   ask_new_var) fmt='  %s [%s]: ' ;;
   upgrade_vars_unknown) fmt='The installed version did not record which settings it supported, so this cannot tell which are new. Everything it did record is carried forward; anything else takes the default documented in .env.example. Re-run and answer "n" above to review every setting.\n' ;;
-  language_menu) fmt='Language / 语言 / 語言:\n  1) English\n  2) 简体中文 (Simplified Chinese)\n  3) 繁體中文 (Traditional Chinese)\n  4) 繁體中文 (香港)\n  5) हिन्दी\n  6) Español\n  7) العربية\n  8) Français\n' ;;
+  language_menu) fmt='Language:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
   language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
   host_placeholder) fmt='<this-server>' ;;
   error_prefix) fmt='error: ' ;;

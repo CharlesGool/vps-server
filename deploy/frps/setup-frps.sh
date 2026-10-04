@@ -100,10 +100,12 @@ if unit.exists():
     for name in ('VPSSRV_PUBLIC_HTTP_PORT', 'VPSSRV_PUBLIC_HTTPS_PORT', 'VPSSRV_CONSOLE_PORT', 'VPSSRV_IPERF_PORT'):
         m = re.search(r'^Environment=' + name + r'=(\d+)$', text, re.M)
         if m: reserved.add(int(m.group(1)))
-console = pathlib.Path(prefix) / 'console_port.txt'
+locator = pathlib.Path('/etc/vps-server/state-dir')
+state_root = pathlib.Path(os.environ.get('VPSSRV_STATE_DIR') or (locator.read_text().strip() if locator.is_file() else '/var/lib/vps-server'))
+console = pathlib.Path(os.environ.get('VPSSRV_CONSOLE_PORT_FILE') or state_root / 'console_port.txt')
 if unit.exists():
     m = re.search(r'^Environment=VPSSRV_CONSOLE_PORT_FILE=(.+)$', unit.read_text(), re.M)
-    if m: console = pathlib.Path(m.group(1))
+    if m and not os.environ.get('VPSSRV_CONSOLE_PORT_FILE'): console = pathlib.Path(m.group(1))
 if console.exists() and console.read_text().strip().isdecimal(): reserved.add(int(console.read_text().strip()))
 for path in ('/etc/vps-server-anytls/config.json', '/etc/vps-server-proxy/config.json'):
     if pathlib.Path(path).exists():
@@ -111,11 +113,11 @@ for path in ('/etc/vps-server-anytls/config.json', '/etc/vps-server-proxy/config
             reserved.update(int(i['listen_port']) for i in json.loads(pathlib.Path(path).read_text()).get('inbounds', []))
         except (ValueError, KeyError, TypeError) as exc:
             raise SystemExit(err('reserved_check', path, exc))
-forward = pathlib.Path(prefix) / 'data' / 'portfwd.json'
+forward = pathlib.Path(os.environ.get('VPSSRV_DATA_DIR') or state_root / 'data') / 'portfwd.json'
 # The state location may be overridden by the web unit; inspect that too.
 if unit.exists():
     m = re.search(r'^Environment=VPSSRV_DATA_DIR=(.+)$', unit.read_text(), re.M)
-    if m: forward = pathlib.Path(m.group(1)) / 'portfwd.json'
+    if m and not os.environ.get('VPSSRV_DATA_DIR'): forward = pathlib.Path(m.group(1)) / 'portfwd.json'
 if forward.exists():
     try:
         data = json.loads(forward.read_text())

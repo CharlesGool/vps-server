@@ -14,7 +14,8 @@ RestartSec=5
 # firewall rule for an open iperf3 window. Dropping to a normal user means
 # giving up all three.
 User=root
-# Config is read from WorkingDirectory/.env, or set it here:
+# Config is read from /var/lib/vps-server/.env, or set it here:
+# Environment=VPSSRV_STATE_DIR=/var/lib/vps-server
 # Environment=VPSSRV_PUBLIC_ENABLE=0
 # Environment=VPSSRV_CONSOLE_PORT=8080
 
@@ -28,7 +29,7 @@ User=root
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/opt/vps-server
+ReadWritePaths=/opt/vps-server /var/lib/vps-server
 
 [Install]
 WantedBy=multi-user.target
