@@ -396,7 +396,7 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 
 已登录的 Settings 页面列出已安装的运行模块.可选模块的安装与卸载由串行 root 辅助程序执行;`data/module-job.json` 保存任务状态,`data/module-job.log` 保存当前输出,`data/module-history.log` 追加操作历史.模块页仅在当前操作页面短时显示安装/卸载进度,最后输出后 30 秒收起,刷新或重新进入不重现完成提示.独立的 `/settings/logs` 页面读取模块历史与 Web,节点计量,Singbox,FRPS,FRPC,Lucky,Tailscale 的 journal;服务日志范围由主机 journal 设置决定.
 
-Home 的功能开关独立于模块安装状态.公开 Web 监听器,代理节点,Tailscale,FRPS,FRPC 和端口转发占用的主机端口登记在安装目录同级的 `PORTS.md`;运行时开关和节点操作共用 `.ports.lock` 与原子写入,失败时回滚新登记,停止或删除后只释放本项目的行.FRPC 组开关在停止实例前记录活跃实例,重新启用时仅恢复它们.Proxy nodes 组只控制统一 sing-box 服务.Home 的 FRPS 入口为 `/frps`,FRPC 列表入口为 `/frpc`,Tailscale 入口为 `/tailscale`;旧 `/frp` 书签重定向到 FRPC 列表.
+Home 的功能开关独立于模块安装状态.公开 Web 监听器,代理节点,Tailscale,FRPS,FRPC,端口转发和临时 iperf3 窗口占用的主机端口登记在安装目录同级的 `PORTS.md`;运行时开关和节点操作共用 `.ports.lock` 与原子写入,失败时回滚新登记,停止或删除后只释放本项目的行.iperf3 只有窗口实际打开时登记端口,关闭或 Web 重启时释放.FRPC 组开关在停止实例前记录活跃实例,重新启用时仅恢复它们.Proxy nodes 组只控制统一 sing-box 服务.Home 的 FRPS 入口为 `/frps`,FRPC 列表入口为 `/frpc`,Tailscale 入口为 `/tailscale`;旧 `/frp` 书签重定向到 FRPC 列表.
 
 访客数据库,`portfwd.json` 和 `login-access.json` 保存在 `$VPSSRV_DATA_DIR`.最近访问者页可通过已登录会话与 CSRF 校验清空访客数据库;清空请求本身不重新写入,后续访问及仍在连接中的设备会重新记录.控制台密码,选定端口,Web 证书及 `install-state` 保存在 `$VPSSRV_STATE_DIR`;程序安装目录可独立替换.sing-box 模块的配置及证书位于 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
 

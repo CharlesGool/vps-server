@@ -1311,6 +1311,9 @@ def main():
             pass  # signal handlers can only be installed on the main thread
 
     try:
+        # A prior Web process might have died while its temporary iperf3
+        # listener was registered. A fresh process has no live window.
+        IPERF_WINDOW.close()
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)

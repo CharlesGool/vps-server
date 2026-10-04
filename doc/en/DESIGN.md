@@ -573,12 +573,15 @@ module history and journals for Web, node metering, Singbox, FRPS, FRPC, Lucky,
 and Tailscale. Service-log scope depends on the host journal settings.
 
 Home feature switches are independent of module installation state. Host ports
-used by public Web listeners, proxy nodes, Tailscale, FRPS, FRPC, and port
-forwarding are registered in `PORTS.md` beside the installation directory.
+used by public Web listeners, proxy nodes, Tailscale, FRPS, FRPC, port
+forwarding, and temporary iperf3 windows are registered in `PORTS.md` beside
+the installation directory.
 Runtime switches and node operations share `.ports.lock` and atomic writes;
 failures roll back new registrations, and stopping or deleting releases only
-this project's entries. The FRPC group switch records running instances before
-stopping them and restores only those instances when re-enabled. The Proxy
+this project's entries. An iperf3 port is registered only while its window is
+open and released when the window closes or Web restarts. The FRPC group switch
+records running instances before stopping them and restores only those
+instances when re-enabled. The Proxy
 nodes group controls only the unified sing-box service. Home links to FRPS at
 `/frps`, the FRPC list at `/frpc`, and Tailscale at `/tailscale`; the old `/frp`
 bookmark redirects to the FRPC list.

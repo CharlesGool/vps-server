@@ -507,19 +507,19 @@ def _apply_iperf_port(request, *, require_root):
         if current != old_port or port == old_port:
             raise NodeControlError("stale iperf port")
         rows, raw = read_rows(registry)
-        if sum(p == old_port and owner == service for p, owner, _, _ in rows) != 1:
-            raise NodeControlError("iperf port is not registered")
+        if any(p == old_port and owner != service for p, owner, _, _ in rows):
+            raise NodeControlError("iperf port is registered to another service")
         if any(p == port for p, _, _, _ in rows) or port in _reserved_ports():
             raise NodeControlError("requested port is reserved")
         _free_port(port)
-        updated = [(port, service, "0.0.0.0", date.today().isoformat())
-                   if p == old_port and owner == service else (p, owner, bind, registered)
-                   for p, owner, bind, registered in rows]
+        # The window is closed while its port changes. Keep the chosen port
+        # unregistered until open() actually starts the listener.
+        updated = [row for row in rows if not (row[0] == old_port and row[1] == service)]
         registry_bytes = serialize_rows(updated)
         old_state = state.read_bytes() if state.exists() else None
         registry_stage = _stage(registry, registry_bytes)
         try:
-            os.chmod(registry_stage, registry.stat().st_mode & 0o777)
+            os.chmod(registry_stage, registry.stat().st_mode & 0o777 if registry.exists() else 0o644)
             state_stage = _stage(state, f"{port}\n".encode("ascii"))
         except BaseException:
             registry_stage.unlink(missing_ok=True)
@@ -529,7 +529,7 @@ def _apply_iperf_port(request, *, require_root):
             try:
                 _replace(state_stage, state)
             except BaseException:
-                rollback = _stage(registry, raw)
+                rollback = _stage(registry, raw if raw is not None else serialize_rows(rows))
                 os.chmod(rollback, registry.stat().st_mode & 0o777)
                 try:
                     _replace(rollback, registry)
