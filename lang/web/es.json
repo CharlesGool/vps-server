@@ -513,7 +513,5 @@
   "tailscale_hairpinning": "Conexión de retorno",
   "tailscale_tun": "Modo TUN",
   "terminal_title": "Terminal",
-  "terminal_disconnected": "La terminal se ha desconectado.",
-  "terminal_reconnect": "Volver a conectar",
-  "terminal_close": "Cerrar terminal"
+  "terminal_disconnected": "La terminal se ha desconectado."
 }

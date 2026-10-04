@@ -3,8 +3,6 @@
   if (!page) return;
   const screen = page.querySelector('.terminal-screen');
   const status = page.querySelector('.terminal-status');
-  const reconnect = page.querySelector('.terminal-reconnect');
-  const close = page.querySelector('.terminal-close');
   if (!window.Terminal || !window.FitAddon?.FitAddon) {
     status.textContent = page.dataset.disconnected;
     return;
@@ -43,21 +41,17 @@
     const next = new WebSocket(`${protocol}//${location.host}/terminal/ws?token=${encodeURIComponent(page.dataset.token)}`);
     socket = next;
     next.binaryType = 'arraybuffer';
-    reconnect.disabled = true;
     status.textContent = '';
-    next.onopen = () => { if (socket === next) { reconnect.disabled = false; resize(); terminal.focus(); } };
+    next.onopen = () => { if (socket === next) { resize(); terminal.focus(); } };
     next.onmessage = (event) => {
       if (socket === next && event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
     };
     next.onclose = () => {
       if (socket !== next) return;
       if (!leaving) status.textContent = page.dataset.disconnected;
-      reconnect.disabled = false;
     };
     next.onerror = () => { if (socket === next) status.textContent = page.dataset.disconnected; };
   };
-  reconnect.addEventListener('click', connect);
-  close.addEventListener('click', () => socket?.close());
   window.addEventListener('pagehide', () => { leaving = true; observer.disconnect(); socket?.close(); terminal.dispose(); });
   connect();
 })();

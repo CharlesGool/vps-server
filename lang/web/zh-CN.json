@@ -513,7 +513,5 @@
   "tailscale_hairpinning": "回环连接",
   "tailscale_tun": "TUN 模式",
   "terminal_title": "终端",
-  "terminal_disconnected": "终端已断开。",
-  "terminal_reconnect": "重新连接",
-  "terminal_close": "关闭终端"
+  "terminal_disconnected": "终端已断开。"
 }

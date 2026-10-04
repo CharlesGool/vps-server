@@ -513,7 +513,5 @@
   "tailscale_hairpinning": "Hairpinning",
   "tailscale_tun": "TUN mode",
   "terminal_title": "Terminal",
-  "terminal_disconnected": "Terminal disconnected.",
-  "terminal_reconnect": "Reconnect",
-  "terminal_close": "Close terminal"
+  "terminal_disconnected": "Terminal disconnected."
 }

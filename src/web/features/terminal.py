@@ -15,10 +15,9 @@ class TerminalMixin:
         ws_token = self.context.access_csrf_token(token, "terminal")
         body = (f'<div class="card wide terminal-page" data-token="{esc(ws_token, quote=True)}" '
                 f'data-disconnected="{esc(t["terminal_disconnected"], quote=True)}">'
-                f'<div class="terminal-head"><h1>{esc(t["terminal_title"])}</h1>'
-                f'<div><button type="button" class="terminal-reconnect">{esc(t["terminal_reconnect"])}</button>'
-                f'<button type="button" class="terminal-close">{esc(t["terminal_close"])}</button></div></div>'
-                '<p class="terminal-status" role="status"></p><div class="terminal-screen" tabindex="0"></div></div>'
+                f'<div class="terminal-head"><h1>{esc(t["terminal_title"])}</h1></div>'
+                '<p class="terminal-status" role="status"></p>'
+                '<div class="terminal-frame"><div class="terminal-screen" tabindex="0"></div></div></div>'
                 '<link rel="stylesheet" href="/static/third_party/xterm/xterm.css">'
                 '<script src="/static/third_party/xterm/xterm.js"></script>'
                 '<script src="/static/third_party/xterm/addon-fit.js"></script>'
