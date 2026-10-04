@@ -77,6 +77,7 @@
 .node-number { align-self: start; padding: 0.28rem 0.46rem; border-radius: 7px; color: var(--accent-strong); background: var(--surface-2); font-weight: 700; }
 .node-limit { grid-column: 2 / -1; color: var(--success); font-size: 0.78rem; font-weight: 700; }
 .node-limit.is-limited { color: var(--error-strong); }
+.node-limit.is-unknown { color: var(--muted); }
 .node-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 0.9rem; }
 .node-form-grid label { min-width: 0; font-size: 0.8rem; }
 .node-form-grid .node-form-field { min-width: 0; font-size: .8rem; }

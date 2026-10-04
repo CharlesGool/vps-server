@@ -3,8 +3,9 @@
 Upload is client -> server; download is server -> client. The caller must supply
 one isolated counter per node's unique listener port, family and direction.
 Counters are unsigned 64-bit bytes with a monotonically increasing epoch. An
-unobserved interval or reset cannot recover lost bytes: suspicion is sticky and
-requests a 1 Mbps safety limit until a new cycle begins.
+unobserved interval or reset cannot recover lost bytes: suspicion is sticky
+until a new cycle begins. Recorded totals remain lower bounds for quota
+enforcement without imposing an early speed limit.
 No kernel rules are read or installed here.
 """
 
@@ -18,6 +19,12 @@ MAX_BYTES = (1 << 64) - 1
 FAMILIES = ("ipv4", "ipv6")
 DIRECTIONS = ("upload", "download")
 LIMIT_BPS = 1_000_000
+BILLABLE_MULTIPLIER = 2
+
+
+def billable_bytes(node):
+    """Count both sides of each forwarded byte against the traffic cap."""
+    return BILLABLE_MULTIPLIER * (node["upload_bytes"] + node["download_bytes"])
 
 
 def _uint(value):
@@ -146,11 +153,11 @@ def desired_policy(inventory, state, *, now):
         suspect = entry is None or entry["suspect"] or entry["samples"] is None
         expired = (node["expires_at"] is not None and
                    datetime.fromisoformat(node["expires_at"]) <= now)
-        used = node["upload_bytes"] + node["download_bytes"]
+        used = billable_bytes(node)
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
         active = node["enabled"]
         blocked = active and (expired or (capped and node["cap_action"] == "block"))
-        throttled = (capped and not blocked) or suspect
+        throttled = capped and not blocked
         def rate(direction):
             if not active or blocked:
                 return None

@@ -322,21 +322,28 @@ class ProxyMixin:
         if node is None:
             return ""
         def size(value):
-            return f"{value / 1048576:.1f} MiB"
-        used = node["upload_bytes"] + node["download_bytes"]
+            return (f"{value / 1073741824:.1f} GiB" if value >= 1073741824
+                    else f"{value / 1048576:.1f} MiB")
+        used = self.context.billable_bytes(node)
         cap = node["cap_bytes"]
-        try:
-            suspect = bool(meter_nodes[node["id"]]["suspect"])
-        except (KeyError, TypeError):
-            suspect = True
+        entry = meter_nodes.get(node["id"]) if isinstance(meter_nodes, dict) else None
+        if isinstance(entry, dict) and type(entry.get("suspect")) is bool and "samples" in entry:
+            suspect = entry["suspect"] or entry["samples"] is None
+        else:
+            suspect = None
         remaining = ((self.context.datetime.fromisoformat(node["expires_at"]) - self.context.datetime.now(self.context.timezone.utc)).total_seconds()
                      if node["expires_at"] else None)
         expired = remaining is not None and remaining <= 0
         capped = cap is not None and used >= cap
         blocked = expired or (capped and node["cap_action"] == "block")
-        limited = suspect or (capped and not blocked)
-        limit = t["node_blocked"] if blocked else t["node_limited"] if limited else t["node_normal"]
+        limit = (t["node_blocked"] if blocked else
+                 t["node_limited"] if capped else
+                 t["node_meter_suspect"] if suspect else
+                 t["node_meter_unknown"] if suspect is None else t["node_normal"])
+        limit_class = "is-limited" if blocked or capped else "is-unknown" if suspect is not False else ""
         cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
+        billed_label = (f'<small>{self.context.html.escape(t["node_billed_usage"].format(value=size(used)))}</small>'
+                        if cap is not None else "")
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
         speed = lambda direction: (f'{node[direction + "_limit_bps"] / 1000000:g} Mbps' if node[direction + "_limit_bps"] is not None else t["node_unlimited"])
         validity_label = (t["node_validity_expired"] if expired else
@@ -347,11 +354,11 @@ class ProxyMixin:
                     f'<strong>{self.context.html.escape(validity_label)}</strong></div>' if remaining is not None else "")
         return f'''<section class="node-usage" aria-label="{self.context.html.escape(t['node_traffic'])}">
           <div class="node-usage-heading"><h3>{self.context.html.escape(t['node_traffic'])}</h3>
-            <span class="node-limit {'is-limited' if limited or blocked else ''}">{self.context.html.escape(limit)}</span></div>
+            <span class="node-limit {limit_class}">{self.context.html.escape(limit)}</span></div>
           <div class="node-stats">
             <div><small>{self.context.html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong><small>{self.context.html.escape(speed('upload'))}</small></div>
             <div><small>{self.context.html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong><small>{self.context.html.escape(speed('download'))}</small></div>
-            <div><small>{self.context.html.escape(t['node_cap'])}</small><strong>{self.context.html.escape(cap_label)}</strong></div>
+            <div><small>{self.context.html.escape(t['node_cap'])}</small><strong>{self.context.html.escape(cap_label)}</strong>{billed_label}</div>
             <div><small>{self.context.html.escape(t['node_next_reset'])}</small><strong>{self.context.html.escape(reset_label)}</strong></div>
             {validity}
           </div>
