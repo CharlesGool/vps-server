@@ -374,6 +374,7 @@
   "module_job_done": "已完成",
   "module_job_failed": "失败",
   "module_source_missing": "安装文件不可用。请先从完整项目目录升级。",
+  "module_tailscale_asset_missing": "缺少随附的 Tailscale 安装包。Git 源码下载不包含该包；请下载当前版本的完整离线 Release 包，在独立目录解压后重跑 deploy/install.sh，保留现有安装与状态目录，然后重试。",
   "module_web": "公网连通页",
   "module_web_http": "HTTP 页面",
   "module_web_https": "HTTPS 页面",

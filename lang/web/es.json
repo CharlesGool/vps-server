@@ -374,6 +374,7 @@
   "module_job_done": "Completado",
   "module_job_failed": "Error",
   "module_source_missing": "Faltan los archivos de instalación. Actualice desde una copia completa del proyecto.",
+  "module_tailscale_asset_missing": "Falta el archivo Tailscale incluido. La descarga del código mediante Git no lo contiene. Descargue el paquete Release completo sin conexión de la versión actual, extráigalo en un directorio independiente y vuelva a ejecutar deploy/install.sh conservando la instalación y los directorios de estado existentes; después, reintente.",
   "module_web": "Página pública de acceso",
   "module_web_http": "Página HTTP",
   "module_web_https": "Página HTTPS",
