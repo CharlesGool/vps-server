@@ -321,6 +321,14 @@ Linux `tailscale set`; they do not simulate OpenWrt dnsmasq forwarding or
 router-firewall options. Binary installation can be offline, but joining a
 Tailnet requires access to the selected control server.
 
+Lucky retains its native management page. On the test host, it still listened
+on a wildcard address with `AllowInternetaccess=false`, and its HTTP management
+page was reachable from the same LAN; this setting does not guarantee a
+`localhost`-only bind. The console button obtains the masked management port
+through an authenticated endpoint and opens the current server address. If the
+current network cannot reach it directly, the operator can set up SSH port
+forwarding. Lucky's HTTP login does not encrypt the connection.
+
 ### iperf3 window lifecycle
 
 1. Operator authenticates to the console, picks a duration (default 10 min,

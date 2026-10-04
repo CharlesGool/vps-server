@@ -6,12 +6,14 @@ body or shell text becomes a command.
 """
 
 import fcntl
+import codecs
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
+import select
 import shutil
 import subprocess
 import sys
@@ -116,6 +118,43 @@ class JobOutput:
     def flush(self):
         self.current.flush()
         self.history.flush()
+
+
+def run_logged(command, *, env=None, timeout):
+    """Stream a child into both module logs without passing a fake fd to Popen."""
+    process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               bufsize=0)
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+    deadline = time.monotonic() + timeout
+    try:
+        fd = process.stdout.fileno()
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            ready, _, _ = select.select([fd], [], [], min(remaining, 1.0))
+            if not ready:
+                continue
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                break
+            sys.stdout.write(decoder.decode(chunk))
+            sys.stdout.flush()
+        tail = decoder.decode(b"", final=True)
+        if tail:
+            sys.stdout.write(tail)
+            sys.stdout.flush()
+        returncode = process.wait(timeout=max(0.1, deadline - time.monotonic()))
+        if returncode:
+            raise subprocess.CalledProcessError(returncode, command)
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stdout.close()
 
 
 def feature_enabled(prefix, feature):
@@ -321,9 +360,7 @@ def run_install(prefix, module):
     # The installer owns package dependencies, node inventory, service units,
     # preservation of all prior credentials, and the installed-module record.
     try:
-        subprocess.run(["/usr/bin/bash", str(source)], env=env,
-                       stdin=subprocess.DEVNULL, stdout=sys.stdout, stderr=subprocess.STDOUT,
-                       check=True, timeout=900)
+        run_logged(["/usr/bin/bash", str(source)], env=env, timeout=900)
     finally:
         # A module install must not silently re-enable a prior module.
         for item in disabled:
@@ -386,9 +423,7 @@ def install_frps(prefix):
     if not source.is_file():
         raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
     env = dict(os.environ, PREFIX=str(prefix), TERM="dumb", NO_COLOR="1")
-    subprocess.run(["/usr/bin/bash", str(source)], env=env,
-                   stdin=subprocess.DEVNULL, stdout=sys.stdout, stderr=subprocess.STDOUT,
-                   check=True, timeout=300)
+    run_logged(["/usr/bin/bash", str(source)], env=env, timeout=300)
     state = install_state_file()
     lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
     for index, line in enumerate(lines):
@@ -747,8 +782,7 @@ def run_uninstall(prefix, module):
         node_state = Path("/etc/vps-server-nodes/state.json")
         proxy_nodes = json.loads(node_state.read_text()).get("nodes", []) if node_state.is_file() else []
         script = Path(prefix) / "proxy" / "setup-proxy.sh"
-        subprocess.run(["/usr/bin/bash", str(script), "uninstall"],
-                       stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=180)
+        run_logged(["/usr/bin/bash", str(script), "uninstall"], timeout=180)
         from node_control import _node_port_row
         for node in proxy_nodes:
             _node_port_row(node["port"], node["id"], False)
@@ -871,8 +905,8 @@ def main(argv=None):
                     save_status(prefix, module, "failed", action=action,
                                 reason="port_occupied", port=exc.port)
                     raise SystemExit(1)
-                except (OSError, RuntimeError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
-                    print(f"Error: {exc}", flush=True)
+                except Exception as exc:
+                    print(f"Error: {type(exc).__name__}", flush=True)
                     save_status(prefix, module, "failed", action=action)
                     raise SystemExit(1)
                 save_status(prefix, module, "done", action=action)

@@ -10,7 +10,7 @@
       if (!response.ok) throw new Error('Lucky port unavailable');
       const port = Number((await response.json()).value);
       if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid Lucky port');
-      const address = button.dataset.public === 'true' ? window.location.hostname : '127.0.0.1';
+      const address = window.location.hostname;
       const host = address.includes(':') && !address.startsWith('[') ? `[${address}]` : address;
       window.location.assign(`http://${host}:${port}/`);
     } catch (_) {

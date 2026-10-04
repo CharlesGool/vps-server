@@ -12,7 +12,7 @@ class LuckyMixin:
         if data is None:
             return self.page_module_not_installed(lang, query_lang, "Lucky", "Lucky")
         public = data.get('AllowInternetaccess') is True
-        address = t['lucky_server_address'] if public else 'localhost'
+        address = t['lucky_server_address']
         running = self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
         status = t['node_active'] if running else t['node_stopped']
         body = (f'<div class="card"><h1>Lucky</h1><p>{self.context.html.escape(t["lucky_admin_note"])}</p>'
@@ -22,7 +22,7 @@ class LuckyMixin:
                 f'<p>{self.context.html.escape(t["frps_status"])}: {self.context.html.escape(status)}</p>'
                 f'<p>{self.context.html.escape(t["lucky_account"])}: {self.private_value_control("lucky", "account", t)}</p>'
                 f'<p>{self.context.html.escape(t["lucky_password"])}: {self.private_value_control("lucky", "credential", t, copy=True)}</p>'
-                f'<button type="button" class="lucky-open" data-public="{str(public).lower()}" '
+                f'<button type="button" class="lucky-open" '
                 f'data-error="{self.context.html.escape(t["lucky_open_failed"], quote=True)}" {"disabled" if not running else ""}>'
                 f'{self.context.html.escape(t["lucky_open"])}</button><p class="error lucky-open-status" role="status" hidden></p>'
                 '</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'

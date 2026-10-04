@@ -329,7 +329,7 @@
   "lucky_admin": "Dirección de administración",
   "lucky_open": "Abrir administración de Lucky",
   "lucky_open_failed": "No se pudo abrir la administración de Lucky.",
-  "lucky_ssh_tunnel": "Usa un túnel SSH para acceder a localhost.",
+  "lucky_ssh_tunnel": "Si esta red no puede acceder a Lucky, reenvíe su puerto de administración por SSH.",
   "lucky_account": "Cuenta",
   "lucky_password": "Contraseña",
   "frps_not_installed": "FRPS no está instalado.",

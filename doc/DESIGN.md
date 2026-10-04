@@ -189,6 +189,8 @@ Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理
 
 离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置使用 Linux 版 `tailscale set`,不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
 
+Lucky 保留原生管理页面.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.控制台按钮从认证接口取得遮盖的管理端口,跳转到当前服务器地址;当前网络无法直连时,操作员可自行建立 SSH 端口转发.Lucky HTTP 登录不提供传输加密.
+
 ### iperf3 窗口生命周期
 
 1. 操作员登录控制台,选择一个时长(默认 10 分钟,上限由 `VPSSRV_IPERF_MAX_MINUTES`

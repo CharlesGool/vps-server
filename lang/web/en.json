@@ -329,7 +329,7 @@
   "lucky_admin": "Admin address",
   "lucky_open": "Open Lucky admin",
   "lucky_open_failed": "Could not open Lucky admin.",
-  "lucky_ssh_tunnel": "Use an SSH tunnel to reach localhost.",
+  "lucky_ssh_tunnel": "If this network cannot reach Lucky, forward its admin port over SSH.",
   "lucky_account": "Account",
   "lucky_password": "Password",
   "frps_not_installed": "FRPS is not installed.",

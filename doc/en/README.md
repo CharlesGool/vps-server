@@ -134,7 +134,8 @@ its last output. A completion notice appears briefly only on the page that
 started the operation and does not reappear after reload or return. Detailed
 Logs, to the right of Changelog in the top bar, shows module-operation history
 and service logs; retention depends on the host's systemd journal. Lucky uses
-its own management page; if it listens only locally, establish an SSH tunnel.
+its own management page. If the current network cannot reach it directly, the
+operator can forward its management port over SSH.
 
 ### Configuration
 
