@@ -28,7 +28,10 @@ CLIENT_DIR = Path(os.environ.get("VPSSRV_FRPC_DIR", "/etc/frp"))
 SERVER_CONFIG = Path(os.environ.get("VPSSRV_FRPS_CONFIG", "/etc/vps-server-frps/frps.toml"))
 CLIENT_BIN = Path(os.environ.get("VPSSRV_FRPC_BIN", "/usr/local/bin/frpc"))
 CLIENT_UNIT = Path(os.environ.get("VPSSRV_FRPC_UNIT", "/etc/systemd/system/frpc@.service"))
-SERVER_SETUP = APP_DIR / "frps" / "setup-frps.sh"
+SERVER_SETUP_SOURCES = (
+    APP_DIR / "installer-source" / "deploy" / "frps" / "setup-frps.sh",
+    APP_DIR / "frps" / "setup-frps.sh",
+)
 REGISTRY = APP_DIR.parent / "PORTS.md"
 LOCK = APP_DIR.parent / ".ports.lock"
 ASCII_NAME = re.compile(r"[a-zA-Z0-9_-]{1,32}\Z")
@@ -305,7 +308,8 @@ def save_server(port, token):
     if not match:
         raise ValueError("unsupported FRPS config")
     old_port = int(match[1])
-    if not SERVER_SETUP.is_file():
+    setup = next((path for path in SERVER_SETUP_SOURCES if path.is_file()), None)
+    if setup is None:
         raise ValueError("FRPS installer unavailable")
     with LOCK.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -328,7 +332,7 @@ def save_server(port, token):
             _save_rows(rows)
         try:
             env = dict(os.environ, PREFIX=str(APP_DIR), FRPS_BIND_PORT=str(port), FRPS_TOKEN=token)
-            subprocess.run(["bash", str(SERVER_SETUP)], env=env, check=True,
+            subprocess.run(["bash", str(setup)], env=env, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         except BaseException:
             if port != old_port:
