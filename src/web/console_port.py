@@ -310,6 +310,21 @@ def lucky_listener_active(port):
 
 def detect_lucky_admin():
     """Find Lucky's live admin page among TCP listeners owned by its unit."""
+    configured_port = None
+    paths = ["/"]
+    try:
+        info = subprocess.run(["/usr/local/bin/lucky-vps-server", "-c",
+                               "/etc/vps-server-lucky/config.json", "-baseConfInfo"],
+                              capture_output=True, text=True, check=True, timeout=5)
+        base = json.loads(info.stdout)["BaseConfigure"]
+        port = base.get("AdminWebListenPort")
+        if type(port) is int and 1 <= port <= 65535:
+            configured_port = port
+        safe = base.get("SafeURL")
+        if isinstance(safe, str) and re.fullmatch(r"/?[A-Za-z0-9/_-]{1,128}", safe):
+            paths.append("/" + safe.lstrip("/"))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        pass
     try:
         pid = subprocess.run(["systemctl", "show", "-p", "MainPID", "--value",
                               "vps-server-lucky.service"], capture_output=True, text=True,
@@ -332,7 +347,7 @@ def detect_lucky_admin():
             port = int(address.rsplit(":", 1)[1])
         except ValueError:
             continue
-        if not 1 <= port <= 65535:
+        if not 1 <= port <= 65535 or configured_port is not None and port != configured_port:
             continue
         host = address.rsplit(":", 1)[0].strip("[]")
         if host in ("*", "0.0.0.0"):
@@ -346,14 +361,17 @@ def detect_lucky_admin():
     matches = set()
     for port, host in listeners[:24]:
         for scheme in ("http", "https"):
-            try:
-                with opener.open(f"{scheme}://{host}:{port}/", timeout=1) as response:
-                    page = response.read(8192).lower()
-                if b"lucky_index-" in page:
-                    matches.add((port, scheme))
-                    break
-            except (OSError, ValueError):
-                continue
+            for path in paths:
+                try:
+                    with opener.open(f"{scheme}://{host}:{port}{path}", timeout=1) as response:
+                        page = response.read(8192).lower()
+                    if b"lucky_index-" in page:
+                        matches.add((port, scheme))
+                        break
+                except (OSError, ValueError):
+                    continue
+            if (port, scheme) in matches:
+                break
     return next(iter(matches)) if len(matches) == 1 else None
 
 
