@@ -76,7 +76,7 @@ case "$frpc_result" in
   unowned) msg frpc_unowned >&2 ;;
 esac
 
-# Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
+# Stop the project Tailscale daemon before removing its state.
 if [ -f "/etc/systemd/system/$TAILSCALE_SERVICE" ]; then
   systemctl disable --now "$TAILSCALE_SERVICE" || die "Tailscale service could not stop"
   rm -f "/etc/systemd/system/$TAILSCALE_SERVICE" \
@@ -92,9 +92,11 @@ if [ "${KEEP_DATA:-0}" != 1 ]; then
   fi
 fi
 
-# Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
+# KEEP_DATA preserves Lucky tasks; a full uninstall removes its entire config directory.
 if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-lucky/firewall-owned ]; then
-  systemctl disable --now vps-server-lucky.service 2>/dev/null || true
+  if [ -f /etc/systemd/system/vps-server-lucky.service ]; then
+    systemctl disable --now vps-server-lucky.service || die "$(msg cleanup_failed)"
+  fi
   lucky_owner=/etc/vps-server-lucky/firewall-owned
   if [ -f "$lucky_owner" ]; then
     read -r backend port < "$lucky_owner" || true
@@ -106,11 +108,14 @@ if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-l
       esac
     fi
     if [ "$removed" = 1 ]; then rm -f "$lucky_owner"; fi
-    [ ! -f "$lucky_owner" ] || msg lucky_fw_retained >&2
+    if [ -f "$lucky_owner" ]; then
+      msg lucky_fw_retained >&2
+      [ "${KEEP_DATA:-0}" = 1 ] || exit 1
+    fi
   fi
   rm -f /etc/systemd/system/vps-server-lucky.service /usr/local/bin/lucky-vps-server
   systemctl daemon-reload
-  msg lucky_config_retained >&2
+  if [ "${KEEP_DATA:-0}" = 1 ]; then msg lucky_config_retained >&2; fi
 fi
 
 if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firewall-owned ]; then
@@ -128,7 +133,10 @@ if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firew
       esac
       if [ "$removed" = 1 ]; then rm -f "$frps_owner"; fi
     fi
-    [ ! -f "$frps_owner" ] || msg frps_fw_retained >&2
+    if [ -f "$frps_owner" ]; then
+      msg frps_fw_retained >&2
+      [ "${KEEP_DATA:-0}" = 1 ] || exit 1
+    fi
   fi
   rm -f "/etc/systemd/system/$FRPS_SERVICE" /usr/local/bin/frps-vps-server
   if [ "${KEEP_DATA:-0}" != 1 ]; then rm -f /etc/vps-server-frps/frps.toml; fi
@@ -200,6 +208,23 @@ if [ -f "$UNIT_PATH" ]; then
   msg removed_unit "$UNIT_PATH"
 else
   msg no_unit "$UNIT_PATH"
+fi
+
+# Purge project-owned module data even when its unit was already removed.
+# Do not follow symlinks into another application's directories.
+if [ "${KEEP_DATA:-0}" != 1 ]; then
+  for module_unit in "$ANYTLS_SERVICE" "$PROXY_SERVICE" "$FRPS_SERVICE" "$TAILSCALE_SERVICE" vps-server-lucky.service; do
+    if [ -f "/etc/systemd/system/$module_unit" ]; then
+      systemctl disable --now "$module_unit" || die "$(msg cleanup_failed)"
+      rm -f "/etc/systemd/system/$module_unit"
+    fi
+  done
+  systemctl daemon-reload
+  rm -f /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server \
+        /usr/local/bin/lucky-vps-server /usr/local/bin/frps-vps-server
+  for module_config in /etc/vps-server-lucky /etc/vps-server-frps /etc/vps-server-proxy; do
+    rm -rf -- "$module_config"
+  done
 fi
 
 # All vps-server listeners have stopped. Keep other projects' PORTS.md rows.
