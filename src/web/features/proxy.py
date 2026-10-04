@@ -520,7 +520,7 @@ class ProxyMixin:
             except (ValueError, self.context.InvalidOperation, OverflowError, KeyError, self.context.InvalidInventory,
                     TypeError, StopIteration):
                 return self.redirect("/proxy?msg=node_settings_failed")
-            success = self.context.node_control_apply(request)
+        success = self.context.node_control_apply(request)
         key = ({"reset": "node_reset_done", "create": "node_created", "delete": "node_deleted"}
                .get(action, "node_settings_done")) if success else "node_settings_failed"
         return self.redirect(f"/proxy?msg={key}", {"Cache-Control": "no-store"})
