@@ -38,6 +38,10 @@
 .frp-fact-reveal:is(:hover, :focus-visible), .frp-fact-reveal[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)); }
 .frp-fact-reveal:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 .frp-fact-reveal code { overflow-wrap: anywhere; }
+.frp-fact-controls { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .45rem; max-width: 100%; }
+.frp-fact-copy { min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--accent-strong); }
+.frp-fact-copy:hover { background: var(--surface-2); }
+.frp-fact-copy:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 .frp-server-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
 .frp-server-facts > div { display: grid; align-content: space-between; justify-items: start; min-width: 0; min-height: 7rem; padding: .75rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--surface-2); }
 .frp-server-facts dd { width: 100%; text-align: start; }

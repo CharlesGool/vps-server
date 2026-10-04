@@ -6,9 +6,9 @@
     button.textContent = message;
     setTimeout(() => { if (button.isConnected && button.textContent === message) button.textContent = original; }, 1800);
   };
-  const fetchValue = async (id, field) => {
+  const fetchValue = async (id, field, endpoint = '/proxy/private-value') => {
     const query = new URLSearchParams({ id, field });
-    const response = await fetch(`/proxy/private-value?${query}`, {
+    const response = await fetch(`${endpoint}?${query}`, {
       credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }
     });
     if (!response.ok) throw new Error(`Reveal failed: ${response.status}`);
@@ -28,7 +28,7 @@
       }
       reveal.disabled = true;
       try {
-        const value = await fetchValue(container.dataset.privateId, container.dataset.privateField);
+        const value = await fetchValue(container.dataset.privateId, container.dataset.privateField, container.dataset.privateUrl);
         if (!leaving && container.isConnected) {
           display.textContent = value;
           reveal.setAttribute('aria-pressed', 'true');
@@ -47,7 +47,7 @@
       const share = copy.closest('[data-share-id]');
       try {
         const value = await fetchValue(container?.dataset.privateId || share.dataset.shareId,
-          container?.dataset.privateField || 'share');
+          container?.dataset.privateField || 'share', container?.dataset.privateUrl);
         flash(copy, (await window.copyPrivateText(value)) ? copy.dataset.copied : copy.dataset.error);
       } catch (_) { flash(copy, copy.dataset.error); }
       return;

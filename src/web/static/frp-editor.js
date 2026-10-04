@@ -54,6 +54,27 @@
     });
   });
 
+  document.querySelectorAll('.frp-fact-copy').forEach((control) => {
+    control.addEventListener('click', async () => {
+      const original = control.dataset.original || control.textContent;
+      control.dataset.original = original;
+      control.disabled = true;
+      let message = control.dataset.error;
+      try {
+        const query = new URLSearchParams({ name: control.dataset.name, field: control.dataset.field });
+        const response = await fetch(`/frp/client/value?${query}`, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error('value unavailable');
+        const value = (await response.json()).value;
+        if (await window.copyPrivateText(value)) message = control.dataset.copied;
+      } catch (_) { /* Keep the localized failure message. */ }
+      control.textContent = message;
+      setTimeout(() => {
+        if (control.isConnected) control.textContent = original;
+        control.disabled = false;
+      }, 1800);
+    });
+  });
+
   document.querySelectorAll('.frp-test-connection').forEach((control) => {
     control.addEventListener('click', async () => {
       const state = control.closest('.frp-target-card').querySelector('[data-frpc-state]');

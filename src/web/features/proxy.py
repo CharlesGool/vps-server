@@ -184,9 +184,11 @@ class ProxyMixin:
         return self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
-    def private_value_control(self, identifier, field, t, copy=False):
+    def private_value_control(self, identifier, field, t, copy=False, endpoint='/proxy/private-value'):
         esc = self.context.html.escape
+        copy = copy or field != 'credential'
         return (f'<span class="private-value" data-private-id="{esc(identifier, quote=True)}" '
+                f'data-private-url="{esc(endpoint, quote=True)}" '
                 f'data-private-field="{field}" data-show="{esc(t["login_show_password"], quote=True)}" '
                 f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
                 f'data-error="{esc(t["private_value_failed"], quote=True)}">'

@@ -82,6 +82,7 @@ class PortfwdMixin:
           {rules_html}
           {add_form}
         </div>
+        <script src="/static/copy.js"></script>
         <script src="/static/private-values.js"></script>
         """
         self.send_html(200, self.render_page(t['portfwd_heading'], body, lang, active="portfwd"),
