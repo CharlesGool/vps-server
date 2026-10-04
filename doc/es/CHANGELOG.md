@@ -30,6 +30,32 @@ metadata:
 
 Aquí solo se enumeran los lanzamientos etiquetados. Las siguientes entradas conservan el historial completo del registro de cambios anterior y registran el contenido de la versión actual.
 
+### v5.2.0 — 2026-10-05
+
+#### Añadido
+
+- Terminal root en el navegador con verificación de la contraseña del administrador, cierre al salir, historial desplazable y compatibilidad con pantallas estrechas.
+- Módulo Tailscale sin conexión con estado, direcciones, registros, ajustes Linux por lotes y una opción experimental de memoria reducida.
+- Registros detallados de módulos y servicios con filtros de nivel y limpieza limitada al proyecto; se puede borrar el historial de visitantes recientes.
+- Paquete completo para x86-64 Linux con archivos verificados de Tailscale, runtime nftables y fuentes Debian correspondientes.
+
+#### Cambiado
+
+- Los datos persistentes usan una raíz separada, `/var/lib/vps-server` por defecto; reinstalar el mismo esquema conserva credenciales, puertos, certificados y configuración. **El esquema de v5.1.0 y anteriores no admite actualización automática: haga una copia de seguridad y una instalación nueva.**
+- AnyTLS y los otros protocolos comparten Singbox; las tarjetas de módulos aparecen directamente en Ajustes y Lucky usa su dirección administrativa nativa real.
+- El tráfico contabilizado es (subida + bajada) × 2; el reinicio mensual comienza el primer día del mes seleccionado a las 00:00 UTC. Los registros y avisos de progreso siguen la operación actual.
+
+#### Corregido
+
+- Edición de FRPS sin registro de puerto, visualización y copia de valores ocultos, creación y edición de nodos unificados y sincronización de la dirección de Lucky tras cambiar su puerto nativo.
+- Desconexiones del terminal por cambios de tamaño, retorno tras verificar la contraseña, altura del contenido, barras de desplazamiento y fondo. La medición prioriza un nft del sistema funcional y evita limitar prematuramente cuando faltan datos.
+- Los cambios de puerto Web usan un auxiliar privilegiado; FRPS registra el puerto antes de instalarse e iperf3 solo lo reserva mientras su ventana está abierta.
+
+#### Validación y limitaciones
+
+- El 2026-10-05 el operador confirmó que las pruebas actuales eran satisfactorias y autorizó la publicación. Las comprobaciones locales cubren sintaxis, estilos, hashes de dependencias y estructura de tres idiomas; LOG e HISTORY contienen las verificaciones anteriores en Debian 13 x86-64.
+- No se volvieron a probar independientemente Python 3.9, otras versiones Debian/Ubuntu, móviles físicos ni el reinicio completo. Publicar no actualiza el equipo de pruebas. El operador solicitó la versión menor v5.2.0; siguen siendo necesarios los pasos de migración indicados. El resto de documentación y registros corresponde a mantenimiento interno.
+
 ### v5.1.0 — 2026-10-04
 
 #### Añadido

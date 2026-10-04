@@ -26,7 +26,7 @@ metadata:
 
 ## 简介
 
-vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连接日志控制台,并可安装代理,FRP,Lucky 和 Tailscale 模块.当前分支准备 v6.0.0 测试候选;正式版本仍是 v5.1.0.进度见[项目状态](doc/LOG.md).
+vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连接日志控制台,并可安装代理,FRP,Lucky 和 Tailscale 模块.当前正式版本为 v5.2.0.进度见[项目状态](doc/LOG.md).
 
 ## 功能
 
@@ -54,16 +54,16 @@ vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连�
 
 ### 快速安装
 
-以 root 身份在目标机运行;默认仅安装 Web 控制台,首次交互安装会先显示 1/2/3 语言选项,再打印随机管理端口和密码.无人值守安装可用 `VPSSRV_DEFAULT_LANG=en|zh_cn|es` 指定语言.正式 v6.0.0 尚未发布;以下源码命令只用于此测试分支,完整离线模块请使用下方的压缩包流程.
+以 root 身份在目标机运行;默认仅安装 Web 控制台,首次交互安装会先显示 1/2/3 语言选项,再打印随机管理端口和密码.无人值守安装可用 `VPSSRV_DEFAULT_LANG=en|zh_cn|es` 指定语言.以下源码命令使用 v5.2.0 正式标签,完整离线模块请使用下方的压缩包流程.
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### 常规安装
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # 可选: 按注释设置覆盖值
 bash deploy/install.sh
@@ -73,16 +73,16 @@ bash deploy/install.sh
 
 ### 离线安装包
 
-v6.0.0 测试包将包含完整源码和已校验的 Tailscale,nftables 等离线资源;生成及目标机安装均不要求目标机具备 Git.测试包发布后先核对提供的 SHA-256,再将包解压到独立目录,不要直接覆盖已安装的 `$PREFIX`.当前测试包尚未发布,以下命令中的 `<测试包>` 须替换为实际文件名:
+v5.2.0 离线包包含完整源码和已校验的 Tailscale,nftables 等离线资源;生成及目标机安装均不要求目标机具备 Git.下载正式包后先核对提供的 SHA-256,再将包解压到独立目录,不要直接覆盖已安装的 `$PREFIX`.从 GitHub Release 下载 `vps-server-v5.2.0-linux-amd64.tar.gz` 与 `SHA256SUMS`,核验摘要后安装:
 
 ```bash
-mkdir -p /root/vps-server-v6-test
-tar -xzf /root/<测试包>.tar.gz -C /root/vps-server-v6-test --strip-components=1
-cd /root/vps-server-v6-test
+mkdir -p /root/vps-server-v5.2.0
+tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
+cd /root/vps-server-v5.2.0
 bash deploy/install.sh
 ```
 
-有网络的构建机可从**干净且已提交**的工作树制作测试包;目标机只接收最后的 `.tar.gz`.构建机需要 Python 3,Git,`dpkg-deb` 和 GNU tar,资源获取脚本会校验固定摘要.包内同时提供 nftables 运行文件,相应源码及 Tailscale 归档:
+有网络的构建机可从**干净且已提交**的工作树制作正式离线包;目标机只接收最后的 `.tar.gz`.构建机需要 Python 3,Git,`dpkg-deb` 和 GNU tar,资源获取脚本会校验固定摘要.包内同时提供 nftables 运行文件,相应源码及 Tailscale 归档:
 
 ```bash
 python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
@@ -90,8 +90,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version "test-$(git rev-parse --short=7 HEAD)" \
-  --output .local/vps-server-test.tar.gz
+  --version 5.2.0 \
+  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
 ```
 
 
@@ -123,7 +123,7 @@ python3 tools/build_offline/build_offline.py \
 
 ## 升级
 
-v6.0.0 候选建立持久状态布局 `1`.v5.1.0 及更早版本**不支持自动迁移**.仍有旧数据时,先备份到安装目录外,再全新安装;已经删除且没有备份的数据无法恢复.安装器发现旧服务但缺少状态时,会在修改服务前停止.
+v5.2.0 建立持久状态布局 `1`.v5.1.0 及更早版本**不支持自动迁移**.仍有旧数据时,先备份到安装目录外,再全新安装;已经删除且没有备份的数据无法恢复.安装器发现旧服务但缺少状态时,会在修改服务前停止.
 
 后续从布局 `1` 升级时,在独立目录检出新源码,使用相同的 `PREFIX` 和 `VPSSRV_STATE_DIR` 运行安装程序.保留状态根和 `/etc` 中的模块配置;安装器沿用密码,端口,证书,运行数据和已记录模块,不会再次打印旧密码.先保留代码与数据备份,升级后核对服务状态,管理端口,登录及所用模块.自定义状态路径需在后续安装中沿用;改换路径要自行转移并核验.
 

@@ -26,11 +26,7 @@ metadata:
 
 ## Introduction
 
-vps-server provides a Web-port reachability page and a console for speed tests
-and connection logs on Debian/Ubuntu VPS hosts. Proxy, FRP, Lucky, and
-Tailscale modules can be installed as needed. This branch is preparing a
-v6.0.0 test candidate; v5.1.0 remains the latest formal release. See
-[project status](LOG.md) for progress.
+vps-server provides Web port-reachability pages, speed tests, and a connection-log console for Debian/Ubuntu VPS hosts, with optional proxy, FRP, Lucky, and Tailscale modules. The current formal release is v5.2.0. See [project status](LOG.md) for progress.
 
 ## Features
 
@@ -39,8 +35,9 @@ v6.0.0 test candidate; v5.1.0 remains the latest formal release. See
 - **iperf3:** Open a time-limited window from the console; it closes automatically. A Linux client's `--json` output may include `mean_rtt`. Clients unable to read `TCP_INFO` will not show that field. UDP tests report jitter and packet loss.
 - **Proxy nodes:** One sing-box service hosts AnyTLS, VMess, VLESS, Trojan, and Shadowsocks. The console manages node connections, traffic caps, rate limits, periodic resets, and validity periods. Clash Meta configurations can be imported over the LAN.
 - **FRP:** The console manages the local FRPS port, token, and service state, as well as local FRPC instances and simple token-authenticated TCP/UDP proxies. It validates edits and restores the previous configuration on failure. It does not monitor clients on other devices. FRPC installs from bundled resources.
-- **Lucky:** Install or remove it with other modules and open Lucky's native management page from the console. This project does not recreate its DDNS or reverse-proxy features.
-- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, with Linux controls for DNS, subnet routes, exit nodes, shields-up, SSH, logout, and an experimental low-memory mode. Joining a Tailnet still requires access to the selected control server.
+- **Lucky:** Install or remove it with other modules. The console shows only its management address and running state, with a link to its native management page. When Lucky changes its own management port, the console periodically refreshes the address and `PORTS.md` registration. Full feature recreation is deferred to a later version.
+- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, and saves several Linux settings for DNS, routes, exit nodes, shields-up, and SSH together. Device IPv4 and IPv6 addresses can be shown or copied separately as needed. Joining a Tailnet still requires access to the selected control server.
+- **Terminal:** The Home entry opens a browser-based root terminal after administrator-password verification. Disconnecting, leaving the page, or expiration of the login session terminates its PTY process. Terminal rendering resources are included in the offline package.
 
 The first installation enables only the Web console; other modules are installed
 as needed. See the [design document](DESIGN.md) for feature boundaries, login
@@ -52,28 +49,23 @@ rules, and FRP editor limits.
 - Runtime: Python 3.9+ (the distribution's `python3` suffices; no Python dependencies to install).
 - Architecture: the entire project supports only x86-64 Linux; the installer rejects other platforms before changing system state.
 - When the Web module uses its default public ports, 80 and 443 **MUST** be free. The installer refuses to compete with nginx, Apache, Caddy, or `vps-webserver`.
-- Other dependencies: the target needs its OS-provided Bash, systemd, Python, and common base tools. The complete offline package includes FRP, Lucky, Tailscale, sing-box, iperf3, and a private nftables runtime; the target needs neither Git nor a package mirror. Control-server authentication, service updates, and communication between devices still need network access.
+- Other dependencies: the target needs its OS-provided Bash, systemd, Python, and common base tools. The complete offline package includes FRP, Lucky, Tailscale, sing-box, iperf3, and a private nftables runtime. Node accounting prefers the host nft command if it can read the ruleset, otherwise it uses the bundled version; the target needs neither Git nor a package mirror. Control-server authentication, service updates, and communication between devices still need network access.
 - Minimum: the OS, runtime, and architecture above. Public-page ports must be free if enabled. Allow at least 1 GiB of disk space for the full offline package, extracted source, and installed program together.
 
 ## Install
 
 ### Quick Install
 
-Run as root on the target host. The installer enables only the Web console by
-default. The first interactive install presents language choices 1/2/3, then
-prints the generated management port and password. Unattended installation
-can select a language with `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Formal v6.0.0
-has not been released. The source commands below are for this test branch;
-use the archive procedure below for the complete offline modules.
+Run as root on the target host. The installer enables only the Web console by default. The first interactive install offers language choices 1/2/3 and prints a random management port and password. Use `VPSSRV_DEFAULT_LANG=en|zh_cn|es` for unattended installation. The source commands below use the formal v5.2.0 tag; use the archive procedure below for complete offline modules.
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Normal Install
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
@@ -93,26 +85,16 @@ is needed.
 
 ### Offline installation package
 
-The v6.0.0 test package will contain the full source and checked offline
-resources, including Tailscale and nftables. Building the package and
-installing it on the target do not require Git on that target. Once the test
-package is available, check its supplied SHA-256 and extract it into a
-separate directory; do not overwrite the installed `$PREFIX` directly. The
-test package has not yet been published. Replace `<测试包>` below with
-the actual filename:
+The v5.2.0 offline package contains the full source and verified offline resources, including Tailscale and nftables. Target installation does not require Git. Verify SHA-256 before extracting into a separate directory; do not overwrite the installed `$PREFIX` directly. Download `vps-server-v5.2.0-linux-amd64.tar.gz` and `SHA256SUMS` from GitHub Release, verify the digest, and install:
 
 ```bash
-mkdir -p /root/vps-server-v6-test
-tar -xzf /root/<测试包>.tar.gz -C /root/vps-server-v6-test --strip-components=1
-cd /root/vps-server-v6-test
+mkdir -p /root/vps-server-v5.2.0
+tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
+cd /root/vps-server-v5.2.0
 bash deploy/install.sh
 ```
 
-A connected build host can create the test package from a **clean, committed**
-worktree; only the final `.tar.gz` is transferred to the target. The build
-host needs Python 3, Git, `dpkg-deb`, and GNU tar. The asset-fetch script
-checks fixed digests. The package includes the nftables runtime, its
-corresponding source, and the Tailscale archive:
+A connected build host can create the formal offline package from a **clean, committed** worktree; the target receives only the final `.tar.gz`. The build host requires Python 3, Git, `dpkg-deb`, and GNU tar. The asset-fetch script checks fixed digests. The package includes the nftables runtime, its corresponding source, and the Tailscale archive:
 
 ```bash
 python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
@@ -120,8 +102,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version "test-$(git rev-parse --short=7 HEAD)" \
-  --output .local/vps-server-test.tar.gz
+  --version 5.2.0 \
+  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
 ```
 
 ## Guidance
@@ -139,19 +121,7 @@ when the window closes. The source has no automated test suite; manually
 accept the enabled modules. See the [design document](DESIGN.md) for service
 paths, limitations, and state files.
 
-A proxy node's traffic cap counts (upload + download) × 2. The console shows
-the counted amount; an accounting gap alone does not trigger early throttling.
-Monthly resets occur at 00:00 UTC on the first day of the selected month;
-daily and yearly cycles retain their existing calculations. Node interface
-addresses are masked by default and can be shown or copied. Recent Visitors
-can clear history after confirmation; later visits and devices still connected
-are recorded again. Module install/removal progress collapses 30 seconds after
-its last output. A completion notice appears briefly only on the page that
-started the operation and does not reappear after reload or return. Detailed
-Logs, to the right of Changelog in the top bar, shows module-operation history
-and service logs; retention depends on the host's systemd journal. Lucky uses
-its own management page. If the current network cannot reach it directly, the
-operator can forward its management port over SSH.
+Proxy-node traffic caps count (upload + download) × 2. The interface shows counted usage; incomplete accounting alone does not trigger early throttling. Monthly resets start on day 1 of the selected month at 00:00 UTC; daily and yearly cycles retain their existing calculation. Node interface addresses are masked by default and can be shown or copied as needed. Recent Visitors can clear history after confirmation; later visits and still-connected devices are recorded again. Settings directly shows module installation cards; progress collapses 30 seconds after the last output, and completion notices appear briefly only on the current operation page. Reloading or returning does not reproduce them. Detailed Logs, to the right of Changelog in the header, combines module operation history and service logs, with severity filtering for service logs. Clearing module history truncates its file; clearing one service log only hides earlier entries and does not delete the host journal. Lucky retains its native management page; use SSH port forwarding if the current network cannot reach it directly.
 
 ### Configuration
 
@@ -175,7 +145,7 @@ Full reference: [Configuration reference][local-link-002].
 
 ## Upgrade
 
-The v6.0.0 candidate establishes persistent state layout `1`. **Automatic migration is not supported** from v5.1.0 or earlier. Back
+v5.2.0 establishes persistent state layout `1`. **Automatic migration is not supported** from v5.1.0 or earlier. Back
 up remaining old data outside the installation directory, then perform a fresh
 installation. Deleted data without a backup cannot be recovered. If the
 installer finds an old service but missing state, it stops before changing

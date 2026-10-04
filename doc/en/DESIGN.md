@@ -58,7 +58,7 @@ The current installer installs only the Web console by default. Select other ser
 
 **Tracked goals and current status:**
 
-- [ ] 2026-10-04 v6 target-host acceptance: unified-proxy migration must preserve old node IDs, ports, credentials, certificates, and accounting state. The complete offline package must install on supported Debian/Ubuntu hosts without Git or repository network access. Joining Tailscale still requires a reachable control server.
+- [ ] 2026-10-04 separate state-layout target-host acceptance: unified-proxy migration must preserve old node IDs, ports, credentials, certificates, and accounting state. The complete offline package must install on supported Debian/Ubuntu hosts without Git or repository network access. Joining Tailscale still requires a reachable control server.
 - [x] 2026-09-19 Per-node traffic accounting and data caps: the five proxy protocols track upload/download independently. The original 1 Mbps response to a cap and the monthly or one-time reset passed live-host tests on 2026-09-27. The current branch adds separate upload/download speed caps, a choice of 1 Mbps throttling or blocking after the traffic cap, recurring cycles measured in days, calendar months or years, and an optional validity duration that blocks traffic on expiry. The new policy rules and state migration have automated checks; the current test host has verified the UI and migration, while live transfer through every policy combination remains unverified.
 - [x] 2026-09-19 Browser-based first-run setup was previously provided by `tools/setup_wizard/setup_wizard.py` and has been retired. v5.0.0 installation runs directly in the terminal and installs only the Web console when `VPSSRV_MODULES` is unset.
 - [x] 2026-09-22 Provide FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device.
@@ -70,8 +70,8 @@ FRPC card review, 2026-09-29: the four operator screenshots showed the old conne
 - [x] 2026-09-29 Add console module management. The former browser setup flow is historical. The Settings → Modules page can install an omitted module from the installed, version-matched source payload or enable and disable an installed module. A transient systemd job runs the installer outside the Web service; explicit module choices preserve existing credentials. Systemd service switches retain configuration; the public listener switches affect only their selected port so the control panel remains reachable.
 
 The retired first-run listener registered its random port in `~/apps/PORTS.md` before serving and removed the registration on shutdown; its temporary password admitted only one browser session. The current Modules page is under ordinary Settings and uses the signed-in session. It submits fixed module names and actions to a separate privileged systemd job. The job records progress outside Web, allowing Web to restart during installation. Disabling proxy modules retains nodes and credentials; disabled units stay stopped when node controls are used. The iperf3 and public-page switches restart Web to apply listener changes while keeping the console available.
-- [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
-- [ ] v6 Tailscale target-host acceptance: the console now provides Linux client overview, ordinary settings, device list, and runtime logs. The Web management port and node relay port are also registered in `PORTS.md`. These behaviors still need test-host confirmation; OpenWrt-specific dnsmasq forwarding does not apply to this Debian/Ubuntu project.
+- [ ] Recreate all Lucky features in a later version. The current version only installs/removes the module and links to Lucky's native management page; the exact scope and acceptance criteria for later 1:1 recreation will be determined then.
+- [ ] Tailscale target-host acceptance: the console now provides Linux client overview, ordinary settings, device list, and runtime logs. The Web management port and node relay port are also registered in `PORTS.md`. These behaviors still need test-host confirmation; OpenWrt-specific dnsmasq forwarding does not apply to this Debian/Ubuntu project.
 - [x] Complete live-host acceptance of the node controls: display numbers stay contiguous after deletion and restart at 1 when all nodes are removed, while hidden UUIDs preserve identity; names, ports, credentials, and TLS SNI are editable; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. Each node can be disabled without deleting its configuration or traffic record and re-enabled on the same port. The controls passed live-host tests on 2026-09-27.
 - [x] Apply one accessible design system to the console and public reachability page. The browser setup wizard is retired. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
 
@@ -163,6 +163,7 @@ The feature modules do not import this application's entry point.
 | Changelog | `features/changelog.py` | `src/web/static/styles/changelog.css` |
 | Lucky status | `features/lucky.py` | Shared card styles |
 | Tailscale status, settings, and devices | `features/tailscale.py`, `tailscale_control.py` | `src/web/static/styles/modules.css`, shared private-value controls |
+| Browser root terminal | `features/terminal.py`, `terminal_session.py` | Bundled xterm.js and Fit Addon, `src/web/static/terminal.js` |
 | Public reachability page | `features/public.py` | `src/web/static/styles/public.css`, embedded into the response |
 
 `features/system.py` contains shared host command and firewall helpers;
@@ -175,7 +176,7 @@ selection controls. Ordered CSS source files under `src/web/static/styles/` buil
 the former rule order and does not add a runtime CSS dependency. The Web
 installer keeps the Python package, `features/`, and `static/` under
 `$PREFIX/src/web/`. The root `$PREFIX/app.py` compatibility entry point calls
-the package's `main()`. In the v6 candidate, persistent data lives in the separate state
+the package's `main()`. In v5.2.0, persistent data lives in the separate state
 root; older flat code files are not the current runtime entry point. Reusing a
 feature in another project requires its context adapter and
 the shared styles or scripts it references; the routes are not a standalone
@@ -218,7 +219,7 @@ parses no request body, and sets no cookie.
 
 ### Upgrading over an existing install
 
-The `v6.0.0` candidate establishes persistent state layout `1`. Program files remain at
+`v5.2.0` establishes persistent state layout `1`. Program files remain at
 `$PREFIX`; the default state root is `/var/lib/vps-server`. It holds the
 password, console port, certificates, runtime data, installation record, and
 `.env`. `/etc/vps-server/state-dir` records the location of the state root.
@@ -309,29 +310,11 @@ design and its retirement.
 
 ### Tailscale module
 
-The offline package contains the official Linux amd64 static archive. The
-installer checks its digest, creates `vps-server-tailscale.service` and a
-private state directory, and registers the fixed UDP port in `PORTS.md` before
-starting the service. The Tailscale console uses a local socket and fixed CLI
-arguments to read status, preferences, connectivity, devices, and the systemd
-journal. Private addresses and account names are masked by default. An auth
-key is passed to the CLI only through a temporary root-owned file and deleted
-after the command; it is not stored in project state. Ordinary settings use
-Linux `tailscale set`; logout requires explicit confirmation, and the device
-list can be refreshed. An experimental low-memory option uses a helper with
-fixed arguments to write a separate systemd drop-in with `GOGC=10`, restarts
-the service, and attempts to restore the previous configuration on failure.
-A lower GOGC may increase CPU use. These controls do not simulate OpenWrt
-dnsmasq forwarding or router-firewall options. Binary installation can be
-offline, but joining a Tailnet requires access to the selected control server.
+The offline package contains the official Linux amd64 static archive. The installer checks its digest, creates `vps-server-tailscale.service` and a private state directory, and registers the fixed UDP port in `PORTS.md` before startup. The console uses a local socket and fixed CLI arguments to read status, preferences, connectivity, devices, and the systemd journal; private addresses and accounts are masked by default. Auth keys are passed to the CLI in a temporary root-owned file, deleted after execution, and never saved in project state. Ordinary settings collect changes in one form and apply them with a single Linux `tailscale set` call. Blank route, exit-node, and relay-port fields preserve existing values; separate checkboxes request clearing. Device IPv4/IPv6 addresses are read separately on demand, and local subnets and available exit nodes can populate fields quickly. The experimental low-memory option uses a fixed-argument helper to write `GOGC=10` in a separate systemd drop-in, restart the service, and try to restore the previous configuration on failure; lower GOGC may increase CPU use. These controls do not simulate OpenWrt dnsmasq forwarding or router-firewall options. Binary installation is offline; joining a Tailnet requires access to the selected control server.
 
-Lucky retains its native management page. On the test host, it still listened
-on a wildcard address with `AllowInternetaccess=false`, and its HTTP management
-page was reachable from the same LAN; this setting does not guarantee a
-`localhost`-only bind. The console button obtains the masked management port
-through an authenticated endpoint and opens the current server address. If the
-current network cannot reach it directly, the operator can set up SSH port
-forwarding. Lucky's HTTP login does not encrypt the connection.
+Lucky retains its native management page. This project only shows the management address, running state, and Open button; it does not show accounts and passwords managed by Lucky. `config.json` is startup configuration, while the native page persists settings in `lucky_base.lkcf`. Every 5 seconds the page and backend read the current port with the native `-baseConfInfo` command, then verify that Lucky's main process owns the listener and serves its management page to determine HTTP/HTTPS. Old and new ports may briefly listen together; process-port matching alone cannot identify the current address. A privileged helper atomically updates only Lucky-owned rows in `PORTS.md` and removes obsolete rows when listeners disappear. On the test host, `AllowInternetaccess=false` still permits wildcard listening and LAN access to the HTTP management page; it does not guarantee a `localhost`-only bind. HTTP login does not encrypt transport.
+
+The browser terminal requires enabled Web administration and valid short-lived administrator-password verification; passwordless IP sessions cannot open it. A root PTY is established through a same-origin WebSocket with a CSRF token. Disconnection, leaving the page, expiration of the login session, or 30 minutes idle terminates the process. Verification expiry only controls opening the terminal and does not interrupt an active connection. Commands are not written to console access logs. The terminal container has a fixed height; out-of-range size reports do not disconnect it. HTTP terminal input/output is unencrypted. xterm.js static files and licenses are bundled offline, without a CDN. The continuous dark header and output area reference the frame appearance of [FileTerm](https://github.com/St0ff3l/fileterm) and are implemented in this project's CSS.
 
 ### iperf3 window lifecycle
 
@@ -422,14 +405,14 @@ or `tailscale ip` on that device.
 - Keep iperf3 time-boxed and remove the firewall rule on close or shutdown.
 - Reapply persisted forwards from JSON at process start; withdraw runtime rules at a clean stop without resetting the host-wide `ip_forward` toggle.
 - Preserve node credentials and selected settings on upgrade; use the owning setup scripts for rotation, outside the web unit's filesystem sandbox.
-- From v6.0.0 onward, later versions **MUST** keep persistent state layout `1` readable and **MUST NOT** move the default persistent state back into `$PREFIX`. The installer **MUST NOT** automatically migrate layouts from v5.1.0 or earlier and **MUST** refuse an old service or missing critical state before changing services. The operator **MUST** transfer changed custom state paths manually; the installer **MUST NOT** silently reset them.
+- From v5.2.0 onward, later versions **MUST** keep persistent state layout `1` readable and **MUST NOT** move the default persistent state back into `$PREFIX`. The installer **MUST NOT** automatically migrate layouts from v5.1.0 or earlier and **MUST** refuse an old service or missing critical state before changing services. The operator **MUST** transfer changed custom state paths manually; the installer **MUST NOT** silently reset them.
 - Do not decouple the shared `_db_lock` without evidence of harmful latency: the historical 60-flooder measurement did not reproduce a slowdown. See [Bugs][local-link-008].
 
 ## External Interfaces
 
 - HTTP/HTTPS: public listeners on 80/443 expose only the reachability page; the operator console uses a separate persisted port. iperf3 listens only within an authenticated time-boxed window.
 - The console reads `/proc/net/tcp[6]` to log inbound TCP connections; it does not export proxy secrets on public routes.
-- `install.sh` uses bundled binaries and a private nftables runtime; it does not call a package mirror or look up a public IP on the target. `setup-proxy.sh` manages the unified sing-box unit and certificates. Where present, iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs restricted node-operation helpers outside the Web sandbox.
+- `install.sh` uses bundled binaries and the private nftables runtime when needed, without calling a package mirror or discovering the public IP on the target. Node accounting probes whether system nft can read the ruleset, preferring the host version when usable and otherwise falling back to the bundled version; this avoids older runtimes failing on newer systems. `setup-proxy.sh` manages the unified sing-box unit and certificates. Where present, iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs restricted node-operation helpers outside the Web sandbox.
 
 ## Tech stack
 
@@ -574,15 +557,7 @@ new configurations no longer create an independent AnyTLS service.
 
 ## Data Design
 
-The signed-in Settings page lists installed runtime modules. A serialized
-root helper installs and removes optional modules. `data/module-job.json`
-stores job status, `data/module-job.log` stores current output, and
-`data/module-history.log` appends operation history. The Modules page shows
-installation/removal progress briefly only on the page that started the job;
-it collapses 30 seconds after the last output, and a completion notice does
-not reappear after reload or return. The separate `/settings/logs` page reads
-module history and journals for Web, node metering, Singbox, FRPS, FRPC, Lucky,
-and Tailscale. Service-log scope depends on the host journal settings.
+The signed-in Settings page directly displays runtime module cards; the old `/settings/modules` route redirects to their anchor. A serialized root helper installs/removes optional modules; `data/module-job.json` stores task state, `data/module-job.log` current output, and `data/module-history.log` appended operation history. Progress appears briefly only on the current operation page, collapses 30 seconds after the last output, and completion notices do not reappear after reload or return. The separate `/settings/logs` page combines module history and journals for Web, Singbox (including node traffic and access management), FRPS, FRPC, Lucky, and Tailscale. Service logs support journal-priority filtering; module history has no priority. Clearing module history truncates this project's file. Clearing service logs only records a display cutoff in `data/log-clear.json` and does not delete the host journal.
 
 Home feature switches are independent of module installation state. Host ports
 used by public Web listeners, proxy nodes, Tailscale, FRPS, FRPC, port
@@ -658,7 +633,7 @@ These are checkout paths. Installation places Web code and browser assets at
 compatibility entry point `$PREFIX/app.py` remains systemd's `ExecStart`,
 but only calls `src.web.app.main()`. HTTP asset URLs do not change. The
 checkout's installer and uninstaller are `deploy/install.sh` and
-`deploy/uninstall.sh`. In the v6 candidate the persistent state root is separate from
+`deploy/uninstall.sh`. In v5.2.0 the persistent state root is separate from
 the installation directory; earlier in-directory data is not migrated
 automatically.
 

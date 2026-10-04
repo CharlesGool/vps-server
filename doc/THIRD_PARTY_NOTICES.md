@@ -41,8 +41,8 @@ metadata:
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 随附的界面 SVG 图标 | [license](../src/web/static/licenses/Lucide-ISC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | xterm.js 与 Fit Addon | `@xterm/xterm` 6.0.0,`@xterm/addon-fit` 0.11.0;JavaScript SHA-256 分别为 `14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972`,`ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527` | [xtermjs/xterm.js](https://github.com/xtermjs/xterm.js) | MIT,依据 npm 归档随附许可证 | 离线浏览器终端渲染和尺寸适配 | [xterm 许可证](../src/web/static/third_party/xterm/LICENSE-xterm);[Fit Addon 许可证](../src/web/static/third_party/xterm/LICENSE-addon-fit);[构件记录](../src/web/static/third_party/xterm/component.txt) | 随同静态文件保留两份上游版权及许可声明 | 2026-10-05:npm 固定版本归档成员逐字节复制并记录 SHA-256 |
 | iperf3 | `3.22`;随附二进制 SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | 从官方源码本地构建的 x86-64 Linux 静态可执行文件 | [上游 LICENSE](../third_party/iperf3/LICENSE);[构建记录](../third_party/iperf3/component.txt) | 随二进制保留版权和完整许可声明;目标发行版兼容性仍待验收 | 2026-10-04:官方源码摘要,本地构建与本机执行已核对 |
-| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | v6 离线包构建时纳入归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md);[专利授权](../third_party/tailscale/PATENTS);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可,专利授权和对应版本依赖清单;完整传递依赖许可文本仍待正式发布前核查 | 2026-10-04:官方归档摘要与本机运行版本一致;上游标签中的声明文件已随附 |
-| nftables 及 10 个运行库 | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`;运行归档 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`;对应源码归档 SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [Debian 官方软件包仓库](https://deb.debian.org/debian/) | 各包许可证见归档内 `usr/share/doc/<package>/copyright` | v6 离线包中供节点计量使用的私有 nft 运行时,不安装到系统软件包数据库 | [包名与 SHA-256 记录](../third_party/nft/component.txt);[源码清单](../third_party/nft/source-manifest.json) | 随同一离线包提供对应原始源码及 Debian 打包补丁;跨发行版兼容性仍待目标机验收 | 2026-10-04:各 `.deb` 与源码文件均和 Debian 索引散列匹配;本机解析配额语法通过 |
+| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | v5.2.0 离线包构建时纳入归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md);[专利授权](../third_party/tailscale/PATENTS);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可,专利授权和对应版本依赖清单;随附依赖许可证正文和来源摘要清单 | 2026-10-04:官方归档摘要与本机运行版本一致;上游标签中的声明文件已随附 |
+| nftables 及 10 个运行库 | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`;运行归档 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`;对应源码归档 SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [Debian 官方软件包仓库](https://deb.debian.org/debian/) | 各包许可证见归档内 `usr/share/doc/<package>/copyright` | v5.2.0 离线包中供节点计量使用的私有 nft 运行时,不安装到系统软件包数据库 | [包名与 SHA-256 记录](../third_party/nft/component.txt);[源码清单](../third_party/nft/source-manifest.json) | 随同一离线包提供对应原始源码及 Debian 打包补丁;跨发行版兼容性仍待目标机验收 | 2026-10-04:各 `.deb` 与源码文件均和 Debian 索引散列匹配;本机解析配额语法通过 |
 
 现有项目记录将本项目的许可证标为 GPL-3.0([LICENSE][local-link-009]),并将重新分发 GPL 许可的 sing-box 可执行文件作为选择该许可证的理由;[决策][local-link-010]保留了其理由及被否决的替代方案.先前记录称 `vps-webserver` 上游采用 Apache-2.0,在本项目中以 GPL-3.0 重新分发.本清单记录了为 v2.0.0 核验的文件与条款;不提供独立的法律意见.
 
@@ -137,7 +137,7 @@ MIT 版权及许可声明与客户端库一同随附.
 
 ## Tailscale 客户端声明
 
-随附的 Tailscale v1.102.4 静态归档来自官方 Linux 发布站点,目标机只提取客户端与守护进程.本项目保留该标签的原始 [BSD-3-Clause 许可证](../third_party/tailscale/LICENSE),[专利授权](../third_party/tailscale/PATENTS) 和 [CLI/守护进程依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md).依赖清单逐项链接上游许可证;当前只核对了它与指定 Tailscale 标签文件的一致性,未逐一独立审核所有传递依赖的完整许可证文本.正式公开发布前仍需完成这项审查.
+随附的 Tailscale v1.102.4 静态归档来自官方 Linux 发布站点,目标机只提取客户端与守护进程.本项目保留该标签的原始 [BSD-3-Clause 许可证](../third_party/tailscale/LICENSE),[专利授权](../third_party/tailscale/PATENTS) 和 [CLI/守护进程依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md).依赖清单对应的 80 份上游许可证,freetype 许可证正文及三份原始 NOTICE 文件已保存在 `third_party/tailscale/licenses/`,来源与 SHA-256 见[许可清单](../third_party/tailscale/license-manifest.json).核对正文中的版权,再分发条件与声明保留要求后,随包提供原文,依赖清单,专利授权及源码来源;Apache-2.0 的声明与例外保留在所获取原文中.原始依赖清单将 freetype 标为 Unknown,本项目补充其固定源码修订的 BSD 风格许可原文,不改写上游清单.该检查不构成独立法律解释.
 
 ---
 
@@ -149,7 +149,7 @@ MIT 版权及许可声明与客户端库一同随附.
   `deploy/install.sh`,`deploy/uninstall.sh`,`deploy/systemd/`——来自 `vps-webserver`
   v0.4.1(上游 Apache-2.0,在此重新授权为 GPL-3.0).见 `config/upstream-version`.
 - `third_party/sing-box/sing-box`,`third_party/sing-box/sing-box.version` 最初沿用
-  `Anytsl-Serve` 的选型;独立 AnyTLS 安装脚本已从 v6 候选中移除.二进制上游及许可见上表.
+  `Anytsl-Serve` 的选型;独立 AnyTLS 安装脚本已从 v5.2.0 中移除.二进制上游及许可见上表.
 
 ---
 

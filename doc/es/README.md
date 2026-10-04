@@ -26,7 +26,7 @@ metadata:
 
 ## Introducción
 
-vps-server ofrece una página para comprobar la accesibilidad de los puertos Web de un VPS Debian/Ubuntu y una consola para medir velocidad y registrar conexiones. También permite instalar módulos proxy, FRP, Lucky y Tailscale. La rama actual prepara un candidato de prueba de v6.0.0; la última versión formal sigue siendo v5.1.0. Consulta el [estado del proyecto](LOG.md).
+vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.0. Consulta el progreso en el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
@@ -35,8 +35,9 @@ vps-server ofrece una página para comprobar la accesibilidad de los puertos Web
 - **iperf3:** La consola abre una ventana de duración limitada que se cierra al vencer. La salida `--json` de un cliente Linux puede contener `mean_rtt`; un cliente que no pueda leer `TCP_INFO` no mostrará ese campo. Las pruebas UDP permiten ver fluctuación y pérdida.
 - **Nodos proxy:** Un solo servicio sing-box ejecuta AnyTLS, VMess, VLESS, Trojan y Shadowsocks. La consola gestiona conexiones, límites de tráfico y velocidad, reinicios periódicos y vencimiento de los nodos. En la red local se puede importar la configuración a Clash Meta.
 - **FRP:** La consola gestiona el puerto, el token y el estado del servicio FRPS local, además de las instancias FRPC locales y los proxies TCP/UDP sencillos con autenticación por token. Verifica la configuración al editarla y la restaura si falla; no supervisa clientes de otros dispositivos. FRPC se instala con un recurso incluido en el repositorio.
-- **Lucky:** Se puede instalar o retirar junto con los demás módulos. La consola enlaza a la página de administración propia de Lucky; este proyecto no reproduce sus funciones DDNS y de proxy inverso.
-- **Tailscale:** Se puede instalar o retirar el cliente Linux incluido en el paquete sin conexión. La consola muestra estado, conectividad, dispositivos y registros, y ofrece controles Linux de DNS, rutas de subred, nodo de salida, modo de protección, SSH, cierre de sesión y un modo experimental de menor uso de memoria. Para unirse al Tailnet sigue siendo necesario acceder al servidor de control elegido.
+- **Lucky:** Se puede instalar o retirar junto con otros módulos. La consola solo muestra su dirección de administración y estado, con un acceso a la página de administración nativa. Si Lucky cambia su propio puerto, la consola actualiza periódicamente la dirección y el registro en `PORTS.md`. La reproducción completa de funciones queda para una versión posterior.
+- **Tailscale:** Se puede instalar o retirar el cliente Linux incluido en el paquete sin conexión. La consola muestra estado, conectividad, dispositivos y registros, y permite guardar juntos varios ajustes Linux de DNS, rutas, nodo de salida, protección y SSH. Las direcciones IPv4 e IPv6 de dispositivos se muestran o copian por separado cuando se necesitan. Unirse al Tailnet sigue requiriendo acceso al servidor de control elegido.
+- **Terminal:** El acceso desde Home abre una terminal root en el navegador tras verificar la contraseña de administrador. Desconectarse, salir de la página o perder la sesión de acceso termina el proceso PTY correspondiente. Los recursos de renderizado se incluyen en el paquete sin conexión.
 
 La primera instalación habilita solo la consola Web; los demás módulos se instalan según sea necesario. Consulta los límites funcionales, las reglas de acceso y las restricciones del editor FRP en el [documento de diseño](DESIGN.md).
 
@@ -46,23 +47,23 @@ La primera instalación habilita solo la consola Web; los demás módulos se ins
 - Entorno: Python 3.9+ (basta el `python3` de la distribución, sin dependencias Python adicionales).
 - Arquitectura: todo el proyecto requiere Linux x86-64; el instalador rechaza otras plataformas antes de modificar el sistema.
 - Si el módulo Web usa los puertos públicos predeterminados, 80 y 443 **DEBEN** estar libres; el instalador rechaza los que ocupen nginx, Apache, Caddy o `vps-webserver`.
-- Otras dependencias: la máquina de destino necesita Bash, systemd, Python y las herramientas básicas habituales del sistema. El paquete sin conexión completo incluye FRP, Lucky, Tailscale, sing-box, iperf3 y un entorno privado de nftables; la máquina de destino no necesita Git ni acceso a repositorios de paquetes. La autenticación con el servidor de control, las actualizaciones de servicios y la conexión entre dispositivos sí requieren red.
+- Otras dependencias: la máquina de destino necesita Bash, systemd, Python y las herramientas básicas habituales del sistema. El paquete sin conexión completo incluye FRP, Lucky, Tailscale, sing-box, iperf3 y un entorno privado de nftables. La medición de nodos prefiere el nft del sistema si puede leer las reglas; en caso contrario usa la versión incluida. La máquina de destino no necesita Git ni acceso a repositorios de paquetes. La autenticación con el servidor de control, las actualizaciones de servicios y la conexión entre dispositivos sí requieren red.
 - Requisitos mínimos: el sistema, entorno y arquitectura indicados. Si se habilita la página pública, sus puertos deben estar libres. Se recomienda reservar al menos 1 GiB para el paquete sin conexión completo, el directorio de extracción y el programa instalado.
 
 ## Instalación
 
 ### Instalación rápida
 
-Ejecuta como root en la máquina de destino. De forma predeterminada solo se instala la consola Web. La primera instalación interactiva muestra las opciones de idioma 1/2/3 y luego imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. v6.0.0 formal todavía no se ha publicado; el siguiente comando de código fuente solo sirve para esta rama de prueba. Para disponer de todos los módulos sin conexión, sigue el procedimiento del archivo comprimido indicado abajo.
+Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.0; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Instalación estándar
 
 ```bash
-git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
@@ -72,16 +73,16 @@ bash deploy/install.sh
 
 ### Paquete de instalación sin conexión
 
-El paquete de prueba v6.0.0 incluirá el código fuente completo y los recursos Tailscale, nftables y otros necesarios, comprobados previamente. Generar el paquete e instalarlo en destino no exige Git en la máquina de destino. Tras publicar el paquete de prueba, comprueba su SHA-256 y extráelo en un directorio independiente; no sobrescribas directamente el `$PREFIX` instalado. El paquete todavía no se ha publicado: sustituye `<测试包>` por su nombre real en los siguientes comandos.
+El paquete sin conexión v5.2.0 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.0-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
 
 ```bash
-mkdir -p /root/vps-server-v6-test
-tar -xzf /root/<测试包>.tar.gz -C /root/vps-server-v6-test --strip-components=1
-cd /root/vps-server-v6-test
+mkdir -p /root/vps-server-v5.2.0
+tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
+cd /root/vps-server-v5.2.0
 bash deploy/install.sh
 ```
 
-En un equipo de construcción con acceso a la red se puede crear el paquete de prueba desde un árbol de trabajo **limpio y ya confirmado en Git**; la máquina de destino solo recibe el `.tar.gz` final. El equipo de construcción necesita Python 3, Git, `dpkg-deb` y GNU tar. El script que obtiene los recursos comprueba sus hashes fijos. El paquete contiene el entorno de ejecución de nftables, su código fuente correspondiente y el archivo Tailscale:
+Un equipo de construcción con red puede crear el paquete formal desde un árbol **limpio y ya confirmado en Git**; el destino recibe solo el `.tar.gz` final. Se necesitan Python 3, Git, `dpkg-deb` y GNU tar. El script de recursos comprueba hashes fijos. El paquete contiene el entorno nftables, sus fuentes correspondientes y el archivo Tailscale:
 
 ```bash
 python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
@@ -89,8 +90,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version "test-$(git rev-parse --short=7 HEAD)" \
-  --output .local/vps-server-test.tar.gz
+  --version 5.2.0 \
+  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
 ```
 
 ## Orientaciones
@@ -99,7 +100,7 @@ El resumen del instalador muestra la dirección de la consola, la contraseña ad
 
 Para usar iperf3, abre primero una ventana de duración limitada en la consola y luego ejecuta `iperf3 -c <ip> -p 5201 --json` desde otra máquina. Al terminar la ventana, el puerto deja de escuchar. El código fuente no incluye una suite de pruebas automáticas; acepta manualmente los módulos que hayas habilitado. Consulta rutas de servicio, límites y archivos de estado en el [documento de diseño](DESIGN.md).
 
-El límite de tráfico de los nodos proxy cuenta (subida + bajada) × 2. La interfaz muestra la cantidad contabilizada; la falta de datos de medición por sí sola no adelanta la limitación de velocidad. El reinicio mensual se ejecuta el día 1 de cada mes a las 00:00 UTC; los períodos diarios y anuales conservan su cálculo anterior. Las direcciones de interfaz de red de los nodos se ocultan por defecto y se pueden mostrar o copiar. En «Visitantes recientes» se puede borrar el historial tras confirmar; las visitas posteriores y los dispositivos que sigan conectados se registrarán de nuevo. El progreso de instalación y desinstalación de la página Módulos se oculta 30 segundos después de la última salida; el aviso de finalización solo aparece brevemente en la página de la operación actual y no reaparece al actualizar o volver a entrar. «Registros detallados», a la derecha de «Registro de cambios» en la cabecera, muestra el historial de operaciones de módulos y los registros de servicios; la retención de estos últimos depende del journal de systemd de la máquina. Lucky usa su propia página de administración; si la red actual no permite acceder directamente, se puede reenviar el puerto de administración mediante SSH.
+El límite de tráfico de los nodos proxy cuenta (subida + bajada) × 2. La interfaz muestra la cantidad contabilizada; la falta de datos de medición por sí sola no adelanta la limitación de velocidad. El reinicio mensual empieza el día 1 del mes seleccionado a las 00:00 UTC; los períodos diarios y anuales conservan su cálculo anterior. Las direcciones de interfaz de los nodos se ocultan por defecto y se pueden mostrar o copiar. En «Visitantes recientes» se puede borrar el historial tras confirmar; las visitas posteriores y los dispositivos que sigan conectados se registrarán de nuevo. Ajustes muestra directamente las tarjetas de instalación de módulos; el progreso se oculta 30 segundos después de la última salida y el aviso de finalización solo aparece brevemente en la página de la operación actual, sin reaparecer al actualizar o volver. «Registros detallados», a la derecha de «Registro de cambios» en la cabecera, reúne el historial de operaciones y los registros de servicios; estos se pueden filtrar por nivel. Borrar el historial de módulos trunca su archivo; borrar un registro de servicio solo oculta entradas anteriores y no elimina el journal del servidor. Lucky conserva su página de administración nativa; si la red actual no permite acceder directamente, se puede reenviar el puerto mediante SSH.
 
 ### Configuración
 
@@ -121,7 +122,7 @@ Referencia completa: [Referencia de configuración][local-link-002].
 
 ## Actualización
 
-El candidato v6.0.0 establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, cópialos fuera del directorio de instalación antes de realizar una instalación nueva; los datos ya borrados sin copia no se pueden recuperar. Si el instalador encuentra un servicio anterior pero falta el estado, se detiene antes de modificar los servicios.
+v5.2.0 establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, cópialos fuera del directorio de instalación antes de realizar una instalación nueva; los datos ya borrados sin copia no se pueden recuperar. Si el instalador encuentra un servicio anterior pero falta el estado, se detiene antes de modificar los servicios.
 
 Para actualizar posteriormente desde la disposición `1`, obtén el código nuevo en un directorio independiente y ejecuta el instalador con los mismos `PREFIX` y `VPSSRV_STATE_DIR`. Conserva la raíz de estado y las configuraciones de módulos bajo `/etc`; el instalador reutiliza la contraseña, el puerto, los certificados, los datos de ejecución y los módulos registrados sin volver a mostrar la contraseña anterior. Conserva copias del código y los datos antes de actualizar; después comprueba el estado de los servicios, el puerto administrativo, el inicio de sesión y los módulos utilizados. Usa la misma ruta de estado personalizada en las instalaciones posteriores; si quieres cambiarla, traslada y comprueba los datos manualmente.
 

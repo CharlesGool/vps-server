@@ -32,6 +32,14 @@ metadata:
 
 ## Bugs
 
+- [x] 2026-10-05 [P1] Browser terminal disconnected immediately after input: fitting reported 2261 rows and triggered backend disconnect; administrator password reverification also redirected to Security settings. `test-86ae9a9` fixes container height, ignores invalid sizes, and returns directly to the terminal after verification. Isolated Firefox stayed connected while typing `ls`, executing it, and running `pwd` after narrowing the window. The target verified the return path and command execution after oversized reports. Final experience in the operator's original browser still awaited retesting.
+
+- [x] 2026-10-05 [P1] Detecting Lucky management-port changes cannot rely only on `/etc/vps-server-lucky/config.json`: `lucky_base.lkcf` stores post-startup settings, and old/new ports can briefly listen together after a native command changes the port. `test-a9e3cdb` uses the persistent port from `-baseConfInfo`, then verifies process listener and management page. On the target, address API, HTTP management page, and `PORTS.md` synchronized after the change; restoring the old port also passed.
+
+- [x] 2026-10-05 [P1] Node metering repeatedly restarted on the Debian 13 test host: bundled nft v0.9.8 could not read the ruleset, while host nft v1.1.3 could. `test-68e7c5f` probes usable system nft first and falls back to the offline package if unavailable. The target selected `/usr/sbin/nft`, node metering became active, and it recovered after reboot under `test-a9e3cdb`.
+
+- [x] 2026-10-05 [P1] Singbox node-creation POST returned 500: target Web logs showed `UnboundLocalError`; `features/proxy.py` had indented node-save execution into only the access-management branch. `test-68e7c5f` restores the call to the shared action path. Target Web creation of a temporary VMess node returned 200; deleting it restored node inventory and port registration.
+
 - [ ] 2026-10-04 [P1] Actual 1 Mbps throttling occurred far below the recorded traffic cap: the old policy treated an accounting gap marked `suspect` as grounds for early throttling. Source now applies the cap action only when counted traffic reaches the cap; a gap warns of possible undercounting. The cap counts (upload + download) × 2, with the kernel quota threshold halved accordingly and rebuilt through the policy fingerprint. Isolated boundary checks passed; the target host has not been retested.
 
 - [ ] 2026-10-04 [P1] The operator reported that the token input in Edit FRPS stayed masked after clicking Show. Both the outer page and FRP content loaded `password-fields.js`, causing two toggles for one click. Source now removes the duplicate load from the FRPS/FRPC editors. A browser-simulated page confirmed show/hide, unchanged value and focus, and no form submission. Fix `34b8918` was pushed to the public test branch; target-host verification is pending.
