@@ -11,22 +11,18 @@ class TerminalMixin:
             return self.send_html(404, "Not found")
         token = self.get_cookie("session")
         if not self.context.security_settings_valid(token):
-            body = (f'<div class="card access-card"><h1>{esc(t["terminal_title"])}</h1>'
-                    f'<p>{esc(t["terminal_verify"])}</p>'
-                    f'<a class="button-link" href="/settings/security">{esc(t["access_enter_security"])}</a></div>')
-        else:
-            ws_token = self.context.access_csrf_token(token, "terminal")
-            body = (f'<div class="card wide terminal-page" data-token="{esc(ws_token, quote=True)}" '
-                    f'data-disconnected="{esc(t["terminal_disconnected"], quote=True)}">'
-                    f'<div class="terminal-head"><h1>{esc(t["terminal_title"])}</h1>'
-                    f'<div><button type="button" class="terminal-reconnect">{esc(t["terminal_reconnect"])}</button>'
-                    f'<button type="button" class="terminal-close">{esc(t["terminal_close"])}</button></div></div>'
-                    f'<p class="muted">{esc(t["terminal_root_note"])}</p>'
-                    '<p class="terminal-status" role="status"></p><div class="terminal-screen" tabindex="0"></div></div>'
-                    '<link rel="stylesheet" href="/static/third_party/xterm/xterm.css">'
-                    '<script src="/static/third_party/xterm/xterm.js"></script>'
-                    '<script src="/static/third_party/xterm/addon-fit.js"></script>'
-                    '<script src="/static/terminal.js" defer></script>')
+            return self.page_security_verify(lang, next_page="terminal")
+        ws_token = self.context.access_csrf_token(token, "terminal")
+        body = (f'<div class="card wide terminal-page" data-token="{esc(ws_token, quote=True)}" '
+                f'data-disconnected="{esc(t["terminal_disconnected"], quote=True)}">'
+                f'<div class="terminal-head"><h1>{esc(t["terminal_title"])}</h1>'
+                f'<div><button type="button" class="terminal-reconnect">{esc(t["terminal_reconnect"])}</button>'
+                f'<button type="button" class="terminal-close">{esc(t["terminal_close"])}</button></div></div>'
+                '<p class="terminal-status" role="status"></p><div class="terminal-screen" tabindex="0"></div></div>'
+                '<link rel="stylesheet" href="/static/third_party/xterm/xterm.css">'
+                '<script src="/static/third_party/xterm/xterm.js"></script>'
+                '<script src="/static/third_party/xterm/addon-fit.js"></script>'
+                '<script src="/static/terminal.js" defer></script>')
         return self.send_html(200, self.render_page(t["terminal_title"], body, lang, back_href="/"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 

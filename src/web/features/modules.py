@@ -181,11 +181,10 @@ class ModulesMixin:
                            f'{log_level_form(t, "/settings/logs", {"source": source}, level) if selected[2] else ""}'
                            f'<pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre>')
         body = (f'<div class="card wide logs-page"><h1>{esc(t["module_detailed_logs"])}</h1>'
-                f'<p class="muted">{esc(t["logs_recent_note"])}</p>'
                 f'<nav class="log-sources" aria-label="{esc(t["module_detailed_logs"], quote=True)}">{links}</nav>'
                 f'{"<p class=notice role=status>" + esc(t["logs_clear_done"]) + "</p>" if self.context.parse_qs(parsed.query).get("cleared") == ["1"] else ""}'
                 f'<div class="logs-actions">{log_clear_form(self.context, t, self.get_cookie("session"), source)}'
-                f'<small>{esc(t["logs_clear_note"])}</small></div>{log_content}</div>'
+                f'</div>{log_content}</div>'
                 '<script src="/static/log-controls.js" defer></script>')
         return self.send_html(200, self.render_page(t["module_detailed_logs"], body, lang,
                                                     active="module_detailed_logs", back_href="/settings/modules"),
@@ -195,7 +194,6 @@ class ModulesMixin:
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
-                f'<p class="muted">{esc(t["module_not_installed_help"].format(name=module_name))}</p>'
                 f'<a class="button-link" href="/settings/modules">'
                 f'{esc(t["module_install"] + " " + module_name)}</a></div>')
         return self.send_html(200, self.render_page(title, body, lang, active=active),
@@ -383,8 +381,8 @@ class ModulesMixin:
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
-        body = (f'<div class="card access-card"><h1>{self.context.html.escape(t["module_closed_title"])}</h1>'
-                f'<p>{self.context.html.escape(t["module_closed_help"].format(name=names[module]))}</p></div>')
+        body = (f'<div class="card access-card"><h1>{self.context.html.escape(names[module])}: '
+                f'{self.context.html.escape(t["module_closed_title"])}</h1></div>')
         return self.send_html(200, self.render_page(t["module_closed_title"], body, lang,
                                                     back_href="/"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})

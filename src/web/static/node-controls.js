@@ -45,14 +45,10 @@
   if (!createForm) return;
   const sniField = createForm.querySelector('[data-sni-field]');
   const sniInput = sniField.querySelector('input');
-  const credentialHint = createForm.querySelector('[data-credential-hint]');
   const updateFields = () => {
     const protocol = createForm.querySelector('input[name="protocol"]:checked')?.value;
     sniField.hidden = protocol === 'shadowsocks';
     if (protocol !== 'shadowsocks' && !sniInput.value) sniInput.value = 'www.bing.com';
-    credentialHint.textContent = protocol === 'shadowsocks' ? createForm.dataset.credentialSs :
-      (protocol === 'vmess' || protocol === 'vless') ? createForm.dataset.credentialUuid :
-        createForm.dataset.credentialPassword;
   };
   createForm.addEventListener('change', (event) => {
     if (event.target.name === 'protocol') updateFields();

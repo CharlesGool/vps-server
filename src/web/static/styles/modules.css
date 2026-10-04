@@ -73,6 +73,6 @@
 .terminal-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:1rem; }
 .terminal-head h1 { margin:0; }
 .terminal-head > div { display:flex; flex-wrap:wrap; gap:.5rem; }
-.terminal-screen { --terminal-bg:#17242c; --terminal-fg:#f1f5f6; min-height:55vh; padding:.75rem; border:1px solid var(--card-border); border-radius:8px; background:var(--terminal-bg); color:var(--terminal-fg); overflow:hidden; }
+.terminal-screen { --terminal-bg:#17242c; --terminal-fg:#f1f5f6; height:clamp(20rem,60vh,42rem); padding:.75rem; border:1px solid var(--card-border); border-radius:8px; background:var(--terminal-bg); color:var(--terminal-fg); overflow:hidden; }
 .terminal-screen .xterm { height:100%; }
 .terminal-status:empty { display:none; }

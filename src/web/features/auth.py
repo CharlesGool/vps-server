@@ -13,10 +13,8 @@ class AuthMixin:
             password_error = False
         error_html = f'<p class="error" id="login-error" role="alert">{self.context.html.escape(error)}</p>' if error else ""
         invalid = ' aria-invalid="true" aria-describedby="login-error"' if error and password_error else ""
-        next_page = next_page if next_page in ("settings", "preferences", "changelog") else ""
+        next_page = next_page if next_page in ("settings", "preferences", "changelog", "terminal") else ""
         next_input = f'<input type="hidden" name="next" value="{next_page}">' if next_page else ""
-        notice = (f'<p class="muted small">{self.context.html.escape(t["admin_sign_in_note"])}</p>'
-                  if next_page == "settings" else "")
         changed = ('<p class="notice" role="status">' + self.context.html.escape(t["password_changed"]) + '</p>'
                    if self.context.parse_qs(self.context.urlsplit(self.path).query).get("changed") == ["1"] else "")
         ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
@@ -36,8 +34,7 @@ class AuthMixin:
           <div class="login-panel app-login-card">
             <span class="login-mark" aria-hidden="true">{self.context.ui_icon('lock-keyhole')}</span>
             <h1>{self.context.html.escape(t['login_heading'])}</h1>
-            <p class="login-intro">{self.context.html.escape(t['login_intro'])}</p>
-            {changed}{notice}{error_html}
+            {changed}{error_html}
             <form method="post" action="/login" class="login-form">
               {next_input}
               {password_field}
@@ -75,6 +72,7 @@ class AuthMixin:
             )
             destination = ("/settings/security" if next_page == "settings" else
                            "/settings" if next_page == "preferences" else
+                           "/terminal" if next_page == "terminal" else
                            "/changelog" if next_page == "changelog" else "/")
             return self.redirect(destination,
                                  {"Set-Cookie": cookie})
@@ -99,7 +97,6 @@ class AuthMixin:
             'autocomplete="current-password" required autofocus')
         body = f'''<div class="access-workspace access-verify-workspace"><section class="card access-card">
           <h1>{self.context.html.escape(t['access_verify_heading'])}</h1>
-          <p>{self.context.html.escape(t['access_verify_note'])}</p>
           {f'<p class="error" role="alert">{self.context.html.escape(error)}</p>' if error else ''}
           <form class="access-verify-form" method="post" action="/settings/verify" autocomplete="off">
             <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'verify')}">
@@ -108,7 +105,9 @@ class AuthMixin:
             <button type="submit">{self.context.html.escape(t['access_verify_button'])}</button>
           </form></section></div>'''
         return self.send_html(status,
-                              self.render_page(t['access_verify_heading'], body, lang, active="settings", back_href='/settings'),
+                              self.render_page(t['access_verify_heading'], body, lang,
+                                               active="home" if next_page == "terminal" else "settings",
+                                               back_href='/' if next_page == "terminal" else '/settings'),
                               {"Cache-Control": "no-store"})
 
     def handle_security_verify(self, lang):
@@ -130,7 +129,7 @@ class AuthMixin:
         if not self.context.hmac.compare_digest(form["csrf"][0], self.context.access_csrf_token(token, "verify")):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         next_page = form.get("next", [""])[0]
-        if next_page not in ("", "frp"):
+        if next_page not in ("", "frp", "terminal"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         ip = self.client_address[0]
         allowed, retry_after = self.context.LOGIN_LIMITER.check(ip)
@@ -147,7 +146,7 @@ class AuthMixin:
         new_token = self.context.create_session(security_verified=True)
         cookie = (f"session={new_token}; Path=/; HttpOnly; SameSite=Strict; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
-        return self.redirect("/frpc" if next_page == "frp" else "/settings/security",
+        return self.redirect("/frpc" if next_page == "frp" else "/terminal" if next_page == "terminal" else "/settings/security",
                              {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
     def handle_logout(self):

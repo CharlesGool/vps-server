@@ -48,7 +48,7 @@ class SettingsMixin:
             <a href="#settings-security">{esc(t['access_security'])}</a>
           </nav><div class="settings-content">
             <section id="settings-identity" class="card access-card preferences-card"><h2>{esc(t['server_label_heading'])}</h2>
-              <p class="muted">{esc(t['server_label_note'])}</p>{label_feedback}
+              {label_feedback}
               <form method="post" action="/settings/server-label" class="server-label-form">
                 <input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie('session'), 'server-label')}">
                 <label for="server-label-input">{esc(t['server_label_field'])}</label>
@@ -58,7 +58,7 @@ class SettingsMixin:
             </section>
             <section id="settings-console-port" class="card access-card preferences-card">
               <h2>{esc(t['console_port_heading'])}</h2>
-              <p class="muted">{esc(t['console_port_note'])}</p>{port_feedback}
+              {port_feedback}
               <form method="post" action="/settings/console-port" class="server-label-form">
                 <input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie('session'), 'console-port')}">
                 <label for="console-port-input">{esc(t['console_port_field'])}</label>
@@ -118,8 +118,7 @@ class SettingsMixin:
           </nav><div class="settings-content"><section id="security-ips" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
               <h2>{esc(t['access_ips'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
-            <div class="access-card-body"><p>{esc(t['access_ip_note'])}</p>
-              <p>{esc(t['access_ip_shared_note'])}</p>{load_warning}
+            <div class="access-card-body">{load_warning}
             <form method="post" action="/settings/ip/toggle" class="access-toggle-form">
               <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'ip-toggle')}">
               <input type="hidden" name="enabled" value="{'0' if self.context.IP_ALLOWLIST.is_enabled() else '1'}">
@@ -214,7 +213,7 @@ class SettingsMixin:
         if path == "/settings/verify":
             if method == "GET":
                 next_page = self.context.parse_qs(parsed.query).get("next", [""])[0]
-                self.page_security_verify(lang, next_page="frp" if next_page == "frp" else "")
+                self.page_security_verify(lang, next_page=next_page if next_page in ("frp", "terminal") else "")
                 return True
             if method == "POST":
                 self.handle_security_verify(lang)

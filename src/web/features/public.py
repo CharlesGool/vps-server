@@ -115,7 +115,6 @@ class PublicMixin:
   <dt>{self.context.html.escape(t['probe_arrived_on'])}</dt><dd>{scheme} :{arrived_port}</dd>
   <dt>{self.context.html.escape(t['probe_server_time'])}</dt><dd>{now}</dd>
 </dl>
-<p class="note">{self.context.html.escape(t['probe_note'])}</p>
 </main>
 </body>
 </html>"""

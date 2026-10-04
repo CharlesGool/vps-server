@@ -33,7 +33,6 @@
 .node-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; }
 .node-dialog-cancel { border-color: var(--card-border); background: var(--card-bg); color: var(--fg); }
 .node-dialog-cancel:hover { background: var(--surface-2); }
-.node-field-hint { display: block; margin-top: .3rem; color: var(--muted); font-size: .75rem; font-weight: 400; line-height: 1.4; }
 [hidden] { display: none !important; }
 .node-create { margin-bottom: 1.2rem; padding: 1rem; border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-bg); }
 .node-create > summary span:last-child, .node-create[open] > summary span:first-child { display: none; }

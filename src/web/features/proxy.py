@@ -151,16 +151,13 @@ class ProxyMixin:
                                    f'{" checked" if index == 0 else ""}><span>{esc(value)}</span></label>'
                                    for index, value in enumerate(protocols))
         create = (f'''<details class="node-create"><summary><span>{esc(t['node_create'])}</span><span>{esc(t['node_cancel'])}</span></summary>
-          <form method="post" action="/proxy/node/create" data-node-create
-                data-credential-password="{esc(t['node_credential_password_hint'], quote=True)}"
-                data-credential-uuid="{esc(t['node_credential_uuid_hint'], quote=True)}"
-                data-credential-ss="{esc(t['node_credential_ss_hint'], quote=True)}">
+          <form method="post" action="/proxy/node/create" data-node-create>
             <input type="hidden" name="csrf" value="{self.context.node_csrf_token(session, 'create')}">
             <fieldset class="node-reset-cycle"><legend>{esc(t['node_protocol'])}</legend>{protocol_choices}</fieldset>
             <div class="node-form-grid">
               <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
               <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
-              <div class="node-form-field">{self.context.render_password_field(t, 'node-create-credential', t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_credential_random'], quote=True) + '" autocomplete="new-password"', '<small class="node-field-hint" data-credential-hint>' + esc(t['node_credential_password_hint']) + '</small>')}</div>
+              <div class="node-form-field">{self.context.render_password_field(t, 'node-create-credential', t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_credential_random'], quote=True) + '" autocomplete="new-password"')}</div>
               <label data-sni-field>{esc(t['proxy_sni'])}<input name="sni" value="www.bing.com" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")

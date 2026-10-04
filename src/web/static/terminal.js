@@ -25,7 +25,8 @@
   const resize = () => {
     if (!screen.isConnected) return;
     fit.fit();
-    if (socket?.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN &&
+        terminal.cols >= 20 && terminal.cols <= 400 && terminal.rows >= 10 && terminal.rows <= 200) {
       socket.send(JSON.stringify({ type: 'resize', cols: terminal.cols, rows: terminal.rows }));
     }
   };

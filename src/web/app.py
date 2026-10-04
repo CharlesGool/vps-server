@@ -1152,6 +1152,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if not self.is_authenticated():
             destination = ("/login?next=changelog" if path == "/changelog" else
                            "/login?next=preferences" if path == "/settings" else
+                           "/login?next=terminal" if path == "/terminal" else
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
 

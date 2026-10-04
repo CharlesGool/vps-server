@@ -192,7 +192,7 @@ class TailscaleMixin:
                 memory_enabled = None
             options_html += (f'<label class="tailscale-option"><input type="checkbox" name="memory_enabled" value="1" '
                              f'{"checked" if memory_enabled is True else ""} {"disabled" if memory_enabled is None else ""}>'
-                             f'<span>{esc(t["tailscale_memory"])}<small>{esc(t["tailscale_memory_note"])}</small></span></label>'
+                             f'<span>{esc(t["tailscale_memory"])}</span></label>'
                              + ('<input type="hidden" name="memory_available" value="1">' if memory_enabled is not None else ''))
             fields_html = ""
             subnets = control.local_subnets()
@@ -210,8 +210,7 @@ class TailscaleMixin:
                                        for route in subnets) if kind == "routes" else
                                "".join(f'<button type="button" class="tailscale-choice" data-exit-choice="{esc(peer["selector"], quote=True)}">{esc(peer["name"])}</button>'
                                        for peer in exit_nodes) if kind == "exit" else "")
-                fields_html += (f'<div class="tailscale-setting-card"><label>{esc(t[label])}{field}</label>'
-                                f'<small class="muted">{esc(t["tailscale_blank_keep"])}</small>{current_html}'
+                fields_html += (f'<div class="tailscale-setting-card"><label>{esc(t[label])}{field}</label>{current_html}'
                                 f'{"<div class=tailscale-suggestions>" + suggestions + "</div>" if suggestions else ""}'
                                 f'<label class="tailscale-clear-choice"><input type="checkbox" name="{kind}_clear" value="1" '
                                 f'{"" if current else "disabled"}>{esc(t["tailscale_clear"])}</label></div>')
@@ -250,7 +249,7 @@ class TailscaleMixin:
             content += (f'{"<p class=notice role=status>" + esc(t["logs_clear_done"]) + "</p>" if parse_qs(parsed.query).get("cleared") == ["1"] else ""}'
                         '<div class="logs-actions">' +
                         log_clear_form(self.context, t, self.get_cookie("session"), "tailscale", "tailscale") +
-                        f'<small>{esc(t["logs_clear_note"])}</small></div>' +
+                        '</div>' +
                         log_level_form(t, "/tailscale", {"tab": "logs"}, level) +
                         f'<pre class="logs-output" role="log">{esc((output or t["logs_empty"]) if output is not None else t["logs_unavailable"])}</pre>')
         body = (f'<div class="card wide tailscale-page">{headline}<nav class="log-sources" aria-label="Tailscale">{nav}</nav>'

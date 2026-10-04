@@ -78,7 +78,6 @@ class PortfwdMixin:
         <div class="card wide">
           <h1>{self.context.html.escape(t['portfwd_heading'])}</h1>
           {notice}
-          <p class="muted">{self.context.html.escape(t['portfwd_intro'])}</p>
           {rules_html}
           {add_form}
         </div>

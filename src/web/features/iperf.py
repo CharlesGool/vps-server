@@ -108,7 +108,6 @@ class IperfMixin:
         client_form = f"""
         <div class="card">
           <h2>{self.context.html.escape(t['iperf_client_heading'])}</h2>
-          <p class="muted">{self.context.html.escape(t['iperf_client_hint'])}</p>
           {client_notice}
           <form method="post" action="/iperf/client" class="iperf-client-form">
             <input type="hidden" name="csrf" value="{csrf}">
@@ -146,7 +145,6 @@ class IperfMixin:
             </form>
             {close_form}
           </div>
-          <p class="muted">{self.context.html.escape(t['iperf_howto'])}</p>
           {commands}
         </div>
         {client_form}

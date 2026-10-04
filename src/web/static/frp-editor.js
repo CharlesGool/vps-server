@@ -117,31 +117,6 @@
     if (closer) closer.closest('dialog')?.close();
   });
 
-  document.querySelectorAll('.frp-info-wrap').forEach((wrap) => {
-    const trigger = wrap.querySelector('.frp-info-trigger');
-    const close = () => {
-      wrap.classList.remove('is-open');
-      trigger.setAttribute('aria-expanded', 'false');
-    };
-    trigger.addEventListener('click', () => {
-      const open = !wrap.classList.contains('is-open');
-      wrap.classList.toggle('is-open', open);
-      wrap.classList.toggle('is-dismissed', !open);
-      trigger.setAttribute('aria-expanded', String(open));
-      if (!open) trigger.blur();
-    });
-    wrap.addEventListener('pointerleave', () => wrap.classList.remove('is-dismissed'));
-    trigger.addEventListener('focus', () => wrap.classList.remove('is-dismissed'));
-    document.addEventListener('pointerdown', (event) => { if (!wrap.contains(event.target)) close(); });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && wrap.matches(':hover, :focus-within, .is-open')) {
-        event.preventDefault();
-        close();
-        trigger.blur();
-      }
-    });
-  });
-
   window.addEventListener('pagehide', () => {
     if (serverAddress) serverAddress.value = '';
     document.querySelectorAll('.frp-fact-reveal').forEach((control) => {

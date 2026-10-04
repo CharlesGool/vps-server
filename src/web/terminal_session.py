@@ -106,7 +106,7 @@ def serve(handler, context, parsed):
     connection.settimeout(10)
     deadline = time.monotonic() + 1800
     try:
-        while (time.monotonic() < deadline and context.security_settings_valid(token)
+        while (time.monotonic() < deadline and context.session_valid(token)
                and context.module_feature_enabled(context.BASE_DIR, "terminal")):
             readable, _, _ = select.select((connection, master), (), (), 0.5)
             if master in readable:
@@ -135,10 +135,9 @@ def serve(handler, context, parsed):
                         os.write(master, data)
                     elif message.get("type") == "resize":
                         rows, cols = message.get("rows"), message.get("cols")
-                        if type(rows) is not int or type(cols) is not int or not 10 <= rows <= 200 or not 20 <= cols <= 400:
-                            raise ValueError("invalid terminal size")
-                        fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
-                        os.kill(pid, signal.SIGWINCH)
+                        if type(rows) is int and type(cols) is int and 10 <= rows <= 200 and 20 <= cols <= 400:
+                            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+                            os.kill(pid, signal.SIGWINCH)
                     else:
                         raise ValueError("invalid terminal action")
                 else:
