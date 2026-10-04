@@ -27,6 +27,19 @@ metadata:
 
 ## Changelog
 
+### v5.2.1 — 2026-10-05
+
+#### Fixed
+
+- Source distributions include and verify the official Tailscale 1.102.4 amd64 archive, allowing the console to add Tailscale after a Git installation. Web-only installs retain the archive; offline builds reuse the source copy.
+- Missing Tailscale archives produce a specific resource-recovery message, separate from missing installer files.
+- Complete uninstall removes Lucky native settings, DDNS and reverse-proxy tasks, and this project's FRPS and unified proxy directories, including leftovers after service units have been removed. Tailscale identity is deleted with the project state root; `KEEP_DATA=1` continues to retain data. Failed firewall cleanup stops complete uninstall and preserves ownership records.
+
+#### Validation and limitations
+
+- Three-language missing-resource responses, payload retention for separate-directory and in-place Web-only installation, source archive reuse and pinned digests passed. Five isolated uninstall scenarios passed: complete removal, missing units, retained data, firewall failure and directory symlinks. Source syntax, styles, language parity and in-app changelog checks passed.
+- No installation or uninstall was performed on the operator's VPS for this release; the real-host retry remains unconfirmed. The v5.2.0 tag is unchanged. Earlier-layout migration restrictions and supported-environment limits remain those of v5.2.0. Publication records and documentation housekeeping are internal maintenance.
+
 ### v5.2.0 — 2026-10-05
 
 #### Added

@@ -26,7 +26,7 @@ metadata:
 
 ## Introducción
 
-vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.0. Consulta el progreso en el [estado del proyecto](LOG.md).
+vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.1. Consulta el progreso en el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
@@ -54,16 +54,18 @@ La primera instalación habilita solo la consola Web; los demás módulos se ins
 
 ### Instalación rápida
 
-Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.0; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
+Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.1; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
 
 ```bash
-git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
+
+Desde v5.2.1, el código fuente incluye el archivo de instalación Tailscale 1.102.4. Aunque inicialmente solo se instale Web, la consola puede instalar Tailscale sin conexión más adelante. El código de la etiqueta v5.2.0 aún carece de ese archivo; para esa versión, usa el paquete Release completo. El archivo privado nftables y su código fuente correspondiente siguen incluidos en el paquete completo sin conexión.
 
 ### Instalación estándar
 
 ```bash
-git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
@@ -73,12 +75,12 @@ bash deploy/install.sh
 
 ### Paquete de instalación sin conexión
 
-El paquete sin conexión v5.2.0 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.0-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
+El paquete sin conexión v5.2.1 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.1-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
 
 ```bash
-mkdir -p /root/vps-server-v5.2.0
-tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
-cd /root/vps-server-v5.2.0
+mkdir -p /root/vps-server-v5.2.1
+tar -xzf /root/vps-server-v5.2.1-linux-amd64.tar.gz -C /root/vps-server-v5.2.1 --strip-components=1
+cd /root/vps-server-v5.2.1
 bash deploy/install.sh
 ```
 
@@ -90,8 +92,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version 5.2.0 \
-  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
+  --version 5.2.1 \
+  --output .local/vps-server-v5.2.1-linux-amd64.tar.gz
 ```
 
 ## Orientaciones
@@ -135,7 +137,7 @@ KEEP_DATA=1 bash deploy/uninstall.sh  # detener servicios y conservar programa y
 bash deploy/uninstall.sh              # desinstalación completa y borrado de la raíz de estado predeterminada
 ```
 
-Ambos modos detienen los servicios gestionados por el proyecto y liberan sus registros de puertos. El modo que conserva datos mantiene el programa, la raíz de estado, la configuración del proxy unificado, la de FRPS y de las instancias FRPC y la identidad de Tailscale. La desinstalación completa elimina estas configuraciones propias del proyecto y sus copias de recuperación. En un servidor que comparta FRPC, comprueba primero a quién pertenecen las instancias. No se borran automáticamente las rutas de datos personalizadas situadas fuera de la raíz de estado. Consulta el alcance detallado de la limpieza en el [documento de diseño](DESIGN.md#desinstalación-completa).
+Ambos modos detienen los servicios gestionados por el proyecto y liberan sus registros de puertos. El modo que conserva datos mantiene el programa, la raíz de estado, la configuración del proxy unificado, la de FRPS y de las instancias FRPC, los ajustes y tareas nativos de Lucky y la identidad de Tailscale. La desinstalación completa elimina estas configuraciones propias del proyecto y sus copias de recuperación, incluidos los ajustes nativos y las tareas DDNS y de proxy inverso de `/etc/vps-server-lucky`, así como la identidad de acceso Tailscale de la raíz de estado. En un servidor que comparta FRPC, comprueba primero a quién pertenecen las instancias. No se borran automáticamente las rutas de datos personalizadas situadas fuera de la raíz de estado. Consulta el alcance detallado de la limpieza en el [documento de diseño](DESIGN.md#desinstalación-completa).
 
 ## Agradecimientos
 

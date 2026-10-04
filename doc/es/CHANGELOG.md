@@ -30,6 +30,19 @@ metadata:
 
 Aquí solo se enumeran los lanzamientos etiquetados. Las siguientes entradas conservan el historial completo del registro de cambios anterior y registran el contenido de la versión actual.
 
+### v5.2.1 — 2026-10-05
+
+#### Corregido
+
+- El código fuente incluye y verifica el archivo oficial Tailscale 1.102.4 amd64, permitiendo añadir Tailscale desde la consola tras instalar mediante Git. Las instalaciones solo Web conservan el archivo; la construcción sin conexión reutiliza esa copia.
+- La ausencia del archivo Tailscale muestra un mensaje específico para recuperar recursos, distinto del aviso de instalador ausente.
+- La desinstalación completa elimina ajustes nativos de Lucky, tareas DDNS y proxy inverso, y los directorios FRPS y proxy unificado del proyecto, incluso cuando ya se eliminaron las unidades de servicio. La identidad de Tailscale se borra con la raíz de estado; `KEEP_DATA=1` sigue conservando los datos. Si falla la limpieza del firewall, se detiene la desinstalación completa y se conserva el registro de propiedad.
+
+#### Validación y limitaciones
+
+- Pasaron las respuestas de recursos ausentes en tres idiomas, conservación de recursos en instalaciones solo Web desde directorios independientes y en el mismo directorio, reutilización del archivo y hashes fijados. Pasaron cinco escenarios aislados de desinstalación: completa, unidades ausentes, conservación de datos, fallo del firewall y enlaces simbólicos. Pasaron sintaxis, estilos, paridad de idiomas y registro de cambios de la aplicación.
+- No se instaló ni desinstaló en el VPS del operador para esta versión; queda pendiente confirmar el resultado real. La etiqueta v5.2.0 no cambia. Se mantienen sus restricciones de migración y límites de entornos admitidos. Los registros de publicación y la documentación corresponden a mantenimiento interno.
+
 ### v5.2.0 — 2026-10-05
 
 #### Añadido
