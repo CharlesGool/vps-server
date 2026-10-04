@@ -22,4 +22,33 @@
   chips.forEach((chip) => {
     chip.addEventListener("click", () => apply(chip.getAttribute("data-filter")));
   });
+
+  const clearForm = document.getElementById("visitors-clear");
+  clearForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!window.confirm(clearForm.dataset.confirm)) return;
+    const button = clearForm.querySelector('button[type="submit"]');
+    const status = document.getElementById("visitors-clear-status");
+    button.disabled = true;
+    status.textContent = clearForm.dataset.working;
+    try {
+      const response = await fetch(clearForm.action, {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(new FormData(clearForm))
+      });
+      if (!response.ok) throw new Error("clear failed");
+      const body = table.querySelector("tbody");
+      const row = body.insertRow();
+      const cell = row.insertCell();
+      cell.colSpan = 7;
+      cell.textContent = clearForm.dataset.empty;
+      body.replaceChildren(row);
+      document.getElementById("visitors-heading").textContent = clearForm.dataset.emptyHeading;
+      status.textContent = clearForm.dataset.done;
+    } catch (_) {
+      status.textContent = clearForm.dataset.failed;
+      button.disabled = false;
+    }
+  });
 })();

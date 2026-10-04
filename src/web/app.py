@@ -742,6 +742,9 @@ def record_connections(*args, **kwargs):
 def recent_visitors(*args, **kwargs):
     return _feature_visitors.recent_visitors(sys.modules[__name__], *args, **kwargs)
 
+def clear_visitor_history(*args, **kwargs):
+    return _feature_visitors.clear_visitor_history(sys.modules[__name__], *args, **kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Kernel TCP table polling
@@ -1062,7 +1065,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                 # the speed test depends on that connection staying up.
                 try:
                     logged_path = "/clash/sub/[redacted]" if path.startswith("/clash/sub/") else path
-                    log_visit(self.client_ip(), method, logged_path, self._last_status)
+                    if not (method == "POST" and path == "/visitors/clear" and self._last_status == 204):
+                        log_visit(self.client_ip(), method, logged_path, self._last_status)
                 except Exception as exc:
                     print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
 
