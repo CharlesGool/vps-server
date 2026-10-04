@@ -17,6 +17,11 @@ def module_job_text(t, job, names):
     return t.get(key, t.get("module_job_" + str(job.get("state", "")), "")).format(name=name)
 
 
+def module_job_recent(job, now, seconds):
+    at = job.get("at")
+    return type(at) in (int, float) and 0 <= now - at < seconds
+
+
 class ModulesMixin:
     def page_logs(self, lang, query_lang, parsed):
         t = self.context.STRINGS[lang]
@@ -99,7 +104,9 @@ class ModulesMixin:
             job = self.context.json.loads(self.context.module_status_path(self.context.BASE_DIR).read_text())
         except (OSError, ValueError):
             pass
-        busy = job.get("state") in ("queued", "running") and self.context.time.time() - job.get("at", 0) < 900
+        now = self.context.time.time()
+        busy = job.get("state") in ("queued", "running") and module_job_recent(job, now, 900)
+        notice_visible = busy or job.get("state") in ("done", "failed") and module_job_recent(job, now, 30)
         catalogue = (
             ("iperf3", t["iperf"], "iperf3"),
             ("proxy_nodes", t["proxy"], "proxy_nodes"),
@@ -137,8 +144,8 @@ class ModulesMixin:
             cards.append(f'<section class="module-card"><div><h2>{esc(title)}</h2>'
                          f'<p>{esc(status)}</p></div>{control}</section>')
         notice_text = module_job_text(t, job, {key: title for key, title, _ in catalogue})
-        notice = (f'<p class="module-notice" role="status">{esc(notice_text)}</p>'
-                  if job.get("state") in ("queued", "running", "done", "failed") else "")
+        notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(notice_text)}</p>'
+                  if notice_visible else "")
         progress_job = job.get("module") in ("iperf3", "proxy_nodes", "frps", "frpc") and job.get("action") in ("install", "uninstall")
         progress = ""
         progress_recent = False
@@ -157,7 +164,7 @@ class ModulesMixin:
         progress_html = (f'<section class="module-progress" data-last-output="{last_output}" {"hidden" if not progress_recent else ""}>'
                          f'<h2>{esc(t["module_progress"])}</h2><pre role="log">{esc(progress)}</pre></section>'
                          if progress_job else "")
-        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or progress_recent else ''
+        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or progress_recent or notice_visible else ''
         body = (f'<div class="card module-page" data-busy="{str(busy).lower()}"><h1>{esc(t["modules_heading"])}</h1>'
                 f'<p>{esc(t["modules_note"])}</p>{notice}'
                 f'<div class="module-grid">{"".join(cards)}</div>{progress_html}'
@@ -271,9 +278,12 @@ class ModulesMixin:
         job = {}
         try:
             job = self.context.json.loads(self.context.module_status_path(self.context.BASE_DIR).read_text())
-            busy = job.get("state") in ("queued", "running") and self.context.time.time() - job.get("at", 0) < 900
+            now = self.context.time.time()
+            busy = job.get("state") in ("queued", "running") and module_job_recent(job, now, 900)
+            notice_recent = job.get("state") == "failed" and job.get("reason") == "port_occupied" and module_job_recent(job, now, 30)
         except (OSError, ValueError, TypeError):
             busy = False
+            notice_recent = False
         tiles = []
         for module, title, href, icon, enabled in items:
             switch = ""
@@ -306,12 +316,12 @@ class ModulesMixin:
                          f'<span class="tile-icon">{self.context.ui_icon(icon)}</span>{switch}</div>'
                          f'<a class="tile-label" href="{target}">{esc(title)}</a>{detail}</article>')
         job_names = {key: title for key, title, *_ in items}
-        notice = (f'<p class="module-notice" role="status">{esc(module_job_text(t, job, job_names))}</p>'
-                  if busy or job.get("state") == "failed" and job.get("reason") == "port_occupied" else '')
+        notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(module_job_text(t, job, job_names))}</p>'
+                  if busy or notice_recent else '')
         body = (f'<div class="card"><h1>{esc(t["home"])}</h1>{notice}'
                 f'<div class="tiles">{"".join(tiles)}</div></div>'
                 + '<script src="/static/module-controls.js" defer></script>'
-                + ('<script src="/static/module-status.js" defer></script>' if busy else ''))
+                + ('<script src="/static/module-status.js" defer></script>' if busy or notice_recent else ''))
         self.send_html(200, self.render_page(t['dashboard'], body, lang, active="home"),
                        self.maybe_lang_cookie(query_lang))
 

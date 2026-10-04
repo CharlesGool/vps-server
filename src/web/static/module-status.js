@@ -36,6 +36,9 @@
   const hideStaleProgress = () => {
     const progress = document.querySelector('.module-progress');
     if (progress && Date.now() - Number(progress.dataset.lastOutput) >= 30000) progress.hidden = true;
+    const notice = document.querySelector('.module-notice');
+    if (notice && Number(notice.dataset.expiresAt) > 0 &&
+        Date.now() >= Number(notice.dataset.expiresAt)) notice.hidden = true;
   };
   setInterval(hideStaleProgress, 1000);
   setTimeout(refresh, 1500);
