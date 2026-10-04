@@ -90,6 +90,8 @@
 .terminal-frame { --terminal-bg:#17242c; --terminal-fg:#f1f5f6; height:clamp(20rem,60vh,42rem); padding:.75rem; border:1px solid var(--card-border); border-radius:8px; background:var(--terminal-bg); color:var(--terminal-fg); overflow:hidden; }
 .terminal-screen { height:100%; overflow:hidden; }
 .terminal-screen .xterm { height:100%; }
+.terminal-screen .xterm-viewport { background-color:var(--terminal-bg); overflow-x:hidden; scrollbar-width:none; }
+.terminal-screen .xterm-viewport::-webkit-scrollbar { display:none; width:0; height:0; }
 .terminal-status:empty { display:none; }
 .reference-select { position:relative; min-width:0; }
 .reference-native-select { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; opacity:0; pointer-events:none; }
