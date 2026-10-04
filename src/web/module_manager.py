@@ -422,23 +422,46 @@ def install_frps(prefix):
     source = prefix / "installer-source" / "deploy" / "frps" / "setup-frps.sh"
     if not source.is_file():
         raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
-    env = dict(os.environ, PREFIX=str(prefix), TERM="dumb", NO_COLOR="1")
-    run_logged(["/usr/bin/bash", str(source)], env=env, timeout=300)
-    state = install_state_file()
-    lines = state.read_text(encoding="utf-8").splitlines(keepends=True)
-    for index, line in enumerate(lines):
-        if line.startswith("modules="):
-            selected = set(line.removeprefix("modules=").strip().split(",")) | {"frps"}
-            lines[index] = "modules=" + ",".join(item for item in MODULES if item in selected) + "\n"
-            break
+    from console_port import reserve_owned_port, release_owned_port
+    config = Path("/etc/vps-server-frps/frps.toml")
+    if config.is_file():
+        listener = managed_listener("frps")
     else:
-        raise RuntimeError("installed-module record has no modules field")
-    staged = state.with_suffix(".tmp")
-    staged.write_text("".join(lines), encoding="utf-8")
-    os.chmod(staged, state.stat().st_mode & 0o777)
-    os.replace(staged, state)
-    if "frps" not in installed_modules(prefix):
-        raise RuntimeError("FRPS service was not recorded as installed")
+        requested = os.environ.get("FRPS_BIND_PORT", "")
+        if requested and (not requested.isascii() or not requested.isdecimal()):
+            raise ValueError("invalid FRPS bind port")
+        listener = (int(requested or "7000"), "vps-server frps")
+    reserve_owned_port(prefix, *listener)
+    env = dict(os.environ, PREFIX=str(prefix), TERM="dumb", NO_COLOR="1")
+    state = install_state_file()
+    original_state = state.read_bytes()
+    try:
+        run_logged(["/usr/bin/bash", str(source)], env=env, timeout=300)
+        if managed_listener("frps") != listener:
+            raise RuntimeError("FRPS bind port changed during module installation")
+        lines = original_state.decode("utf-8").splitlines(keepends=True)
+        for index, line in enumerate(lines):
+            if line.startswith("modules="):
+                selected = set(line.removeprefix("modules=").strip().split(",")) | {"frps"}
+                lines[index] = "modules=" + ",".join(item for item in MODULES if item in selected) + "\n"
+                break
+        else:
+            raise RuntimeError("installed-module record has no modules field")
+        staged = state.with_suffix(".tmp")
+        staged.write_text("".join(lines), encoding="utf-8")
+        os.chmod(staged, state.stat().st_mode & 0o777)
+        os.replace(staged, state)
+        if "frps" not in installed_modules(prefix):
+            raise RuntimeError("FRPS service was not recorded as installed")
+    except BaseException:
+        if state.read_bytes() != original_state:
+            staged = state.with_suffix(".tmp")
+            staged.write_bytes(original_state)
+            os.chmod(staged, 0o600)
+            os.replace(staged, state)
+        subprocess.run(["systemctl", "disable", "--now", UNITS["frps"]], check=False, timeout=60)
+        release_owned_port(prefix, *listener)
+        raise
 
 
 def install_frpc(prefix):

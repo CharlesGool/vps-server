@@ -94,8 +94,8 @@ metadata:
 
 ## 交接
 
-- 当前分支: `release/v6.0.0-test.1`,公开 `origin` 已验证到 `e4988a8`;正式目标为 v6.0.0,尚无正式标签或 Release.本地发现并修复模块辅助程序无法把子进程输出交给双日志对象的问题,以及 Lucky 管理按钮错误跳到浏览器自身 `127.0.0.1` 的问题;两项尚未提交或部署.
-- 已完成的源码与包: AnyTLS 归入统一 sing-box 配置/unit/安装卸载;旧服务迁移先备份再切换.Tailscale 提供离线安装,概览,设置,设备及日志.安装器提供 1/2/3 语言选择及两种卸载命令;动态端口通过 `PORTS.md` 的锁与原子写入登记.代理脚本在目标机不依赖 Git,jq,apt 或 OpenSSL CLI;离线包附经校验的 Tailscale 与私有 nftables 运行时,构建器只复制 HEAD 已跟踪文件.曾包含 Git 排除目录的本地草稿包已删除,未外传.
-- 目标测试机已验证: Debian 13 x86-64 布局 `1` 的旧 Web 安装升级到 `test-e4988a8`,原密码与管理端口文件保持一致;各次更新前的程序与状态均存于测试机 root-only `.backups/`.Web,统一代理,节点计量,Tailscale,FRPS,Lucky 当前 active/enabled;管理入口与 Tailscale 四个标签页经认证请求返回 200.Tailscale 保持 `NeedsLogin`,未加入账户.公网 HTTP 启停同时增删监听和端口登记;AnyTLS+VMess 临时节点共用一个 proxy unit 且各自监听/登记,删除清理;proxy 与 Tailscale 模块开关释放并恢复登记.iperf3 窗口实际开启时登记并监听,关闭时释放;关闭状态改到新端口,再开启及恢复原端口通过.安装守卫只记录 Git 探测,没有 apt-get 或 curl 调用.
-- 本轮发现与恢复: 模块页 FRPS 卸载释放端口,但重装脚本因 `JobOutput` 缺少子进程要求的 `fileno()` 在执行前失败,任务状态曾停在 running.已用完整离线安装器重装原 FRPS 配置并核对服务和登记;Lucky 卸载测试暂缓.测试机 Lucky 在 `AllowInternetaccess=false` 时仍监听通配地址,同一局域网可访问其 HTTP 管理页,故本地入口已改为当前服务器地址;HTTP 登录未加密.新的子进程流式双日志实现已通过隔离检查,待目标机复测.
-- 仍待验收: 模块页的 FRPS/Lucky/Tailscale 安装卸载流程,Web 端口转发登记,主机重启恢复,旧 AnyTLS 双服务迁移,真实代理流量与配额,Debian 11/Ubuntu 20.04 等其他支持系统.Tailscale 实际登录,设备列表,路由和出口节点需操作员自己的 Tailnet 参与;本项目不保存认证密钥或代为加入账户.正式 v6.0.0 标签,Release 和快照在上述范围验收前不创建.下一步提交新修正,更新测试包,复测模块流程和重启.临时项目规则未发现.
+- 当前分支: `release/v6.0.0-test.1`,公开 `origin` 已验证到 `315521a`;正式目标为 v6.0.0,尚无正式标签或 Release.本地已修复 FRPS 模块页重装后未在 `PORTS.md` 登记的缺陷,尚待提交和部署.
+- 已完成的源码与包: AnyTLS 归入统一 sing-box 配置/unit/安装卸载;旧服务迁移先备份再切换.Tailscale 提供离线安装,概览,设置,设备及日志.安装器提供 1/2/3 语言选择及两种卸载命令;动态端口使用 `PORTS.md` 锁和原子更新.代理脚本在目标机不依赖 Git,jq,apt 或 OpenSSL CLI;离线包附经校验的 Tailscale 与私有 nftables 运行时,构建器只复制 HEAD 已跟踪文件.曾包含 Git 排除目录的本地草稿包已删除,未外传.
+- 目标测试机已验证: Debian 13 x86-64 布局 `1` 的旧 Web 安装逐步升级到 `test-315521a`,原密码与管理端口文件保持一致;每轮更新前的程序与状态备份均在测试机 root-only `.backups/`.Web,统一代理,节点计量,Tailscale,FRPS,Lucky 当前 active/enabled;管理入口与 Tailscale 四个标签页经认证访问返回 200.Tailscale 保持 `NeedsLogin`,未加入账户.公网 HTTP 启停同时增删监听和登记;AnyTLS+VMess 临时节点共用一个 proxy unit 且各自监听/登记,删除后清理;proxy/Tailscale 开关释放并恢复端口.iperf3 窗口实际开启时登记并监听,关闭时释放,端口修改与恢复通过.Lucky,Tailscale,统一代理都已通过模块页卸载与重装,配置或状态保留,登记恢复;FRPS 的令牌配置在卸载重装后保持一致,但模块页重装漏登端口,当前测试机该行已手动恢复.安装守卫只记录 Git 探测,没有 apt-get 或 curl 调用.
+- 运行观察: Lucky 在 `AllowInternetaccess=false` 时仍监听通配地址,同一局域网可访问其 HTTP 管理页,所以按钮已改用当前服务器地址,无法直连时再使用 SSH 转发.FRPS 与 Lucky 页面均未在 HTML 中输出凭据,显示/复制控件存在.模块子进程原本因双日志对象缺少 `fileno()` 而无法启动;`315521a` 的流式双日志修复使其余模块往返操作完成并正确写入终态.
+- 仍待验收: FRPS 新预登记修复的目标机往返,Web 端口转发登记,重启恢复,旧 AnyTLS 双服务迁移,真实代理流量与配额,Debian 11/Ubuntu 20.04 等其他支持系统.Tailscale 实际登录,设备列表,路由和出口节点需操作员自己的 Tailnet;本项目不保存认证密钥或代为加入账户.下一步提交 FRPS 修复并部署测试包,复测后继续重启与手动验收.正式 v6.0.0 标签,Release 和快照在范围内行为验收前不创建.临时项目规则未发现.
