@@ -270,7 +270,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 
 - HTTP/HTTPS:80/443 上的公开监听器只提供可达性页面;操作员控制台使用单独的持久化端口.iperf3 仅在鉴权后开启的限时窗口中监听.
 - 控制台读取 `/proc/net/tcp[6]` 记录入站 TCP 连接;公开路由不导出代理凭据.
-- `install.sh` 使用随附二进制及私有 nftables 运行时,不在目标机调用软件包镜像或查询公网 IP.`setup-proxy.sh` 管理统一 sing-box unit 和证书.iptables 在存在时管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外运行受限的节点操作辅助程序.
+- `install.sh` 使用随附二进制和必要时的私有 nftables 运行时,不在目标机调用软件包镜像或查询公网 IP.节点计量先探测系统 nft 是否能读取规则表,可用时优先使用目标机版本,否则回退到随附版本;避免旧运行时在新系统上读取失败.`setup-proxy.sh` 管理统一 sing-box unit 和证书.iptables 在存在时管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外运行受限的节点操作辅助程序.
 
 ## 技术栈
 

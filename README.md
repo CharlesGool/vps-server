@@ -47,7 +47,7 @@ vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连�
 - 运行时:Python 3.9+(发行版自带的 `python3` 即可,无需安装 Python 依赖)
 - 架构:整个项目仅支持 x86-64 Linux;安装程序在写入系统状态前拒绝其他平台
 - web 模块使用默认公开端口时,80 和 443 **必须**保持空闲;若已被 nginx,Apache,Caddy 或 `vps-webserver` 占用,安装程序将拒绝安装,而不会争抢端口
-- 其他依赖:目标机须有系统自带的 Bash,systemd,Python 和常用基础工具.完整离线包随附 FRP,Lucky,Tailscale,sing-box,iperf3 与私有 nftables 运行时;目标机无需 Git 或软件包镜像.控制服务器认证,服务更新和跨设备连接本身仍需要网络.
+- 其他依赖:目标机须有系统自带的 Bash,systemd,Python 和常用基础工具.完整离线包随附 FRP,Lucky,Tailscale,sing-box,iperf3 与私有 nftables 运行时;节点计量优先使用目标机可正常读取规则表的系统 nft,否则使用随附版本.目标机无需 Git 或软件包镜像.控制服务器认证,服务更新和跨设备连接本身仍需要网络.
 - 最低要求:上述系统,运行时和架构.若启用公开页面,其端口须空闲;完整离线包,解压目录和已安装程序合计建议预留至少 1 GiB 磁盘空间.
 
 ## 安装
