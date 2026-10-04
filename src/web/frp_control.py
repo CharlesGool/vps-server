@@ -311,8 +311,15 @@ def save_server(port, token):
         fcntl.flock(lock, fcntl.LOCK_EX)
         rows = _rows()
         owner = "vps-server frps"
-        if not any(row[0] == old_port and row[1] == owner for row in rows):
-            raise ValueError("FRPS port registry entry missing")
+        current = next((row for row in rows if row[0] == old_port), None)
+        if current is not None and current[1] != owner:
+            raise ValueError("FRPS port registered to another service")
+        if current is None:
+            address = re.search(r'^bindAddr\s*=\s*"([^"]+)"', old, re.M)
+            bind = address[1] if address else "0.0.0.0"
+            ipaddress.ip_address(bind)
+            rows.append((old_port, owner, bind, date.today().isoformat()))
+            _save_rows(rows)
         if port != old_port:
             if any(row[0] == port for row in rows):
                 raise ValueError("port registered")
@@ -325,7 +332,7 @@ def save_server(port, token):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         except BaseException:
             if port != old_port:
-                _save_rows([row for row in _rows() if row[0] != port])
+                _save_rows([row for row in _rows() if not (row[0] == port and row[1] == owner)])
             raise
         if port != old_port:
             rows = _rows()
