@@ -82,6 +82,42 @@ def write_rows(path, rows):
     atomic_bytes(path, serialize_rows(rows), mode)
 
 
+def reserve_owned_port(prefix, port, owner, *, probe=True):
+    """Reserve a host port for an already validated internal service name."""
+    if type(port) is not int or not 1 <= port <= 65535 or not re.fullmatch(r"[A-Za-z0-9 /_.-]+", owner):
+        raise ValueError("invalid port reservation")
+    root = Path(prefix).parent
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = root / "PORTS.md"
+        rows, _ = read_rows(path)
+        existing = [row for row in rows if row[0] == port]
+        if existing:
+            if existing[0][1] == owner:
+                return False
+            raise ValueError("port registered to another service")
+        if probe:
+            available(port)
+        rows.append((port, owner, "0.0.0.0", date.today().isoformat()))
+        write_rows(path, rows)
+        return True
+
+
+def release_owned_port(prefix, port, owner):
+    root = Path(prefix).parent
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = root / "PORTS.md"
+        rows, _ = read_rows(path)
+        existing = [row for row in rows if row[0] == port]
+        if not existing:
+            return False
+        if existing[0][1] != owner:
+            raise ValueError("port registered to another service")
+        write_rows(path, [row for row in rows if row[0] != port])
+        return True
+
+
 def available(port):
     """Probe TCP and UDP on both wildcard families before taking a port."""
     for family, address in ((socket.AF_INET, "0.0.0.0"), (socket.AF_INET6, "::")):

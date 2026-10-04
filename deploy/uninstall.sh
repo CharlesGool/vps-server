@@ -21,6 +21,7 @@ export VPSSRV_STATE_DIR="$STATE_DIR"
 ANYTLS_SERVICE="vps-server-anytls.service"
 PROXY_SERVICE="vps-server-proxy.service"
 FRPS_SERVICE="vps-server-frps.service"
+TAILSCALE_SERVICE="vps-server-tailscale.service"
 
 # Speak the same language the install was set up with. The installer records
 # it in the unit file; fall back to the environment, then English.
@@ -76,6 +77,14 @@ case "$frpc_result" in
 esac
 
 # Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
+if [ -f "/etc/systemd/system/$TAILSCALE_SERVICE" ]; then
+  systemctl disable --now "$TAILSCALE_SERVICE" || die "Tailscale service could not stop"
+  rm -f "/etc/systemd/system/$TAILSCALE_SERVICE" \
+        /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server
+  systemctl daemon-reload
+fi
+
+# Lucky configuration contains DDNS and proxy tasks; never delete it automatically.
 if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-lucky/firewall-owned ]; then
   systemctl disable --now vps-server-lucky.service 2>/dev/null || true
   lucky_owner=/etc/vps-server-lucky/firewall-owned
@@ -113,7 +122,8 @@ if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firew
     fi
     [ ! -f "$frps_owner" ] || msg frps_fw_retained >&2
   fi
-  rm -f "/etc/systemd/system/$FRPS_SERVICE" /usr/local/bin/frps-vps-server /etc/vps-server-frps/frps.toml
+  rm -f "/etc/systemd/system/$FRPS_SERVICE" /usr/local/bin/frps-vps-server
+  if [ "${KEEP_DATA:-0}" != 1 ]; then rm -f /etc/vps-server-frps/frps.toml; fi
   if [ ! -f "$frps_owner" ]; then rmdir /etc/vps-server-frps 2>/dev/null || true; fi
   systemctl daemon-reload
 fi
@@ -126,7 +136,9 @@ fi
 # proxy/setup-proxy.sh) sees the correct, already-updated state.
 if [ -f /etc/systemd/system/vps-server-node-meter.service ]; then
   systemctl disable --now vps-server-node-meter.service 2>/dev/null || true
-  if command -v nft >/dev/null 2>&1; then
+  if [ -f "$PREFIX/src/web/nft_runtime.py" ]; then
+    python3 "$PREFIX/src/web/nft_runtime.py" delete-table >/dev/null 2>&1 || true
+  elif command -v nft >/dev/null 2>&1; then
     nft delete table inet vps_server_nodes 2>/dev/null || true
   fi
   rm -f /etc/systemd/system/vps-server-node-meter.service \
@@ -144,15 +156,25 @@ if [ -f "/etc/systemd/system/${ANYTLS_SERVICE}" ]; then
     msg anytls_orphan "$ANYTLS_SERVICE" "$PREFIX" "$ANYTLS_SERVICE" "$ANYTLS_SERVICE"
   fi
 fi
+if [ "${KEEP_DATA:-0}" != "1" ] && [ -d /etc/vps-server-anytls ] && [ ! -L /etc/vps-server-anytls ]; then
+  python3 - <<'PY'
+from pathlib import Path
+import shutil
+target = Path('/etc/vps-server-anytls')
+if target.is_dir() and not target.is_symlink():
+    shutil.rmtree(target)
+PY
+fi
 
 if [ -f "/etc/systemd/system/${PROXY_SERVICE}" ]; then
   if [ -f "$PREFIX/proxy/setup-proxy.sh" ]; then
     msg proxy_removing "$PROXY_SERVICE"
-    bash "$PREFIX/proxy/setup-proxy.sh" uninstall || true
+    PREFIX="$PREFIX" VPSSRV_KEEP_CONFIG="${KEEP_DATA:-0}" bash "$PREFIX/proxy/setup-proxy.sh" uninstall || true
   else
     msg proxy_orphan "$PROXY_SERVICE" "$PREFIX" "$PROXY_SERVICE" "$PROXY_SERVICE"
   fi
 fi
+rm -f /usr/local/bin/sing-box-vps-server
 
 if [ "${KEEP_DATA:-0}" != "1" ]; then
   rm -rf /etc/vps-server-nodes

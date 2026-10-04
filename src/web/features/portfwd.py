@@ -308,7 +308,14 @@ class PortForwardManager:
                 "enabled": True,
                 "created": self.context.datetime.now(self.context.timezone.utc).isoformat(timespec="seconds"),
             }
+            owner = "vps-server portfwd " + rule["id"]
+            try:
+                reserved = self.context.reserve_owned_port(self.context.BASE_DIR, public_port, owner)
+            except (OSError, ValueError):
+                return None, "portfwd_port_taken"
             if not self.context._ensure_ip_forward() or not self.context.portfwd_rule_apply(rule, opening=True):
+                if reserved:
+                    self.context.release_owned_port(self.context.BASE_DIR, public_port, owner)
                 return None, "portfwd_apply_failed"
             self._rules.append(rule)
             try:
@@ -316,6 +323,8 @@ class PortForwardManager:
             except OSError:
                 self._rules.pop()
                 self.context.portfwd_rule_apply(rule, opening=False)
+                if reserved:
+                    self.context.release_owned_port(self.context.BASE_DIR, public_port, owner)
                 return None, "portfwd_apply_failed"
             self._applied.add(rule["id"])
             return rule, "portfwd_added"
@@ -337,6 +346,8 @@ class PortForwardManager:
                     self.context.portfwd_rule_apply(rule, opening=True)
                 return "portfwd_apply_failed"
             self._applied.discard(rule_id)
+            self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"],
+                                            "vps-server portfwd " + rule_id)
             return "portfwd_removed"
 
     def set_enabled(self, rule_id, enabled):
@@ -348,8 +359,16 @@ class PortForwardManager:
                 return "portfwd_enabled" if enabled else "portfwd_disabled"
             if enabled and rule["public_port"] in self.reserved_ports(exclude_id=rule_id):
                 return "portfwd_port_taken"
+            owner = "vps-server portfwd " + rule_id
+            reserved = False
             if enabled:
+                try:
+                    reserved = self.context.reserve_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
+                except (OSError, ValueError):
+                    return "portfwd_port_taken"
                 if not self.context._ensure_ip_forward() or not self.context.portfwd_rule_apply(rule, opening=True):
+                    if reserved:
+                        self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
                     return "portfwd_apply_failed"
             else:
                 if not self.context.portfwd_rule_apply(rule, opening=False):
@@ -362,6 +381,8 @@ class PortForwardManager:
                 rule["enabled"] = previous
                 if enabled:
                     self.context.portfwd_rule_apply(rule, opening=False)
+                    if reserved:
+                        self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
                 elif self.context._ensure_ip_forward():
                     self.context.portfwd_rule_apply(rule, opening=True)
                 return "portfwd_apply_failed"
@@ -369,6 +390,7 @@ class PortForwardManager:
                 self._applied.add(rule_id)
             else:
                 self._applied.discard(rule_id)
+                self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
             return "portfwd_enabled" if enabled else "portfwd_disabled"
 
     def load(self):
@@ -386,10 +408,17 @@ class PortForwardManager:
             success = True
             for rule in self._rules:
                 if rule["enabled"]:
+                    owner = "vps-server portfwd " + rule["id"]
+                    try:
+                        self.context.reserve_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
+                    except (OSError, ValueError):
+                        success = False
+                        continue
                     self.context.portfwd_rule_apply(rule, opening=False)
                     if self.context.portfwd_rule_apply(rule, opening=True):
                         self._applied.add(rule["id"])
                     else:
+                        self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"], owner)
                         success = False
             return success
 
@@ -406,6 +435,8 @@ class PortForwardManager:
             for rule in self._rules:
                 if rule["enabled"]:
                     self.context.portfwd_rule_apply(rule, opening=False)
+                    self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"],
+                                                    "vps-server portfwd " + rule["id"])
             self._applied.clear()
 
 def portfwd_switch_revision(context, ):

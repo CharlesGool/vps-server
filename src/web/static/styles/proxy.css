@@ -51,8 +51,9 @@
 .proxy-node-facts dd { min-width: 0; font-size: 0.9rem; }
 .proxy-node-facts dd.secret code { max-width: 100%; overflow-wrap: anywhere; }
 .proxy-node-addresses { display: grid; gap: 0.4rem; margin: 0 -1.25rem; padding: 0.9rem 1.25rem; border-top: 1px solid var(--card-border); }
-.node-address { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; min-width: 0; font-size: 0.8rem; }
-.node-address span { color: var(--muted); flex: none; }
+.node-address { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; min-width: 0; font-size: 0.8rem; }
+.node-address > span:first-child { color: var(--muted); }
+.node-address .private-value { margin-inline-start: auto; justify-content: flex-end; }
 .node-address code { color: var(--fg-2); text-align: end; overflow-wrap: anywhere; }
 .proxy-node-settings { border-top: 1px solid var(--card-border); margin: 0 -1.25rem -1.25rem; padding: 0 1.25rem; }
 .proxy-node-settings summary {

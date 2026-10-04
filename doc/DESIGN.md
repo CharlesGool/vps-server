@@ -32,7 +32,7 @@ metadata:
 
 当前安装程序默认部署 Web 控制台,其他服务端模块由 `VPSSRV_MODULES` 或后续模块管理选择.FRPC 另行安装.以下保留各功能形成时的目标与验证记录;具体时间以历史记录为准.
 
-- 在一台全新的 Debian/Ubuntu VPS 上,安装一套可选择四个模块,提供五种能力的软件包
+- 在一台全新的 Debian/Ubuntu VPS 上,安装可按需启用的控制台和网络模块
   (web 模块包括公开页面及私有控制台):
   1. **公开可达性页面** —— 一个刻意做得极简,无需鉴权,在 TCP
      **80 和 443**
@@ -42,15 +42,15 @@ metadata:
   3. **按需开启的 iperf3 窗口** —— 一个带宽/延迟测试端点,
      **默认关闭**;
      操作员从控制台开启一个限时窗口,窗口到期后自动关闭.
-  4. **anytls 代理** —— 一个使用自签名证书的 sing-box `anytls` 入站,外加 BBR.
-  5. **proxy** —— 可选择任意子集的 sing-box `vmess`/`vless`/`trojan`/`shadowsocks` 入站,共用一个 systemd unit,一份配置,以及 anytls 模块使用的同一个随附 sing-box 二进制文件.详见下文“proxy 模块”.
-- 在无法访问该发行版软件包镜像之外任何网络的情况下也能安装.sing-box 二进制文件
-  随本仓库一起分发.
+  4. **统一代理** —— 一个 sing-box 服务承载 AnyTLS,VMess,VLESS,Trojan,Shadowsocks.
+  5. **Tailscale** —— 本机 Linux 客户端状态,偏好,设备列表及日志.
+- 完整离线包随附服务二进制和节点计量所需的私有 nftables 运行时;目标机安装不下载源码或系统包.
 - 能与 `vps-webserver` 和 `Anytsl-Serve` 共存于同一台主机上,不与它们在
   systemd unit 名称,安装前缀,环境变量前缀或持久化端口上发生冲突.
 
 **持续跟踪的目标与当前状态:**
 
+- [ ] 2026-10-04 v6 目标机验收:统一代理迁移须保留旧节点 ID,端口,凭据,证书和计量状态;完整离线包需在受支持的 Debian/Ubuntu 系统上无 Git,无仓库网络访问地完成安装.Tailscale 加入 Tailnet 仍需控制服务器可达.
 - [x] 2026-09-19 按节点统计流量并设置流量上限:五种代理协议分别统计上传与下载.原有达到上限后双向限速 1 Mbps 及每月或指定时间重置的行为已于 2026-09-27 通过真实主机测试.当前分支新增上传与下载独立限速,达到流量上限后选择双向限速 1 Mbps 或停止使用,按天/月/年设置重复周期,以及到期后停止使用的可选有效期.新规则与状态迁移通过自动化检查;测试机已验证界面和迁移,尚未逐一验证真实流量.
 - [x] 2026-09-19 基于浏览器的初次配置曾由 `tools/setup_wizard/setup_wizard.py` 提供;该流程已退役,旧向导源码及专用语言包已清理.v5.0.0 的首次安装直接在终端完成,默认仅安装 Web 控制台.
 - [x] 2026-09-22 在已登录控制台提供 FRPS / FRPC 连接信息.页面报告本机 FRPS unit 状态,绑定地址,网卡地址,端口和认证令牌;敏感值仅在点击显示或复制时读取.FRPC 连接模板使用已安装服务器的值和可替换的服务器地址占位符.服务器无法查看其他设备上 FRPC 的运行状态.
@@ -63,7 +63,7 @@ FRPC 卡片检查,2026-09-29:操作员提供的四张截图显示旧连接模板
 
 退役的初次设置监听器曾在提供服务前将随机端口登记到 `~/apps/PORTS.md`,关闭时删除登记;临时设置密码只允许一个浏览器会话使用.当前模块页面位于普通 Settings,使用已登录会话;仅向单独的特权 systemd 任务提交固定模块名称及操作.任务在 Web 服务外记录进度,因此安装过程中允许 Web 重启.停用代理模块不会删除节点或凭据;使用节点控件时,已停用 unit 仍保持停止.iperf3 和公开页面开关会重启 Web 服务以应用监听器变更,控制台仍可访问.
 - [ ] 明确 2026-09-22 状态快照所记录的更广泛的 `gdy666/lucky` 功能请求范围.当前检出版本已提供 Lucky 安装路径;操作员 2026-10-03 补充,后续控制功能只复刻实际需要的部分,不直接集成 Lucky 全部功能.具体功能清单及验收标准待确定.
-- [ ] 后续提供 Tailscale 控制界面,参考操作员指定的 OpenWrt 插件界面.具体插件版本,页面和可操作范围待确定;当前显示 Tailscale 地址不等于已实现控制功能.
+- [ ] v6 Tailscale 目标机验收:当前控制台已实现 Linux 客户端概览,常规设置,设备列表和运行日志;Web 管理端口及节点中继端口也纳入 `PORTS.md`.这些行为还需在测试机确认,OpenWrt 专有的 dnsmasq 转发不适用于本项目的 Debian/Ubuntu 目标机.
 - [x] 完成节点控制的实机验收:删除节点后显示编号保持连续,全部删除后新节点从 1 开始,隐藏的 UUID 保持身份不变;名称,端口,凭据和 TLS SNI 可修改;Shadowsocks 的 SNI 显示为不适用;随机重置端口和凭据时保留 SNI.每个节点可单独停用并保留配置和流量记录,再用原端口启用.控制功能已于 2026-09-27 通过真实主机测试.
 - [x] Web UI 采用统一的间距和控件样式,随附字体和图标,清晰的焦点状态以及响应式布局,覆盖控制台和公开连通页.普通设置页有八种可记忆的主题色和独立的明暗模式;切换模式不会改变主题色.
 
@@ -93,7 +93,7 @@ FRPC 卡片检查,2026-09-29:操作员提供的四张截图显示旧连接模板
 
 ## 架构
 
-Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务还会启动临时 iperf3 子进程.控制台和公开页面在一个 Python 进程中使用不同的监听器并共享内存状态.只有经过配置的客户端流量会到达这些服务.
+Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理中的一种入站协议.Web 服务还会启动临时 iperf3 子进程.控制台和公开页面在一个 Python 进程中使用不同的监听器并共享内存状态.只有经过配置的客户端流量会到达这些服务.
 
 ```
                        ┌──────────────────────── vps-server-web.service ───────┐
@@ -116,13 +116,13 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
   tester with iperf3      :5201 ◄────────────── iperf3 -s  (child process, ────────┘
   client                                         killed when window expires)
 
-                       ┌─── vps-server-anytls.service ───┐
-  proxy client ──────► │  sing-box, anytls inbound, TLS  │
-  :<random>            │  self-signed cert               │
-                       └─────────────────────────────────┘
+                       ┌─── vps-server-proxy.service ────────┐
+  proxy client ──────► │  one sing-box process, five protocols  │
+  :<node port>        │  AnyTLS is an inbound protocol          │
+                       └────────────────────────────────────────┘
 ```
 
-图中显示 web 和 anytls unit;可选的 `vps-server-proxy.service` 在第三个进程中运行多个独立入站,共用随附的 sing-box 二进制文件,但不共用其他 unit 的状态.每个模块可分别选择;参见[proxy 模块][local-link-005].
+代理模块只有一份 sing-box 配置和一个服务.节点计量由共用的 `vps-server-node-meter.service` 管理.旧 AnyTLS 服务在带备份的升级迁移完成后退役.
 
 ### 功能模块
 
@@ -141,9 +141,10 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 | 最近访客 | `features/visitors.py` | `src/web/static/visitors.js`, `src/web/static/styles/visitors.css` |
 | 变更日志 | `features/changelog.py` | `src/web/static/styles/changelog.css` |
 | Lucky 状态 | `features/lucky.py` | 共用卡片样式 |
+| Tailscale 状态,设置与设备 | `features/tailscale.py`, `tailscale_control.py` | `src/web/static/styles/modules.css`,共用私有值控件 |
 | 公开可达性页面 | `features/public.py` | `src/web/static/styles/public.css`,嵌入响应 |
 
-`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.v5.1.1 的持久数据位于独立状态根,旧版平铺代码文件不作为当前运行入口.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
+`features/system.py` 提供共用的主机命令和防火墙辅助函数;`features/ui.py` 提供共用渲染函数.节点控制器及 FRP/模块辅助程序仍位于 `src/web/`,可独立于 HTTP 处理器复用.各 JavaScript 文件只绑定本功能的页面元素;共用脚本处理主题,复制,密码显示和选择控件.按顺序排列的 CSS 源文件位于 `src/web/static/styles/`,由 `python3 tools/build_styles/build_styles.py` 生成 `src/web/static/style.css`,保持原有规则顺序.安装程序将 Python 模块,`features/` 与 `static/` 保持在 `$PREFIX/src/web/`;根目录的 `$PREFIX/app.py` 只调用该包的 `main()`.v6 候选的持久数据位于独立状态根,旧版平铺代码文件不作为当前运行入口.复用功能时须提供 context 适配层及对应样式和脚本;这些路由没有独立的认证策略.
 
 ### 为什么公开页面和控制台是两个独立的监听器
 
@@ -160,11 +161,11 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 
 ### 在已有安装上升级
 
-`v5.1.1` 建立持久状态布局 `1`:程序文件仍位于 `$PREFIX`,默认状态根位于 `/var/lib/vps-server`.密码,控制台端口,证书,运行数据,安装记录及 `.env` 保存在状态根;`/etc/vps-server/state-dir` 记录状态根位置.状态根由 root 管理,目录权限为 `0700`.版本 `v5.1.1` 之后的安装程序**必须**继续读取布局 `1`,并在替换程序文件时保留这些状态.
+`v6.0.0` 候选建立持久状态布局 `1`:程序文件仍位于 `$PREFIX`,默认状态根位于 `/var/lib/vps-server`.密码,控制台端口,证书,运行数据,安装记录及 `.env` 保存在状态根;`/etc/vps-server/state-dir` 记录状态根位置.状态根由 root 管理,目录权限为 `0700`.后续安装程序**必须**继续读取布局 `1`,并在替换程序文件时保留这些状态.
 
 安装器通过状态根的 `.layout-version`, `install-state` 和 `paths.json` 辨认受支持安装.三者缺失或不一致,以及关键密码,会话密钥或端口文件丢失时,它在修改服务前拒绝升级.带有 v5.1.0 及更早布局的安装不自动迁移;操作员须先备份原有数据并明确执行全新安装.已经删除且没有备份的旧数据无法恢复.正常升级从独立源码目录运行安装器,**禁止**以删除 `$PREFIX` 作为保留数据的方式.若只替换代码目录,保留的状态根仍可供同一布局的后续版本读取.
 
-应用内设置及模块管理都使用状态根,直接读取 `$PREFIX/data` 等旧路径的入口已改为统一的状态路径.其他模块在 `/etc/vps-server-anytls/`, `/etc/vps-server-proxy/`, `/etc/vps-server-nodes/` 和 `/etc/frp/` 中的配置继续独立存在;`PORTS.md` 仍位于安装目录的上一级.自定义持久路径写入 `paths.json`,后续安装若发现它们变化则拒绝静默切换,由操作员手动处理.
+应用内设置及模块管理都使用状态根,直接读取 `$PREFIX/data` 等旧路径的入口已改为统一的状态路径.代理配置和节点清单分别位于 `/etc/vps-server-proxy/` 与 `/etc/vps-server-nodes/`;旧 `/etc/vps-server-anytls/` 只作为升级迁移输入.Tailscale 身份状态保存在状态根的 `tailscale/`;FRP 配置仍位于 `/etc/frp/`.`PORTS.md` 位于安装目录的上一级.自定义持久路径写入 `paths.json`,后续安装若发现它们变化则拒绝静默切换,由操作员手动处理.
 
 ### 完整卸载
 
@@ -172,34 +173,21 @@ Web 服务,anytls 服务和可选的 proxy 服务各自独立运行;Web 服务�
 
 `KEEP_DATA=1` 保留 `$PREFIX` 和 `$VPSSRV_STATE_DIR`;默认完整卸载在完成服务与端口清理后,只删除带有布局标记 `1` 的状态根.自定义到状态根之外的路径不自动清除,以免误删其他应用的数据.
 
-### 控制台的 anytls 区域
-
-`/anytls` 重定向到 `/proxy`.当前代理页面只读取经校验的受管节点清单;缺少清单或清单与已安装配置不一致时返回迁移/修复提示,不会回退到旧版节点编辑器.安装程序通过 `node_control.py init` 导入旧配置并保留稳定节点 ID.操作员在控制台修改连接信息,流量策略及重置节点时,由受限的特权辅助程序校验并应用,失败时恢复原配置.原先由页面调用安装脚本重置和修改凭据的做法已退役,历史实现与原因见[HISTORY](HISTORY.md#retired-anytls-console).
-
-服务状态与证书 SNI 仍从已安装配置读取.公开监听器没有代理管理路由;安全设置仍要求近期管理员密码验证.节点的地址展示不做出站公网 IP 查询.
-
-### proxy 模块
+### 统一代理模块
 
 <a id="vps-proxy-module"></a>
 
-旧需求曾询问随附的 sing-box 二进制文件能否支持 anytls 以外的协议,还是需要使用第二套后端.答案是前者:`vmess`,`vless`,`trojan`,`shadowsocks`(2022-blake3-aes-128-gcm)都通过 `sing-box check`;实际运行验证(并非仅检查配置)表明,四者可以在同一个 `sing-box run` 进程中同时绑定端口并接受连接.因此没有引入第二套后端.
+`/proxy` 展示 AnyTLS,VMess,VLESS,Trojan 和 Shadowsocks 节点;`/anytls` 只为旧书签重定向到同一页面.五种协议共用 `/etc/vps-server-proxy/config.json`, `vps-server-proxy.service`, `/usr/local/bin/sing-box-vps-server`,安装和卸载入口.每个受管节点以稳定 ID 关联配置,流量限制和 Clash 分享.新建 TLS 节点各有自签名证书;Shadowsocks 不需要证书.
 
-与 anytls 不同,这里是**一个 systemd unit(`vps-server-proxy.service`)和一份 `config.json` 中
-多个同时运行的入站**,而不是复制四份 anytls 的结构.理由:只需监控一个 unit,初次安装时共用一份自签名证书,后续新建 TLS 节点各有证书(shadowsocks 不需要证书),也符合未来按节点统计流量的需求——进程的 `inbounds` 数组已经是节点列表.`deploy/proxy/setup-proxy.sh` 是 vps-server 的自有代码,不是随附的上游副本;这四种协议均非源于 Anytsl-Serve.
+旧安装中的 `/etc/vps-server-anytls/config.json` 由 `proxy_migration.py` 检查并合并:先归档旧配置,节点清单,计量和服务文件,再保留节点 ID,端口,凭据及证书进行切换.只有新配置通过 sing-box 校验且服务状态恢复后,才退役旧 unit;完整安装成功后移除旧配置目录.失败时恢复旧服务和文件,归档保留在状态根的 `data/`.
 
-该模块**与 anytls 共用随附的 sing-box 二进制文件**(`/usr/local/bin/sing-box-vps-server`),避免再携带约 57 MB 的副本.两模块各自的 `uninstall()` 都会在删除文件前检查*另一模块*的配置是否还存在.为此,anytls 随附的 `setup-anytls.sh` 增加了一项有记录的本地改动(见 `deploy/anytls/.upstream-version`):二进制文件不再仅由 anytls 自己持有.
+节点创建,编辑,启停,删除和重置在 `node_control.py` 的锁下更新配置,清单,防火墙,计量和 `PORTS.md`.公开端口在操作前检查监听与登记,失败时撤销新登记;停用或删除时释放本项目的登记.流量上限按(上传+下载)×2 计入,内核配额使用原始计量的一半阈值.计量缺口不触发提前限速.月度周期在每月 1 日 00:00 UTC 重置;天和年沿用原周期规则.
 
-`PROXY_PROTOCOLS`(逗号分隔,默认全部四种)会验证后存入全局数组,而不是通过 `$(...)` 命令替换输出.早期版本使用 `read -ra x <<< "$(fn)"` 调用验证函数:替换子 shell 中的 `exit 1` 只结束该子 shell,主脚本却带着空协议列表继续运行,启动零入站服务.属于与[决策][local-link-006]中的 `prompt_new_settings()` 相同类别的错误.每种协议的端口都从 60000 以下彼此独立,宽度 5000 的区间选择,而非从 60000 起宽度 10000 的区间:后一方案在抽到高位端口时会超出 sing-box 的 `uint16 listen_port` 上限 65535;五次重复的全新安装发现了该问题,首次安装未发现.升级时保留凭据的方式与 anytls 的 `preserve_anytls()` 相同:`preserve_proxy()` 从 `config.json` 中读回每种已装协议的端口,凭据和*协议集合*;重新运行时设置 `VPSSRV_MODULES=proxy` 不会暗中增删协议.
+节点页面默认遮盖网卡地址,端口及凭据,显示/复制请求由认证后的私有值接口提供.缺少受管清单或清单与配置不一致时,页面提示迁移/修复,不使用旧编辑路径.历史独立模块设计和退役原因见 [HISTORY](HISTORY.md#retired-anytls-console).
 
-控制台 `/proxy` 按稳定节点 ID 展示已安装的 AnyTLS 与四种 proxy 协议.每个节点的连接设置,重置及流量策略通过 `node_control.py` 应用;操作失败时恢复原有配置.升级旧安装时,安装程序先初始化受管节点清单.该清单缺失或与实际配置不一致时,页面显示迁移/修复提示,不启用旧控制台编辑路径.早期重置路径的设计记录已移至[HISTORY](HISTORY.md#retired-proxy-console).
+### Tailscale 模块
 
-安装程序最初为每种选定协议创建一个入站.之后,受管控制台可以为任何已安装协议创建多个编号节点,逐个删除节点,也允许模块保留但没有监听器.节点 ID 稳定,在可见界面中隐藏;所有表单和 Clash 订阅均按 ID 定位,使同协议的节点彼此独立.连接编辑框在卡片原有信息的位置展开;独立的流量表单支持 GiB 上限,分别设置上传/下载 Mbps 限速,达到上限后的处理方式,重复重置间隔和可选有效期.计入上限的流量为(上传+下载)×2,以包含代理转发时服务器另一侧的流量;内核配额相应使用原始计量总量的一半阈值.计量缺口只提示可能少计,继续按已记录的流量执行配额,不会在未达到上限时提前限速.重置只清零周期流量并解除流量上限处罚,不延长有效期.读取时将第一版节点清单迁移到第二版:旧的绝对到期日期会清除,避免原本的 1 Mbps 限速被误当成停止使用;节点身份,计数,上限及重置计划会保留.新增或删除节点时,在同一把锁下更新 sing-box 配置,节点清单,防火墙和 nft 计量状态,失败时回滚.新建的 TLS 节点拥有独立的自签名证书.控制台使用本机系统字体组合,让首次绘制到刷新期间的文字尺寸保持一致.
-
-`PortForwardManager.reserved_ports()` 将所有已安装代理协议的端口,与 anytls 节点及控制台的端口一样视为保留端口;端口转发规则不能指向代理协议占用的端口.
-
-**控制台 `/proxy` 页面也显示已安装的 anytls 节点.** 操作员认为把 anytls 放在独立页面是人为分割:不论两个独立后端分别提供什么节点,从使用者角度它们都是“代理节点”.`/anytls` 重定向到这里.两个模块的服务状态仍完全独立,节点操作在共享页面中按 ID 区分.
-
-节点页面列出主机网卡地址及可选的 Tailscale 地址,不再显示安装时记录的公网 IP.
+离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置使用 Linux 版 `tailscale set`,不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
 
 ### iperf3 窗口生命周期
 
@@ -270,14 +258,14 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 - iperf3 需要有时间限制,并在关闭或停止服务时撤销防火墙规则.
 - 每次进程启动时从 JSON 重放持久化的转发;干净停止时撤销运行时规则,不重置主机级 `ip_forward` 开关.
 - 升级须保留节点凭据和选定设置;轮换应使用所属模块的配置脚本,在 Web unit 文件系统沙箱外运行.
-- 从 v5.1.1 起,后续版本**必须**保持持久状态布局 `1` 可读,**禁止**把默认持久状态移回 `$PREFIX`.安装器**禁止**自动迁移 v5.1.0 及更早布局;检测到旧服务或关键状态缺失时**必须**先于服务变更拒绝安装.自定义状态路径改变时**必须**由操作员手动转移,**禁止**静默重置.
+- 从 v6.0.0 起,后续版本**必须**保持持久状态布局 `1` 可读,**禁止**把默认持久状态移回 `$PREFIX`.安装器**禁止**自动迁移 v5.1.0 及更早布局;检测到旧服务或关键状态缺失时**必须**先于服务变更拒绝安装.自定义状态路径改变时**必须**由操作员手动转移,**禁止**静默重置.
 - 没有有害延迟的证据,不要拆分共用的 `_db_lock`:历史上 60 个并发请求的测量未重现减速.见[缺陷][local-link-008].
 
 ## 外部接口
 
 - HTTP/HTTPS:80/443 上的公开监听器只提供可达性页面;操作员控制台使用单独的持久化端口.iperf3 仅在鉴权后开启的限时窗口中监听.
 - 控制台读取 `/proc/net/tcp[6]` 记录入站 TCP 连接;公开路由不导出代理凭据.
-- `install.sh` 使用发行版包管理器,不查询公网 IP;服务运行时也不进行出站公网 IP 查询.`setup-anytls.sh` 与 `setup-proxy.sh` 管理 sing-box unit 和证书.iptables 管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外运行受限的节点操作辅助程序.
+- `install.sh` 使用随附二进制及私有 nftables 运行时,不在目标机调用软件包镜像或查询公网 IP.`setup-proxy.sh` 管理统一 sing-box unit 和证书.iptables 在存在时管理临时开放的 iperf3 端口与已启用的转发;systemd 监管服务并在 Web 沙箱外运行受限的节点操作辅助程序.
 
 ## 技术栈
 
@@ -285,7 +273,7 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 |---|---|---|---|
 | 运行时 | Python,仅标准库 | 3.9+ | 继承自 `vps-webserver`:不需要第三方 Python 包;发行版维护的解释器及标准库仍需要安全更新 |
 | HTTP 服务器 | `http.server.ThreadingHTTPServer` | stdlib | 三个监听器各自的请求量都不大;上框架只是死重量 |
-| TLS | `ssl` + `openssl` 生成的自签名证书 | stdlib / 发行版 | 没有域名,没有 ACME(见非目标) |
+| TLS | Python `ssl` + 随附 sing-box 生成的自签名证书 | stdlib / sing-box | 没有域名,没有 ACME(见非目标) |
 | 存储 | `sqlite3` | stdlib | 访客日志**必须**在重启后保留 |
 | 测速引擎 | LibreSpeed,原样内嵌(vendored) | v6.2.1 | LGPL-3.0;已经在 `vps-webserver` 中内嵌并跑通 |
 | 二维码渲染 | kazuhikoarase/qrcode-generator,未修改的随附副本 | js2.0.4 | MIT;体积小,无需构建步骤,与 LibreSpeed 一样通过普通 `<script>` 标签使用 |
@@ -304,8 +292,8 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 
 - 操作系统:Debian 11+ / Ubuntu 20.04+,systemd,以 root 身份运行
 - 运行时:Python 3.9+(发行版自带的 python3 即可)
-- 架构:整个项目仅支持 x86-64 Linux;FRPC,FRPS,iperf3,sing-box 和 Lucky 的随附可执行文件都面向此平台.
-- 硬件:无需 GPU;磁盘约 150 MB(其中约 57 MB 是 sing-box 二进制),内存
+- 架构:整个项目仅支持 x86-64 Linux;FRPC,FRPS,iperf3,sing-box,Lucky,Tailscale,nftables 的随附可执行文件都面向此平台.
+- 硬件:无需 GPU;完整离线包,解压目录和已安装程序合计建议至少 1 GiB 可用磁盘,内存
   只需 VPS 通常具备的量即可
 - 随附构件完整性检查:在仓库根目录运行 `python3 tools/verify_dependencies/verify_dependencies.py`.它会对照[dependencies.lock.json][local-link-010],通过 SHA-256 在不执行文件的情况下比对九个受版本控制的第三方可分发文件.已记录的版本与上游修订号来自先前项目记录,并非经独立核实的上游身份;LibreSpeed 的准确上游修订号未记录.
 - `app.py` 只使用标准库,因此没有第三方 Python 包锁.这个构件锁不是依赖恢复命令,也不是完整的系统包锁;见 [THIRD_PARTY_NOTICES.md][local-link-011].
@@ -316,7 +304,9 @@ Windows 上 Cygwin 下的 iperf3 会报告吞吐量但没有 `mean_rtt`.UDP 模�
 |---|---|---|
 | `iperf3` | 随本仓库分发的静态构件 | `$PREFIX/vendor/iperf3/iperf3` |
 | `frpc`,`frps` | 随本仓库分发 | `third_party/frp/`,安装后按模块复制 |
-| `openssl`,`curl`,`jq`,`iproute2`,`procps`,`iptables`,`ca-certificates` | 发行版包管理器或主机现有安装 | 系统路径 |
+| nftables 及运行库 | Debian 11 官方包,构建离线包时随附 | `$PREFIX/vendor/nft/`,不写入系统包数据库 |
+| Tailscale 客户端 | 官方 Linux 静态归档,构建离线包时随附 | `/usr/local/bin/tailscale-vps-server` 与 `tailscaled-vps-server` |
+| Bash,systemd,Python,tar,coreutils | 受支持系统的基础环境 | 系统路径 |
 | sing-box 二进制 | 随本仓库分发 | `/usr/local/bin/sing-box-vps-server` |
 | LibreSpeed 引擎和 qrcode-generator 库 | 随本仓库分发 | `$PREFIX/src/web/static/` |
 | TLS 证书 | 由安装程序在首次运行时生成 | `$VPSSRV_CERT_DIR` |
@@ -337,8 +327,8 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 | `$VPSSRV_DATA_DIR` | 安装程序,默认 `$VPSSRV_STATE_DIR/data` | `visitors.db`,`session_secret.txt`,`portfwd.json`,`login-access.json` |
 | `$VPSSRV_CERT_DIR` | 安装程序,默认 `$VPSSRV_STATE_DIR/certs` | Web 自签名证书和密钥 |
 | `/etc/vps-server/state-dir` | 安装程序 | 保存状态根位置,供独立辅助程序读取 |
-| `/etc/vps-server-anytls/` | 安装程序 | sing-box 的 `config.json` 及其自身的自签名证书 |
 | `/etc/vps-server-proxy/` | 安装程序 | sing-box 的 `config.json`(多个入站)及初始自签名证书;新节点证书位于 `/etc/vps-server-nodes/certs/` |
+| `$VPSSRV_STATE_DIR/tailscale/` | Tailscale 守护进程 | 设备身份与本机连接状态 |
 
 ### 配置参考
 
@@ -380,16 +370,11 @@ FRPC,FRPS 和 iperf3 可从本仓库安装,无需在安装时下载.其他缺失
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | 每个方向的并行流数 | `6` / `3` | 否 |
 | `VPSSRV_PING_SAMPLES` | 用于计算延迟数值的往返次数 | `20` | 否 |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | 否 |
-| `ANYTLS_PORT`,`ANYTLS_PASSWORD`,`SNI` | anytls 模块沿用上游的变量名 | 见 `.env.example` | 否 |
-| `VPSSRV_ANYTLS_CONFIG` | 控制台从哪里读取已安装的节点信息 | `/etc/vps-server-anytls/config.json` | 否 |
-| `VPSSRV_ANYTLS_SERVICE` | 控制台用来检查节点存活状态的 unit | `vps-server-anytls.service` | 否 |
-| `PROXY_PROTOCOLS`,`PROXY_SNI` | proxy 模块自有的脚本级变量;不受随附上游代码的限制,但为保持 anytls 的脚本与控制台之分而保留不带前缀的名称 | 见 `.env.example` | 否 |
+| `PROXY_PROTOCOLS`,`PROXY_SNI` | 统一代理的初始协议集合和 TLS 名称;包含 AnyTLS | 见 `.env.example` | 否 |
 | `VPSSRV_PROXY_CONFIG` | 控制台读取已安装节点集合的位置 | `/etc/vps-server-proxy/config.json` | 否 |
 | `VPSSRV_PROXY_SERVICE` | 控制台检查节点存活状态的 unit | `vps-server-proxy.service` | 否 |
 
-anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
-`VPSSRV_ANYTLS_*`:因为内嵌的配置生成器要读这些变量,重命名就意味着要去改动
-内嵌的代码,而这正是内嵌(vendoring)策略本来要避免的事.
+旧版 `ANYTLS_*` 与 `VPSSRV_ANYTLS_*` 仅供升级迁移读取,新配置不再创建独立 AnyTLS 服务.
 
 ## 从零安装
 
@@ -405,14 +390,15 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
 7. 从控制台打开一个 5 分钟的 iperf3 窗口,然后在另一台机器上运行
    `iperf3 -c <ip> -p 5201 --json` ——验证:能报告出吞吐量,且输出中存在
    `mean_rtt`.
-8. 如果安装了 anytls 模块:`systemctl status vps-server-anytls` ——验证:
-   `active (running)`;安装程序的汇总信息里打印出了一行客户端配置.
+8. 如果安装了代理模块:`systemctl status vps-server-proxy` ——验证统一服务运行;在控制台创建 AnyTLS 节点后检查该节点端口与配置.
 
 ## 数据设计
 
-已登录的 Settings 页面负责列出九项运行模块.可选模块的安装与卸载通过串行执行的 root 辅助程序完成;`data/module-job.json` 提供任务状态,`data/module-job.log` 保存当前操作输出,`data/module-history.log` 从本版本起追加完整模块操作历史.模块页下方仅短时显示 iperf3,Singbox,FRPS,FRPC 的安装和卸载进度,最后一次输出后 30 秒收起;独立的 `/settings/logs` 页面可查看模块历史及 Web,节点计量,AnyTLS,Singbox,FRPS,FRPC,Lucky 的 systemd 日志.服务日志可见范围由主机 journal 保留设置决定.卸载前会将当前模块配置归档到 `data/`.除 Settings 外,Home 的每项功能都有开关.内置功能标志保存在 `data/`;运行中的 Web 进程会协调 Port forward 标志,撤销或重新应用已保存的规则,不使控制台会话失效.已停用功能的路径会进入本地化的“页面已关闭”页面.模块操作表单在每次页面载入后只接受一次提交;并行任务会返回请求来源页面.FRPC 组开关在停止实例前保存正在运行的实例名称,重新启用时只恢复这些实例.Proxy nodes 组控制 AnyTLS 和代理 unit,同时保留节点清单.Home 的 FRPS 入口为 `/frps`,FRPC 实例列表入口为 `/frpc`;客户端编辑器仍在 `/frp/client/edit`.旧的合并页面 `/frp` 会将现有书签重定向到 FRPC 列表.
+已登录的 Settings 页面列出已安装的运行模块.可选模块的安装与卸载由串行 root 辅助程序执行;`data/module-job.json` 保存任务状态,`data/module-job.log` 保存当前输出,`data/module-history.log` 追加操作历史.模块页仅在当前操作页面短时显示安装/卸载进度,最后输出后 30 秒收起,刷新或重新进入不重现完成提示.独立的 `/settings/logs` 页面读取模块历史与 Web,节点计量,Singbox,FRPS,FRPC,Lucky,Tailscale 的 journal;服务日志范围由主机 journal 设置决定.
 
-访客数据库,`portfwd.json` 和 `login-access.json` 保存在 `$VPSSRV_DATA_DIR`.最近访问者页可通过已登录会话与 CSRF 校验清空访客数据库;清空请求本身不重新写入,后续访问及仍在连接中的设备会重新记录.控制台密码,选定端口,Web 证书及 `install-state` 保存在 `$VPSSRV_STATE_DIR`;程序安装目录可独立替换.sing-box 模块的配置及证书分别位于 `/etc/vps-server-anytls/` 和 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
+Home 的功能开关独立于模块安装状态.公开 Web 监听器,代理节点,Tailscale,FRPS,FRPC 和端口转发占用的主机端口登记在安装目录同级的 `PORTS.md`;运行时开关和节点操作共用 `.ports.lock` 与原子写入,失败时回滚新登记,停止或删除后只释放本项目的行.FRPC 组开关在停止实例前记录活跃实例,重新启用时仅恢复它们.Proxy nodes 组只控制统一 sing-box 服务.Home 的 FRPS 入口为 `/frps`,FRPC 列表入口为 `/frpc`,Tailscale 入口为 `/tailscale`;旧 `/frp` 书签重定向到 FRPC 列表.
+
+访客数据库,`portfwd.json` 和 `login-access.json` 保存在 `$VPSSRV_DATA_DIR`.最近访问者页可通过已登录会话与 CSRF 校验清空访客数据库;清空请求本身不重新写入,后续访问及仍在连接中的设备会重新记录.控制台密码,选定端口,Web 证书及 `install-state` 保存在 `$VPSSRV_STATE_DIR`;程序安装目录可独立替换.sing-box 模块的配置及证书位于 `/etc/vps-server-proxy/`.见[路径与挂载][local-link-012].iperf3 截止时间只存于内存,重启后不会保留.
 
 ### 数据模型与文件布局
 
@@ -427,10 +413,10 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
     │   ├── install.sh         # module-selecting installer
     │   ├── uninstall.sh       # module removal
     │   ├── systemd/vps-server-web.service
-    │   ├── anytls/setup-anytls.sh
     │   ├── proxy/setup-proxy.sh
     │   ├── frps/setup-frps.sh
-    │   └── lucky/setup-lucky.sh
+    │   ├── lucky/setup-lucky.sh
+    │   └── tailscale/setup-tailscale.sh
     ├── src/web/static/        # first-party UI assets and vendored browser libraries
     │   └── third_party/
     │       ├── librespeed/    # speedtest.js, speedtest_worker.js
@@ -440,10 +426,12 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
     │   ├── sing-box           # vendored amd64 binary
     │   ├── sing-box.version   # binary version metadata
     │   └── LICENSE            # original upstream notice
+    ├── third_party/tailscale/  # pinned static-client metadata and license
+    ├── third_party/nft/        # pinned Debian runtime metadata
+    ├── tools/build_offline/    # checked offline asset and archive builder
     ├── tools/verify_dependencies/verify_dependencies.py # checks config/dependencies.lock.json from repo root
     ├── config/dependencies.lock.json
     ├── config/upstream-version # records: vps-webserver v0.4.1
-    ├── deploy/anytls/.upstream-version # records: Anytsl-Serve v1.2.0
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
@@ -455,7 +443,7 @@ anytls 模块刻意沿用了 `Anytsl-Serve` 的变量名,而不是重命名成
         └── es/               # Spanish translation
 ```
 
-安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.v5.1.1 的持久状态根与安装目录分开;先前版本的目录内数据不自动迁移.
+安装后,Web 代码和浏览器资源位于 `$PREFIX/src/web/`,代理可执行文件位于 `$PREFIX/sing-box`.兼容入口 `$PREFIX/app.py` 仍是 systemd 的 `ExecStart`,但只调用 `src.web.app.main()`;资源的 HTTP URL 不变.安装与卸载脚本在检出目录中分别为 `deploy/install.sh` 和 `deploy/uninstall.sh`.v6 候选的持久状态根与安装目录分开;先前版本的目录内数据不自动迁移.
 
 只有 `repo/` 由 Git 跟踪;`snapshots/` 独立且私有.由[README][local-link-013] 入门,使用 [LOG][local-link-014] 查阅历史验证和发布记录,并参考[第三方声明][local-link-015]了解上游构件.文档不会使快照或已安装主机变成可复现的源码检出.
 
@@ -473,16 +461,8 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
 - **公开页面确实是公开的.** 任何猜到或扫描到这个 IP 的人都能看到它,每一次这样
   的访问都会进入访客日志.这是设计上的特性,但也意味着一个被扫描到的 IP 上的
   访客日志会在几小时内被互联网背景噪声塞满.
-- **Unit 名称与上游有意不同.** `Anytsl-Serve` 安装的是
-  `sing-box-anytls.service`;本项目安装的是 `vps-server-anytls.service`,
-  以及一个单独命名的二进制文件,因此两者可以共存.不过如果检测到上游的
-  unit 正在运行,安装程序仍然会拒绝继续,因为一台主机上同时存在两个 anytls
-  入站,几乎可以肯定是失误而不是本意.
-- **`iperf3` 没有锁定版本.** 它来自发行版,版本会随发行版而变化.协议在
-  3.x 这条线上一直保持稳定,但如果客户端版本比服务端老很多,可能会在版本
-  握手上失败.
-- **anytls 和 proxy 仅支持 amd64.** 内嵌的二进制不是多架构的;在 arm64 上,安装程序
-  会跳过这个模块并给出说明,而不是安装一个根本跑不起来的二进制.
+- **服务名称与上游隔离.** 统一代理 unit 为 `vps-server-proxy.service`;Tailscale unit 为 `vps-server-tailscale.service`,不会覆盖系统已有的标准 Tailscale unit.
+- **整个离线包仅支持 x86-64 Linux.** 随附 sing-box,Tailscale 和 nftables 构件均为 amd64;安装器在修改状态前拒绝其他架构.跨发行版运行仍待目标机验收.
 - **自签名 TLS 意味着每次访问 443 都会有浏览器警告.** 这是预期行为,不值得为了
   "修掉"它而加例外或 HSTS 头.
 - **重启会关闭任何已开启的 iperf3 窗口.** 这是有意为之的;见前面的生命周期
@@ -514,15 +494,6 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
   模块.重新内嵌之后,用 `git ls-files -s` 检查一下,并用
   `git update-index --chmod=+x <path>` 恢复这个位——在那个挂载上单独
   `chmod +x` 是没有效果的.
-- **直接运行 `setup-anytls.sh` 会轮换它的端口和密码.** 它会把 `ANYTLS_PORT`
-  和 `ANYTLS_PASSWORD` 默认成全新的随机值,并在每次运行时重写
-  `config.json`,因此手动调用它会让此前配置的所有客户端全部失效.
-  `install.sh` 现在已经不会这样做了——升级路径会把这两个值从 `config.json`
-  里读回来并传进去——但直接调用仍然会这样.想要保留节点,就要传入当前的值,
-  这两个值都能在控制台 `/proxy` 的 anytls 分区上找到:
-  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
-  这是刻意继承下来的上游行为.`setup-anytls.sh reset` 才是有意去轮换它们的,
-  控制台通过受管节点辅助程序重置所选节点.
 - **节点页面列出网卡和 Tailscale 地址.** 旧的安装时公网地址区块已移除:它在 VPS 上重复显示网卡地址,在 NAT 后也可能误导用户.设置脚本会清除旧安装留下的 `public-ip.txt`;控制台不读取它.
 - **`body` 传给 `render_page()` 时** **必须**恰好包含一个顶层元素. `<main>` 使用 `display: flex`,未覆盖 `flex-direction`,因此多个顶层兄弟元素(例如每个协议一个 `<div class="card wide">`)会并排而非上下堆叠.这是 `/proxy` 页面早期版本真实发布过的缺陷,操作员报告为“布局乱了”.每个页面都用一个外层卡片包住全部内容,重复分区则在其内部以 `.node-addr` div 嵌套.
 - **拆卸时需要用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`.** 不带任何环境变量
@@ -558,7 +529,7 @@ SQLite 的表结构原样继承自 `vps-webserver`:只有一张 `visits` 表,会
 [local-link-002]: LOG.md#缺陷
 [local-link-003]: HISTORY.md#已完成工作历史
 [local-link-004]: LOG.md#决策
-[local-link-005]: #proxy-模块
+[local-link-005]: #vps-proxy-module
 [local-link-006]: LOG.md#决策
 [local-link-007]: LOG.md#决策
 [local-link-008]: LOG.md#缺陷

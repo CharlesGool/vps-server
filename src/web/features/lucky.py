@@ -10,10 +10,11 @@ class LuckyMixin:
         t = self.context.STRINGS[lang]
         data = self.context.lucky_admin()
         if data is None:
-            return self.send_html(404, self.render_page('Lucky', f'<div class="card">{self.context.html.escape(t["lucky_not_installed"])}</div>', lang))
+            return self.page_module_not_installed(lang, query_lang, "Lucky", "Lucky")
         public = data.get('AllowInternetaccess') is True
         address = t['lucky_server_address'] if public else 'localhost'
-        status = t['node_active'] if self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE]) else t['node_stopped']
+        running = self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
+        status = t['node_active'] if running else t['node_stopped']
         body = (f'<div class="card"><h1>Lucky</h1><p>{self.context.html.escape(t["lucky_admin_note"])}</p>'
                 f'<p>{self.context.html.escape(t["lucky_admin"])}: {self.context.html.escape(address)}: '
                 f'{self.private_value_control("lucky", "port", t)}</p>'
@@ -21,7 +22,11 @@ class LuckyMixin:
                 f'<p>{self.context.html.escape(t["frps_status"])}: {self.context.html.escape(status)}</p>'
                 f'<p>{self.context.html.escape(t["lucky_account"])}: {self.private_value_control("lucky", "account", t)}</p>'
                 f'<p>{self.context.html.escape(t["lucky_password"])}: {self.private_value_control("lucky", "credential", t, copy=True)}</p>'
-                '</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
+                f'<button type="button" class="lucky-open" data-public="{str(public).lower()}" '
+                f'data-error="{self.context.html.escape(t["lucky_open_failed"], quote=True)}" {"disabled" if not running else ""}>'
+                f'{self.context.html.escape(t["lucky_open"])}</button><p class="error lucky-open-status" role="status" hidden></p>'
+                '</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
+                '<script src="/static/lucky.js" defer></script>')
         return self.send_html(200, self.render_page('Lucky', body, lang),
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 

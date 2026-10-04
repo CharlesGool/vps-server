@@ -36,6 +36,24 @@
 .log-sources a:focus-visible { outline:2px solid var(--accent-strong); outline-offset:2px; }
 .logs-page h2 { font-size:1rem; }
 .logs-output { max-height:65vh; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
+.tailscale-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; }
+.tailscale-head h1 { margin:0; }
+.tailscale-head form { margin:0; }
+.tailscale-facts { display:flex; flex-wrap:wrap; gap:.75rem; }
+.tailscale-fact { display:grid; gap:.35rem; flex:1 1 min(100%,15rem); min-width:0; padding:1rem; border:1px solid var(--card-border); border-radius:8px; background:var(--surface-2); }
+.tailscale-fact span { color:var(--muted); }
+.tailscale-fact strong { overflow-wrap:anywhere; }
+.tailscale-checks { display:flex; flex-wrap:wrap; gap:.5rem; }
+.tailscale-check { padding:.35rem .65rem; border:1px solid var(--card-border); border-radius:8px; background:var(--surface-2); }
+.tailscale-check[data-ok="true"] { color:var(--success); }
+.tailscale-setting { display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:1rem; padding:1rem 0; border-bottom:1px solid var(--card-border); }
+.tailscale-setting label { display:flex; align-items:center; gap:.75rem; flex:1 1 16rem; }
+.tailscale-setting label:has(input:not([type="checkbox"])) { display:grid; }
+.tailscale-setting input:not([type="checkbox"]) { width:100%; }
+.tailscale-clear { margin:.5rem 0 1rem; }
+.tailscale-table { overflow-x:auto; }
+.tailscale-table table { width:100%; border-collapse:collapse; }
+.tailscale-table th,.tailscale-table td { padding:.75rem; border-bottom:1px solid var(--card-border); text-align:start; white-space:nowrap; }
 .reference-select { position:relative; min-width:0; }
 .reference-native-select { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; opacity:0; pointer-events:none; }
 .reference-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:48px; padding:10px 14px; border:1px solid var(--card-border); border-radius:8px; background:var(--card-bg); color:var(--fg); text-align:start; font-weight:600; }
@@ -392,8 +410,9 @@ dl.kv { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .4rem
 .proxy-node-facts dd { min-width: 0; font-size: 0.9rem; }
 .proxy-node-facts dd.secret code { max-width: 100%; overflow-wrap: anywhere; }
 .proxy-node-addresses { display: grid; gap: 0.4rem; margin: 0 -1.25rem; padding: 0.9rem 1.25rem; border-top: 1px solid var(--card-border); }
-.node-address { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; min-width: 0; font-size: 0.8rem; }
-.node-address span { color: var(--muted); flex: none; }
+.node-address { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; min-width: 0; font-size: 0.8rem; }
+.node-address > span:first-child { color: var(--muted); }
+.node-address .private-value { margin-inline-start: auto; justify-content: flex-end; }
 .node-address code { color: var(--fg-2); text-align: end; overflow-wrap: anywhere; }
 .proxy-node-settings { border-top: 1px solid var(--card-border); margin: 0 -1.25rem -1.25rem; padding: 0 1.25rem; }
 .proxy-node-settings summary {

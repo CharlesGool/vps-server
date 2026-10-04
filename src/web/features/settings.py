@@ -75,7 +75,7 @@ class SettingsMixin:
               <div class="preferences-choices" aria-label="{esc(t['login_language'], quote=True)}">{languages}</div>
             </section>
             <section id="settings-modules" class="card access-card preferences-card"><h2>{esc(t['modules_heading'])}</h2>
-              <p>{esc(t['modules_note'])}</p><a class="module-manage" href="/settings/modules">{esc(t['modules_manage'])}</a>
+              <a class="module-manage" href="/settings/modules">{esc(t['modules_manage'])}</a>
             </section>
             <section id="settings-security" class="card access-card preferences-card preferences-security-card">
               <span class="preferences-security-heading">{self.context.ui_icon('lock-keyhole')}<h2>{esc(t['access_security'])}</h2></span>

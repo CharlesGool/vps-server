@@ -202,7 +202,7 @@ Primera publicación. Combina dos proyectos existentes —una consola de pruebas
 
 **Notas de publicación (v1.0.0):**
 
-- Todo el proyecto es GPL-3.0 porque redistribuye el binario sing-box con licencia GPL-3.0. Las licencias de los componentes y los enlaces al código fuente correspondiente que exige la GPL están en [THIRD_PARTY_NOTICES.md][local-link-007].
+- Todo el proyecto es GPL-3.0 porque redistribuye el binario sing-box con licencia GPL-3.0. Las licencias de los componentes y los enlaces al código fuente correspondiente que exige la GPL están en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - TLS en 443 utiliza un certificado autofirmado: sin dominio ni ACME. La advertencia del navegador también demuestra que el puerto responde, que es la pregunta para la que existe la página.
 - `mean_rtt` en la salida JSON de iperf3 procede de `TCP_INFO` del núcleo: un cliente Linux muestra el tiempo de ida y vuelta; uno que no puede leerlo (por ejemplo, iperf3 en Cygwin bajo Windows) solo muestra el caudal. El modo UDP (`-u`) muestra la fluctuación y pérdida en todas las plataformas.
 - El módulo anytls solo admite x86-64. Los módulos web e iperf3 no dependen de la arquitectura.

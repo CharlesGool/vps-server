@@ -19,9 +19,9 @@ import tarfile
 import time
 
 try:
-    from .state_paths import data_dir as state_data_dir, install_state_file
+    from .state_paths import data_dir as state_data_dir, install_state_file, state_dir
 except ImportError:
-    from state_paths import data_dir as state_data_dir, install_state_file
+    from state_paths import data_dir as state_data_dir, install_state_file, state_dir
 
 try:
     from .node_state import STATE_PATH as NODE_STATE_PATH, read_inventory, write_inventory
@@ -34,16 +34,16 @@ except ImportError:  # Installed helpers are copied into one flat directory.
     from frp_control import client_names as frpc_names, client_unit as frpc_unit
 
 
-MODULES = ("web", "iperf3", "anytls", "proxy", "frps", "lucky")
+MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale")
 STANDALONE_MODULES = ("frpc",)
 FEATURES = ("speedtest", "portfwd", "visitors")
 GROUPS = ("proxy_nodes", "frpc")
 PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {
-    "anytls": "vps-server-anytls.service",
     "proxy": "vps-server-proxy.service",
     "frps": "vps-server-frps.service",
     "lucky": "vps-server-lucky.service",
+    "tailscale": "vps-server-tailscale.service",
 }
 FRPC_BINARY = Path("/usr/local/bin/frpc")
 FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
@@ -83,7 +83,7 @@ def installed_modules(prefix):
                 present.add("web")
             if "iperf3" in recorded and iperf_binary(prefix):
                 present.add("iperf3")
-            for module in ("anytls", "proxy", "frps", "lucky"):
+            for module in ("proxy", "frps", "lucky", "tailscale"):
                 if module in recorded and Path(f"/etc/systemd/system/{UNITS[module]}").is_file():
                     present.add(module)
             if frpc_installed():
@@ -226,6 +226,17 @@ def switch_web_setting(path, enabled):
 
 
 def switch_public_listener(prefix, listener, enabled):
+    from console_port import reserve_owned_port, release_owned_port
+    key = "VPSSRV_PUBLIC_HTTP_PORT" if listener == "web_http" else "VPSSRV_PUBLIC_HTTPS_PORT"
+    default = 80 if listener == "web_http" else 443
+    unit_file = Path("/etc/systemd/system/vps-server-web.service")
+    try:
+        recorded = next((line.split("=", 2)[2] for line in unit_file.read_text().splitlines()
+                         if line.startswith("Environment=" + key + "=")), "")
+        port = int(recorded or default)
+    except (OSError, ValueError) as exc:
+        raise RuntimeError("cannot determine public listener port") from exc
+    owner = "vps-server Web HTTP" if listener == "web_http" else "vps-server Web HTTPS"
     path = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
     status_file = state_data_dir() / "public-listeners.json"
     try:
@@ -233,18 +244,23 @@ def switch_public_listener(prefix, listener, enabled):
     except (OSError, ValueError, TypeError):
         old_pid = None
     previous = path.read_bytes() if path.exists() else None
+    reserved = reserve_owned_port(prefix, port, owner) if enabled else False
     path.write_text("1\n" if enabled else "0\n")
     os.chmod(path, 0o600)
     try:
         subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
         wait_public_listener_applied(prefix, listener, enabled, old_pid)
-    except (OSError, subprocess.SubprocessError, RuntimeError):
+        if not enabled:
+            release_owned_port(prefix, port, owner)
+    except (OSError, ValueError, subprocess.SubprocessError, RuntimeError):
         if previous is None:
             path.unlink(missing_ok=True)
         else:
             path.write_bytes(previous)
             os.chmod(path, 0o600)
         subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=False, timeout=60)
+        if reserved:
+            release_owned_port(prefix, port, owner)
         raise
 
 
@@ -261,8 +277,7 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
         inventory = read_inventory(state_path=state_path, check_installed=False)
         if inventory is None:
             return
-        kept = [node for node in inventory["nodes"] if
-                ("anytls" if node["protocol"] == "anytls" else "proxy") in installed]
+        kept = [node for node in inventory["nodes"] if "proxy" in installed]
         if len(kept) == len(inventory["nodes"]):
             return
         backup = state_data_dir() / f"node-inventory-before-reinstall-{time.time_ns()}.json"
@@ -280,7 +295,7 @@ def run_install(prefix, module):
         return install_iperf3(prefix)
     if module == "frps":
         return install_frps(prefix)
-    requested = {"proxy", "anytls"} if module == "proxy_nodes" else {module}
+    requested = {"proxy"} if module == "proxy_nodes" else {module}
     source = Path(prefix) / "installer-source" / "deploy" / "install.sh"
     if not source.is_file():
         raise RuntimeError("installer payload unavailable; upgrade from a full checkout first")
@@ -289,8 +304,10 @@ def run_install(prefix, module):
         raise RuntimeError("the console module is unavailable")
     if requested <= installed:
         raise RuntimeError("module already installed")
-    if requested & {"proxy", "anytls"}:
-        if not ({"proxy", "anytls"} & installed):
+    if requested & {"proxy"}:
+        if Path("/etc/vps-server-anytls/config.json").is_file():
+            raise RuntimeError("legacy AnyTLS service must be migrated by the full installer")
+        if "proxy" not in installed:
             subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
                            check=False, timeout=60)
         reconcile_removed_nodes(prefix, installed)
@@ -474,13 +491,9 @@ def run_toggle(prefix, module, enabled):
             os.chmod(flag, 0o600)
         return
     if module == "proxy_nodes":
-        present = installed_modules(prefix) & {"proxy", "anytls"}
-        if not present:
+        if "proxy" not in installed_modules(prefix):
             raise RuntimeError("proxy nodes are not installed")
-        for item in ("proxy", "anytls"):
-            if item in present:
-                run_toggle(prefix, item, enabled)
-        return
+        return run_toggle(prefix, "proxy", enabled)
     if module in FEATURES:
         set_feature(prefix, module, enabled)
         return
@@ -492,17 +505,50 @@ def run_toggle(prefix, module, enabled):
         return
     unit = UNITS[module]
     nodes = []
-    if module in ("anytls", "proxy"):
+    if module == "proxy":
         state = Path("/etc/vps-server-nodes/state.json")
         if state.is_file():
             nodes = [node for node in json.loads(state.read_text()).get("nodes", [])
-                     if node.get("enabled", True) and
-                     (node.get("protocol") == "anytls") == (module == "anytls")]
+                     if node.get("enabled", True)]
+    registered = []
+    optional_registered = []
+    listener = managed_listener(module) if module in ("frps", "lucky", "tailscale") else None
+    listener_registered = False
     if enabled:
-        subprocess.run(["systemctl", "enable", unit], check=True, timeout=30)
+        if listener:
+            from console_port import reserve_owned_port
+            listener_registered = reserve_owned_port(prefix, *listener)
+        if module == "tailscale":
+            try:
+                optional_registered = reserve_saved_tailscale_ports(prefix)
+            except BaseException:
+                if listener_registered:
+                    from console_port import release_owned_port
+                    release_owned_port(prefix, *listener)
+                raise
+        if nodes:
+            from node_control import _node_port_row
+            try:
+                for node in nodes:
+                    if _node_port_row(node["port"], node["id"], True):
+                        registered.append(node)
+            except BaseException:
+                for node in reversed(registered):
+                    _node_port_row(node["port"], node["id"], False)
+                if optional_registered:
+                    from console_port import release_owned_port
+                    for port, owner in reversed(optional_registered):
+                        release_owned_port(prefix, port, owner)
+                if listener_registered:
+                    from console_port import release_owned_port
+                    release_owned_port(prefix, *listener)
+                raise
         try:
-            if module not in ("anytls", "proxy") or nodes:
+            subprocess.run(["systemctl", "enable", unit], check=True, timeout=30)
+            if module != "proxy" or nodes:
                 subprocess.run(["systemctl", "start", unit], check=True, timeout=60)
+            if module == "tailscale":
+                sync_tailscale_ports(prefix)
             if nodes:
                 from node_control import HostBackend
                 backend = HostBackend()
@@ -510,30 +556,176 @@ def run_toggle(prefix, module, enabled):
                     backend.firewall(node["port"], True, node["protocol"])
         except BaseException:
             subprocess.run(["systemctl", "disable", "--now", unit], check=False, timeout=60)
+            if listener:
+                from console_port import release_owned_port
+                release_owned_port(prefix, *listener)
+            if optional_registered:
+                from console_port import release_owned_port
+                for port, owner in reversed(optional_registered):
+                    release_owned_port(prefix, port, owner)
+            if registered:
+                from node_control import _node_port_row
+                for node in reversed(registered):
+                    _node_port_row(node["port"], node["id"], False)
             raise
     else:
+        if module == "tailscale":
+            try:
+                snapshot_tailscale_ports()
+            except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired):
+                pass  # The last saved listener snapshot remains available.
         subprocess.run(["systemctl", "disable", "--now", unit], check=True, timeout=60)
+        if module == "tailscale":
+            release_tailscale_ports(prefix)
+        if listener:
+            from console_port import release_owned_port
+            release_owned_port(prefix, *listener)
         if nodes:
             from node_control import HostBackend
             backend = HostBackend()
             for node in nodes:
                 backend.firewall(node["port"], False, node["protocol"])
+            from node_control import _node_port_row
+            for node in nodes:
+                _node_port_row(node["port"], node["id"], False)
+
+
+def remove_owned_firewall_rule(owner):
+    if not owner.is_file():
+        return
+    parts = owner.read_text().split()
+    if len(parts) != 2 or not parts[1].isascii() or not parts[1].isdigit() or not 1 <= int(parts[1]) <= 65535:
+        return
+    backend, port = parts
+    if backend == "ufw":
+        subprocess.run(["ufw", "--force", "delete", "allow", f"{port}/tcp"], check=True, timeout=30)
+    elif backend == "firewalld":
+        subprocess.run(["firewall-cmd", "--permanent", f"--remove-port={port}/tcp"], check=True, timeout=30)
+        subprocess.run(["firewall-cmd", "--reload"], check=True, timeout=30)
+    else:
+        return
+    owner.unlink()
+
+
+def managed_listener(module):
+    """Return the main host listener managed by an optional service."""
+    if module == "tailscale":
+        return 41641, "vps-server / Tailscale"
+    if module == "frps":
+        import re
+        content = Path("/etc/vps-server-frps/frps.toml").read_text()
+        match = re.search(r"^bindPort\s*=\s*(\d+)\s*$", content, re.M)
+        if match is None:
+            raise ValueError("invalid FRPS bind port")
+        return int(match.group(1)), "vps-server frps"
+    if module == "lucky":
+        data = json.loads(Path("/etc/vps-server-lucky/config.json").read_text())["BaseConfigure"]
+        return int(data["AdminWebListenPort"]), "vps-server Lucky"
+    return None
+
+
+def sync_tailscale_ports(prefix):
+    """Reserve persisted optional Tailscale listeners after its daemon starts."""
+    from console_port import reserve_owned_port, release_owned_port
+    from tailscale_control import prefs
+    last_error = None
+    for _ in range(15):
+        try:
+            settings = prefs()
+            break
+        except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
+            last_error = exc
+            time.sleep(0.2)
+    else:
+        raise RuntimeError("Tailscale preferences unavailable") from last_error
+    choices = []
+    if settings.get("webclient") is True:
+        choices.append((5252, "vps-server Tailscale Web"))
+    relay = str(settings.get("relay-server-port") or "")
+    if relay:
+        if not relay.isascii() or not relay.isdecimal() or not 1 <= int(relay) <= 65535:
+            raise ValueError("invalid persisted peer relay port")
+        choices.append((int(relay), "vps-server Tailscale Relay"))
+    added = []
+    try:
+        for port, owner in choices:
+            if reserve_owned_port(prefix, port, owner, probe=False):
+                added.append((port, owner))
+    except BaseException:
+        for port, owner in reversed(added):
+            release_owned_port(prefix, port, owner)
+        raise
+    snapshot_tailscale_ports(settings)
+
+
+def snapshot_tailscale_ports(settings=None):
+    from tailscale_control import prefs
+    settings = prefs() if settings is None else settings
+    relay = str(settings.get("relay-server-port") or "")
+    if relay and (not relay.isascii() or not relay.isdecimal() or not 1 <= int(relay) <= 65535):
+        raise ValueError("invalid persisted peer relay port")
+    path = state_data_dir() / "tailscale-listeners.json"
+    data = {"webclient": settings.get("webclient") is True, "relay_port": int(relay) if relay else None}
+    staged = path.with_suffix(".tmp")
+    staged.write_text(json.dumps(data) + "\n")
+    os.chmod(staged, 0o600)
+    os.replace(staged, path)
+
+
+def reserve_saved_tailscale_ports(prefix):
+    from console_port import reserve_owned_port, release_owned_port
+    path = state_data_dir() / "tailscale-listeners.json"
+    if not path.is_file():
+        return []
+    data = json.loads(path.read_text())
+    if type(data.get("webclient")) is not bool or (data.get("relay_port") is not None and
+            (type(data["relay_port"]) is not int or not 1 <= data["relay_port"] <= 65535)):
+        raise ValueError("invalid Tailscale listener snapshot")
+    choices = []
+    if data["webclient"]:
+        choices.append((5252, "vps-server Tailscale Web"))
+    if data["relay_port"] is not None:
+        choices.append((data["relay_port"], "vps-server Tailscale Relay"))
+    added = []
+    try:
+        for port, owner in choices:
+            if reserve_owned_port(prefix, port, owner):
+                added.append((port, owner))
+    except BaseException:
+        for port, owner in reversed(added):
+            release_owned_port(prefix, port, owner)
+        raise
+    return added
+
+
+def release_tailscale_ports(prefix):
+    from console_port import read_rows, write_rows
+    root = Path(prefix).parent
+    registry = root / "PORTS.md"
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows, _ = read_rows(registry)
+        kept = [row for row in rows if row[1] not in
+                ("vps-server Tailscale Web", "vps-server Tailscale Relay")]
+        if len(kept) != len(rows):
+            write_rows(registry, kept)
 
 
 def run_uninstall(prefix, module):
     """Remove an optional module after retaining its configuration locally."""
     if module == "frpc":
         return uninstall_frpc(prefix)
-    if module not in ("iperf3", "proxy_nodes", "frps"):
+    if module not in ("iperf3", "proxy_nodes", "frps", "lucky", "tailscale"):
         raise ValueError("module cannot be uninstalled separately")
     present = installed_modules(prefix)
-    targets = ({"proxy", "anytls"} & present) if module == "proxy_nodes" else {module} & present
+    targets = ({"proxy"} & present) if module == "proxy_nodes" else {module} & present
     if not targets:
         raise RuntimeError("module is not installed")
     archive = state_data_dir() / f"module-backup-{module}-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
-        paths = {"proxy": "/etc/vps-server-proxy", "anytls": "/etc/vps-server-anytls",
-                 "frps": "/etc/vps-server-frps"}
+        paths = {"proxy": "/etc/vps-server-proxy",
+                 "frps": "/etc/vps-server-frps", "lucky": "/etc/vps-server-lucky",
+                 "tailscale": str(state_dir() / "tailscale")}
         for item in targets:
             path = Path(paths[item]) if item in paths else None
             if path and path.exists():
@@ -552,33 +744,52 @@ def run_uninstall(prefix, module):
     elif module == "proxy_nodes":
         subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
                        check=False, timeout=60)
-        for item in ("proxy", "anytls"):
-            if item in targets:
-                script = Path(prefix) / item / f"setup-{item}.sh"
-                subprocess.run(["/usr/bin/bash", str(script), "uninstall"],
-                               stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=180)
+        node_state = Path("/etc/vps-server-nodes/state.json")
+        proxy_nodes = json.loads(node_state.read_text()).get("nodes", []) if node_state.is_file() else []
+        script = Path(prefix) / "proxy" / "setup-proxy.sh"
+        subprocess.run(["/usr/bin/bash", str(script), "uninstall"],
+                       stdout=sys.stdout, stderr=subprocess.STDOUT, check=True, timeout=180)
+        from node_control import _node_port_row
+        for node in proxy_nodes:
+            _node_port_row(node["port"], node["id"], False)
         reconcile_removed_nodes(prefix, present - targets)
-        if not ({"proxy", "anytls"} & (present - targets)):
+        if "proxy" not in (present - targets):
             subprocess.run(["systemctl", "disable", "--now", "vps-server-node-meter.service"],
                            check=False, timeout=60)
+            subprocess.run([sys.executable, str(Path(prefix) / "src" / "web" / "nft_runtime.py"),
+                            "delete-table"], check=False, timeout=20)
     elif module == "frps":
         subprocess.run(["systemctl", "disable", "--now", UNITS["frps"]], check=True, timeout=60)
-        owner = Path("/etc/vps-server-frps/firewall-owned")
-        if owner.is_file():
-            parts = owner.read_text().split()
-            if len(parts) == 2 and parts[1].isascii() and parts[1].isdigit() and 1 <= int(parts[1]) <= 65535:
-                backend, port = parts
-                if backend == "ufw":
-                    subprocess.run(["ufw", "--force", "delete", "allow", f"{port}/tcp"], check=True, timeout=30)
-                    owner.unlink()
-                elif backend == "firewalld":
-                    subprocess.run(["firewall-cmd", "--permanent", f"--remove-port={port}/tcp"], check=True, timeout=30)
-                    subprocess.run(["firewall-cmd", "--reload"], check=True, timeout=30)
-                    owner.unlink()
+        from console_port import release_owned_port
+        release_owned_port(prefix, *managed_listener("frps"))
+        remove_owned_firewall_rule(Path("/etc/vps-server-frps/firewall-owned"))
         Path(f"/etc/systemd/system/{UNITS['frps']}").unlink(missing_ok=True)
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
         # Keep bind port and token so a later reinstall can restore clients.
         Path("/usr/local/bin/frps-vps-server").unlink(missing_ok=True)
+    elif module == "lucky":
+        subprocess.run(["systemctl", "disable", "--now", UNITS["lucky"]], check=True, timeout=60)
+        from console_port import release_owned_port
+        release_owned_port(prefix, *managed_listener("lucky"))
+        remove_owned_firewall_rule(Path("/etc/vps-server-lucky/firewall-owned"))
+        Path(f"/etc/systemd/system/{UNITS['lucky']}").unlink(missing_ok=True)
+        subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
+        # Lucky owns DDNS and proxy settings; leave its config in place.
+        Path("/usr/local/bin/lucky-vps-server").unlink(missing_ok=True)
+    elif module == "tailscale":
+        try:
+            snapshot_tailscale_ports()
+        except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired):
+            pass
+        subprocess.run(["systemctl", "disable", "--now", UNITS["tailscale"]], check=True, timeout=60)
+        release_tailscale_ports(prefix)
+        from console_port import release_owned_port
+        release_owned_port(prefix, *managed_listener("tailscale"))
+        Path(f"/etc/systemd/system/{UNITS['tailscale']}").unlink(missing_ok=True)
+        subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
+        # Keep device identity and tailnet settings for a later reinstall.
+        Path("/usr/local/bin/tailscale-vps-server").unlink(missing_ok=True)
+        Path("/usr/local/bin/tailscaled-vps-server").unlink(missing_ok=True)
     state = install_state_file()
     lines = state.read_text().splitlines()
     kept = present - targets

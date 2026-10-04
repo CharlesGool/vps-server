@@ -27,19 +27,20 @@ metadata:
 ## Introduction
 
 vps-server provides a Web-port reachability page and a console for speed tests
-and connection logs on Debian/Ubuntu VPS hosts. Proxy and FRP modules can be
-installed as needed. The latest formal release is v5.1.0. `v5.1.1-test.1` is a
-test release for a separate persistent state directory and the FRPS editor fix;
-target-host acceptance is still pending. See the [changelog][local-link-001]
-and [project status](../LOG.md) for version scope.
+and connection logs on Debian/Ubuntu VPS hosts. Proxy, FRP, Lucky, and
+Tailscale modules can be installed as needed. This branch is preparing a
+v6.0.0 test candidate; v5.1.0 remains the latest formal release. See
+[project status](LOG.md) for progress.
 
 ## Features
 
 - **Public reachability page:** When enabled, ports 80 and 443 show the visitor IP, server time, connection port, and protocol. Port 443 uses a self-signed certificate. The page requires no login and does not show host configuration.
 - **Private console:** On a separate persistent port, LibreSpeed measures upload and download speed and shows the most recent 1000 inbound TCP connections. An administrator password or approved private IP grants access.
 - **iperf3:** Open a time-limited window from the console; it closes automatically. A Linux client's `--json` output may include `mean_rtt`. Clients unable to read `TCP_INFO` will not show that field. UDP tests report jitter and packet loss.
-- **Proxy nodes:** Install anytls or any subset of vmess, vless, trojan, and shadowsocks. The console manages node connections, traffic caps, rate limits, periodic resets, and validity periods. Clash Meta configurations can be imported over the LAN.
+- **Proxy nodes:** One sing-box service hosts AnyTLS, VMess, VLESS, Trojan, and Shadowsocks. The console manages node connections, traffic caps, rate limits, periodic resets, and validity periods. Clash Meta configurations can be imported over the LAN.
 - **FRP:** The console manages the local FRPS port, token, and service state, as well as local FRPC instances and simple token-authenticated TCP/UDP proxies. It validates edits and restores the previous configuration on failure. It does not monitor clients on other devices. FRPC installs from bundled resources.
+- **Lucky:** Install or remove it with other modules and open Lucky's native management page from the console. This project does not recreate its DDNS or reverse-proxy features.
+- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, with Linux settings for DNS, subnet routes, exit nodes, shields-up, and SSH. Joining a Tailnet still requires access to the selected control server.
 
 The first installation enables only the Web console; other modules are installed
 as needed. See the [design document](DESIGN.md) for feature boundaries, login
@@ -51,57 +52,59 @@ rules, and FRP editor limits.
 - Runtime: Python 3.9+ (the distribution's `python3` suffices; no Python dependencies to install).
 - Architecture: the entire project supports only x86-64 Linux; the installer rejects other platforms before changing system state.
 - When the Web module uses its default public ports, 80 and 443 **MUST** be free. The installer refuses to compete with nginx, Apache, Caddy, or `vps-webserver`.
-- Other dependencies: no external service is needed at runtime. FRPS, FRPC, and iperf3 use bundled artifacts; missing system packages may require a distribution package mirror.
-- Minimum: the OS, runtime, architecture, and free default public ports. Allow about 180 MB of disk space; no other recommended hardware configuration has been confirmed.
+- Other dependencies: the target needs its OS-provided Bash, systemd, Python, and common base tools. The complete offline package includes FRP, Lucky, Tailscale, sing-box, iperf3, and a private nftables runtime; the target needs neither Git nor a package mirror. Control-server authentication, service updates, and communication between devices still need network access.
+- Minimum: the OS, runtime, and architecture above. Public-page ports must be free if enabled. Allow at least 1 GiB of disk space for the full offline package, extracted source, and installed program together.
 
 ## Install
 
 ### Quick Install
 
-Run as root on a fresh test host. The installer enables only the Web console by
-default and prints the generated management port and password on first install.
-These commands check out the `v5.1.1-test.1` test tag; the running version
-should show the same identifier. Installations of v5.1.0 or earlier cannot be
-migrated automatically; read [Upgrade](#upgrade) first.
+Run as root on the target host. The installer enables only the Web console by
+default. The first interactive install presents language choices 1/2/3, then
+prints the generated management port and password. Unattended installation
+can select a language with `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Formal v6.0.0
+has not been released. The source commands below are for this test branch;
+use the archive procedure below for the complete offline modules.
 
 ```bash
-git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Normal Install
 
 ```bash
-git clone --branch v5.1.1-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch release/v6.0.0-test.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
 ```
 
-In this test release, `PREFIX` defaults to `/root/apps/vps-server` and holds
+`PREFIX` defaults to `/root/apps/vps-server` and holds
 replaceable program files. Passwords, the console port, certificates, runtime
 data, installation records, and `.env` default to `/var/lib/vps-server`. Set
 `VPSSRV_STATE_DIR` in the command environment before the first install to use
 another external directory. There is no browser-based first-run wizard. Set
-`VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` to select server modules;
+`VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale` to select server modules;
 when omitted, only Web is installed. Install or remove optional modules from
-Settings → Modules. Enable public HTTP and HTTPS pages separately from Home;
+Settings → Modules. AnyTLS is a protocol within `proxy`, with no separate
+module or service. Enable public HTTP and HTTPS pages separately from Home;
 the console uses a separate port. Install FRPC separately when a local client
-is needed; it uses the bundled binary.
+is needed.
 
-### Offline test package
+### Offline installation package
 
-The GitHub Release provides `vps-server-v5.1.1-test.1.tar.gz`, containing the
-complete source and bundled binaries, with an expected size of about 48 MB.
-Download the [test release asset](https://github.com/CharlesGool/vps-server/releases/download/v5.1.1-test.1/vps-server-v5.1.1-test.1.tar.gz)
-on a computer that can access GitHub, copy it to `/root/` on a clean test host,
-and verify its SHA-256 against the value published on the Release page. Extract
-it into a separate `/root/vps-server-v5.1.1-test.1/` source directory; do not
-overwrite the installed `$PREFIX` directly:
+The v6.0.0 test package will contain the full source and checked offline
+resources, including Tailscale and nftables. Building the package and
+installing it on the target do not require Git on that target. Once the test
+package is available, check its supplied SHA-256 and extract it into a
+separate directory; do not overwrite the installed `$PREFIX` directly. The
+test package has not yet been published. Replace `<测试包>` below with
+the actual filename:
 
 ```bash
-mkdir -p /root/vps-server-v5.1.1-test.1
-tar -xzf /root/vps-server-v5.1.1-test.1.tar.gz -C /root/vps-server-v5.1.1-test.1 --strip-components=1
-cd /root/vps-server-v5.1.1-test.1
+mkdir -p /root/vps-server-v6-test
+tar -xzf /root/<测试包>.tar.gz -C /root/vps-server-v6-test --strip-components=1
+cd /root/vps-server-v6-test
 bash deploy/install.sh
 ```
 
@@ -119,6 +122,19 @@ For iperf3, open a time-limited window in the console, then run
 when the window closes. The source has no automated test suite; manually
 accept the enabled modules. See the [design document](DESIGN.md) for service
 paths, limitations, and state files.
+
+A proxy node's traffic cap counts (upload + download) × 2. The console shows
+the counted amount; an accounting gap alone does not trigger early throttling.
+Monthly resets occur at 00:00 UTC on the first day of the selected month;
+daily and yearly cycles retain their existing calculations. Node interface
+addresses are masked by default and can be shown or copied. Recent Visitors
+can clear history after confirmation; later visits and devices still connected
+are recorded again. Module install/removal progress collapses 30 seconds after
+its last output. A completion notice appears briefly only on the page that
+started the operation and does not reappear after reload or return. Detailed
+Logs, to the right of Changelog in the top bar, shows module-operation history
+and service logs; retention depends on the host's systemd journal. Lucky uses
+its own management page; if it listens only locally, establish an SSH tunnel.
 
 ### Configuration
 
@@ -142,8 +158,7 @@ Full reference: [Configuration reference][local-link-002].
 
 ## Upgrade
 
-`v5.1.1-test.1` is an acceptance candidate for state layout `1`, not a formal
-release. **Automatic migration is not supported** from v5.1.0 or earlier. Back
+The v6.0.0 candidate establishes persistent state layout `1`. **Automatic migration is not supported** from v5.1.0 or earlier. Back
 up remaining old data outside the installation directory, then perform a fresh
 installation. Deleted data without a backup cannot be recovered. If the
 installer finds an old service but missing state, it stops before changing
@@ -169,12 +184,12 @@ KEEP_DATA=1 bash deploy/uninstall.sh  # Stop services; keep program and persiste
 bash deploy/uninstall.sh              # Complete uninstall; delete default state root
 ```
 
-Both modes clean up services and port registrations managed by this project.
-The retained-data mode keeps the state root and FRPC instance configurations
-but does not keep anytls/proxy module configurations. A complete uninstall
-removes this project's named FRPC configurations and recovery copies; confirm
-instance ownership first on a host with shared FRPC. Data paths customized
-outside the state root are not deleted automatically. See the
+Both modes stop project-managed services and release port registrations.
+Retained-data mode keeps the program, state root, unified proxy configuration,
+FRPS configuration, FRPC instance configurations, and Tailscale device identity.
+A complete uninstall removes these project-named configurations and recovery
+copies. Confirm instance ownership first on a host with shared FRPC. Data paths
+customized outside the state root are not deleted automatically. See the
 [design document](DESIGN.md#complete-uninstall) for the full cleanup scope.
 
 ## Acknowledgements

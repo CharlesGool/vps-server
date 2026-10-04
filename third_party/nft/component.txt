@@ -1,0 +1,18 @@
+Offline nftables runtime for x86-64 Debian 11+/Ubuntu 20.04+ candidates.
+Source: https://deb.debian.org/debian/dists/bullseye/main/binary-amd64/Packages.xz
+Each included binary/library was extracted from Debian 11 amd64 packages without modification.
+The archive preserves /usr/share/doc/<package>/copyright for each package.
+Runtime archive SHA-256: 42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb
+
+Package SHA-256 values:
+nftables: a00b1bba3985c4a94c85d21e1cc25ced077456c7b1aef567e0892c149e1e5a68
+libnftables1: 5e1ee33354c08401f2b88ffb9544fc57385eaf3a63623f54def0adf9a9f93ab0
+libedit2: ac545f6ad10ba791aca24b09255ad1d6d943e6bc7c5511d5998e104aee51c943
+libmnl0: 4581f42e3373cb72f9ea4e88163b17873afca614a6c6f54637e95aa75983ea7c
+libnftnl11: 04da1ce7c71a3b1f3b52a2315e844dda6f7130db0857262d79d983182e86ccd7
+libxtables12: 9702a4be6f267b58c8fc1cfa0747bbefccb8b9a9af2a3547535533fbf2a7c14d
+libjansson4: 7025d03e4ad4177a06692bd8e6edcbdebf7fd3897e5f29b70ae968e17e57f6fa
+libgmp10: fc117ccb084a98d25021f7e01e4dfedd414fa2118fdd1e27d2d801d7248aebbc
+libtinfo6: 96ed58b8fd656521e08549c763cd18da6cff1b7801a3a22f29678701a95d7e7b
+libbsd0: 6ec5a08a4bb32c0dc316617f4bbefa8654c472d1cd4412ab8995f3955491f4a8
+libmd0: 9e425b3c128b69126d95e61998e1b5ef74e862dd1fc953d91eebcc315aea62ea

@@ -20,3 +20,21 @@
 .log-sources a:focus-visible { outline:2px solid var(--accent-strong); outline-offset:2px; }
 .logs-page h2 { font-size:1rem; }
 .logs-output { max-height:65vh; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
+.tailscale-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; }
+.tailscale-head h1 { margin:0; }
+.tailscale-head form { margin:0; }
+.tailscale-facts { display:flex; flex-wrap:wrap; gap:.75rem; }
+.tailscale-fact { display:grid; gap:.35rem; flex:1 1 min(100%,15rem); min-width:0; padding:1rem; border:1px solid var(--card-border); border-radius:8px; background:var(--surface-2); }
+.tailscale-fact span { color:var(--muted); }
+.tailscale-fact strong { overflow-wrap:anywhere; }
+.tailscale-checks { display:flex; flex-wrap:wrap; gap:.5rem; }
+.tailscale-check { padding:.35rem .65rem; border:1px solid var(--card-border); border-radius:8px; background:var(--surface-2); }
+.tailscale-check[data-ok="true"] { color:var(--success); }
+.tailscale-setting { display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:1rem; padding:1rem 0; border-bottom:1px solid var(--card-border); }
+.tailscale-setting label { display:flex; align-items:center; gap:.75rem; flex:1 1 16rem; }
+.tailscale-setting label:has(input:not([type="checkbox"])) { display:grid; }
+.tailscale-setting input:not([type="checkbox"]) { width:100%; }
+.tailscale-clear { margin:.5rem 0 1rem; }
+.tailscale-table { overflow-x:auto; }
+.tailscale-table table { width:100%; border-collapse:collapse; }
+.tailscale-table th,.tailscale-table td { padding:.75rem; border-bottom:1px solid var(--card-border); text-align:start; white-space:nowrap; }

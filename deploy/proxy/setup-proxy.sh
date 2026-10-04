@@ -1,35 +1,11 @@
 #!/usr/bin/env bash
-# Multi-protocol sing-box proxy module (vmess / vless / trojan / shadowsocks).
-#
-# First-party to vps-server — NOT vendored from anywhere, unlike
-# anytls/setup-anytls.sh. The 2026-09-19 "Support more proxy protocols"
-# item in doc/LOG.md#completed-work-history asked whether the already-vendored sing-box binary covers
-# vmess/vless/trojan/shadowsocks or a second backend would be needed; it was
-# tested directly (each protocol's config passed `sing-box check`, and all
-# four ran simultaneously in one process and bound their ports) and does, so
-# no second backend was added. See doc/LOG.md#decisions for the reasoning.
-#
-# Deliberately one service, one config.json, up to four simultaneous
-# inbounds — not four separate services like a naive per-protocol clone of
-# anytls/setup-anytls.sh would give. Reasons: it is one systemd unit to
-# monitor instead of four, one shared self-signed certificate instead of
-# three, and it is the shape the pending per-node traffic accounting goal
-# (doc/DESIGN.md#design-goals) will want — one process whose inbounds list is already
-# the node list.
-#
-# The vendored sing-box binary (BIN_PATH) is SHARED with anytls/setup-anytls.sh
-# — both modules point their own systemd unit at the same installed binary.
-# install_singbox() below is intentionally a duplicate of the one in
-# setup-anytls.sh, not a shared/sourced function, for the same reason that
-# script gives for its own small duplicated helpers: each module must stay
-# runnable standalone, whichever one is installed first. uninstall() at the
-# bottom checks whether the OTHER module's config still exists before
-# deleting the shared binary — deleting it out from under a sibling service
-# would take that service down the next time it restarts.
+# One sing-box service and config for AnyTLS, VMess, VLESS, Trojan, and
+# Shadowsocks. Existing split AnyTLS installations are migrated first by
+# src/web/proxy_migration.py.
 set -Eeuo pipefail
 
 # ========== 可配置项 ==========
-PROXY_PROTOCOLS="${PROXY_PROTOCOLS:-vmess,vless,trojan,shadowsocks}"
+PROXY_PROTOCOLS="${PROXY_PROTOCOLS:-anytls,vmess,vless,trojan,shadowsocks}"
 PROXY_SNI="${PROXY_SNI:-www.bing.com}"
 
 INSTALL_DIR=/etc/vps-server-proxy
@@ -41,11 +17,11 @@ if [[ -f "${SCRIPT_DIR}/../../third_party/sing-box/sing-box" ]]; then
   LOCAL_BIN="${SCRIPT_DIR}/../../third_party/sing-box/sing-box"
 fi
 
-# The anytls module's own paths — read-only checks from here, never written.
+# Read-only legacy path retained only while an older installation migrates.
 ANYTLS_INSTALL_DIR=/etc/vps-server-anytls
 ANYTLS_CONFIG="${ANYTLS_INSTALL_DIR}/config.json"
 
-ALL_PROTOCOLS="vmess vless trojan shadowsocks"
+ALL_PROTOCOLS="anytls vmess vless trojan shadowsocks"
 
 # Native catalogs travel with the installed module; the checkout keeps them at
 # the repository root. Keep the selected locale consistent with the installer.
@@ -79,36 +55,9 @@ err(){ echo -e "${C_R}[ERR]${C_0} $*" >&2; }
 # ---------------------------------------------------------------------------
 
 install_deps(){
-  log "$(msg checking_deps)"
-  export DEBIAN_FRONTEND=noninteractive
-  local pkgs=(curl jq openssl ca-certificates iproute2 procps iptables)
-  local missing=()
-  local p
-  for p in "${pkgs[@]}"; do
-    dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p")
-  done
-  if [[ ${#missing[@]} -eq 0 ]]; then
-    ok "$(msg deps_installed)"
-    return 0
-  fi
-  log "$(msg deps_missing "${missing[*]}")"
-  local log_file attempt
-  log_file="$(mktemp)"
-  for attempt in 1 2 3; do
-    if apt-get update -y 2>&1 | tee "$log_file"; then break; fi
-    if [[ $attempt -eq 3 ]]; then
-      err "$(msg apt_update_failed)"
-      rm -f "$log_file"; exit 1
-    fi
-    log "$(msg apt_retry "$attempt")"
-    sleep 2
-  done
-  if ! apt-get install -y "${missing[@]}" 2>&1 | tee "$log_file"; then
-    err "$(msg deps_failed "${missing[*]}")"
-    rm -f "$log_file"; exit 1
-  fi
-  rm -f "$log_file"
-  ok "$(msg deps_ready)"
+  command -v python3 >/dev/null 2>&1 && command -v systemctl >/dev/null 2>&1 || {
+    err "$(msg deps_failed "python3 systemd")"; return 1;
+  }
 }
 
 install_singbox(){
@@ -131,6 +80,7 @@ install_singbox(){
 }
 
 enable_bbr(){
+  command -v sysctl >/dev/null 2>&1 || return 0
   if sysctl net.ipv4.tcp_congestion_control 2>/dev/null | grep -q bbr; then
     ok "$(msg bbr_enabled)"
     return
@@ -149,7 +99,7 @@ EOF
   fi
 }
 
-urlenc(){ jq -rn --arg v "$1" '$v|@uri'; }
+urlenc(){ python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" urlenc "$1"; }
 
 get_lan_ips(){
   local iface cidr
@@ -264,9 +214,9 @@ rand_port(){
   echo $(( (RANDOM % 5000) + base ))
 }
 
-port_var(){ case "$1" in vmess) echo PROXY_VMESS_PORT ;; vless) echo PROXY_VLESS_PORT ;;
+port_var(){ case "$1" in anytls) echo PROXY_ANYTLS_PORT ;; vmess) echo PROXY_VMESS_PORT ;; vless) echo PROXY_VLESS_PORT ;;
   trojan) echo PROXY_TROJAN_PORT ;; shadowsocks) echo PROXY_SS_PORT ;; esac; }
-port_default_base(){ case "$1" in vmess) echo 40000 ;; vless) echo 45000 ;;
+port_default_base(){ case "$1" in anytls) echo 20000 ;; vmess) echo 40000 ;; vless) echo 45000 ;;
   trojan) echo 50000 ;; shadowsocks) echo 55000 ;; esac; }
 
 # ---------------------------------------------------------------------------
@@ -280,8 +230,9 @@ ensure_cert(){
   read -r crt key <<< "$(cert_paths)"
   if [[ ! -f "$crt" || ! -f "$key" ]]; then
     log "$(msg generating_cert "$PROXY_SNI")"
-    openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-      -keyout "$key" -out "$crt" -days 3650 -subj "/CN=${PROXY_SNI}" >/dev/null 2>&1
+    local helper="${SCRIPT_DIR}/../src/web/tls_cert.py"
+    [[ -f "$helper" ]] || helper="${SCRIPT_DIR}/../../src/web/tls_cert.py"
+    python3 "$helper" "$crt" "$key" "$PROXY_SNI" "$BIN_PATH"
   fi
 }
 
@@ -293,6 +244,13 @@ inbound_json(){
   local proto="$1" crt key
   read -r crt key <<< "$(cert_paths)"
   case "$proto" in
+    anytls)
+      cat <<JSON
+{ "type": "anytls", "tag": "anytls-in", "listen": "::", "listen_port": ${PROXY_ANYTLS_PORT},
+  "users": [ { "name": "anytls", "password": "${PROXY_ANYTLS_PASSWORD}" } ],
+  "tls": { "enabled": true, "certificate_path": "${crt}", "key_path": "${key}" } }
+JSON
+      ;;
     vmess)
       cat <<JSON
 { "type": "vmess", "tag": "vmess-in", "listen": "::", "listen_port": ${PROXY_VMESS_PORT},
@@ -327,9 +285,8 @@ setup_config(){
   local proto inbounds=()
   compute_selected_protocols
   local protocols=("${SELECTED_PROTOCOLS[@]}")
-  for proto in vmess vless trojan; do
-    ensure_cert
-    break
+  for proto in "${protocols[@]}"; do
+    if [[ "$proto" != shadowsocks ]]; then ensure_cert; break; fi
   done
   for proto in "${protocols[@]}"; do
     local pvar uvar
@@ -338,6 +295,7 @@ setup_config(){
       printf -v "$pvar" '%s' "$(rand_port "$(port_default_base "$proto")")"
     fi
     case "$proto" in
+      anytls) uvar=PROXY_ANYTLS_PASSWORD ;;
       vmess)   uvar=PROXY_VMESS_UUID ;;
       vless)   uvar=PROXY_VLESS_UUID ;;
       trojan)  uvar=PROXY_TROJAN_PASSWORD ;;
@@ -375,7 +333,7 @@ setup_config(){
 setup_service(){
   cat > "/etc/systemd/system/${SERVICE_NAME}" <<EOF
 [Unit]
-Description=sing-box multi-protocol proxy (vmess/vless/trojan/shadowsocks)
+Description=sing-box multi-protocol proxy (anytls/vmess/vless/trojan/shadowsocks)
 After=network-online.target
 Wants=network-online.target
 
@@ -407,8 +365,7 @@ EOF
 # {type: port} for whatever is currently on disk, or empty if not installed.
 current_ports_json(){
   [[ -f "${INSTALL_DIR}/config.json" ]] || { echo '{}'; return; }
-  jq -c '[.inbounds[] | {(.type): .listen_port}] | add // {}' \
-    "${INSTALL_DIR}/config.json" 2>/dev/null || echo '{}'
+  python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" ports "${INSTALL_DIR}/config.json" 2>/dev/null || echo '{}'
 }
 
 # Same ordering rationale as setup-anytls.sh's apply_node(): write the new
@@ -421,7 +378,7 @@ apply_node(){
   setup_service
   for proto in $ALL_PROTOCOLS; do
     local old
-    old="$(jq -r --arg t "$proto" '.[$t] // empty' <<<"$prev")"
+    old="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" lookup "$proto" <<<"$prev")"
     [[ -n "$old" ]] && prev_ports+=("$old")
   done
   compute_selected_protocols
@@ -444,6 +401,10 @@ apply_node(){
 clash_line(){
   local proto="$1" name="$2" server="$3"
   case "$proto" in
+    anytls)
+      printf -- '- { name: %s, type: anytls, server: %s, port: %s, password: "%s", sni: %s, skip-cert-verify: true, udp: true }\n' \
+        "$name" "$server" "$PROXY_ANYTLS_PORT" "$PROXY_ANYTLS_PASSWORD" "$PROXY_SNI"
+      ;;
     vmess)
       printf -- '- { name: %s, type: vmess, server: %s, port: %s, uuid: %s, alterId: 0, cipher: auto, tls: true, skip-cert-verify: true, servername: %s, udp: true }\n' \
         "$name" "$server" "$PROXY_VMESS_PORT" "$PROXY_VMESS_UUID" "$PROXY_SNI"
@@ -466,11 +427,12 @@ clash_line(){
 share_link(){
   local proto="$1" name="$2" server="$3"
   case "$proto" in
+    anytls)
+      printf 'anytls://%s@%s:%s?insecure=1&sni=%s#%s\n' \
+        "$(urlenc "$PROXY_ANYTLS_PASSWORD")" "$server" "$PROXY_ANYTLS_PORT" "$PROXY_SNI" "$(urlenc "$name")"
+      ;;
     vmess)
-      jq -cn --arg ps "$name" --arg add "$server" --arg port "$PROXY_VMESS_PORT" \
-        --arg id "$PROXY_VMESS_UUID" --arg sni "$PROXY_SNI" \
-        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"tcp",type:"none",host:"",path:"",tls:"tls",sni:$sni,scy:"auto"}' \
-        | tr -d '\n' | base64 -w0 | sed 's/^/vmess:\/\//'
+      python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" vmess "$name" "$server" "$PROXY_VMESS_PORT" "$PROXY_VMESS_UUID" "$PROXY_SNI"
       ;;
     vless)
       printf 'vless://%s@%s:%s?encryption=none&security=tls&sni=%s&allowInsecure=1&type=tcp#%s\n' \
@@ -530,25 +492,29 @@ load_installed_vars(){
   local proto
   for proto in $ALL_PROTOCOLS; do
     case "$proto" in
+      anytls)
+        PROXY_ANYTLS_PORT="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" anytls port)"
+        PROXY_ANYTLS_PASSWORD="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" anytls credential)"
+        ;;
       vmess)
-        PROXY_VMESS_PORT="$(jq -r '.inbounds[]|select(.type=="vmess")|.listen_port//empty' "${INSTALL_DIR}/config.json")"
-        PROXY_VMESS_UUID="$(jq -r '.inbounds[]|select(.type=="vmess")|.users[0].uuid//empty' "${INSTALL_DIR}/config.json")"
+        PROXY_VMESS_PORT="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" vmess port)"
+        PROXY_VMESS_UUID="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" vmess credential)"
         ;;
       vless)
-        PROXY_VLESS_PORT="$(jq -r '.inbounds[]|select(.type=="vless")|.listen_port//empty' "${INSTALL_DIR}/config.json")"
-        PROXY_VLESS_UUID="$(jq -r '.inbounds[]|select(.type=="vless")|.users[0].uuid//empty' "${INSTALL_DIR}/config.json")"
+        PROXY_VLESS_PORT="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" vless port)"
+        PROXY_VLESS_UUID="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" vless credential)"
         ;;
       trojan)
-        PROXY_TROJAN_PORT="$(jq -r '.inbounds[]|select(.type=="trojan")|.listen_port//empty' "${INSTALL_DIR}/config.json")"
-        PROXY_TROJAN_PASSWORD="$(jq -r '.inbounds[]|select(.type=="trojan")|.users[0].password//empty' "${INSTALL_DIR}/config.json")"
+        PROXY_TROJAN_PORT="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" trojan port)"
+        PROXY_TROJAN_PASSWORD="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" trojan credential)"
         ;;
       shadowsocks)
-        PROXY_SS_PORT="$(jq -r '.inbounds[]|select(.type=="shadowsocks")|.listen_port//empty' "${INSTALL_DIR}/config.json")"
-        PROXY_SS_PASSWORD="$(jq -r '.inbounds[]|select(.type=="shadowsocks")|.password//empty' "${INSTALL_DIR}/config.json")"
+        PROXY_SS_PORT="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" shadowsocks port)"
+        PROXY_SS_PASSWORD="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" field "${INSTALL_DIR}/config.json" shadowsocks credential)"
         ;;
     esac
   done
-  PROXY_PROTOCOLS="$(jq -r '[.inbounds[].type] | join(",")' "${INSTALL_DIR}/config.json")"
+  PROXY_PROTOCOLS="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" protocols "${INSTALL_DIR}/config.json")"
   return 0
 }
 
@@ -570,7 +536,7 @@ uninstall(){
   local ports=()
   if [[ -f "${INSTALL_DIR}/config.json" ]]; then
     while read -r p; do [[ -n "$p" ]] && ports+=("$p"); done \
-      < <(jq -r '.inbounds[].listen_port' "${INSTALL_DIR}/config.json" 2>/dev/null || true)
+      < <(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" list-ports "${INSTALL_DIR}/config.json" 2>/dev/null || true)
   fi
 
   log "$(msg stopping_service)"
@@ -582,11 +548,12 @@ uninstall(){
   ok "$(msg service_removed)"
 
   log "$(msg deleting_config)"
-  rm -rf "$INSTALL_DIR"
+  if [[ "${VPSSRV_KEEP_CONFIG:-0}" != 1 ]]; then
+    rm -rf "$INSTALL_DIR"
+  fi
 
-  # Only remove the shared binary if the anytls module isn't relying on it
-  # too. See the file header for why this check exists.
-  if [[ ! -f "$ANYTLS_CONFIG" ]]; then
+  # Web certificate generation also uses this bundled executable.
+  if [[ "${VPSSRV_KEEP_CONFIG:-0}" != 1 && ! -f "$ANYTLS_CONFIG" && ! -f "${PREFIX:-/root/apps/vps-server}/app.py" ]]; then
     rm -f "$BIN_PATH"
     ok "$(msg binary_deleted "$BIN_PATH")"
   else
@@ -639,6 +606,7 @@ reset(){
       exit 1
     fi
     case "$target" in
+      anytls) unset PROXY_ANYTLS_PORT PROXY_ANYTLS_PASSWORD ;;
       vmess)   unset PROXY_VMESS_PORT PROXY_VMESS_UUID ;;
       vless)   unset PROXY_VLESS_PORT PROXY_VLESS_UUID ;;
       trojan)  unset PROXY_TROJAN_PORT PROXY_TROJAN_PASSWORD ;;
@@ -648,12 +616,12 @@ reset(){
     local had_config=0
     [[ -f "${INSTALL_DIR}/config.json" ]] && had_config=1
     if [[ "$had_config" == "1" && -z "${PROXY_PROTOCOLS_OVERRIDDEN:-}" ]]; then
-      PROXY_PROTOCOLS="$(jq -r '[.inbounds[].type] | join(",")' "${INSTALL_DIR}/config.json")"
+      PROXY_PROTOCOLS="$(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" protocols "${INSTALL_DIR}/config.json")"
     fi
     # Force fresh credentials/ports for every selected protocol: unset any
     # value load_installed_vars might have set, since a caller-visible
     # "reset" that silently kept the old password would not be a reset.
-    unset PROXY_VMESS_PORT PROXY_VMESS_UUID PROXY_VLESS_PORT PROXY_VLESS_UUID \
+    unset PROXY_ANYTLS_PORT PROXY_ANYTLS_PASSWORD PROXY_VMESS_PORT PROXY_VMESS_UUID PROXY_VLESS_PORT PROXY_VLESS_UUID \
           PROXY_TROJAN_PORT PROXY_TROJAN_PASSWORD PROXY_SS_PORT PROXY_SS_PASSWORD
   fi
 

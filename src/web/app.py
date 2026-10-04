@@ -84,8 +84,10 @@ from module_manager import history_path as module_history_path
 from node_accounting import billable_bytes
 from module_manager import installed_modules, save_status as save_module_status
 from module_manager import iperf_binary
+from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
+from console_port import reserve_owned_port, release_owned_port
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
@@ -98,6 +100,7 @@ from features.iperf_client import IperfClient
 import features.portfwd as _feature_portfwd
 import features.proxy_service as _feature_proxy
 import features.lucky as _feature_lucky
+import features.tailscale as _feature_tailscale
 import features.frp as _feature_frp
 import features.visitors as _feature_visitors
 import features.ui as _feature_ui
@@ -461,10 +464,6 @@ def watch_portfwd_switch(*args, **kwargs):
 # Nothing here writes: to change the node, re-run anytls/setup-anytls.sh.
 # ---------------------------------------------------------------------------
 
-ANYTLS_CONFIG = Path(
-    os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
-)
-ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
 def _cert_common_name(*args, **kwargs):
     return _feature_proxy._cert_common_name(sys.modules[__name__], *args, **kwargs)
 
@@ -812,7 +811,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
 _UI_ICON_CACHE = {}
 
 
@@ -850,6 +849,8 @@ STATIC_FILES = {
     "/static/settings-sections.js": ("application/javascript", STATIC_DIR / "settings-sections.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
+    "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
+    "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
     "/static/layout-motion.js": ("application/javascript", STATIC_DIR / "layout-motion.js"),
@@ -857,7 +858,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "frp", "lucky", "login")},
+                    "changelog", "settings", "security", "modules", "frp", "lucky", "tailscale", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -893,6 +894,7 @@ from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.lucky import LuckyMixin
+from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
 from features.proxy import ProxyMixin
 from features.changelog import ChangelogMixin
@@ -900,7 +902,7 @@ from features.visitors import VisitorsMixin
 from features.public import PublicMixin
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, LuckyMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, LuckyMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1104,7 +1106,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             module = page_modules[path]
             installed = installed_modules(BASE_DIR)
             managed_present = (module == "iperf3" and "iperf3" in installed or
-                               module == "proxy_nodes" and bool({"proxy", "anytls"} & installed) or
+                               module == "proxy_nodes" and "proxy" in installed or
                                module == "frp" and (bool({"frps", "frpc"} & installed) or bool(frpc_names())))
             if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
                 return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
@@ -1122,7 +1124,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         for route in (self.route_modules, self.route_speedtest, self.route_proxy,
-                      self.route_lucky, self.route_frp, self.route_iperf,
+                      self.route_lucky, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return

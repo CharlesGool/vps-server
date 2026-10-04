@@ -1,11 +1,17 @@
 (() => {
+  const pollUrl = location.href;
+  const cleanUrl = new URL(location.href);
+  cleanUrl.searchParams.delete('operation');
+  history.replaceState(history.state, '', cleanUrl);
+  let leaving = false;
   const refresh = async () => {
+    if (leaving) return;
     if (document.visibilityState !== 'visible') {
       setTimeout(refresh, 1500);
       return;
     }
     try {
-      const response = await fetch(location.href, { cache: 'no-store', credentials: 'same-origin' });
+      const response = await fetch(pollUrl, { cache: 'no-store', credentials: 'same-origin' });
       if (!response.ok) throw new Error('status unavailable');
       const next = new DOMParser().parseFromString(await response.text(), 'text/html');
       const oldProgress = document.querySelector('.module-progress');
@@ -42,4 +48,10 @@
   };
   setInterval(hideStaleProgress, 1000);
   setTimeout(refresh, 1500);
+  window.addEventListener('pagehide', () => {
+    leaving = true;
+    document.querySelector('.module-progress')?.setAttribute('hidden', '');
+    document.querySelector('.module-notice')?.setAttribute('hidden', '');
+  });
+  window.addEventListener('pageshow', (event) => { if (event.persisted) location.reload(); });
 })();

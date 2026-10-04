@@ -27,17 +27,16 @@ metadata:
 
 ## Third-Party-Notice
 
-The table inventories bundled and OS-supplied components. The nine bundled
-artifacts have checkout SHA-256 values in [config/dependencies.lock.json][local-link-001];
+The table inventories bundled and OS-supplied components. The original nine
+repository artifacts have SHA-256 values in [config/dependencies.lock.json][local-link-001];
 run `python3 tools/verify_dependencies/verify_dependencies.py` from the repository
-root to compare them offline. The 2026-09-27 checks of the original seven
-artifacts remain unchanged. The FRPC binary added on 2026-10-04 matches its
-v0.71.0 upstream archive member byte for byte. The new iperf3 binary was
-built locally from a checked SHA-256 upstream 3.22 source archive; its binary
-hash establishes only the identity of this repository's artifact. Included
-license paths are listed below.
-These checks establish artifact identity, not a legal opinion or a fully
-reproducible system dependency closure.
+root to compare their bytes offline. Tailscale and nftables archives enter only
+the generated offline package. The builder checks fixed digests; their sources
+and licenses are recorded in their respective `component.txt` files. The
+2026-09-27 checks of the original seven artifacts remain unchanged; the
+sources of the later FRPC and iperf3 artifacts are recorded below. These checks
+establish artifact identity, not cross-distribution compatibility or a complete
+system dependency closure.
 
 | Component / resource | Version / hash | Source | License as recorded | How used | Attribution / original license path | Release obligations to review | Verified on |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -51,6 +50,8 @@ reproducible system dependency closure.
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Bundled CJK interface font, weights 400/700 | [included license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
 | Lucide icons | Upstream `main` on 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled interface SVG icons | [included license](../../src/web/static/licenses/Lucide-ISC.txt) | Keep the included copyright and license notice | 2026-09-27: upstream SVG files |
 | iperf3 | `3.22`; bundled binary SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | Locally built x86-64 Linux static executable from official source | [upstream LICENSE](../../third_party/iperf3/LICENSE); [build record](../../third_party/iperf3/component.txt) | Retain copyright and the full license with the binary; target-distro compatibility awaits acceptance | 2026-10-04: official source digest, local build, and local execution checked |
+| Tailscale | `1.102.4`; official amd64 static archive SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [official Linux packages](https://pkgs.tailscale.com/stable/) | BSD-3-Clause per upstream LICENSE | Included when building the v6 offline package; installs the client and daemon on the target | [upstream license](../../third_party/tailscale/LICENSE); [artifact record](../../third_party/tailscale/component.txt) | Include upstream license and copyright notice in the offline package; review transitive dependency notices before formal release | 2026-10-04: official archive digest and locally running version matched |
+| nftables and 10 runtime libraries | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`; combined archive SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb` | [official Debian package repository](https://deb.debian.org/debian/) | Each package license is under `usr/share/doc/<package>/copyright` in the archive | Private nft runtime for node accounting in the v6 offline package; not installed into the system package database | [package list and SHA-256 record](../../third_party/nft/component.txt) | Include each package's original copyright files; cross-distribution compatibility awaits target-host acceptance | 2026-10-04: each `.deb` matched its Debian package-index digest; local quota-syntax parsing passed |
 
 The existing project record identifies GPL-3.0 for this project ([LICENSE][local-link-009]) and records the redistribution of a GPL-licensed sing-box executable as its reason; [Decisions][local-link-010] retains the rationale and rejected alternatives. The prior record describes `vps-webserver` as Apache-2.0 upstream and redistributed here under GPL-3.0. This inventory records the files and terms checked for v2.0.0; it does not provide an independent legal opinion.
 
@@ -176,17 +177,20 @@ Not third-party, but recorded here because the code did not originate in this
 repository and its provenance matters for updates:
 
 - `src/web/app.py`, `src/web/static/speedtest-ui.js`, `src/web/static/style.css`, `src/web/static/visitors.js`,
-  `tests/`, `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` (with root installer entries) — from `vps-webserver`
+  `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` (with root installer entries) — from `vps-webserver`
   v0.4.1 (Apache-2.0 upstream, relicensed GPL-3.0 here). See `config/upstream-version`.
-- `deploy/anytls/setup-anytls.sh`, `third_party/sing-box/sing-box`, `third_party/sing-box/sing-box.version` — from
-  `Anytsl-Serve` v1.2.0 (GPL-3.0 upstream). See `deploy/anytls/.upstream-version`.
+- The choice of `third_party/sing-box/sing-box` and `third_party/sing-box/sing-box.version`
+  originally followed `Anytsl-Serve`. The independent AnyTLS installer script
+  was removed from the v6 candidate. See the table above for the binary's
+  upstream source and license.
 
 ---
 
 The bundled third-party fonts and icons are listed in the table above. No
-third-party image datasets or model weights are included. Installation can
-install bundled FRPC without a download. An optional public-IP lookup can
-still be requested; failures produce a warning.
+third-party image datasets or model weights are included. An online build
+machine downloads and verifies Tailscale and nftables resources while building
+the offline package. Installation on the target does not download FRPC or
+other executables and does not look up a public IP.
 
 [local-link-001]: ../../config/dependencies.lock.json
 [local-link-002]: ../../third_party/sing-box/LICENSE

@@ -31,11 +31,11 @@ class ModulesMixin:
             ("modules", t["logs_source_modules"], ()),
             ("web", "Web", ("vps-server-web.service",)),
             ("meter", t["logs_source_meter"], ("vps-server-node-meter.service",)),
-            ("anytls", "AnyTLS", ("vps-server-anytls.service",)),
             ("proxy", "Singbox", ("vps-server-proxy.service",)),
             ("frps", "FRPS", ("vps-server-frps.service",)),
             ("frpc", "FRPC", tuple(self.context.frpc_unit(name) for name in self.context.frpc_names())),
             ("lucky", "Lucky", ("vps-server-lucky.service",)),
+            ("tailscale", "Tailscale", ("vps-server-tailscale.service",)),
         )
         selected = next((item for item in sources if item[0] == source), None)
         if selected is None:
@@ -68,7 +68,7 @@ class ModulesMixin:
                 f'<nav class="log-sources" aria-label="{esc(t["module_detailed_logs"], quote=True)}">{links}</nav>'
                 f'<h2>{esc(selected[1])}</h2><pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre></div>')
         return self.send_html(200, self.render_page(t["module_detailed_logs"], body, lang,
-                                                    active="settings", back_href="/settings/modules"),
+                                                    active="module_detailed_logs", back_href="/settings/modules"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def page_module_not_installed(self, lang, query_lang, title, module_name, active=None):
@@ -106,26 +106,30 @@ class ModulesMixin:
             pass
         now = self.context.time.time()
         busy = job.get("state") in ("queued", "running") and module_job_recent(job, now, 900)
-        notice_visible = busy or job.get("state") in ("done", "failed") and module_job_recent(job, now, 30)
+        marker = self.context.parse_qs(self.context.urlsplit(self.path).query).get("operation", [""])[0]
+        show_operation = marker == f'{job.get("module")}-{job.get("action")}'
+        notice_visible = show_operation and (busy or job.get("state") in ("done", "failed") and module_job_recent(job, now, 30))
         catalogue = (
             ("iperf3", t["iperf"], "iperf3"),
             ("proxy_nodes", t["proxy"], "proxy_nodes"),
             ("frps", "FRPS", "frps"),
             ("frpc", "FRPC", "frpc"),
+            ("lucky", "Lucky", "lucky"),
+            ("tailscale", "Tailscale", "tailscale"),
         )
         cards = []
         for module, title, installable in catalogue:
             if module == "proxy_nodes":
-                present = {"proxy", "anytls"} <= installed
-                enabled = present and any(self.context._run_quiet(["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS[item]])
-                                          for item in ("proxy", "anytls") if item in installed)
+                present = "proxy" in installed
+                enabled = present and self.context._run_quiet(
+                    ["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS["proxy"]])
             elif module == "frpc":
                 present = module in installed
                 enabled = present and self.context.frpc_group_enabled(self.context.BASE_DIR)
             elif module == "iperf3":
                 present = module in installed
                 enabled = present and self.context.IPERF_ENABLED
-            elif module == "frps":
+            elif module in ("frps", "lucky", "tailscale"):
                 present = module in installed
                 enabled = present and self.context._run_quiet(["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS[module]])
             status = (t["module_not_installed"] if not present else
@@ -146,7 +150,8 @@ class ModulesMixin:
         notice_text = module_job_text(t, job, {key: title for key, title, _ in catalogue})
         notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(notice_text)}</p>'
                   if notice_visible else "")
-        progress_job = job.get("module") in ("iperf3", "proxy_nodes", "frps", "frpc") and job.get("action") in ("install", "uninstall")
+        progress_job = (show_operation and job.get("module") in ("iperf3", "proxy_nodes", "frps", "frpc")
+                        and job.get("action") in ("install", "uninstall"))
         progress = ""
         progress_recent = False
         last_output = 0
@@ -164,11 +169,9 @@ class ModulesMixin:
         progress_html = (f'<section class="module-progress" data-last-output="{last_output}" {"hidden" if not progress_recent else ""}>'
                          f'<h2>{esc(t["module_progress"])}</h2><pre role="log">{esc(progress)}</pre></section>'
                          if progress_job else "")
-        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or progress_recent or notice_visible else ''
+        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or show_operation and (progress_recent or notice_visible) else ''
         body = (f'<div class="card module-page" data-busy="{str(busy).lower()}"><h1>{esc(t["modules_heading"])}</h1>'
-                f'<p>{esc(t["modules_note"])}</p>{notice}'
-                f'<div class="module-grid">{"".join(cards)}</div>{progress_html}'
-                f'<p><a href="/settings/logs">{esc(t["module_detailed_logs"])}</a></p></div>'
+                f'{notice}<div class="module-grid">{"".join(cards)}</div>{progress_html}</div>'
                 f'<script src="/static/module-controls.js" defer></script>'
                 f'{refresh_script}')
         return self.send_html(200, self.render_page(t["modules_heading"], body, lang,
@@ -189,8 +192,8 @@ class ModulesMixin:
         except (UnicodeError, ValueError):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
-        allowed = ("iperf3", "proxy_nodes", "frps", "frpc") if action in ("install", "uninstall") else (
-            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc") + self.context.MANAGED_FEATURES
+        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale") if action in ("install", "uninstall") else (
+            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
@@ -198,12 +201,17 @@ class ModulesMixin:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         destination = "/" if form.get("return", [""])[0] == "home" else "/settings/modules"
         installed = self.context.installed_modules(self.context.BASE_DIR)
-        present = ({"proxy", "anytls"} <= installed if module == "proxy_nodes" else module in installed)
+        present = ("proxy" in installed if module == "proxy_nodes" else module in installed)
         if action in ("install", "uninstall") and (action == "install") == present:
             return self.redirect(destination, {"Cache-Control": "no-store"})
         install_source = (self.context.BASE_DIR / "installer-source" / "deploy" / "systemd" / "frpc@.service" if module == "frpc" else
                           self.context.BASE_DIR / "installer-source" / "deploy" / "install.sh")
         if action == "install" and module != "iperf3" and not install_source.is_file():
+            return self.send_html(503, esc(self.context.STRINGS[lang]["module_source_missing"]),
+                                  {"Cache-Control": "no-store"})
+        if action == "install" and module == "tailscale" and not (
+                self.context.BASE_DIR / "installer-source" / "third_party" / "tailscale" /
+                "tailscale_1.102.4_amd64.tgz").is_file():
             return self.send_html(503, esc(self.context.STRINGS[lang]["module_source_missing"]),
                                   {"Cache-Control": "no-store"})
         helper = self.context.WEB_CODE_DIR / "module_manager.py"
@@ -233,13 +241,14 @@ class ModulesMixin:
                 self.context.save_module_status(self.context.BASE_DIR, module, "failed", action=action)
                 return self.send_html(503, esc(self.context.STRINGS[lang]["module_job_failed"]),
                                       {"Cache-Control": "no-store"})
-        return self.redirect(destination, {"Cache-Control": "no-store"})
+        return self.redirect(f'{destination}{"?" if "?" not in destination else "&"}operation={module}-{action}',
+                             {"Cache-Control": "no-store"})
 
     def page_module_closed(self, lang, query_lang, parsed):
         module = self.context.parse_qs(parsed.query).get("module", [""])[0]
         destinations = {"web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
-                        "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "portfwd": "/portfwd",
+                        "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "lucky": "/lucky", "tailscale": "/tailscale", "portfwd": "/portfwd",
                         "visitors": "/visitors", "changelog": "/changelog"}
         if module not in destinations:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -248,7 +257,7 @@ class ModulesMixin:
         t = self.context.STRINGS[lang]
         names = {"web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
-                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC",
+                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
                  "visitors": t["visitors"], "changelog": t["changelog"]}
         body = (f'<div class="card access-card"><h1>{self.context.html.escape(t["module_closed_title"])}</h1>'
@@ -270,6 +279,8 @@ class ModulesMixin:
             ("proxy_nodes", t["proxy"], "/proxy", "network", states["proxy_nodes"]),
             ("frps", "FRPS", "/frps", "radio", states["frps"]),
             ("frpc", "FRPC", "/frpc", "network", states["frpc"]),
+            ("lucky", "Lucky", "/lucky", "network", states["lucky"]),
+            ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
             ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
@@ -284,6 +295,8 @@ class ModulesMixin:
         except (OSError, ValueError, TypeError):
             busy = False
             notice_recent = False
+        marker = self.context.parse_qs(self.context.urlsplit(self.path).query).get("operation", [""])[0]
+        show_operation = marker == f'{job.get("module")}-{job.get("action")}'
         tiles = []
         for module, title, href, icon, enabled in items:
             switch = ""
@@ -291,9 +304,10 @@ class ModulesMixin:
                 action = "disable" if enabled else "enable"
                 available = (module not in ("web_http", "web_https") or "web" in installed) and (
                     module != "iperf3" or "iperf3" in installed) and (
-                    module != "proxy_nodes" or bool({"proxy", "anytls"} & installed)) and (
+                    module != "proxy_nodes" or "proxy" in installed) and (
                     module != "frps" or "frps" in installed) and (
                     module != "frpc" or "frpc" in installed) and (
+                    module != "tailscale" or "tailscale" in installed) and (
                     module != "portfwd" or self.context.PORTFWD_ALLOWED)
                 switch = (f'<form method="post" action="/settings/modules/action" class="tile-switch-form">'
                           f'<input type="hidden" name="module" value="{module}">'
@@ -304,8 +318,8 @@ class ModulesMixin:
                           f'aria-checked="{str(bool(enabled)).lower()}" {"" if available and not busy else "disabled"}><span aria-hidden="true"></span></button></form>')
             closed = not enabled and (module in self.context.MANAGED_FEATURES or
                                       module == "iperf3" and "iperf3" in installed or
-                                      module == "proxy_nodes" and bool({"proxy", "anytls"} & installed) or
-                                      module in ("frps", "frpc") and module in installed)
+                                      module == "proxy_nodes" and "proxy" in installed or
+                                      module in ("frps", "frpc", "lucky", "tailscale") and module in installed)
             occupied_port = public_listener_occupied(self.context, module, job)
             detail = (f'<span class="tile-error" role="status">'
                       f'{esc(t["module_port_occupied"].format(port=occupied_port))}</span>'
@@ -317,11 +331,11 @@ class ModulesMixin:
                          f'<a class="tile-label" href="{target}">{esc(title)}</a>{detail}</article>')
         job_names = {key: title for key, title, *_ in items}
         notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(module_job_text(t, job, job_names))}</p>'
-                  if busy or notice_recent else '')
+                  if show_operation and (busy or notice_recent) else '')
         body = (f'<div class="card"><h1>{esc(t["home"])}</h1>{notice}'
                 f'<div class="tiles">{"".join(tiles)}</div></div>'
                 + '<script src="/static/module-controls.js" defer></script>'
-                + ('<script src="/static/module-status.js" defer></script>' if busy or notice_recent else ''))
+                + ('<script src="/static/module-status.js" defer></script>' if busy or show_operation and notice_recent else ''))
         self.send_html(200, self.render_page(t['dashboard'], body, lang, active="home"),
                        self.maybe_lang_cookie(query_lang))
 
@@ -389,11 +403,15 @@ def module_states(context, installed=None):
                      (public_listener_runtime(context, "web_https") or {}).get("bound", True),
         "speedtest": context.module_feature_enabled(context.BASE_DIR, "speedtest"),
         "iperf3": "iperf3" in installed and context.IPERF_ENABLED,
-        "proxy_nodes": any(context._run_quiet(["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS[item]])
-                           for item in ("proxy", "anytls") if item in installed),
+        "proxy_nodes": "proxy" in installed and context._run_quiet(
+            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["proxy"]]),
         "frps": "frps" in installed and context._run_quiet(
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["frps"]]),
         "frpc": "frpc" in installed and context.frpc_group_enabled(context.BASE_DIR),
+        "lucky": "lucky" in installed and context._run_quiet(
+            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["lucky"]]),
+        "tailscale": "tailscale" in installed and context._run_quiet(
+            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["tailscale"]]),
         "portfwd": context.portfwd_enabled(),
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
         "changelog": True,

@@ -148,8 +148,10 @@ def render_rules(inventory, policy, *, replace=False):
 
 class NftBackend:
     def _run(self, args, *, input=None):
-        return subprocess.run(["nft", *args], input=input, text=True,
-                              capture_output=True, timeout=20)
+        from nft_runtime import command
+        binary, env = command()
+        return subprocess.run([binary, *args], input=input, text=True,
+                              capture_output=True, timeout=20, env=env)
 
     def exists(self):
         result = self._run(["-j", "list", "tables"])
@@ -272,7 +274,7 @@ def main():
         print(f"Node traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Existing rules may have disappeared or become stale. Stop the node
         # units instead of leaving unrestricted traffic running indefinitely.
-        for service in ("vps-server-anytls.service", "vps-server-proxy.service"):
+        for service in ("vps-server-proxy.service",):
             subprocess.run(["systemctl", "stop", service],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                            timeout=20, check=False)

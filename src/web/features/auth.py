@@ -332,9 +332,8 @@ def ensure_session_secret(context, ):
 def ensure_tls_files(context, ):
     """Return (cert_path, key_path), generating a self-signed pair if needed.
 
-    Uses the `openssl` CLI because the standard library can't create
-    certificates and this project has no third-party dependencies; openssl is
-    part of a Debian/Ubuntu base install. See doc/LOG.md#decisions.
+    Uses the bundled sing-box generator so an offline target needs no
+    separate OpenSSL CLI package.
     """
     if context.TLS_CERT and context.TLS_KEY:
         cert, key = context.Path(context.TLS_CERT), context.Path(context.TLS_KEY)
@@ -350,25 +349,8 @@ def ensure_tls_files(context, ):
     if cert.exists() and key.exists():
         return cert, key
 
-    if not context.shutil.which("openssl"):
-        raise SystemExit(
-            "openssl not found — install it (apt install openssl), or point "
-            "VPSSRV_TLS_CERT/VPSSRV_TLS_KEY at an existing certificate, or set "
-            "VPSSRV_CONSOLE_TLS=0 to serve plain HTTP."
-        )
-    context.subprocess.run(
-        [
-            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-            "-keyout", str(key), "-out", str(cert),
-            "-days", "3650", "-subj", "/CN=vps-server",
-            "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
-        ],
-        check=True,
-        stdout=context.subprocess.DEVNULL,
-        stderr=context.subprocess.DEVNULL,
-    )
-    context.os.chmod(key, 0o600)
-    context.os.chmod(cert, 0o644)
+    from tls_cert import create_self_signed
+    create_self_signed(cert, key, "localhost")
     print(context._log_text('log_certificate', path=context.CERT_DIR), file=context.sys.stderr)
     return cert, key
 

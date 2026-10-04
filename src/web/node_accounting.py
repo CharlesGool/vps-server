@@ -13,7 +13,7 @@ import calendar
 import copy
 from datetime import datetime, timezone
 
-from node_inventory import InvalidInventory, advance_reset_interval, validate_inventory
+from node_inventory import InvalidInventory, advance_reset_interval, reset_interval, validate_inventory
 
 MAX_BYTES = (1 << 64) - 1
 FAMILIES = ("ipv4", "ipv6")
@@ -195,6 +195,12 @@ def advance_cycles(inventory, state, *, now):
         if node["next_reset_at"] is None:
             continue
         due = datetime.fromisoformat(node["next_reset_at"])
+        interval = reset_interval(node["reset_mode"])
+        if interval is not None and interval[1] == "months":
+            count = interval[0]
+            node["reset_mode"] = f"every:{count}:months:1"
+            due = due.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            node["next_reset_at"] = due.isoformat()
         if due > now:
             continue
         mode = node["reset_mode"]
