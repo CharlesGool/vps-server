@@ -87,7 +87,7 @@ from module_manager import iperf_binary
 from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
-from console_port import lucky_listener_active
+from console_port import lucky_listener_active, detect_lucky_admin
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,

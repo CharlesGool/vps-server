@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
+import ssl
 from datetime import date
 
 try:
@@ -273,14 +275,8 @@ def sync_lucky_port(prefix):
     registry = prefix.parent / "PORTS.md"
     active = subprocess.run(["systemctl", "is-active", "--quiet", "vps-server-lucky.service"],
                             check=False, timeout=5).returncode == 0
-    wanted = None
-    if active:
-        config = json.loads(Path("/etc/vps-server-lucky/config.json").read_text())
-        wanted = config["BaseConfigure"]["AdminWebListenPort"]
-        if type(wanted) is not int or not 1 <= wanted <= 65535:
-            raise ValueError("invalid Lucky admin port")
-        if not lucky_listener_active(wanted):
-            wanted = None
+    found = detect_lucky_admin() if active else None
+    wanted = found[0] if found else None
     with (prefix.parent / ".ports.lock").open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         rows, _ = read_rows(registry)
@@ -310,6 +306,55 @@ def lucky_listener_active(port):
         return f"pid={pid}," in listening
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+def detect_lucky_admin():
+    """Find Lucky's live admin page among TCP listeners owned by its unit."""
+    try:
+        pid = subprocess.run(["systemctl", "show", "-p", "MainPID", "--value",
+                              "vps-server-lucky.service"], capture_output=True, text=True,
+                             check=True, timeout=5).stdout.strip()
+        if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
+            return None
+        output = subprocess.run(["ss", "-H", "-ltnp"], capture_output=True, text=True,
+                                check=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    listeners = []
+    for line in output.splitlines():
+        if f"pid={pid}," not in line:
+            continue
+        fields = line.split()
+        if len(fields) < 4:
+            continue
+        address = fields[3]
+        try:
+            port = int(address.rsplit(":", 1)[1])
+        except ValueError:
+            continue
+        if not 1 <= port <= 65535:
+            continue
+        host = address.rsplit(":", 1)[0].strip("[]")
+        if host in ("*", "0.0.0.0"):
+            host = "127.0.0.1"
+        elif host in ("::", ""):
+            host = "::1"
+        url_host = f"[{host}]" if ":" in host else host
+        listeners.append((port, url_host))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                         urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+    matches = set()
+    for port, host in listeners[:24]:
+        for scheme in ("http", "https"):
+            try:
+                with opener.open(f"{scheme}://{host}:{port}/", timeout=1) as response:
+                    page = response.read(8192).lower()
+                if b"lucky_index-" in page:
+                    matches.add((port, scheme))
+                    break
+            except (OSError, ValueError):
+                continue
+    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def main(argv=None):

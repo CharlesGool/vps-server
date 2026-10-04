@@ -15,7 +15,8 @@
     if (!response.ok) throw new Error('Lucky status unavailable');
     const data = await response.json();
     const port = Number(data.port);
-    currentUrl = Number.isInteger(port) && port >= 1 && port <= 65535 ? `http://${host}:${port}/` : '';
+    const scheme = data.scheme === 'https' ? 'https' : 'http';
+    currentUrl = Number.isInteger(port) && port >= 1 && port <= 65535 ? `${scheme}://${host}:${port}/` : '';
     addressLabel.textContent = currentUrl || '—';
     stateLabel.textContent = data.running ? card.dataset.active : card.dataset.stopped;
     button.disabled = !data.running || !currentUrl;

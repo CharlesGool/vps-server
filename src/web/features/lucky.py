@@ -36,15 +36,20 @@ class LuckyMixin:
                 ['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
                        and self.context.lucky_listener_active(data['AdminWebListenPort']))
             self.send_json(200, {"port": data['AdminWebListenPort'] if data else None,
+                                 "scheme": data.get('_scheme', 'http') if data else 'http',
                                  "running": running}, {"Cache-Control": "no-store"})
             return True
         return False
 
 
 def lucky_admin(context, ):
-    """Never expose Lucky credentials without console authentication."""
+    """Read bootstrap settings, then prefer Lucky's actual admin listener."""
     try:
-        data = context.json.loads(context.LUCKY_CONFIG.read_text())['BaseConfigure']
+        base = context.json.loads(context.LUCKY_CONFIG.read_text())['BaseConfigure']
+        data = {"AdminWebListenPort": base["AdminWebListenPort"], "_scheme": "http"}
+        found = context.detect_lucky_admin()
+        if found:
+            data["AdminWebListenPort"], data["_scheme"] = found
         port = data['AdminWebListenPort']
         if type(port) is not int or not 1 <= port <= 65535:
             return None

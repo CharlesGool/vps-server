@@ -190,7 +190,7 @@ Web,统一代理和可选的 Tailscale 服务各自运行;AnyTLS 是统一代理
 
 离线包包含官方 Linux amd64 静态归档.安装器验证散列,创建 `vps-server-tailscale.service` 和私有状态目录,固定 UDP 端口先登记到 `PORTS.md` 再启动.Tailscale 控制台通过本机 socket 和固定 CLI 参数读取状态,偏好,连通性与设备列表,以及 systemd journal;私有地址和账户默认遮盖.登录密钥仅作为临时 root 文件传给 CLI,命令结束后删除,不写进项目状态.常规设置在同一表单中收集更改,用一次 Linux `tailscale set` 调用应用;空白的路由,出口节点与中继端口输入保持原值,清除由独立复选框表达.设备 IPv4/IPv6 分别按需读取,本机子网和可用出口节点可快速填入.实验性低内存选项经固定参数辅助任务写入独立 systemd drop-in `GOGC=10`,重启服务并在失败时尝试恢复原配置;较低 GOGC 可能增加 CPU 开销.这些控制不模拟 OpenWrt 的 dnsmasq 转发或路由器防火墙选项.安装二进制可离线完成,加入 Tailnet 需要访问所选控制服务器.
 
-Lucky 保留原生管理页面;本项目只显示管理地址,运行状态及打开按钮,不展示由 Lucky 自身管理的账户和密码.页面每 5 秒读取当前配置端口,Web 进程也每 5 秒检查端口变化;特权助手确认 Lucky 进程实际监听后,原子更新 `PORTS.md` 中仅属于 Lucky 的行,监听消失时移除旧行.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.Lucky HTTP 登录不提供传输加密.
+Lucky 保留原生管理页面;本项目只显示管理地址,运行状态及打开按钮,不展示由 Lucky 自身管理的账户和密码.Lucky 的 `config.json` 只是启动配置,原生页面的持久设置另存在 `lucky_base.lkcf`;因此页面与后台每 5 秒识别 Lucky 主进程实际监听且返回 Lucky 管理页的端口和 HTTP/HTTPS 协议,而不以启动配置为最终状态.特权助手原子更新 `PORTS.md` 中仅属于 Lucky 的行,监听消失时移除旧行.在测试机上,即使 `AllowInternetaccess=false`,Lucky 仍监听通配地址,同一局域网可访问其 HTTP 管理页;这个选项不能当作只绑定 `localhost` 的保证.HTTP 登录不提供传输加密.
 
 浏览器终端只在已启用 Web 管理功能且管理员密码会话的短期验证有效时开放,IP 免密会话不能打开.root PTY 通过同源且带 CSRF 令牌的 WebSocket 建立,连接断开,离开页面或验证到期即终止进程;命令内容不写入控制台访问日志.xterm.js 静态文件与许可证随离线包提供,不使用 CDN.
 
