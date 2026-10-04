@@ -1050,8 +1050,8 @@ if [ "$SRC_DIR" != "$PREFIX_ABS" ]; then
   printf '%s\n' "$NEW_VERSION" > "$PREFIX/config/VERSION"
 fi
 
-# The Web process changes runtime forwards and public listeners. Give its
-# sandbox access only to the shared registry and lock, not sibling projects.
+# Initialize the shared registry before Web starts. Runtime changes use a
+# fixed-action systemd helper outside Web's read-only parent directory.
 python3 - "$PREFIX" <<'PY'
 from pathlib import Path
 import sys
@@ -1126,9 +1126,6 @@ ReadWritePaths=$(dirname "$VPSSRV_PASSWORD_FILE")
 ReadWritePaths=$(dirname "$VPSSRV_CONSOLE_PORT_FILE")
 ReadWritePaths=$VPSSRV_CERT_DIR
 ReadWritePaths=$(dirname "$VPSSRV_IP_ALLOWLIST_FILE")"
-  HARDENING="$HARDENING
-ReadWritePaths=$(dirname "$PREFIX")/PORTS.md
-ReadWritePaths=$(dirname "$PREFIX")/.ports.lock"
 fi
 
 if has_module iperf3; then

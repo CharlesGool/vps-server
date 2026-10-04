@@ -104,6 +104,8 @@ def reserve_owned_port(prefix, port, owner, *, probe=True):
 
 
 def release_owned_port(prefix, port, owner):
+    if type(port) is not int or not 1 <= port <= 65535 or not re.fullmatch(r"[A-Za-z0-9 /_.-]+", owner):
+        raise ValueError("invalid port reservation")
     root = Path(prefix).parent
     with (root / ".ports.lock").open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -266,7 +268,14 @@ def register_current(prefix, port, unit=UNIT):
 
 def main(argv=None):
     args = sys.argv[1:] if argv is None else argv
-    if len(args) == 4 and args[0] == "register" and re.fullmatch(r"[A-Za-z0-9@_.-]+\.service", args[3]):
+    if len(args) == 4 and args[0] in ("reserve", "release"):
+        action, prefix, raw_port, owner = args
+        if not raw_port.isascii() or not raw_port.isdecimal():
+            raise ValueError("invalid port")
+        changed = (reserve_owned_port(prefix, int(raw_port), owner) if action == "reserve"
+                   else release_owned_port(prefix, int(raw_port), owner))
+        print("changed" if changed else "unchanged")
+    elif len(args) == 4 and args[0] == "register" and re.fullmatch(r"[A-Za-z0-9@_.-]+\.service", args[3]):
         register_current(args[1], int(args[2]), args[3])
     elif len(args) == 5 and args[0] == "change":
         _, prefix, old, new, port_file = args

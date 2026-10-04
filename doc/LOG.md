@@ -94,8 +94,8 @@ metadata:
 
 ## 交接
 
-- 当前分支: `release/v6.0.0-test.1`,公开 `origin` 已验证到 `6732083`;正式目标为 v6.0.0,尚无正式标签或 Release.在 `6732083` 后发现 iperf3 限时窗口的端口登记遗漏,本地修复尚待重新提交,生成新测试包和部署.此前 v5.1.1 测试分支的手动验收不覆盖 v6.
+- 当前分支: `release/v6.0.0-test.1`,公开 `origin` 已验证到 `69ef1f2`;正式目标为 v6.0.0,尚无正式标签或 Release.`69ef1f2` 将 iperf3 限时窗口改为仅在监听时登记端口,目标机实测却因 Web 沙盒禁止原子写入登记目录而拒绝开启;固定参数的 systemd 端口辅助任务正在本地修复,尚待重新提交和部署.此前 v5.1.1 测试分支的手动验收不覆盖 v6.
 - 已完成的源码: AnyTLS 纳入统一 sing-box 配置/unit/安装卸载,旧服务迁移先备份再切换;Tailscale 增加离线安装,概览,设置,设备和日志;安装器交互时提供 1/2/3 语言选择,摘要同时给出保留数据和完全卸载命令.节点,公开页面,转发,可选服务的占用端口按操作登记到 `PORTS.md`.代理脚本摆脱目标机的 jq,在线 apt 和 OpenSSL CLI;离线包附经校验的 Tailscale 与私有 nftables 运行时.包构建器只复制 HEAD 已跟踪文件;最初包含 Git 排除目录的本地草稿包已删除,未外传.
-- 目标测试机已验证: Debian 13 x86-64 的布局 `1` Web 从旧测试版升级至 `test-6732083`,原密码文件和管理端口文件与 root-only 备份逐字节一致.无 Git 元数据的包内版本正确;安装守卫只观察到 Git 探测,未调用 apt-get 或 curl.Web,Tailscale,节点计量和统一代理服务处于 active/enabled;控制台,模块,详细日志,代理和 Tailscale 四个标签页经认证访问均返回 200.公网 HTTP 启用后同 LAN 访问 200,停用后监听及登记撤销.AnyTLS 与 VMess 临时节点同时在同一 proxy unit 中监听且各自登记,删除后清理;proxy 和 Tailscale 模块开关释放并恢复登记.Tailscale 当前为 `NeedsLogin`,没有连接任何账户.旧版及升级后 Web-only 的程序和状态备份均保存在测试机 root-only `.backups/` 目录.
+- 目标测试机已验证: Debian 13 x86-64 的布局 `1` Web 从旧测试版升级至 `test-6732083`,随后升级到 `test-69ef1f2` 并加入 iperf3,原密码文件和管理端口文件与 root-only 备份逐字节一致.无 Git 元数据的包内版本正确;安装守卫只观察到 Git 探测,未调用 apt-get 或 curl.Web,Tailscale,节点计量和统一代理服务处于 active/enabled;控制台,模块,详细日志,代理和 Tailscale 四个标签页经认证访问均返回 200.公网 HTTP 启用后同 LAN 访问 200,停用后监听及登记撤销.AnyTLS 与 VMess 临时节点同时在同一 proxy unit 中监听且各自登记,删除后清理;proxy 和 Tailscale 模块开关释放并恢复登记.Tailscale 当前为 `NeedsLogin`,没有连接任何账户.旧版,升级后 Web-only 及后续模块增装前的程序和状态备份均保存在测试机 root-only `.backups/` 目录.已发现 iperf3 窗口的 Web 沙盒登记失败,当前测试机上该窗口仍不可用,其余已验证状态未受影响.
 - 本地检查: 目标机使用包内 nftables v0.9.8 能运行;Python,Bash,JavaScript 语法,CSS 构建,三语言键名,随附九项仓库依赖摘要与 Git 空白检查通过;隔离的端口登记,证书生成和迁移收尾检查通过.桌面与窄屏 Tailscale 模拟页面渲染通过.测试主机当前 Debian 13 不代表 Debian 11/Ubuntu 20.04 及更高发行版组合全数通过;Tailscale 实际登录,设备列表,出口/子网路由,旧 AnyTLS 双服务迁移,真实代理流量与配额仍未在目标机验收.
-- 下一步: 提交并部署 iperf3 窗口端口修正,继续目标机的安装/卸载与重启恢复核对,再交由操作员手动验收 Tailscale 登录及流量行为.正式 v6.0.0 标签,Release 和快照待范围内行为验收后创建.临时项目规则未发现.
+- 下一步: 提交并部署 Web 沙盒外的端口辅助任务修正,复测 iperf3 窗口,继续目标机的安装/卸载与重启恢复核对,再交由操作员手动验收 Tailscale 登录及流量行为.正式 v6.0.0 标签,Release 和快照待范围内行为验收后创建.临时项目规则未发现.

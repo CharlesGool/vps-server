@@ -87,11 +87,37 @@ from module_manager import iperf_binary
 from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
-from console_port import reserve_owned_port, release_owned_port
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
                          build_client as frpc_build)
+
+
+def _host_port_job(action, prefix, port, owner):
+    """Update PORTS.md outside Web's read-only parent-directory sandbox."""
+    if action not in ("reserve", "release") or Path(prefix) != BASE_DIR:
+        raise ValueError("invalid port registry request")
+    unit = "vps-server-port-" + secrets.token_hex(6)
+    result = subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                             "--unit=" + unit, "/usr/bin/python3",
+                             str(WEB_CODE_DIR / "console_port.py"), action,
+                             str(prefix), str(port), owner],
+                            capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode:
+        raise RuntimeError("port registry helper failed")
+    response = result.stdout.strip().splitlines()
+    if not response or response[-1] not in ("changed", "unchanged"):
+        raise RuntimeError("port registry helper returned no result")
+    return response[-1] == "changed"
+
+
+def reserve_owned_port(prefix, port, owner):
+    return _host_port_job("reserve", prefix, port, owner)
+
+
+def release_owned_port(prefix, port, owner):
+    return _host_port_job("release", prefix, port, owner)
+
 import features.auth as _feature_auth
 import features.modules as _feature_modules
 import features.system as _feature_system
