@@ -40,8 +40,8 @@ metadata:
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | 随附的 CJK 界面字体,400/700 字重 | [license](../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | Lucide icons | `main` 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | 随附的界面 SVG 图标 | [license](../src/web/static/licenses/Lucide-ISC.txt) | 保留随附的许可证及版权声明 | 2026-09-27 |
 | iperf3 | `3.22`;随附二进制 SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | 从官方源码本地构建的 x86-64 Linux 静态可执行文件 | [上游 LICENSE](../third_party/iperf3/LICENSE);[构建记录](../third_party/iperf3/component.txt) | 随二进制保留版权和完整许可声明;目标发行版兼容性仍待验收 | 2026-10-04:官方源码摘要,本地构建与本机执行已核对 |
-| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | v6 离线包构建时纳入归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可和版权声明;传递依赖声明仍待正式发布前审查 | 2026-10-04:官方归档摘要与本机运行版本一致 |
-| nftables 及 10 个运行库 | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`;组合归档 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb` | [Debian 官方软件包仓库](https://deb.debian.org/debian/) | 各包许可证见归档内 `usr/share/doc/<package>/copyright` | v6 离线包中供节点计量使用的私有 nft 运行时,不安装到系统软件包数据库 | [包名与 SHA-256 记录](../third_party/nft/component.txt) | 随分发包保留各包原始版权文件;跨发行版兼容性仍待目标机验收 | 2026-10-04:各 `.deb` 与 Debian 软件包索引散列匹配;本机解析配额语法通过 |
+| Tailscale | `1.102.4`;官方 amd64 静态归档 SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [官方 Linux 发布包](https://pkgs.tailscale.com/stable/) | BSD-3-Clause,依据上游 LICENSE | v6 离线包构建时纳入归档,目标机安装客户端和守护进程 | [上游许可证](../third_party/tailscale/LICENSE);[依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md);[专利授权](../third_party/tailscale/PATENTS);[构件记录](../third_party/tailscale/component.txt) | 随离线包保留上游许可,专利授权和对应版本依赖清单;完整传递依赖许可文本仍待正式发布前核查 | 2026-10-04:官方归档摘要与本机运行版本一致;上游标签中的声明文件已随附 |
+| nftables 及 10 个运行库 | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`;运行归档 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`;对应源码归档 SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [Debian 官方软件包仓库](https://deb.debian.org/debian/) | 各包许可证见归档内 `usr/share/doc/<package>/copyright` | v6 离线包中供节点计量使用的私有 nft 运行时,不安装到系统软件包数据库 | [包名与 SHA-256 记录](../third_party/nft/component.txt);[源码清单](../third_party/nft/source-manifest.json) | 随同一离线包提供对应原始源码及 Debian 打包补丁;跨发行版兼容性仍待目标机验收 | 2026-10-04:各 `.deb` 与源码文件均和 Debian 索引散列匹配;本机解析配额语法通过 |
 
 现有项目记录将本项目的许可证标为 GPL-3.0([LICENSE][local-link-009]),并将重新分发 GPL 许可的 sing-box 可执行文件作为选择该许可证的理由;[决策][local-link-010]保留了其理由及被否决的替代方案.先前记录称 `vps-webserver` 上游采用 Apache-2.0,在本项目中以 GPL-3.0 重新分发.本清单记录了为 v2.0.0 核验的文件与条款;不提供独立的法律意见.
 
@@ -123,6 +123,20 @@ MIT 版权及许可声明与客户端库一同随附.
 - 构建:在 Ubuntu 22.04 x86-64 上运行 `./configure --enable-static-bin --disable-shared --without-sctp && make -j2`,随后对 `src/iperf3` 运行 `strip`;源码未修改,二进制 SHA-256 见上表.
 - 分发: `third_party/iperf3/iperf3`,BSD-3-Clause 版权和完整许可声明随同放在 [`third_party/iperf3/LICENSE`](../third_party/iperf3/LICENSE).安装后使用 `$PREFIX/vendor/iperf3/iperf3`.
 - 边界:构建不含 SCTP 和 OpenSSL 身份验证;glibc 静态链接的地址解析在较旧发行版上仍需实际验收.项目的限时 TCP/UDP 测试不使用这两项可选能力.
+
+---
+
+## nftables 离线运行时及对应源码
+
+完整离线包同时包含 `third_party/nft/nft-runtime-bullseye.tar.gz` 和 `third_party/nft/nft-sources-bullseye.tar.gz`.前者是从 11 个 Debian 11 amd64 `.deb` 中按原字节提取的可执行文件,动态库与 `usr/share/doc/<package>/copyright`;后者包含这 11 个二进制包对应的 10 组完整上游源码归档,Debian 打包补丁和源包描述文件.各文件名,大小和 SHA-256 由[源码清单](../third_party/nft/source-manifest.json)固定;构建机通过[资源获取脚本](../tools/build_offline/fetch_assets.py)从 Debian 官方仓库下载并校验.目标机安装不需要下载或安装 `.deb`.
+
+本项目没有修改这些源码或 `.deb` 中的构件字节;重新打包只改变放置路径.需要重建时,可从源包描述文件及补丁恢复 Debian 11 的对应源码树.目标机上的私有 nftables 运行时不替换系统已有的 `nft` 命令,仅由节点计量辅助程序调用.Debian 13 测试机已验证命令执行,其他支持的发行版尚未实机验收.
+
+---
+
+## Tailscale 客户端声明
+
+随附的 Tailscale v1.102.4 静态归档来自官方 Linux 发布站点,目标机只提取客户端与守护进程.本项目保留该标签的原始 [BSD-3-Clause 许可证](../third_party/tailscale/LICENSE),[专利授权](../third_party/tailscale/PATENTS) 和 [CLI/守护进程依赖清单](../third_party/tailscale/DEPENDENCY_NOTICES.md).依赖清单逐项链接上游许可证;当前只核对了它与指定 Tailscale 标签文件的一致性,未逐一独立审核所有传递依赖的完整许可证文本.正式公开发布前仍需完成这项审查.
 
 ---
 

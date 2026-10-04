@@ -3,6 +3,10 @@ Source: https://deb.debian.org/debian/dists/bullseye/main/binary-amd64/Packages.
 Each included binary/library was extracted from Debian 11 amd64 packages without modification.
 The archive preserves /usr/share/doc/<package>/copyright for each package.
 Runtime archive SHA-256: 42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb
+Corresponding Debian source archive SHA-256: fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83
+The offline package includes nft-sources-bullseye.tar.gz with original source,
+Debian packaging patches, and signed source descriptors. Exact source file
+names, sizes, and SHA-256 values are pinned in source-manifest.json.
 
 Package SHA-256 values:
 nftables: a00b1bba3985c4a94c85d21e1cc25ced077456c7b1aef567e0892c149e1e5a68

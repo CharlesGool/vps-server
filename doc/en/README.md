@@ -108,6 +108,22 @@ cd /root/vps-server-v6-test
 bash deploy/install.sh
 ```
 
+A connected build host can create the test package from a **clean, committed**
+worktree; only the final `.tar.gz` is transferred to the target. The build
+host needs Python 3, Git, `dpkg-deb`, and GNU tar. The asset-fetch script
+checks fixed digests. The package includes the nftables runtime, its
+corresponding source, and the Tailscale archive:
+
+```bash
+python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
+python3 tools/build_offline/build_offline.py \
+  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
+  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
+  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
+  --version "test-$(git rev-parse --short=7 HEAD)" \
+  --output .local/vps-server-test.tar.gz
+```
+
 ## Guidance
 
 The installation summary shows the console address, administrator password,

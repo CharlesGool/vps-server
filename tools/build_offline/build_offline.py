@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TAILSCALE_SHA256 = "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
 NFT_SHA256 = "42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb"
+NFT_SOURCES_SHA256 = "fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83"
 
 
 def _tracked_source(destination):
@@ -40,7 +41,7 @@ def _tracked_source(destination):
             raise ValueError("tracked source is missing or not a file")
 
 
-def build(asset, nft_asset, output, version):
+def build(asset, nft_asset, nft_sources, output, version):
     if not re.fullmatch(r"(?:dev-local|test-[0-9a-f]{7,40}|[0-9]+\.[0-9]+\.[0-9]+)", version):
         raise ValueError("invalid package version")
     if version.startswith("test-"):
@@ -59,6 +60,9 @@ def build(asset, nft_asset, output, version):
     nft_asset = Path(nft_asset).resolve()
     if hashlib.sha256(nft_asset.read_bytes()).hexdigest() != NFT_SHA256:
         raise ValueError("nftables runtime checksum mismatch")
+    nft_sources = Path(nft_sources).resolve()
+    if hashlib.sha256(nft_sources.read_bytes()).hexdigest() != NFT_SOURCES_SHA256:
+        raise ValueError("nftables source checksum mismatch")
     with tempfile.TemporaryDirectory(prefix="vps-server-offline-") as temporary:
         staged = Path(temporary) / "vps-server"
         staged.mkdir()
@@ -69,6 +73,7 @@ def build(asset, nft_asset, output, version):
         nft_destination = staged / "third_party" / "nft" / "nft-runtime-bullseye.tar.gz"
         nft_destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(nft_asset, nft_destination)
+        shutil.copy2(nft_sources, staged / "third_party" / "nft" / "nft-sources-bullseye.tar.gz")
         (staged / "config" / "VERSION").write_text(version + "\n")
         output = Path(output).resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -81,10 +86,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tailscale-archive", required=True)
     parser.add_argument("--nft-runtime", required=True)
+    parser.add_argument("--nft-sources", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--version", required=True)
     args = parser.parse_args()
-    print(build(args.tailscale_archive, args.nft_runtime, args.output, args.version))
+    print(build(args.tailscale_archive, args.nft_runtime, args.nft_sources,
+                args.output, args.version))
 
 
 if __name__ == "__main__":

@@ -3,15 +3,19 @@
 
 import argparse
 import hashlib
+import json
 import subprocess
 import tempfile
 import urllib.request
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[2]
+
 TAILSCALE = ("https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
              "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9")
 DEBIAN = "https://deb.debian.org/debian/"
 NFT_RUNTIME_SHA256 = "42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb"
+NFT_SOURCES_SHA256 = "fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83"
 PACKAGES = (
     ("pool/main/n/nftables/nftables_0.9.8-3.1+deb11u2_amd64.deb", "a00b1bba3985c4a94c85d21e1cc25ced077456c7b1aef567e0892c149e1e5a68"),
     ("pool/main/n/nftables/libnftables1_0.9.8-3.1+deb11u2_amd64.deb", "5e1ee33354c08401f2b88ffb9544fc57385eaf3a63623f54def0adf9a9f93ab0"),
@@ -59,7 +63,29 @@ def fetch(output):
                             "--numeric-owner", "-czf", str(runtime), "-C", str(root), "."], check=True)
         if not verified(runtime, NFT_RUNTIME_SHA256):
             raise ValueError("assembled nftables runtime checksum mismatch")
-    return tailscale, runtime
+    sources = output / "nft-sources-bullseye.tar.gz"
+    if not verified(sources, NFT_SOURCES_SHA256):
+        manifest = json.loads((ROOT / "third_party" / "nft" / "source-manifest.json").read_text())
+        with tempfile.TemporaryDirectory(prefix="vps-nft-source-") as temporary:
+            root = Path(temporary) / "root"
+            root.mkdir()
+            for package, metadata in sorted(manifest["packages"].items()):
+                package_dir = root / package
+                package_dir.mkdir()
+                for item in metadata["files"]:
+                    filename = item["name"]
+                    if Path(filename).name != filename:
+                        raise ValueError("unsafe source filename")
+                    target = package_dir / filename
+                    download(DEBIAN + metadata["directory"] + "/" + filename,
+                             target, item["sha256"])
+                    if target.stat().st_size != item["size"]:
+                        raise ValueError("source size mismatch")
+            subprocess.run(["tar", "--sort=name", "--mtime=@0", "--owner=0", "--group=0",
+                            "--numeric-owner", "-czf", str(sources), "-C", str(root), "."], check=True)
+        if not verified(sources, NFT_SOURCES_SHA256):
+            raise ValueError("assembled nftables source checksum mismatch")
+    return tailscale, runtime, sources
 
 
 def main():

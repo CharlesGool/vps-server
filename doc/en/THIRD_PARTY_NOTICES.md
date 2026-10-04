@@ -50,8 +50,8 @@ system dependency closure.
 | Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Bundled CJK interface font, weights 400/700 | [included license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
 | Lucide icons | Upstream `main` on 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled interface SVG icons | [included license](../../src/web/static/licenses/Lucide-ISC.txt) | Keep the included copyright and license notice | 2026-09-27: upstream SVG files |
 | iperf3 | `3.22`; bundled binary SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | Locally built x86-64 Linux static executable from official source | [upstream LICENSE](../../third_party/iperf3/LICENSE); [build record](../../third_party/iperf3/component.txt) | Retain copyright and the full license with the binary; target-distro compatibility awaits acceptance | 2026-10-04: official source digest, local build, and local execution checked |
-| Tailscale | `1.102.4`; official amd64 static archive SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [official Linux packages](https://pkgs.tailscale.com/stable/) | BSD-3-Clause per upstream LICENSE | Included when building the v6 offline package; installs the client and daemon on the target | [upstream license](../../third_party/tailscale/LICENSE); [artifact record](../../third_party/tailscale/component.txt) | Include upstream license and copyright notice in the offline package; review transitive dependency notices before formal release | 2026-10-04: official archive digest and locally running version matched |
-| nftables and 10 runtime libraries | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`; combined archive SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb` | [official Debian package repository](https://deb.debian.org/debian/) | Each package license is under `usr/share/doc/<package>/copyright` in the archive | Private nft runtime for node accounting in the v6 offline package; not installed into the system package database | [package list and SHA-256 record](../../third_party/nft/component.txt) | Include each package's original copyright files; cross-distribution compatibility awaits target-host acceptance | 2026-10-04: each `.deb` matched its Debian package-index digest; local quota-syntax parsing passed |
+| Tailscale | `1.102.4`; official amd64 static archive SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [official Linux packages](https://pkgs.tailscale.com/stable/) | BSD-3-Clause per upstream LICENSE | Included when building the v6 offline package; installs the client and daemon on the target | [upstream license](../../third_party/tailscale/LICENSE); [dependency notices](../../third_party/tailscale/DEPENDENCY_NOTICES.md); [patent grant](../../third_party/tailscale/PATENTS); [artifact record](../../third_party/tailscale/component.txt) | Include upstream license, patent grant, and version-matched dependency notices in the offline package; review full transitive dependency license texts before formal release | 2026-10-04: official archive digest and locally running version matched; notice files from the upstream tag are included |
+| nftables and 10 runtime libraries | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`; runtime archive SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`; corresponding source archive SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [official Debian package repository](https://deb.debian.org/debian/) | Each package license is under `usr/share/doc/<package>/copyright` in the archive | Private nft runtime for node accounting in the v6 offline package; not installed into the system package database | [package list and SHA-256 record](../../third_party/nft/component.txt); [source manifest](../../third_party/nft/source-manifest.json) | Provide the corresponding original source and Debian packaging patches in the same offline package; cross-distribution compatibility awaits target-host acceptance | 2026-10-04: each `.deb` and source file matched its Debian index digest; local quota-syntax parsing passed |
 
 The existing project record identifies GPL-3.0 for this project ([LICENSE][local-link-009]) and records the redistribution of a GPL-licensed sing-box executable as its reason; [Decisions][local-link-010] retains the rationale and rejected alternatives. The prior record describes `vps-webserver` as Apache-2.0 upstream and redistributed here under GPL-3.0. This inventory records the files and terms checked for v2.0.0; it does not provide an independent legal opinion.
 
@@ -168,6 +168,45 @@ The MIT copyright and license notice is bundled with the client library.
 - Limits: the build omits SCTP and OpenSSL authentication. Static glibc
   address resolution on older target distributions still needs acceptance;
   this project's time-limited TCP/UDP test uses neither optional feature.
+
+---
+
+## Offline nftables runtime and corresponding source
+
+The complete offline package includes both
+`third_party/nft/nft-runtime-bullseye.tar.gz` and
+`third_party/nft/nft-sources-bullseye.tar.gz`. The former contains executables,
+dynamic libraries, and `usr/share/doc/<package>/copyright` files extracted
+byte-for-byte from 11 Debian 11 amd64 `.deb` packages. The latter contains
+the 10 complete upstream source groups corresponding to those 11 binary
+packages, Debian packaging patches, and source-package description files.
+The [source manifest](../../third_party/nft/source-manifest.json) fixes each
+filename, size, and SHA-256. On the build host, the
+[asset-fetch script](../../tools/build_offline/fetch_assets.py) downloads and
+checks them against the official Debian repository. Target installation does
+not download or install `.deb` packages.
+
+This project has not modified those sources or the artifact bytes within the
+`.deb` packages; repackaging changes only their placement. The Debian 11
+source tree can be reconstructed from the source-package descriptions and
+patches when rebuilding is needed. The target's private nftables runtime does
+not replace any existing system `nft` command; only the node-accounting helper
+uses it. The command ran successfully on the Debian 13 test host. Other
+supported distributions have not yet had live-host acceptance.
+
+---
+
+## Tailscale client notices
+
+The included Tailscale v1.102.4 static archive comes from the official Linux
+release site; target installation extracts only the client and daemon. This
+project retains the tag's original [BSD-3-Clause license](../../third_party/tailscale/LICENSE),
+[patent grant](../../third_party/tailscale/PATENTS), and
+[CLI/daemon dependency notices](../../third_party/tailscale/DEPENDENCY_NOTICES.md).
+The dependency notices link to upstream licenses for each item. So far, only
+their match to the specified Tailscale tag has been checked; the complete
+license text for each transitive dependency has not been independently
+reviewed. That review remains required before a formal public release.
 
 ---
 

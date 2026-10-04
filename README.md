@@ -81,6 +81,19 @@ cd /root/vps-server-v6-test
 bash deploy/install.sh
 ```
 
+有网络的构建机可从**干净且已提交**的工作树制作测试包;目标机只接收最后的 `.tar.gz`.构建机需要 Python 3,Git,`dpkg-deb` 和 GNU tar,资源获取脚本会校验固定摘要.包内同时提供 nftables 运行文件,相应源码及 Tailscale 归档:
+
+```bash
+python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
+python3 tools/build_offline/build_offline.py \
+  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
+  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
+  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
+  --version "test-$(git rev-parse --short=7 HEAD)" \
+  --output .local/vps-server-test.tar.gz
+```
+
+
 ## 指南
 
 安装摘要会显示控制台地址,管理员密码和已安装模块.公开页面默认关闭;在控制台 Home 启用后,从另一台机器访问 `http://<ip>/` 和 `https://<ip>/` 验证 80/443 可达性.HTTPS 使用自签名证书.用 `systemctl status vps-server-web` 检查服务,再登录控制台管理模块,代理节点和 FRP.

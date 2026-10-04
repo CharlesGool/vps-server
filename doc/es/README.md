@@ -81,6 +81,18 @@ cd /root/vps-server-v6-test
 bash deploy/install.sh
 ```
 
+En un equipo de construcción con acceso a la red se puede crear el paquete de prueba desde un árbol de trabajo **limpio y ya confirmado en Git**; la máquina de destino solo recibe el `.tar.gz` final. El equipo de construcción necesita Python 3, Git, `dpkg-deb` y GNU tar. El script que obtiene los recursos comprueba sus hashes fijos. El paquete contiene el entorno de ejecución de nftables, su código fuente correspondiente y el archivo Tailscale:
+
+```bash
+python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
+python3 tools/build_offline/build_offline.py \
+  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
+  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
+  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
+  --version "test-$(git rev-parse --short=7 HEAD)" \
+  --output .local/vps-server-test.tar.gz
+```
+
 ## Orientaciones
 
 El resumen del instalador muestra la dirección de la consola, la contraseña administrativa y los módulos instalados. Las páginas públicas están desactivadas por defecto; después de habilitarlas en Home, comprueba desde otra máquina la accesibilidad de los puertos 80 y 443 en `http://<ip>/` y `https://<ip>/`. HTTPS usa un certificado autofirmado. Comprueba el servicio con `systemctl status vps-server-web` y entra en la consola para administrar módulos, nodos proxy y FRP.

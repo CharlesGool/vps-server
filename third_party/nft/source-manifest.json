@@ -1,0 +1,235 @@
+{
+  "distribution": "Debian bullseye main",
+  "packages": {
+    "gmp": {
+      "directory": "pool/main/g/gmp",
+      "files": [
+        {
+          "name": "gmp_6.2.1+dfsg-1+deb11u1.dsc",
+          "sha256": "4c09eb0a1c333fc5e67184a18f050af0f46f7f0fdeb533557bebd89df07c137b",
+          "size": 2181
+        },
+        {
+          "name": "gmp_6.2.1+dfsg.orig.tar.xz",
+          "sha256": "c6ba08e3f079260ab90ff44ab8801eae134cd62cd78f4aa56317c0e70daa40cb",
+          "size": 1853476
+        },
+        {
+          "name": "gmp_6.2.1+dfsg-1+deb11u1.debian.tar.xz",
+          "sha256": "3cde187d542f5c095c6db8b76ec5252353e0413b492c57eb2e67ed3c43f40172",
+          "size": 21920
+        }
+      ],
+      "version": "2:6.2.1+dfsg-1+deb11u1"
+    },
+    "iptables": {
+      "directory": "pool/main/i/iptables",
+      "files": [
+        {
+          "name": "iptables_1.8.7-1.dsc",
+          "sha256": "994249f1cd6d8056d8eb85082338bf87ae529fff5f4a2b8eab02a0dcf7c0b302",
+          "size": 2719
+        },
+        {
+          "name": "iptables_1.8.7.orig.tar.bz2",
+          "sha256": "c109c96bb04998cd44156622d36f8e04b140701ec60531a10668cfdff5e8d8f0",
+          "size": 717862
+        },
+        {
+          "name": "iptables_1.8.7-1.debian.tar.xz",
+          "sha256": "d885495f8d1bf7706c70668adff6891c44527cad5506ece9d1944ce245d1dd69",
+          "size": 23744
+        }
+      ],
+      "version": "1.8.7-1"
+    },
+    "jansson": {
+      "directory": "pool/main/j/jansson",
+      "files": [
+        {
+          "name": "jansson_2.13.1-1.1.dsc",
+          "sha256": "800bac1bd7231e41ac5fba8fa632d80894b2961d4d7d41037655b224c1f73d4e",
+          "size": 2002
+        },
+        {
+          "name": "jansson_2.13.1.orig.tar.gz",
+          "sha256": "f4f377da17b10201a60c1108613e78ee15df6b12016b116b6de42209f47a474f",
+          "size": 531924
+        },
+        {
+          "name": "jansson_2.13.1-1.1.debian.tar.xz",
+          "sha256": "e4f72193800b35acf40c6db2dc4404980a56ee8e1244666ea20e81a04dd69d15",
+          "size": 5364
+        }
+      ],
+      "version": "2.13.1-1.1"
+    },
+    "libbsd": {
+      "directory": "pool/main/libb/libbsd",
+      "files": [
+        {
+          "name": "libbsd_0.11.3-1+deb11u1.dsc",
+          "sha256": "c5c817a1c86a7821c76e6e73d54fd018de8b022a0177da670b90a4f8d8dfbfb0",
+          "size": 2324
+        },
+        {
+          "name": "libbsd_0.11.3.orig.tar.xz",
+          "sha256": "ff95cf8184151dacae4247832f8d4ea8800fa127dbd15033ecfe839f285b42a1",
+          "size": 399712
+        },
+        {
+          "name": "libbsd_0.11.3.orig.tar.xz.asc",
+          "sha256": "213f30c9537e2a180ebdad6445402ea879f83c3a85907f7509ae7f7304f7ce1b",
+          "size": 833
+        },
+        {
+          "name": "libbsd_0.11.3-1+deb11u1.debian.tar.xz",
+          "sha256": "9745c6b40e3d719da54ed3da6a266a5e6c58ff823e70ba87244a5cf9c44cb9b9",
+          "size": 17980
+        }
+      ],
+      "version": "0.11.3-1+deb11u1"
+    },
+    "libedit": {
+      "directory": "pool/main/libe/libedit",
+      "files": [
+        {
+          "name": "libedit_3.1-20191231-2.dsc",
+          "sha256": "422c4cab3b047b62142eef4f77995fd1cd0f424c52ffeae953935e241d3aaa81",
+          "size": 2208
+        },
+        {
+          "name": "libedit_3.1-20191231.orig.tar.gz",
+          "sha256": "dbb82cb7e116a5f8025d35ef5b4f7d4a3cdd0a3909a146a39112095a2d229071",
+          "size": 516801
+        },
+        {
+          "name": "libedit_3.1-20191231-2.debian.tar.xz",
+          "sha256": "afb4656959bfa61817d0bc1982f2628373e84b251a148edb7da3e3c10645366c",
+          "size": 14576
+        }
+      ],
+      "version": "3.1-20191231-2"
+    },
+    "libmd": {
+      "directory": "pool/main/libm/libmd",
+      "files": [
+        {
+          "name": "libmd_1.0.3-3.dsc",
+          "sha256": "c3be656dc94c906898358e1d27394e1aec1769a0b5e09e8a4e8cace735ce9967",
+          "size": 2248
+        },
+        {
+          "name": "libmd_1.0.3.orig.tar.xz",
+          "sha256": "5a02097f95cc250a3f1001865e4dbba5f1d15554120f95693c0541923c52af4a",
+          "size": 258584
+        },
+        {
+          "name": "libmd_1.0.3.orig.tar.xz.asc",
+          "sha256": "690c82c27026093e0367b24de5f786b29f6cedacbae67bad3199190689940d3d",
+          "size": 833
+        },
+        {
+          "name": "libmd_1.0.3-3.debian.tar.xz",
+          "sha256": "90f09c473c5ff61e3d937c656f12470610cc731cf9061490f651293d04f3c385",
+          "size": 10104
+        }
+      ],
+      "version": "1.0.3-3"
+    },
+    "libmnl": {
+      "directory": "pool/main/libm/libmnl",
+      "files": [
+        {
+          "name": "libmnl_1.0.4-3.dsc",
+          "sha256": "9dc308ffade8cc0cb7a7ee8925e25f338121f642a9a9caef535effd893d4830a",
+          "size": 2071
+        },
+        {
+          "name": "libmnl_1.0.4.orig.tar.bz2",
+          "sha256": "171f89699f286a5854b72b91d06e8f8e3683064c5901fb09d954a9ab6f551f81",
+          "size": 301270
+        },
+        {
+          "name": "libmnl_1.0.4-3.debian.tar.xz",
+          "sha256": "7f5a5c246ee6d6d65efd01db289886c0ea986546f112e70c3006b50d0e6fabc1",
+          "size": 7780
+        }
+      ],
+      "version": "1.0.4-3"
+    },
+    "libnftnl": {
+      "directory": "pool/main/libn/libnftnl",
+      "files": [
+        {
+          "name": "libnftnl_1.1.9-1.dsc",
+          "sha256": "2bea0448e0d6b71066f11baa749a5d658b9babd8c7ace8c4e2a1b0706a74ed75",
+          "size": 2396
+        },
+        {
+          "name": "libnftnl_1.1.9.orig.tar.bz2",
+          "sha256": "e9b21a6f9a41f9e72aff696cc842e4a9a78ec8d281aec188f3e2b7a21db94b9a",
+          "size": 389639
+        },
+        {
+          "name": "libnftnl_1.1.9.orig.tar.bz2.asc",
+          "sha256": "bbf3c07f98a37d95c40db870ccf04117d13c1d5a1afe8c802adb7ace32e98d6f",
+          "size": 833
+        },
+        {
+          "name": "libnftnl_1.1.9-1.debian.tar.xz",
+          "sha256": "b8de177c5ba486b6df1a525ce83fbf3736db8638bb3d6f16166c5499ea14b037",
+          "size": 10148
+        }
+      ],
+      "version": "1.1.9-1"
+    },
+    "ncurses": {
+      "directory": "pool/main/n/ncurses",
+      "files": [
+        {
+          "name": "ncurses_6.2+20201114-2+deb11u2.dsc",
+          "sha256": "3ec39ab5dae31895ea40ca68d9f3e1b1c701e092a383fe4e0158f66c60043f49",
+          "size": 4138
+        },
+        {
+          "name": "ncurses_6.2+20201114.orig.tar.gz",
+          "sha256": "aa3f8cfaff2a2b78f184274ec43d9da910c864e4b4d80fc47b5b48cba9154cd2",
+          "size": 3539796
+        },
+        {
+          "name": "ncurses_6.2+20201114.orig.tar.gz.asc",
+          "sha256": "91615d9d5575f9e974e78c6aca55e1885f42d1b2600cebec407be4471bb7a27d",
+          "size": 265
+        },
+        {
+          "name": "ncurses_6.2+20201114-2+deb11u2.debian.tar.xz",
+          "sha256": "c0f89212206e4c9dc5e141e2588ba82ea76051a04fccc5dc84075a358b3a6704",
+          "size": 54056
+        }
+      ],
+      "version": "6.2+20201114-2+deb11u2"
+    },
+    "nftables": {
+      "directory": "pool/main/n/nftables",
+      "files": [
+        {
+          "name": "nftables_0.9.8-3.1+deb11u2.dsc",
+          "sha256": "e661d31e3ef7689c4fbd561d286279fb5c7f21d7a1261d905bcbba1eb48120f1",
+          "size": 2515
+        },
+        {
+          "name": "nftables_0.9.8.orig.tar.bz2",
+          "sha256": "60fc004656dae4fefc4901c939c9d64120b4dedb49738e420a9a34989f108fe4",
+          "size": 879516
+        },
+        {
+          "name": "nftables_0.9.8-3.1+deb11u2.debian.tar.xz",
+          "sha256": "f25d1c2a6142a58f403dc5880c25d543057e9c63bde1477548395d15ceef9385",
+          "size": 27940
+        }
+      ],
+      "version": "0.9.8-3.1+deb11u2"
+    }
+  }
+}

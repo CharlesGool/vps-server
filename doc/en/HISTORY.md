@@ -779,3 +779,28 @@ The anytls node was preserved across upgrades by reading its port and password f
 ## 2026-10-04 Handoff before switching to v6.0.0 development
 
 The public `release/v5.1.1-test.2` branch stopped at `a03718d`, which already included the FRPS display repair, doubled traffic accounting, visitor-history clearing, and short-lived module logs. An uncommitted local v5.1.1 draft also recorded a Lucky entry, monthly reset behavior, masked interface addresses, and stale module-status cleanup, but it did not produce another test artifact. The operator then requested that AnyTLS be fully integrated into the unified proxy, that Tailscale be installable offline, and that the formal target change to v6.0.0. The draft v5.1.1 changelog was therefore not retained as a formal entry. Acceptance of the earlier test branch does not cover the new unified service or offline installation path.
+
+## 2026-10-04 v6 offline test-candidate iteration
+
+Starting from an older Web installation with state layout `1`, the test host
+was upgraded in stages with Git-free archives to `test-b80621d`. Review of the
+first package found that the old builder would copy Git-excluded directories. All
+draft packages that existed only locally were deleted, and the builder was
+changed to copy only committed files. The first iperf3-window port registration
+failed because the Web sandbox could not create an atomic temporary file beside
+`PORTS.md`. A later version delegated registration to a systemd helper with
+fixed arguments; target-host retesting passed. The module helper had passed a
+dual-log object without `fileno()` directly to a subprocess, so FRPS
+reinstallation exited before starting and the job remained in the `running`
+state. Streaming subprocess output restored module history and terminal job
+status. The dedicated FRPS reinstall path then lacked port registration;
+`b80621d` added registration before startup and rollback on failure, and the
+target-host round trip passed.
+
+The test host also confirmed that Lucky's `AllowInternetaccess=false` does not
+mean a `localhost`-only bind: the process listened on a wildcard address and
+its HTTP management page was reachable from the same LAN. The original button
+opened the browser machine's `127.0.0.1`; it now uses the current server
+address. These observations cover only this test host and current build.
+Tailscale has not yet been connected to an account, and real proxy traffic and
+migration from the old two-service arrangement still need acceptance.
