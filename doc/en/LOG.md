@@ -32,6 +32,8 @@ metadata:
 
 ## Bugs
 
+- [ ] 2026-10-04 [P1] FRPS editing always returned "FRP update failed": the operator's target-host `PORTS.md` had a Web entry but no entry for the current FRPS port. `src/web/frp_control.py` required that entry before invoking the FRPS setup script, so both token-only and port edits were rejected. The current source registers the configured FRPS port under the registry lock while preserving checks against other services' entries. Isolated checks covered token edits, port changes, rollback on failure, and foreign ownership. The corrected source has not been retested on the target host and has no verified fix version yet.
+
 - [x] 2026-10-04 Complete uninstall missed FRPC instance data and `PORTS.md` entries: `3335a7f` first added cleanup, but the operator reproduced an old template without an ownership marker being classified `unowned`. FRPC configuration and registrations remained, and a Web-only reinstall listed the old client. Source change `01b76ba` includes console-recognizable instances with old templates in a default complete uninstall. Isolated local checks passed; the operator confirmed cleanup on the test host after rerunning it. Fixed in `v5.1.0`; this session did not independently connect to the host.
 
 - [x] 2026-10-04 [P1] A non-ASCII administrator password could be saved but could not log in: `src/web/features/auth.py` accepted Chinese in `change_admin_password`, while old login and Security verification called `hmac.compare_digest` with strings. Isolated checks reproduced a TypeError. Source now compares UTF-8 bytes while preserving password validation and session invalidation. The operator confirmed login; fixed in `v5.1.0`.
@@ -42,7 +44,7 @@ metadata:
 
 - [ ] 2026-09-12 Decide whether the shared `_db_lock` needs decoupling: every public-page hit takes a process-wide lock and does a synchronous SQLite write, and the console shares that lock, so in principle anonymous flooding can slow an authenticated page. **Measured and not reproduced**: 60 concurrent flooders left console latency at 0.4–0.6 ms, identical to idle. Keep this record so the mechanism is not rediscovered as new; do not rearchitect without a measurement showing harm.
 
-The remaining unverified defects are Python 3.9 installation and Web startup, and the `_db_lock` performance concern without demonstrated harm. Earlier branch status is in [Historical records](HISTORY.md).
+The remaining unverified defects are the FRPS editor correction, Python 3.9 installation and Web startup, and the `_db_lock` performance concern without demonstrated harm. Earlier branch status is in [Historical records](HISTORY.md).
 
 ## Limitations
 
@@ -71,6 +73,13 @@ The dated decisions below preserve both rejected alternatives and their costs. A
 | 2026-09-12 — Port 443 uses a self-signed certificate; no ACME, no domain | - **Rejected:** certbot / acme.sh against a real domain — the page exists to answer "can you reach this IP", and a browser warning page already proves reachability. A domain dependency and a renewal timer buy nothing for that question. - **Rejected:** Serving only port 80 — that cannot distinguish "the host is unreachable" from "443 specifically is blocked", which is the common case worth detecting. - **Cost:** Every HTTPS visit shows a certificate warning. Expected; do not "fix" it with HSTS or a pinned exception. |
 | 2026-09-12 — The sing-box binary ships in the repository, so the whole project is GPL-3.0 | - **Rejected:** Downloading sing-box at install time to keep the repo small and the licence Apache-2.0 — `Anytsl-Serve` already rejected exactly this to keep installation working without GitHub access; re-deciding it here would silently undo that goal. - **Rejected:** Dropping the anytls module to preserve `vps-webserver`'s Apache-2.0 — the brief was to combine the two projects, not to pick one. - **Cost:** ~57 MB in git, growing with every sing-box bump; and `vps-webserver`'s Apache-2.0 code is redistributed here under GPL-3.0. |
 | 2026-09-12 — Upstream projects are vendored, not superseded and not submoduled | - **Rejected:** Letting vps-server replace `vps-webserver` and `Anytsl-Serve` and archiving both — all three are to stay independently maintained and independently released. - **Rejected:** git submodules pointing at the two upstream repos — a submodule cannot carry the renames this project needs (unit names, binary name, `VPSWS_` → `VPSSRV_`), and a clone would then need network access to two more repos. - **Cost:** The same code lives in three repositories and will drift. Mitigation: `.upstream-version` files record the exact upstream tag each vendored tree came from, and **MUST** be updated in the same commit as any refresh. |
+
+<a id="development-updates"></a>
+
+## Development Updates
+
+- FRPS editing registers this project's current port when its `PORTS.md` entry is missing, while continuing to reject ports owned by other services. A failed port change removes the new reservation.
+- The change passed isolated local checks; an operator still needs to verify token edits, port changes, and the service listener on the target host.
 
 ## Handoff
 
