@@ -23,11 +23,18 @@
 .module-card button:disabled { opacity:.55; cursor:wait; }
 .module-card .motion-switch { min-width:3.4rem; }
 .module-card .danger { background:var(--error-solid); border-color:var(--error-solid); color:var(--on-error); }
-.module-log { margin-top:1.5rem; border-top:1px solid var(--card-border); padding-top:1rem; }
-.module-log h2 { font-size:1rem; }
-.module-log pre { max-height:24rem; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
+.module-progress { margin-top:1.5rem; border-top:1px solid var(--card-border); padding-top:1rem; }
+.module-progress[hidden] { display:none; }
+.module-progress h2 { font-size:1rem; }
+.module-progress pre { max-height:12rem; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
 .module-notice { padding:.75rem 1rem; border-radius:8px; background:var(--surface-2); }
 .module-manage { display:inline-flex; align-items:center; min-height:2.75rem; padding:.55rem 1rem; border:1px solid var(--accent); border-radius:8px; background:var(--accent); color:var(--on-accent); font-weight:600; text-decoration:none; }
+.log-sources { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0 1.5rem; }
+.log-sources a { display:inline-flex; align-items:center; min-height:2.75rem; padding:.5rem .75rem; border:1px solid var(--card-border); border-radius:8px; color:var(--accent-strong); text-decoration:none; }
+.log-sources a:hover,.log-sources a[aria-current="page"] { border-color:var(--accent); background:var(--surface-2); }
+.log-sources a:focus-visible { outline:2px solid var(--accent-strong); outline-offset:2px; }
+.logs-page h2 { font-size:1rem; }
+.logs-output { max-height:65vh; overflow:auto; padding:1rem; border-radius:8px; background:var(--surface-2); color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; }
 .reference-select { position:relative; min-width:0; }
 .reference-native-select { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; opacity:0; pointer-events:none; }
 .reference-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:48px; padding:10px 14px; border:1px solid var(--card-border); border-radius:8px; background:var(--card-bg); color:var(--fg); text-align:start; font-weight:600; }

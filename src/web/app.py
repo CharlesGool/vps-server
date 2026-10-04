@@ -80,6 +80,7 @@ from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
 from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
+from module_manager import history_path as module_history_path
 from node_accounting import billable_bytes
 from module_manager import installed_modules, save_status as save_module_status
 from module_manager import iperf_binary

@@ -18,6 +18,54 @@ def module_job_text(t, job, names):
 
 
 class ModulesMixin:
+    def page_logs(self, lang, query_lang, parsed):
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        source = self.context.parse_qs(parsed.query).get("source", ["modules"])[0]
+        sources = (
+            ("modules", t["logs_source_modules"], ()),
+            ("web", "Web", ("vps-server-web.service",)),
+            ("meter", t["logs_source_meter"], ("vps-server-node-meter.service",)),
+            ("anytls", "AnyTLS", ("vps-server-anytls.service",)),
+            ("proxy", "Singbox", ("vps-server-proxy.service",)),
+            ("frps", "FRPS", ("vps-server-frps.service",)),
+            ("frpc", "FRPC", tuple(self.context.frpc_unit(name) for name in self.context.frpc_names())),
+            ("lucky", "Lucky", ("vps-server-lucky.service",)),
+        )
+        selected = next((item for item in sources if item[0] == source), None)
+        if selected is None:
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        if source == "modules":
+            try:
+                output = self.context.module_history_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
+            except FileNotFoundError:
+                try:
+                    output = self.context.module_log_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
+                except FileNotFoundError:
+                    output = ""
+        elif selected[2] and self.context.shutil.which("journalctl"):
+            try:
+                command = ["journalctl", "--no-pager", "-o", "short-iso", "-n", "1000"]
+                for unit in selected[2]:
+                    command.extend(("-u", unit))
+                result = self.context.subprocess.run(command, capture_output=True, text=True, timeout=15)
+                output = result.stdout if result.returncode == 0 else t["logs_unavailable"]
+            except (OSError, self.context.subprocess.TimeoutExpired):
+                output = t["logs_unavailable"]
+        else:
+            output = ""
+        links = "".join(
+            f'<a href="/settings/logs?source={key}" {"aria-current=page" if key == source else ""}>{esc(label)}</a>'
+            for key, label, _ in sources
+        )
+        body = (f'<div class="card wide logs-page"><h1>{esc(t["module_detailed_logs"])}</h1>'
+                f'<p class="muted">{esc(t["logs_recent_note"])}</p>'
+                f'<nav class="log-sources" aria-label="{esc(t["module_detailed_logs"], quote=True)}">{links}</nav>'
+                f'<h2>{esc(selected[1])}</h2><pre class="logs-output" role="log">{esc(output or t["logs_empty"])}</pre></div>')
+        return self.send_html(200, self.render_page(t["module_detailed_logs"], body, lang,
+                                                    active="settings", back_href="/settings/modules"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
     def page_module_not_installed(self, lang, query_lang, title, module_name, active=None):
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
@@ -91,16 +139,29 @@ class ModulesMixin:
         notice_text = module_job_text(t, job, {key: title for key, title, _ in catalogue})
         notice = (f'<p class="module-notice" role="status">{esc(notice_text)}</p>'
                   if job.get("state") in ("queued", "running", "done", "failed") else "")
-        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy else ''
-        try:
-            log = self.context.module_log_path(self.context.BASE_DIR).read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            log = ""
-        log_html = (f'<section class="module-log"><h2>{esc(t["module_log"])}</h2>'
-                    f'<pre role="log">{esc(log)}</pre></section>') if log else ""
-        body = (f'<div class="card module-page"><h1>{esc(t["modules_heading"])}</h1>'
+        progress_job = job.get("module") in ("iperf3", "proxy_nodes", "frps", "frpc") and job.get("action") in ("install", "uninstall")
+        progress = ""
+        progress_recent = False
+        last_output = 0
+        if progress_job:
+            try:
+                log_path = self.context.module_log_path(self.context.BASE_DIR)
+                modified = log_path.stat().st_mtime
+                if modified >= job.get("at", 0) - 2:
+                    last_output = int(modified * 1000)
+                    progress_recent = self.context.time.time() - modified < 30
+                    if progress_recent:
+                        progress = "\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-20:])
+            except (OSError, TypeError, ValueError):
+                pass
+        progress_html = (f'<section class="module-progress" data-last-output="{last_output}" {"hidden" if not progress_recent else ""}>'
+                         f'<h2>{esc(t["module_progress"])}</h2><pre role="log">{esc(progress)}</pre></section>'
+                         if progress_job else "")
+        refresh_script = '<script src="/static/module-status.js" defer></script>' if busy or progress_recent else ''
+        body = (f'<div class="card module-page" data-busy="{str(busy).lower()}"><h1>{esc(t["modules_heading"])}</h1>'
                 f'<p>{esc(t["modules_note"])}</p>{notice}'
-                f'<div class="module-grid">{"".join(cards)}</div>{log_html}</div>'
+                f'<div class="module-grid">{"".join(cards)}</div>{progress_html}'
+                f'<p><a href="/settings/logs">{esc(t["module_detailed_logs"])}</a></p></div>'
                 f'<script src="/static/module-controls.js" defer></script>'
                 f'{refresh_script}')
         return self.send_html(200, self.render_page(t["modules_heading"], body, lang,
@@ -274,6 +335,8 @@ class ModulesMixin:
     def route_module_admin(self, method, path, lang, query_lang):
         if method == "GET" and path == "/settings/modules":
             self.page_modules(lang, query_lang)
+        elif method == "GET" and path == "/settings/logs":
+            self.page_logs(lang, query_lang, self.context.urlsplit(self.path))
         elif method == "POST" and path == "/settings/modules/action":
             self.handle_module_action(lang)
         else:

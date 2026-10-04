@@ -7,6 +7,7 @@ body or shell text becomes a command.
 
 import fcntl
 from contextlib import redirect_stderr, redirect_stdout
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -97,6 +98,24 @@ def status_path(prefix):
 
 def log_path(prefix):
     return state_data_dir() / "module-job.log"
+
+def history_path(prefix):
+    return state_data_dir() / "module-history.log"
+
+
+class JobOutput:
+    def __init__(self, current, history):
+        self.current = current
+        self.history = history
+
+    def write(self, value):
+        self.current.write(value)
+        self.history.write(value)
+        return len(value)
+
+    def flush(self):
+        self.current.flush()
+        self.history.flush()
 
 
 def feature_enabled(prefix, feature):
@@ -620,27 +639,33 @@ def main(argv=None):
     with lock_path.open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         log = log_path(prefix)
-        with log.open("w", encoding="utf-8", buffering=1) as output, redirect_stdout(output), redirect_stderr(output):
+        history = history_path(prefix)
+        with log.open("w", encoding="utf-8", buffering=1) as current, \
+                history.open("a", encoding="utf-8", buffering=1) as archive:
             os.chmod(log, 0o600)
-            save_status(prefix, module, "running", action=action)
-            print(f"{action} {module}", flush=True)
-            try:
-                if action == "install":
-                    run_install(prefix, module)
-                elif action == "uninstall":
-                    run_uninstall(prefix, module)
-                else:
-                    run_toggle(prefix, module, action == "enable")
-            except PublicPortOccupied as exc:
-                print(f"Error: {exc}", flush=True)
-                save_status(prefix, module, "failed", action=action,
-                            reason="port_occupied", port=exc.port)
-                raise SystemExit(1)
-            except (OSError, RuntimeError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
-                print(f"Error: {exc}", flush=True)
-                save_status(prefix, module, "failed", action=action)
-                raise SystemExit(1)
-            save_status(prefix, module, "done", action=action)
+            os.chmod(history, 0o600)
+            output = JobOutput(current, archive)
+            with redirect_stdout(output), redirect_stderr(output):
+                print(f"=== {datetime.now(timezone.utc).isoformat(timespec='seconds')} {action} {module} ===", flush=True)
+                save_status(prefix, module, "running", action=action)
+                try:
+                    if action == "install":
+                        run_install(prefix, module)
+                    elif action == "uninstall":
+                        run_uninstall(prefix, module)
+                    else:
+                        run_toggle(prefix, module, action == "enable")
+                except PublicPortOccupied as exc:
+                    print(f"Error: {exc}", flush=True)
+                    save_status(prefix, module, "failed", action=action,
+                                reason="port_occupied", port=exc.port)
+                    raise SystemExit(1)
+                except (OSError, RuntimeError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
+                    print(f"Error: {exc}", flush=True)
+                    save_status(prefix, module, "failed", action=action)
+                    raise SystemExit(1)
+                save_status(prefix, module, "done", action=action)
+                print(f"Completed: {action} {module}", flush=True)
 
 
 if __name__ == "__main__":
