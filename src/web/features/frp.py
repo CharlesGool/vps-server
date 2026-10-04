@@ -53,8 +53,7 @@ class FrpMixin:
         body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frps_heading"])}</h1></div>{feedback}'
                 f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("server")}'
                 f'<h2>{esc(t["frps_heading"])}</h2></div>{server}</section></div>'
-                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
-                '<script src="/static/password-fields.js"></script>')
+                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -168,7 +167,6 @@ class FrpMixin:
                 f'{rename}{feedback}<div class="frp-structured">{editor}</div></div>')
         if name:
             body += '<script src="/static/copy.js"></script><script src="/static/frp-editor.js" defer></script>'
-        body += '<script src="/static/password-fields.js"></script>'
         return self.send_html(200, self.render_page(name if name else t['frp_new_client'], body, lang, back_href='/frpc'),
                               {'Cache-Control': 'no-store'})
 
