@@ -108,7 +108,6 @@ class IperfMixin:
         client_form = f"""
         <div class="card">
           <h2>{self.context.html.escape(t['iperf_client_heading'])}</h2>
-          <p class="muted">{self.context.html.escape(t['iperf_client_hint'])}</p>
           {client_notice}
           <form method="post" action="/iperf/client" class="iperf-client-form">
             <input type="hidden" name="csrf" value="{csrf}">
@@ -146,7 +145,6 @@ class IperfMixin:
             </form>
             {close_form}
           </div>
-          <p class="muted">{self.context.html.escape(t['iperf_howto'])}</p>
           {commands}
         </div>
         {client_form}
@@ -317,6 +315,11 @@ class IperfWindow:
                 self._deadline = self.context.time.time() + minutes * 60
                 self._arm()
                 return True, "iperf_extended"
+            owner = "vps-server-iperf3-window"
+            try:
+                self.context.reserve_owned_port(self.context.BASE_DIR, self._port, owner)
+            except (OSError, ValueError):
+                return False, "iperf_port_busy"
             try:
                 proc = self.context.subprocess.Popen(
                     [self.context.IPERF_BINARY, "--server", "--port", str(self._port)],
@@ -325,12 +328,14 @@ class IperfWindow:
                     stderr=self.context.subprocess.DEVNULL,
                 )
             except OSError:
+                self.context.release_owned_port(self.context.BASE_DIR, self._port, owner)
                 return False, "iperf_missing"
             # iperf3 exits straight away if the port is taken. Without this
             # pause the console would report an open window that is not
             # listening to anything.
             self.context.time.sleep(0.3)
             if proc.poll() is not None:
+                self.context.release_owned_port(self.context.BASE_DIR, self._port, owner)
                 return False, "iperf_port_busy"
             self._proc = proc
             self._deadline = self.context.time.time() + minutes * 60
@@ -365,6 +370,8 @@ class IperfWindow:
             self._proc = None
             self._deadline = 0.0
             self.context.firewall_port(self._port, opening=False)
+            self.context.release_owned_port(self.context.BASE_DIR, self._port,
+                                            "vps-server-iperf3-window")
 
     def _close(self):
         if self._timer is not None:
@@ -373,6 +380,8 @@ class IperfWindow:
         proc, self._proc = self._proc, None
         self._deadline = 0.0
         if proc is None:
+            self.context.release_owned_port(self.context.BASE_DIR, self._port,
+                                            "vps-server-iperf3-window")
             return
         # Withdraw the rule whatever happens to the process. A child that will
         # not die within ten seconds is a problem; a firewall left open for a
@@ -391,3 +400,5 @@ class IperfWindow:
                     print(self.context._log_text('log_iperf_stuck', pid=proc.pid), file=self.context.sys.stderr)
         finally:
             self.context.firewall_port(self._port, opening=False)
+            self.context.release_owned_port(self.context.BASE_DIR, self._port,
+                                            "vps-server-iperf3-window")

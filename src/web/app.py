@@ -80,14 +80,45 @@ from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
 from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
+from module_manager import history_path as module_history_path
+from node_accounting import billable_bytes
 from module_manager import installed_modules, save_status as save_module_status
 from module_manager import iperf_binary
+from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
+from console_port import lucky_listener_active, detect_lucky_admin
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
                          build_client as frpc_build)
+
+
+def _host_port_job(action, prefix, port, owner):
+    """Update PORTS.md outside Web's read-only parent-directory sandbox."""
+    if action not in ("reserve", "release") or Path(prefix) != BASE_DIR:
+        raise ValueError("invalid port registry request")
+    unit = "vps-server-port-" + secrets.token_hex(6)
+    result = subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                             "--unit=" + unit, "/usr/bin/python3",
+                             str(WEB_CODE_DIR / "console_port.py"), action,
+                             str(prefix), str(port), owner],
+                            capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode:
+        raise RuntimeError("port registry helper failed")
+    response = result.stdout.strip().splitlines()
+    if not response or response[-1] not in ("changed", "unchanged"):
+        raise RuntimeError("port registry helper returned no result")
+    return response[-1] == "changed"
+
+
+def reserve_owned_port(prefix, port, owner):
+    return _host_port_job("reserve", prefix, port, owner)
+
+
+def release_owned_port(prefix, port, owner):
+    return _host_port_job("release", prefix, port, owner)
+
 import features.auth as _feature_auth
 import features.modules as _feature_modules
 import features.system as _feature_system
@@ -96,6 +127,7 @@ from features.iperf_client import IperfClient
 import features.portfwd as _feature_portfwd
 import features.proxy_service as _feature_proxy
 import features.lucky as _feature_lucky
+import features.tailscale as _feature_tailscale
 import features.frp as _feature_frp
 import features.visitors as _feature_visitors
 import features.ui as _feature_ui
@@ -459,10 +491,6 @@ def watch_portfwd_switch(*args, **kwargs):
 # Nothing here writes: to change the node, re-run anytls/setup-anytls.sh.
 # ---------------------------------------------------------------------------
 
-ANYTLS_CONFIG = Path(
-    os.environ.get("VPSSRV_ANYTLS_CONFIG", "/etc/vps-server-anytls/config.json")
-)
-ANYTLS_SERVICE = os.environ.get("VPSSRV_ANYTLS_SERVICE", "vps-server-anytls.service")
 def _cert_common_name(*args, **kwargs):
     return _feature_proxy._cert_common_name(sys.modules[__name__], *args, **kwargs)
 
@@ -555,6 +583,27 @@ LUCKY_SERVICE = 'vps-server-lucky.service'
 
 def lucky_admin(*args, **kwargs):
     return _feature_lucky.lucky_admin(sys.modules[__name__], *args, **kwargs)
+
+
+def watch_lucky_port(stop_event):
+    owner = "vps-server Lucky"
+    while not stop_event.is_set():
+        try:
+            data = lucky_admin()
+            active = (bool(data) and _run_quiet(["systemctl", "is-active", "--quiet", LUCKY_SERVICE])
+                      and lucky_listener_active(data["AdminWebListenPort"]))
+            desired = data["AdminWebListenPort"] if active else None
+            rows, _ = console_port_rows(BASE_DIR.parent / "PORTS.md")
+            recorded = [row[0] for row in rows if row[1] == owner]
+            if recorded != ([desired] if desired else []):
+                unit = "vps-server-lucky-port-" + secrets.token_hex(6)
+                subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                                "--unit=" + unit, "/usr/bin/python3",
+                                str(WEB_CODE_DIR / "console_port.py"), "sync-lucky", str(BASE_DIR)],
+                               capture_output=True, text=True, timeout=30, check=True)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass  # The next poll retries without modifying Lucky's own configuration.
+        stop_event.wait(5)
 
 
 
@@ -741,6 +790,9 @@ def record_connections(*args, **kwargs):
 def recent_visitors(*args, **kwargs):
     return _feature_visitors.recent_visitors(sys.modules[__name__], *args, **kwargs)
 
+def clear_visitor_history(*args, **kwargs):
+    return _feature_visitors.clear_visitor_history(sys.modules[__name__], *args, **kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Kernel TCP table polling
@@ -807,7 +859,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
 _UI_ICON_CACHE = {}
 
 
@@ -845,6 +897,13 @@ STATIC_FILES = {
     "/static/settings-sections.js": ("application/javascript", STATIC_DIR / "settings-sections.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
+    "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
+    "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
+    "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),
+    "/static/third_party/xterm/xterm.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "xterm.js"),
+    "/static/third_party/xterm/addon-fit.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "addon-fit.js"),
+    "/static/third_party/xterm/xterm.css": ("text/css", STATIC_DIR / "third_party" / "xterm" / "xterm.css"),
+    "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
     "/static/layout-motion.js": ("application/javascript", STATIC_DIR / "layout-motion.js"),
@@ -852,7 +911,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "frp", "lucky", "login")},
+                    "changelog", "settings", "security", "modules", "frp", "lucky", "tailscale", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -888,6 +947,8 @@ from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.lucky import LuckyMixin
+from features.terminal import TerminalMixin
+from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
 from features.proxy import ProxyMixin
 from features.changelog import ChangelogMixin
@@ -895,7 +956,7 @@ from features.visitors import VisitorsMixin
 from features.public import PublicMixin
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, LuckyMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, LuckyMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -984,11 +1045,13 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self.end_headers()
         self.wfile.write(data)
 
-    def send_json(self, status, obj):
+    def send_json(self, status, obj, extra_headers=None):
         data = json.dumps(obj).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(data)
 
@@ -1061,7 +1124,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                 # the speed test depends on that connection staying up.
                 try:
                     logged_path = "/clash/sub/[redacted]" if path.startswith("/clash/sub/") else path
-                    log_visit(self.client_ip(), method, logged_path, self._last_status)
+                    if not (method == "POST" and path == "/visitors/clear" and self._last_status == 204):
+                        log_visit(self.client_ip(), method, logged_path, self._last_status)
                 except Exception as exc:
                     print(_log_text('log_visitor_write', error=exc), file=sys.stderr)
 
@@ -1088,17 +1152,18 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if not self.is_authenticated():
             destination = ("/login?next=changelog" if path == "/changelog" else
                            "/login?next=preferences" if path == "/settings" else
+                           "/login?next=terminal" if path == "/terminal" else
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
 
         page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
-                        "/portfwd": "portfwd", "/visitors": "visitors",
+                        "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
                         "/changelog": "changelog"}
         if method == "GET" and path in page_modules:
             module = page_modules[path]
             installed = installed_modules(BASE_DIR)
             managed_present = (module == "iperf3" and "iperf3" in installed or
-                               module == "proxy_nodes" and bool({"proxy", "anytls"} & installed) or
+                               module == "proxy_nodes" and "proxy" in installed or
                                module == "frp" and (bool({"frps", "frpc"} & installed) or bool(frpc_names())))
             if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
                 return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
@@ -1115,8 +1180,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if self.route_module_admin(method, path, lang, query_lang):
             return
 
-        for route in (self.route_modules, self.route_speedtest, self.route_proxy,
-                      self.route_lucky, self.route_frp, self.route_iperf,
+        for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
+                      self.route_lucky, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return
@@ -1303,6 +1368,9 @@ def main():
             pass  # signal handlers can only be installed on the main thread
 
     try:
+        # A prior Web process might have died while its temporary iperf3
+        # listener was registered. A fresh process has no live window.
+        IPERF_WINDOW.close()
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
@@ -1333,6 +1401,7 @@ def main():
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
+        threading.Thread(target=watch_lucky_port, args=(stop_event,), daemon=True).start()
 
         console.serve_forever()
     except KeyboardInterrupt:

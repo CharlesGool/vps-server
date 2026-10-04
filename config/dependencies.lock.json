@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "coverage": "Nine bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
+  "coverage": "Fourteen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
   "artifacts": [
     {
       "component": "Lucky",
@@ -73,6 +73,46 @@
       "recorded_upstream_revision": "83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8",
       "path": "src/web/static/third_party/qrcode/qrcode-utf8.js",
       "sha256": "e522d64003b332e29271fdce4993ed3ae2934c8947f41654bd324ddcfa2de301"
+    },
+    {
+      "component": "xterm.js",
+      "version": "6.0.0",
+      "upstream": "https://github.com/xtermjs/xterm.js",
+      "recorded_upstream_revision": null,
+      "path": "src/web/static/third_party/xterm/xterm.js",
+      "sha256": "14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972"
+    },
+    {
+      "component": "xterm.js",
+      "version": "6.0.0",
+      "upstream": "https://github.com/xtermjs/xterm.js",
+      "recorded_upstream_revision": null,
+      "path": "src/web/static/third_party/xterm/xterm.css",
+      "sha256": "854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6"
+    },
+    {
+      "component": "xterm.js",
+      "version": "6.0.0",
+      "upstream": "https://github.com/xtermjs/xterm.js",
+      "recorded_upstream_revision": null,
+      "path": "src/web/static/third_party/xterm/LICENSE-xterm",
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+    },
+    {
+      "component": "xterm.js Fit Addon",
+      "version": "0.11.0",
+      "upstream": "https://github.com/xtermjs/xterm.js",
+      "recorded_upstream_revision": null,
+      "path": "src/web/static/third_party/xterm/addon-fit.js",
+      "sha256": "ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527"
+    },
+    {
+      "component": "xterm.js Fit Addon",
+      "version": "0.11.0",
+      "upstream": "https://github.com/xtermjs/xterm.js",
+      "recorded_upstream_revision": null,
+      "path": "src/web/static/third_party/xterm/LICENSE-addon-fit",
+      "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f"
     }
   ],
   "exclusions": [

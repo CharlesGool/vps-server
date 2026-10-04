@@ -26,7 +26,11 @@ case "$key" in
   line_pw_seefile) fmt='  password: see %s\n' ;;
   line_lang) fmt='  language: %s (default when no cookie/query/browser match)\n' ;;
   cert_note) fmt='\nNote: using a self-signed certificate, so browsers will show a warning\nyou must click through. To use a real certificate, set VPSSRV_TLS_CERT\nand VPSSRV_TLS_KEY and re-run this installer.\n' ;;
-  to_remove) fmt='\nTo remove:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  to_remove) fmt='\nTo remove and keep data:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash deploy/uninstall.sh\nTo remove all project data:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  port_registration_failed) fmt='Could not register the %s listener in PORTS.md; its service was stopped.\n' ;;
+  nft_runtime_failed) fmt='The bundled nftables runtime is missing or invalid.\n' ;;
+  tailscale_install_failed) fmt='Tailscale installation failed; check the module log.\n' ;;
+  web_start_failed) fmt='The Web service did not start; new public port reservations were released.\n' ;;
   proxy_protocols_head) fmt='  Which protocols? Answer each one independently.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -60,7 +64,8 @@ case "$key" in
   ask_new_var) fmt='  %s [%s]: ' ;;
   upgrade_vars_unknown) fmt='The installed version did not record which settings it supported, so this cannot tell which are new. Everything it did record is carried forward; anything else takes the default documented in .env.example. Re-run and answer "n" above to review every setting.\n' ;;
   language_menu) fmt='Language:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
-  language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
+  language_choice) fmt='Choice / 选择 / Elección [%s]: ' ;;
+  language_invalid) fmt='Choose 1, 2, or 3.\n' ;;
   host_placeholder) fmt='<this-server>' ;;
   error_prefix) fmt='error: ' ;;
   public_requires_openssl) fmt='Public setup requires openssl\n' ;;
@@ -77,6 +82,7 @@ case "$key" in
   frps_port_verify) fmt='Cannot verify existing frps port; web install refused\n' ;;
   frps_console_conflict) fmt='Console port %s conflicts with existing frps bindPort\n' ;;
   node_meter_failed) fmt='Node traffic accounting or limit service failed to start; proxy services remain stopped. Check: journalctl -u vps-server-node-meter.service -e\n' ;;
+  proxy_migration_failed) fmt='Could not merge the legacy AnyTLS service into the unified proxy; installation stopped. Keep the migration backup and check the original service state.\n' ;;
   frps_install_failed) fmt='frps installation failed\n' ;;
   lucky_install_failed) fmt='Lucky installation failed\n' ;;
   lucky_port_verify) fmt='Cannot verify existing Lucky admin port; web install refused\n' ;;

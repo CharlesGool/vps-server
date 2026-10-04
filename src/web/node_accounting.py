@@ -3,8 +3,9 @@
 Upload is client -> server; download is server -> client. The caller must supply
 one isolated counter per node's unique listener port, family and direction.
 Counters are unsigned 64-bit bytes with a monotonically increasing epoch. An
-unobserved interval or reset cannot recover lost bytes: suspicion is sticky and
-requests a 1 Mbps safety limit until a new cycle begins.
+unobserved interval or reset cannot recover lost bytes: suspicion is sticky
+until a new cycle begins. Recorded totals remain lower bounds for quota
+enforcement without imposing an early speed limit.
 No kernel rules are read or installed here.
 """
 
@@ -12,12 +13,18 @@ import calendar
 import copy
 from datetime import datetime, timezone
 
-from node_inventory import InvalidInventory, advance_reset_interval, validate_inventory
+from node_inventory import InvalidInventory, advance_reset_interval, reset_interval, validate_inventory
 
 MAX_BYTES = (1 << 64) - 1
 FAMILIES = ("ipv4", "ipv6")
 DIRECTIONS = ("upload", "download")
 LIMIT_BPS = 1_000_000
+BILLABLE_MULTIPLIER = 2
+
+
+def billable_bytes(node):
+    """Count both sides of each forwarded byte against the traffic cap."""
+    return BILLABLE_MULTIPLIER * (node["upload_bytes"] + node["download_bytes"])
 
 
 def _uint(value):
@@ -146,11 +153,11 @@ def desired_policy(inventory, state, *, now):
         suspect = entry is None or entry["suspect"] or entry["samples"] is None
         expired = (node["expires_at"] is not None and
                    datetime.fromisoformat(node["expires_at"]) <= now)
-        used = node["upload_bytes"] + node["download_bytes"]
+        used = billable_bytes(node)
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
         active = node["enabled"]
         blocked = active and (expired or (capped and node["cap_action"] == "block"))
-        throttled = (capped and not blocked) or suspect
+        throttled = capped and not blocked
         def rate(direction):
             if not active or blocked:
                 return None
@@ -188,6 +195,12 @@ def advance_cycles(inventory, state, *, now):
         if node["next_reset_at"] is None:
             continue
         due = datetime.fromisoformat(node["next_reset_at"])
+        interval = reset_interval(node["reset_mode"])
+        if interval is not None and interval[1] == "months":
+            count = interval[0]
+            node["reset_mode"] = f"every:{count}:months:1"
+            due = due.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            node["next_reset_at"] = due.isoformat()
         if due > now:
             continue
         mode = node["reset_mode"]

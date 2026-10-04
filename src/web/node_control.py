@@ -24,7 +24,7 @@ import tempfile
 import uuid
 
 from node_inventory import InvalidInventory, validate_inventory
-from console_port import read_rows, serialize_rows
+from console_port import read_rows, write_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
 try:
@@ -35,7 +35,7 @@ except ImportError:
 
 LOCK_PATH = Path("/etc/vps-server-node.lock")
 BINARY = Path("/usr/local/bin/sing-box-vps-server")
-SERVICES = {"anytls": "vps-server-anytls.service", "proxy": "vps-server-proxy.service"}
+SERVICES = {"proxy": "vps-server-proxy.service"}
 PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 APP_DIR = Path(__file__).resolve().parent
 if APP_DIR.parent.name == "src":
@@ -110,7 +110,42 @@ def _reserved_ports():
         if not isinstance(rule, dict) or type(rule.get("public_port")) is not int:
             raise NodeControlError("invalid reserved port state")
         reserved.add(rule["public_port"])
+    registry = APP_DIR.parent / "PORTS.md"
+    try:
+        reserved.update(row[0] for row in read_rows(registry)[0])
+    except (OSError, ValueError) as exc:
+        raise NodeControlError("cannot read port registry") from exc
     return reserved
+
+
+def _node_port_owner(identifier):
+    return "vps-server proxy " + identifier
+
+
+def _node_port_row(port, identifier, opening):
+    """Reserve or release one proxy port under the shared host registry lock."""
+    root = APP_DIR.parent
+    registry = root / "PORTS.md"
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows, _ = read_rows(registry)
+        owner = _node_port_owner(identifier)
+        matches = [row for row in rows if row[0] == port]
+        if opening:
+            if matches:
+                if matches[0][1] == owner:
+                    return False
+                raise NodeControlError("node port already registered")
+            _free_port(port)
+            rows.append((port, owner, "0.0.0.0", date.today().isoformat()))
+        else:
+            if not matches:
+                return False
+            if matches[0][1] != owner:
+                raise NodeControlError("node port owned by another service")
+            rows = [row for row in rows if row[0] != port]
+        write_rows(registry, rows)
+        return True
 
 
 def _stage(path, payload):
@@ -141,19 +176,9 @@ def _certificate(directory, identifier, sni):
     target = Path(directory) / "certs" / identifier / uuid.uuid4().hex
     target.mkdir(mode=0o700, parents=True)
     cert, key = target / "fullchain.pem", target / "key.pem"
-    # CN is limited to 64 characters; SAN carries the full requested name.
     try:
-        ipaddress.ip_address(sni)
-        san = "IP:" + sni
-    except ValueError:
-        san = "DNS:" + sni
-    try:
-        subprocess.run(["openssl", "req", "-x509", "-nodes", "-newkey", "ec",
-                        "-pkeyopt", "ec_paramgen_curve:prime256v1", "-keyout", str(key),
-                        "-out", str(cert), "-days", "3650", "-subj", "/CN=" + sni[:64],
-                        "-addext", "subjectAltName=" + san], check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
-        key.chmod(0o600)
+        from tls_cert import create_self_signed
+        create_self_signed(cert, key, sni)
         cert.chmod(0o600)
     except BaseException:
         shutil.rmtree(target)
@@ -215,7 +240,7 @@ class HostBackend:
 
     def firewall(self, port, opening, protocol="tcp"):
         if opening and protocol in ("anytls", "vmess", "vless", "trojan", "shadowsocks"):
-            module = "anytls" if protocol == "anytls" else "proxy"
+            module = "proxy"
             if not self.enabled(SERVICES[module]):
                 return
         backend = self._firewall()
@@ -339,7 +364,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         reserved = _reserved_ports()
         certificate_dir = None
         if action == "create":
-            module = "anytls" if protocol == "anytls" else "proxy"
+            module = "proxy"
             config_path = Path(config_paths[module])
             if not config_path.is_file():
                 raise NodeControlError("node module is not installed")
@@ -367,7 +392,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
             if len(matches) != 1:
                 raise NodeControlError("node ID not found")
             affected = matches[0]
-            module = "anytls" if affected["protocol"] == "anytls" else "proxy"
+            module = "proxy"
             config_path = Path(config_paths[module])
             if action == "toggle":
                 if affected["enabled"] == request["enabled"]:
@@ -381,17 +406,19 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         document = json.loads(config_path.read_text(encoding="utf-8"))
         proposed = copy.deepcopy(document)
         proposed["inbounds"] = [copy.deepcopy(n["inbound"]) for n in candidate["nodes"]
-                                 if n["enabled"] and (n["protocol"] == "anytls") == (module == "anytls")]
+                                 if n["enabled"]]
         original = config_path.read_bytes()
         meter_path = Path(state_path).parent / "meter.json"
         original_meter = meter_path.read_bytes() if meter_path.exists() else None
         staged = None
         opened = swapped = stopped = state_written = committed = False
+        port_reserved = False
         active = backend.active(SERVICES[module])
         try:
             staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode())
             backend.check(staged)
             if action == "create" or (action == "toggle" and request["enabled"]):
+                port_reserved = _node_port_row(affected["port"], affected["id"], True)
                 opened = True
                 backend.firewall(affected["port"], True, affected["protocol"])
             if active:
@@ -409,6 +436,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                 backend.start(SERVICES[module])
             if action == "delete" or (action == "toggle" and not request["enabled"]):
                 backend.firewall(affected["port"], False, affected["protocol"])
+                _node_port_row(affected["port"], affected["id"], False)
             committed = True
             if action == "delete":
                 # Only certificates made for this ID live here. A legacy
@@ -443,10 +471,14 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                         backend.firewall(affected["port"], True, affected["protocol"])
                     if opened:
                         backend.firewall(affected["port"], False, affected["protocol"])
+                    if port_reserved:
+                        _node_port_row(affected["port"], affected["id"], False)
                 except BaseException as recovery_error:
                     raise DegradedNodeControl("node rollback failed") from recovery_error
             elif opened:
                 backend.firewall(affected["port"], False, affected["protocol"])
+            if port_reserved:
+                _node_port_row(affected["port"], affected["id"], False)
             raise NodeControlError("node change failed; previous configuration restored") from exc
         finally:
             if staged is not None:
@@ -475,19 +507,19 @@ def _apply_iperf_port(request, *, require_root):
         if current != old_port or port == old_port:
             raise NodeControlError("stale iperf port")
         rows, raw = read_rows(registry)
-        if sum(p == old_port and owner == service for p, owner, _, _ in rows) != 1:
-            raise NodeControlError("iperf port is not registered")
+        if any(p == old_port and owner != service for p, owner, _, _ in rows):
+            raise NodeControlError("iperf port is registered to another service")
         if any(p == port for p, _, _, _ in rows) or port in _reserved_ports():
             raise NodeControlError("requested port is reserved")
         _free_port(port)
-        updated = [(port, service, "0.0.0.0", date.today().isoformat())
-                   if p == old_port and owner == service else (p, owner, bind, registered)
-                   for p, owner, bind, registered in rows]
+        # The window is closed while its port changes. Keep the chosen port
+        # unregistered until open() actually starts the listener.
+        updated = [row for row in rows if not (row[0] == old_port and row[1] == service)]
         registry_bytes = serialize_rows(updated)
         old_state = state.read_bytes() if state.exists() else None
         registry_stage = _stage(registry, registry_bytes)
         try:
-            os.chmod(registry_stage, registry.stat().st_mode & 0o777)
+            os.chmod(registry_stage, registry.stat().st_mode & 0o777 if registry.exists() else 0o644)
             state_stage = _stage(state, f"{port}\n".encode("ascii"))
         except BaseException:
             registry_stage.unlink(missing_ok=True)
@@ -497,7 +529,7 @@ def _apply_iperf_port(request, *, require_root):
             try:
                 _replace(state_stage, state)
             except BaseException:
-                rollback = _stage(registry, raw)
+                rollback = _stage(registry, raw if raw is not None else serialize_rows(rows))
                 os.chmod(rollback, registry.stat().st_mode & 0o777)
                 try:
                     _replace(rollback, registry)
@@ -547,7 +579,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
             raise NodeControlError("node ID not found")
         old = matches[0]
         reserved = _reserved_ports()
-        module = "anytls" if old["protocol"] == "anytls" else "proxy"
+        module = "proxy"
         config_path = Path(config_paths[module])
         changes = {key: value for key, value in request.items() if key in EDIT_FIELDS - {"sni"}}
         if request["action"] == "reset":
@@ -579,6 +611,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         stopped = False
         state_written = False
         committed = False
+        port_reserved = False
         active = backend.active(SERVICES[module]) if changed_config else False
         try:
             if changed_config:
@@ -586,6 +619,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                 staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode("utf-8"))
                 backend.check(staged)
                 if new_port != old["port"]:
+                    port_reserved = _node_port_row(new_port, old["id"], True)
                     opened = True
                     backend.firewall(new_port, True, old["protocol"])
                     if active:
@@ -603,6 +637,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                     backend.restart(SERVICES[module])
             if old["enabled"] and new_port != old["port"]:
                 backend.firewall(old["port"], False, old["protocol"])
+                _node_port_row(old["port"], old["id"], False)
             committed = True
             return candidate
         except BaseException as exc:
@@ -622,10 +657,14 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                         backend.firewall(old["port"], True, old["protocol"])
                     if opened:
                         backend.firewall(new_port, False, old["protocol"])
+                    if port_reserved:
+                        _node_port_row(new_port, old["id"], False)
                 except BaseException as recovery_error:
                     raise DegradedNodeControl("node rollback failed") from recovery_error
             elif opened:
                 backend.firewall(new_port, False, old["protocol"])
+            if port_reserved:
+                _node_port_row(new_port, old["id"], False)
             raise NodeControlError("node change failed; previous configuration restored") from exc
         finally:
             if staged is not None:

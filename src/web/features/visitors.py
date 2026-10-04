@@ -46,12 +46,25 @@ class VisitorsMixin:
         heading = t["visitors_heading"].format(n=len(rows), max=self.context.MAX_VISITOR_ROWS)
         body = f"""
         <div class="card wide">
-          <h1>{self.context.html.escape(heading)}</h1>
-          <div class="filters">
-            <button type="button" class="chip active" data-filter="all">{self.context.html.escape(t['show_all'])}</button>
-            <button type="button" class="chip" data-filter="inbound">{self.context.html.escape(t['show_inbound'])}</button>
-            <button type="button" class="chip" data-filter="public">{self.context.html.escape(t['show_external'])}</button>
+          <h1 id="visitors-heading">{self.context.html.escape(heading)}</h1>
+          <div class="visitors-toolbar">
+            <div class="filters">
+              <button type="button" class="chip active" data-filter="all">{self.context.html.escape(t['show_all'])}</button>
+              <button type="button" class="chip" data-filter="inbound">{self.context.html.escape(t['show_inbound'])}</button>
+              <button type="button" class="chip" data-filter="public">{self.context.html.escape(t['show_external'])}</button>
+            </div>
+            <form method="post" action="/visitors/clear" id="visitors-clear"
+                  data-confirm="{self.context.html.escape(t['visitors_clear_confirm'], quote=True)}"
+                  data-working="{self.context.html.escape(t['visitors_clear_working'], quote=True)}"
+                  data-done="{self.context.html.escape(t['visitors_clear_done'], quote=True)}"
+                  data-failed="{self.context.html.escape(t['visitors_clear_failed'], quote=True)}"
+                  data-empty="{self.context.html.escape(t['no_visits'], quote=True)}"
+                  data-empty-heading="{self.context.html.escape(t['visitors_heading'].format(n=0, max=self.context.MAX_VISITOR_ROWS), quote=True)}">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie('session'), 'visitors:clear')}">
+              <button type="submit" class="danger" {'disabled' if not rows else ''}>{self.context.html.escape(t['visitors_clear'])}</button>
+            </form>
           </div>
+          <p id="visitors-clear-status" role="status" aria-live="polite"></p>
           <div class="table-scroll">
           <table id="visitors">
             <thead><tr>
@@ -72,13 +85,37 @@ class VisitorsMixin:
         <script src="/static/visitors.js"></script>
         """
         self.send_html(200, self.render_page(t['visitors'], body, lang, active="visitors"),
-                       self.maybe_lang_cookie(query_lang))
+                       {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def route_visitors(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/visitors":
             self.page_visitors(lang, query_lang)
             return True
+        if method == "POST" and path == "/visitors/clear":
+            self.clear_visitors()
+            return True
         return False
+
+    def clear_visitors(self):
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+            if not 0 < length <= self.context.LOGIN_BODY_LIMIT:
+                raise ValueError
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True)
+            if set(form) != {"csrf"} or len(form["csrf"]) != 1:
+                raise ValueError
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        expected = self.context.access_csrf_token(self.get_cookie("session"), "visitors:clear")
+        if not self.context.hmac.compare_digest(form["csrf"][0], expected):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        self.context.clear_visitor_history()
+        self.send_response(204)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
 
 def init_db(context, ):
@@ -117,6 +154,10 @@ def _trim(context, conn):
         "(SELECT ip FROM visitors ORDER BY last_seen DESC LIMIT ?)",
         (context.MAX_VISITOR_ROWS,),
     )
+
+def clear_visitor_history(context):
+    with context._db_lock, context.sqlite3.connect(context.DB_FILE) as conn:
+        conn.execute("DELETE FROM visitors")
 
 def log_visit(context, ip, method, path, status):
     if not context.module_feature_enabled(context.BASE_DIR, "visitors"):

@@ -21,6 +21,7 @@ FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
 FRPC_BINARY = Path("/usr/local/bin/frpc")
 UNITS = ("vps-server-anytls.service", "vps-server-proxy.service",
          "vps-server-frps.service", "vps-server-lucky.service",
+         "vps-server-tailscale.service",
          "vps-server-node-meter.service")
 
 

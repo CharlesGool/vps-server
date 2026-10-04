@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
+import ssl
 from datetime import date
 
 try:
@@ -80,6 +82,44 @@ def serialize_rows(rows):
 def write_rows(path, rows):
     mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
     atomic_bytes(path, serialize_rows(rows), mode)
+
+
+def reserve_owned_port(prefix, port, owner, *, probe=True):
+    """Reserve a host port for an already validated internal service name."""
+    if type(port) is not int or not 1 <= port <= 65535 or not re.fullmatch(r"[A-Za-z0-9 /_.-]+", owner):
+        raise ValueError("invalid port reservation")
+    root = Path(prefix).parent
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = root / "PORTS.md"
+        rows, _ = read_rows(path)
+        existing = [row for row in rows if row[0] == port]
+        if existing:
+            if existing[0][1] == owner:
+                return False
+            raise ValueError("port registered to another service")
+        if probe:
+            available(port)
+        rows.append((port, owner, "0.0.0.0", date.today().isoformat()))
+        write_rows(path, rows)
+        return True
+
+
+def release_owned_port(prefix, port, owner):
+    if type(port) is not int or not 1 <= port <= 65535 or not re.fullmatch(r"[A-Za-z0-9 /_.-]+", owner):
+        raise ValueError("invalid port reservation")
+    root = Path(prefix).parent
+    with (root / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = root / "PORTS.md"
+        rows, _ = read_rows(path)
+        existing = [row for row in rows if row[0] == port]
+        if not existing:
+            return False
+        if existing[0][1] != owner:
+            raise ValueError("port registered to another service")
+        write_rows(path, [row for row in rows if row[0] != port])
+        return True
 
 
 def available(port):
@@ -228,9 +268,125 @@ def register_current(prefix, port, unit=UNIT):
         write_rows(registry, rows)
 
 
+def sync_lucky_port(prefix):
+    """Reconcile Lucky's native admin port after its own UI changes it."""
+    owner = "vps-server Lucky"
+    prefix = Path(prefix)
+    registry = prefix.parent / "PORTS.md"
+    active = subprocess.run(["systemctl", "is-active", "--quiet", "vps-server-lucky.service"],
+                            check=False, timeout=5).returncode == 0
+    found = detect_lucky_admin() if active else None
+    wanted = found[0] if found else None
+    with (prefix.parent / ".ports.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows, _ = read_rows(registry)
+        existing = [row[0] for row in rows if row[1] == owner]
+        if existing == ([wanted] if wanted else []):
+            return False
+        if wanted and any(row[0] == wanted and row[1] != owner for row in rows):
+            raise ValueError("Lucky admin port belongs to another service")
+        replacement = [row for row in rows if row[1] != owner]
+        if wanted:
+            replacement.append((wanted, owner, "0.0.0.0", date.today().isoformat()))
+        write_rows(registry, replacement)
+        return True
+
+
+def lucky_listener_active(port):
+    if type(port) is not int or not 1 <= port <= 65535:
+        return False
+    try:
+        pid = subprocess.run(["systemctl", "show", "-p", "MainPID", "--value",
+                              "vps-server-lucky.service"], capture_output=True, text=True,
+                             check=True, timeout=5).stdout.strip()
+        if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
+            return False
+        listening = subprocess.run(["ss", "-H", "-ltnp", f"( sport = :{port} )"],
+                                   capture_output=True, text=True, check=True, timeout=5).stdout
+        return f"pid={pid}," in listening
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def detect_lucky_admin():
+    """Find Lucky's live admin page among TCP listeners owned by its unit."""
+    configured_port = None
+    paths = ["/"]
+    try:
+        info = subprocess.run(["/usr/local/bin/lucky-vps-server", "-c",
+                               "/etc/vps-server-lucky/config.json", "-baseConfInfo"],
+                              capture_output=True, text=True, check=True, timeout=5)
+        base = json.loads(info.stdout)["BaseConfigure"]
+        port = base.get("AdminWebListenPort")
+        if type(port) is int and 1 <= port <= 65535:
+            configured_port = port
+        safe = base.get("SafeURL")
+        if isinstance(safe, str) and re.fullmatch(r"/?[A-Za-z0-9/_-]{1,128}", safe):
+            paths.append("/" + safe.lstrip("/"))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        pass
+    try:
+        pid = subprocess.run(["systemctl", "show", "-p", "MainPID", "--value",
+                              "vps-server-lucky.service"], capture_output=True, text=True,
+                             check=True, timeout=5).stdout.strip()
+        if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
+            return None
+        output = subprocess.run(["ss", "-H", "-ltnp"], capture_output=True, text=True,
+                                check=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    listeners = []
+    for line in output.splitlines():
+        if f"pid={pid}," not in line:
+            continue
+        fields = line.split()
+        if len(fields) < 4:
+            continue
+        address = fields[3]
+        try:
+            port = int(address.rsplit(":", 1)[1])
+        except ValueError:
+            continue
+        if not 1 <= port <= 65535 or configured_port is not None and port != configured_port:
+            continue
+        host = address.rsplit(":", 1)[0].strip("[]")
+        if host in ("*", "0.0.0.0"):
+            host = "127.0.0.1"
+        elif host in ("::", ""):
+            host = "::1"
+        url_host = f"[{host}]" if ":" in host else host
+        listeners.append((port, url_host))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                         urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+    matches = set()
+    for port, host in listeners[:24]:
+        for scheme in ("http", "https"):
+            for path in paths:
+                try:
+                    with opener.open(f"{scheme}://{host}:{port}{path}", timeout=1) as response:
+                        page = response.read(8192).lower()
+                    if b"lucky_index-" in page:
+                        matches.add((port, scheme))
+                        break
+                except (OSError, ValueError):
+                    continue
+            if (port, scheme) in matches:
+                break
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
 def main(argv=None):
     args = sys.argv[1:] if argv is None else argv
-    if len(args) == 4 and args[0] == "register" and re.fullmatch(r"[A-Za-z0-9@_.-]+\.service", args[3]):
+    if len(args) == 4 and args[0] in ("reserve", "release"):
+        action, prefix, raw_port, owner = args
+        if not raw_port.isascii() or not raw_port.isdecimal():
+            raise ValueError("invalid port")
+        changed = (reserve_owned_port(prefix, int(raw_port), owner) if action == "reserve"
+                   else release_owned_port(prefix, int(raw_port), owner))
+        print("changed" if changed else "unchanged")
+    elif len(args) == 2 and args[0] == "sync-lucky":
+        print("changed" if sync_lucky_port(args[1]) else "unchanged")
+    elif len(args) == 4 and args[0] == "register" and re.fullmatch(r"[A-Za-z0-9@_.-]+\.service", args[3]):
         register_current(args[1], int(args[2]), args[3])
     elif len(args) == 5 and args[0] == "change":
         _, prefix, old, new, port_file = args

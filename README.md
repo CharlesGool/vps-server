@@ -26,23 +26,20 @@ metadata:
 
 ## 简介
 
-这是一套可选择模块的 Debian/Ubuntu VPS 组合包:用于检查 Web 端口可达性的公开页面,用于测速和记录连接的操作员控制台,按需开启的 iperf3 窗口,以及 sing-box 代理节点.最近的正式版本是 v5.1.0;当前 `main` 正在准备 v5.1.1 的独立持久状态目录和 FRPS 编辑修正,尚未正式发布.版本范围与检查结果见[变更日志][local-link-001]和[项目状态](doc/LOG.md).
+vps-server 为 Debian/Ubuntu VPS 提供 Web 端口可达性页面,测速与连接日志控制台,并可安装代理,FRP,Lucky 和 Tailscale 模块.当前正式版本为 v5.2.0.进度见[项目状态](doc/LOG.md).
 
 ## 功能
 
-- **让任何人验证可达性.** 端口 **80** 和
-  **443** 上提供刻意保持极简,无需登录的页面.把 IP 交给对方;如果页面能显示,说明对方所在位置能访问你的 Web 端口.页面只报告对方的源 IP,服务器时钟及其到达时使用的端口和协议,不透露其他主机信息.
-- **在浏览器中测量吞吐量.** 控制台运行在持久化的随机高位端口,通过 LibreSpeed 引擎进行上传/下载测试.可使用管理员密码,或明确加入名单的私有局域网 IP 访问.登录页始终显示 IP 免密按钮;未获准的访客会被引导用密码登录,再到访问设置中添加内网 IP.安全设置要求最近一次管理员密码验证后才显示 IP 名单或接受修改.名单仅接受单个私有 IPv4 或唯一本地 IPv6 地址,并可单独停用 IP 免密而保留名单.修改密码会使现有会话失效. 普通设置页可直接调整外观和语言;安全设置中的管理员密码验证过期后需重新验证.
-- **按需用 iperf3 测量吞吐量和延迟.** 控制台开启限时窗口;`iperf3 -s` 只在窗口期内运行,到期自动关闭.测试者可通过 iperf3 获取带宽;在 Linux 客户端上还可从其 `mean_rtt` 在 `--json` 输出中获取往返时延.该字段来自内核的 `TCP_INFO`;无法读取它的客户端(尤其是 Windows 上 Cygwin 环境中的 iperf3)没有该字段.UDP 模式(`-u`)在所有平台上都提供抖动和丢包数据. 控制台分别显示运行状态和端口;测试窗口关闭时可修改端口,新设置在服务重启后仍有效.
-- **记录连接者.** 记录所有端口上的每条入站 TCP 连接,不限于 HTTP;数据从 `/proc/net/tcp[6]` 读取,存入 SQLite,保留最近 1000 条.
-- **提供 anytls 代理.** 使用自签名证书的 sing-box,另加 BBR.经过身份验证的 `/proxy` 页面显示节点状态,流量和可编辑的连接设置;有私有局域网地址时,还提供 Clash Meta for Android 一键导入链接和二维码. 订阅 URL 可复制.
-- **提供 vmess/vless/trojan/shadowsocks 代理,可选择任意子集.** 另一个 sing-box 进程与 anytls 共用随附的二进制文件.每种已安装协议最初有一个编号节点;控制台可为任意已安装协议新建更多节点,也可单独删除节点.每个节点都有以 GiB 为单位的流量上限,分开的连接和限制编辑功能,随机重置控件,以及相同的局域网 Clash Meta 导入选项.导入 URL 包含不透明令牌;节点连接设置或名称变化后,旧链接失效.公开端口不提供代理配置. 新建节点可手动填写密码或协议所需的密钥/UUID,留空则随机生成;TLS 节点的 SNI 默认为 `www.bing.com`.节点页面列出主机网卡和 Tailscale 地址. 每个节点还支持分别设置上传和下载的 Mbps 限速.达到 GiB 流量上限后,可选择双向限速 1 Mbps 或停止使用;按自定天数,月数或年数重置周期流量.还可以设置可选有效期,到期后停止使用. 也可复制局域网订阅链接.
+- **公开可达性页面:** 在启用后通过 80 和 443 端口显示访问者 IP,服务器时间及连接端口和协议;443 使用自签名证书.页面无需登录,不显示主机配置.
+- **私有控制台:** 在单独的持久化端口提供 LibreSpeed 上传/下载测速和最近 1000 条入站 TCP 连接记录.管理员密码或获准的私有 IP 可用于登录.
+- **iperf3:** 从控制台开启限时窗口,到期自动关闭.Linux 客户端的 `--json` 输出可提供 `mean_rtt`;无法读取 `TCP_INFO` 的客户端不会显示该字段.UDP 测试可查看抖动和丢包.
+- **代理节点:** 一个 sing-box 服务承载 AnyTLS,VMess,VLESS,Trojan 和 Shadowsocks.控制台管理节点连接,流量上限,速率限制,周期重置和有效期;局域网可导入 Clash Meta 配置.
+- **FRP:** 控制台管理本机 FRPS 的端口,令牌和服务状态,以及本机 FRPC 实例和简单的令牌认证 TCP/UDP 代理.编辑时验证配置,失败则恢复;不监测其他设备上的客户端.FRPC 安装使用仓库随附资源.
+- **Lucky:** 当前版本可与其他模块一同安装或卸载;控制台只显示管理地址和运行状态,并提供原生管理页入口.Lucky 自身更改管理端口后,控制台定期刷新地址和 `PORTS.md` 登记.完整功能复刻留待后续版本.
+- **Tailscale:** 可安装或卸载随离线包提供的 Linux 客户端;控制台显示状态,连通性,设备和服务日志,可一次保存多项 DNS,路由,出口节点,防护模式,SSH 等 Linux 设置.设备 IPv4 和 IPv6 分别按需显示或复制.加入 Tailnet 仍需能访问所选控制服务器.
+- **终端:** 首页入口提供浏览器内 root 终端.打开时须验证管理员密码;断开,离开页面或登录会话失效后结束对应 PTY 进程.终端渲染资源随离线包提供.
 
-首次安装默认只安装 Web 控制台.`VPSSRV_MODULES` 可选择 web,iperf3,anytls,proxy,frps 和 Lucky; 可选模块也可在控制台中安装.FRPC 作为单独的本机客户端功能安装.
-
-经过身份验证的 FRPS 页面显示本机服务状态,网卡地址和连接设置;令牌及端口在用户要求显示前保持遮蔽.FRPS 端口和令牌可直接编辑,服务可开启或关闭.独立的 FRPC 页面以卡片列出本机客户端实例,遮蔽目标 IP,并根据已建立的 TCP 套接字显示连接状态.“测试连接”会使用保存的服务器地址,端口和令牌另行执行一次 FRPC 登录.实例页面按需显示 IP 或令牌,编辑前也会列出每条 TCP/UDP 代理的类型,本地 IP,本地端口和远程端口.保存后留在同一实例页面,验证配置文件,失败时恢复原配置.这些 FRP 操作使用已登录会话;修改密码,IP 免密等安全设置操作才要求最近一次管理员密码验证.字段编辑器只处理简单的令牌认证 TCP/UDP 配置,不会修改其无法表示的 FRPC TOML.此控制台不监测其他设备上的 FRPC 实例.模块页面分别检查本机 FRPC 可执行文件和 `frpc@.service` 模板,而不是用是否存在实例配置判断安装状态.缺少其中任一文件时提供“安装”.安装使用经过校验和验证的 FRPC v0.71.0 发行资源,不会自行建立连接或监听端口.模块日志记录安装和校验结果.FRPC 与 FRPS v0.71.0 二进制文件都随仓库提供;FRPC 模块安装优先读取本地 `vendor/frp/frpc`,并可从安装程序保留的源码包读取随附副本,无需访问 GitHub.两者的来源和 SHA-256 见[第三方声明](doc/THIRD_PARTY_NOTICES.md).卸载时会停止本机 FRPC 实例,在 `data/` 下备份其配置,并保留配置文件供日后重新安装.
-
-**非目标:** 不提供 ACME 或域名(443 刻意使用自签名证书);不提供常驻 iperf3;不提供反向代理或容器;公开页面绝不暴露主机名,内核,运行时间,服务列表或代理参数.本项目不取代 `vps-webserver` 或 `Anytsl-Serve`——二者继续独立维护,其代码在此以随附副本形式使用,而非并入项目.
+首次安装仅启用 Web 控制台;其他模块按需安装.功能边界,登录规则及 FRP 编辑限制见[设计文档](doc/DESIGN.md).
 
 ## 要求
 
@@ -50,64 +47,61 @@ metadata:
 - 运行时:Python 3.9+(发行版自带的 `python3` 即可,无需安装 Python 依赖)
 - 架构:整个项目仅支持 x86-64 Linux;安装程序在写入系统状态前拒绝其他平台
 - web 模块使用默认公开端口时,80 和 443 **必须**保持空闲;若已被 nginx,Apache,Caddy 或 `vps-webserver` 占用,安装程序将拒绝安装,而不会争抢端口
-- 外部服务:运行时不需要.FRPS,FRPC 和 iperf3 的安装使用随附构件;其他缺失的系统包仍可能需要发行版软件包镜像;节点摘要只使用网卡地址和可用的 Tailscale 地址,不进行出站公网 IP 查询.
-- 最低要求:上述系统,运行时,架构及空闲端口.未记录其他推荐硬件配置;约 180 MB 的 VPS 磁盘空间可容纳随附二进制文件.
+- 其他依赖:目标机须有系统自带的 Bash,systemd,Python 和常用基础工具.完整离线包随附 FRP,Lucky,Tailscale,sing-box,iperf3 与私有 nftables 运行时;节点计量优先使用目标机可正常读取规则表的系统 nft,否则使用随附版本.目标机无需 Git 或软件包镜像.控制服务器认证,服务更新和跨设备连接本身仍需要网络.
+- 最低要求:上述系统,运行时和架构.若启用公开页面,其端口须空闲;完整离线包,解压目录和已安装程序合计建议预留至少 1 GiB 磁盘空间.
 
 ## 安装
 
 ### 快速安装
 
-以 root 身份在全新测试机运行;默认仅安装 Web 控制台,首次安装时在终端打印随机管理端口和密码.以下命令检出当前 `main` 测试源码,运行版本显示 `test-<SHA>`.v5.1.1 尚未正式发布;已安装的 v5.1.0 及更早版本不支持自动迁移,请先读[升级](#升级).
+以 root 身份在目标机运行;默认仅安装 Web 控制台,首次交互安装会先显示 1/2/3 语言选项,再打印随机管理端口和密码.无人值守安装可用 `VPSSRV_DEFAULT_LANG=en|zh_cn|es` 指定语言.以下源码命令使用 v5.2.0 正式标签,完整离线模块请使用下方的压缩包流程.
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### 常规安装
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # 可选: 按注释设置覆盖值
 bash deploy/install.sh
 ```
 
-当前测试源码中,`PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.首次安装无需浏览器设置向导.可用 `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` 明确选择服务端模块;省略时只安装 Web.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装;安装直接使用仓库随附的二进制文件.
+`PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.可用 `VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale` 明确选择服务端模块;省略时只安装 Web.AnyTLS 是 `proxy` 中的协议,没有独立模块或服务.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装.
+
+### 离线安装包
+
+v5.2.0 离线包包含完整源码和已校验的 Tailscale,nftables 等离线资源;生成及目标机安装均不要求目标机具备 Git.下载正式包后先核对提供的 SHA-256,再将包解压到独立目录,不要直接覆盖已安装的 `$PREFIX`.从 GitHub Release 下载 `vps-server-v5.2.0-linux-amd64.tar.gz` 与 `SHA256SUMS`,核验摘要后安装:
+
+```bash
+mkdir -p /root/vps-server-v5.2.0
+tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
+cd /root/vps-server-v5.2.0
+bash deploy/install.sh
+```
+
+有网络的构建机可从**干净且已提交**的工作树制作正式离线包;目标机只接收最后的 `.tar.gz`.构建机需要 Python 3,Git,`dpkg-deb` 和 GNU tar,资源获取脚本会校验固定摘要.包内同时提供 nftables 运行文件,相应源码及 Tailscale 归档:
+
+```bash
+python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
+python3 tools/build_offline/build_offline.py \
+  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
+  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
+  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
+  --version 5.2.0 \
+  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
+```
+
 
 ## 指南
 
-### 快速开始
+安装摘要会显示控制台地址,管理员密码和已安装模块.公开页面默认关闭;在控制台 Home 启用后,从另一台机器访问 `http://<ip>/` 和 `https://<ip>/` 验证 80/443 可达性.HTTPS 使用自签名证书.用 `systemctl status vps-server-web` 检查服务,再登录控制台管理模块,代理节点和 FRP.
 
-Web 实现位于 `src/web/`,静态资源位于 `src/web/static/`,安装程序位于 `deploy/`.FRPC,FRPS,iperf3 等随附二进制文件及许可证记录位于 `third_party/`;发布元数据位于 `config/`.安装后运行代码位于 `$PREFIX/src/web/`,根目录仅保留兼容入口 `$PREFIX/app.py`;持久状态位于 `$VPSSRV_STATE_DIR`.重新检出或替换程序目录不会删除该状态根.
+需要 iperf3 时,先在控制台开启限时窗口,然后在另一台机器运行 `iperf3 -c <ip> -p 5201 --json`.窗口结束后端口停止监听.源码不附带自动测试套件;按已启用的模块手动验收.服务路径,限制和状态文件见[设计文档](doc/DESIGN.md).
 
-源码不附带自动测试套件.改动后应按实际启用的模块手动验证安装,控制台和服务行为.当前测试源码仍随附 FRPC,FRPS 和 iperf3;正式标签的行为以各自版本文档为准.
-
-```bash
-bash deploy/install.sh                       # 首次仅安装 Web 控制台
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # 明确选择 Web 与 iperf3
-systemctl status vps-server-web              # 检查服务是否运行
-bash deploy/anytls/setup-anytls.sh status           # 若已安装该模块,查看 anytls 节点详情
-bash deploy/proxy/setup-proxy.sh status             # 若已安装该模块,查看代理节点详情
-```
-
-然后在另一台机器上运行:
-
-```bash
-curl -sS  http://<ip>/                     # 检查明文 HTTP 的可达性
-curl -sSk https://<ip>/                    # 检查 TLS 的可达性(自签名证书)
-iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
-```
-
-### 验证运行
-
-运行 `bash deploy/install.sh` 后核对终端打印的管理地址,密码和模块摘要.公开端口默认关闭;在控制台启用后再从另一台机器检查:
-
-- `systemctl status vps-server-web` 显示 `active (running)`.
-- 从**另一台机器**打开 `http://<ip>/`,显示标题为“Reachable”的页面及你自己的公网 IP.接受证书警告后打开 `https://<ip>/`,会看到相同页面,协议行显示 HTTPS.
-- 登录 `http://<ip>:<console port>/`,仪表盘显示 iperf3 控件,窗口处于关闭状态.
-- 开启五分钟窗口后,在另一台机器运行 `iperf3 -c <ip> -p 5201 --json`,会得到吞吐量数值且包含 `mean_rtt`.五分钟后相同命令无法连接——这表示窗口自动关闭,并非故障.
-- 若安装了 anytls:`systemctl status vps-server-anytls` 显示 `active (running)`.
-- 若安装了 proxy:`systemctl status vps-server-proxy` 显示 `active (running)`.
+代理节点的流量上限按(上传+下载)×2 计入;界面显示已计入的数值,计量数据不完整本身不会提前限速.月度重置从所选月份的第 1 日 00:00 UTC 执行;天和年的周期保持原有计算方式.节点网卡地址默认遮盖,可按需显示或复制.在“最近访问者”可确认后清除历史;之后的新访问和仍在连接中的设备会重新记录.设置页面直接显示模块安装卡片;进度在最后一次输出后 30 秒收起,完成提示只在本次操作页面短暂显示,刷新或重新进入不会重现.顶栏“更新日志”右侧的“详细日志”汇总模块操作历史与服务日志;服务日志可按等级筛选.清空模块历史会截断该文件,清空某项服务日志只隐藏此前的记录,不删除整机 journal.Lucky 沿用自身管理页面;当前网络无法直连时可通过 SSH 转发管理端口.
 
 ### 配置
 
@@ -129,25 +123,20 @@ iperf3 -c <ip> -p 5201 --json              # 仅在测试窗口开启时使用
 
 ## 升级
 
-计划中的 `v5.1.1` 是持久状态布局 `1` 的起点.v5.1.0 及更早版本**不支持自动迁移**:若仍有旧数据,先在安装目录外备份,再明确执行全新安装;已删除且没有备份的数据无法恢复.安装器发现旧服务或状态缺失时,会在修改服务前停止,不会替旧安装生成新密码或端口.
+v5.2.0 建立持久状态布局 `1`.v5.1.0 及更早版本**不支持自动迁移**.仍有旧数据时,先备份到安装目录外,再全新安装;已经删除且没有备份的数据无法恢复.安装器发现旧服务但缺少状态时,会在修改服务前停止.
 
-从 v5.1.1 升级后续版本时,在独立源码目录检出新版本,保留 `$VPSSRV_STATE_DIR` 和 `/etc` 下已安装模块的配置,再使用相同 `PREFIX` 运行安装程序.安装器沿用状态根中的密码,端口,证书,运行数据和已记录模块;升级时不会再次打印旧密码.不要通过删除 `$PREFIX` 内的旧数据来准备升级.若自定义了持久路径,后续安装**必须**沿用同一路径;改变位置需要操作员手动转移并核验.在确认新服务正常前,保留原有代码与数据的独立备份.
+后续从布局 `1` 升级时,在独立目录检出新源码,使用相同的 `PREFIX` 和 `VPSSRV_STATE_DIR` 运行安装程序.保留状态根和 `/etc` 中的模块配置;安装器沿用密码,端口,证书,运行数据和已记录模块,不会再次打印旧密码.先保留代码与数据备份,升级后核对服务状态,管理端口,登录及所用模块.自定义状态路径需在后续安装中沿用;改换路径要自行转移并核验.
 
 ## 卸载
 
-以 root 身份从安装程序的检出目录运行卸载脚本,使用与安装时相同的 `PREFIX` 和 `SERVICE_NAME`(安装摘要会打印准确的卸载命令).要移除服务及 unit,**同时保留**程序目录和 `$VPSSRV_STATE_DIR` 供以后重装:
+在安装源码目录以 root 身份运行,并沿用安装时的 `PREFIX` 和 `SERVICE_NAME`(准确命令见安装摘要):
 
 ```bash
-KEEP_DATA=1 bash deploy/uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh  # 停止服务,保留程序和持久状态
+bash deploy/uninstall.sh              # 完全卸载,删除默认状态根
 ```
 
-要移除模块并**删除默认状态根中的数据**(包括访客日志,控制台密码,已保存端口及证书,以及本项目管理的 FRPC 实例配置):
-
-```bash
-bash deploy/uninstall.sh
-```
-
-两种模式都会在已安装时移除 anytls/proxy 服务及其各自的模块配置,停止本项目的 FRPC 实例,移除本项目安装的 FRPC 服务模板和匹配的二进制文件,并从安装目录同级的 `PORTS.md` 原子释放属于 vps-server 的登记行;其他项目的行保留.`KEEP_DATA=1` 保留 `$PREFIX`,`$VPSSRV_STATE_DIR` 和 `/etc/frp/frpc-*.toml` 等 FRPC 实例配置与恢复副本,不保留 anytls/proxy 模块配置.不带 `KEEP_DATA=1` 时,还会删除本项目命名的 FRPC 配置,别名与恢复副本,以及带布局标记 `1` 的默认状态根;自定义到该根以外的数据路径不会自动删除.完整卸载发现控制台可识别的 `frpc-*.toml` 时,即使旧 FRPC 服务模板与当前项目模板不同,也会停止对应实例并删除这些全局 FRPC 文件;请在共享 FRPC 的主机上先确认这些实例确实属于本项目.若没有可识别的实例且无法确认归属,脚本会保留全局 FRPC 并提示;二进制校验失败时会拒绝继续清理.
+两种模式都会停止本项目管理的服务并释放端口登记.保留数据模式保存程序,状态根,统一代理配置,FRPS 配置,FRPC 实例配置及 Tailscale 设备身份;完全卸载删除本项目命名的这些配置与恢复副本.共享 FRPC 的主机请先核对实例归属.自定义到状态根之外的数据路径不会自动删除.详细清理范围见[设计文档](doc/DESIGN.md#完整卸载).
 
 ## 致谢
 

@@ -20,7 +20,7 @@ import uuid
 
 PROTOCOLS = frozenset({"anytls", "vmess", "vless", "trojan", "shadowsocks"})
 MODULE_PROTOCOLS = {"anytls": frozenset({"anytls"}),
-                    "proxy": PROTOCOLS - {"anytls"}}
+                    "proxy": PROTOCOLS}
 _NAME = re.compile(r"[^\W_][\w ._-]{0,63}\Z", re.UNICODE)
 _INTERVAL = re.compile(r"every:([1-9][0-9]{0,3}):(days|months|years):(-|[1-9]|[12][0-9]|3[01]|[0-1][0-9]-[0-3][0-9])\Z")
 
@@ -58,7 +58,7 @@ def advance_reset_interval(due: datetime, mode: str) -> datetime:
             year, month_index = divmod(index, 12)
             month = month_index + 1
             return due.replace(year=year, month=month,
-                               day=min(int(anchor), calendar.monthrange(year, month)[1]))
+                               day=1, hour=0, minute=0, second=0, microsecond=0)
         month, day = map(int, anchor.split("-"))
         year = due.year + count
         return due.replace(year=year, month=month,

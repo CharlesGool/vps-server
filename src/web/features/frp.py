@@ -30,22 +30,22 @@ class FrpMixin:
                       f'<button type="submit" class="node-toggle" role="switch" aria-checked="{str(running).lower()}" '
                       f'aria-label="{esc(t["frp_stop_server"] if running else t["frp_start_server"], quote=True)}"><span></span></button></form>')
             inline_token = self.context.render_password_field(t, 'frps-inline-token', t['frps_token'], 'token',
-                                                 'maxlength="128" autocomplete="new-password"')
+                                                 f'maxlength="128" autocomplete="new-password" placeholder="{esc(t["frp_token_keep"], quote=True)}"')
             edit = (f'<details class="node-inline-edit frp-inline-edit" {"open" if self.context.parse_qs(self.context.urlsplit(self.path).query).get("edit") == ["server"] else ""}><summary><span>{esc(t["frp_edit_server"])}</span>'
                     f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/server/save" autocomplete="off">'
                     f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie("session"), "frp:server")}">'
                     f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" '
                     f'placeholder="{esc(t["frp_port_keep"], quote=True)}"></label>'
                     f'{inline_token}'
-                    f'<p class="muted small">{esc(t["frp_token_keep"])}</p><button type="submit">{esc(t["frp_save"])}</button>'
+                    f'<button type="submit">{esc(t["frp_save"])}</button>'
                     f'</form></details>')
             edit_entry = edit
             server = (f'<div class="frp-status-line"><span class="proxy-node-status {"is-open" if running else "is-closed"}">{esc(status)}</span>{toggle}</div>'
                       f'{edit_entry}'
                       f'<dl class="frp-facts"><div><dt>{esc(t["frps_status"])}</dt><dd>{esc(status)}</dd></div>'
                       f'<div><dt>{esc(t["frps_bind"])}</dt><dd><code>{esc(node["address"])}</code></dd></div>'
-                      f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t)}</dd></div>'
-                      f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True)}</dd></div></dl>'
+                      f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t, endpoint="/frp/server/value")}</dd></div>'
+                      f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True, endpoint="/frp/server/value")}</dd></div></dl>'
                       f'{address_list}')
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
@@ -53,8 +53,7 @@ class FrpMixin:
         body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frps_heading"])}</h1></div>{feedback}'
                 f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("server")}'
                 f'<h2>{esc(t["frps_heading"])}</h2></div>{server}</section></div>'
-                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
-                '<script src="/static/password-fields.js"></script>')
+                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -98,7 +97,10 @@ class FrpMixin:
                            f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
                            f'data-label="{esc(t["frp_server_ip"], quote=True)}" aria-pressed="false" '
                            f'aria-label="{esc(t["login_show_password"] + " " + t["frp_server_ip"], quote=True)}">'
-                           f'<code>{esc(self.context.masked_frpc_ip(item["server"]))}</code></button></div>'
+                           f'<code>{esc(self.context.masked_frpc_ip(item["server"]))}</code></button>'
+                           f'<button type="button" class="frp-fact-copy" data-name="{esc(name, quote=True)}" '
+                           f'data-field="server" data-copied="{esc(t["copied"], quote=True)}" '
+                           f'data-error="{esc(t["private_copy_failed"], quote=True)}">{esc(t["copy"])}</button></div>'
                            f'<div class="frp-target-foot"><span class="muted small">{item["proxies"]} {esc(t["frp_proxies"])}</span>'
                            f'<button type="button" class="node-action node-action-danger frp-client-delete-open" '
                            f'data-dialog-open="frp-delete-{esc(name, quote=True)}">{esc(t["frp_delete_client"])}</button></div>'
@@ -124,7 +126,7 @@ class FrpMixin:
                 f'<p><a class="button-link frp-install-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
                 f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a></p>'
                 '</section></div>'
-                '<script src="/static/frp-editor.js" defer></script>')
+                '<script src="/static/copy.js"></script><script src="/static/frp-editor.js" defer></script>')
         return self.send_html(200, self.render_page(t["frp_client_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -164,28 +166,23 @@ class FrpMixin:
         body = (f'<div class="card wide frp-edit"><h1>{esc(name if name else t["frp_new_client"])}</h1>'
                 f'{rename}{feedback}<div class="frp-structured">{editor}</div></div>')
         if name:
-            body += '<script src="/static/frp-editor.js" defer></script>'
-        body += '<script src="/static/password-fields.js"></script>'
+            body += '<script src="/static/copy.js"></script><script src="/static/frp-editor.js" defer></script>'
         return self.send_html(200, self.render_page(name if name else t['frp_new_client'], body, lang, back_href='/frpc'),
                               {'Cache-Control': 'no-store'})
 
     def frpc_structured_editor(self, lang, name, config):
         t, esc = self.context.STRINGS[lang], self.context.html.escape
-        def hint(label_key, help_key, suffix):
-            ident = f'frp-help-{name}-{suffix}'
-            return (f'<span class="info-popover-wrap frp-info-wrap"><button type="button" '
-                    f'class="frp-info-trigger" aria-describedby="{esc(ident, quote=True)}" '
-                    f'aria-expanded="false">{esc(t[label_key])}</button>'
-                    f'<span class="info-popover" id="{esc(ident, quote=True)}" role="tooltip">'
-                    f'<strong>{esc(t[label_key])}</strong><p>{esc(t[help_key])}</p></span></span>')
         def reveal(field, masked, label):
-            return (f'<button type="button" class="frp-fact-reveal" data-name="{esc(name, quote=True)}" '
+            return (f'<span class="frp-fact-controls"><button type="button" class="frp-fact-reveal" data-name="{esc(name, quote=True)}" '
                     f'data-field="{field}" data-masked="{esc(masked, quote=True)}" '
                     f'data-show="{esc(t["login_show_password"], quote=True)}" '
                     f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
                     f'data-label="{esc(label, quote=True)}" aria-pressed="false" '
                     f'aria-label="{esc(t["login_show_password"] + " " + label, quote=True)}">'
-                    f'<code>{esc(masked)}</code></button>')
+                    f'<code>{esc(masked)}</code></button>'
+                    f'<button type="button" class="frp-fact-copy" data-name="{esc(name, quote=True)}" '
+                    f'data-field="{field}" data-copied="{esc(t["copied"], quote=True)}" '
+                    f'data-error="{esc(t["private_copy_failed"], quote=True)}">{esc(t["copy"])}</button></span>')
         server_token_field = self.context.render_password_field(t, 'frpc-server-token', t['frps_token'], 'token',
                                                    f'maxlength="128" autocomplete="new-password" data-load-token="{esc(name, quote=True)}"')
         base = (f'<input type="hidden" name="name" value="{esc(name, quote=True)}">'
@@ -206,8 +203,6 @@ class FrpMixin:
         proxy_fields = [('proxy_name', 'name', 'text'), ('proxy_type', 'type', 'text'),
                         ('frp_local_ip', 'localIP', 'text'), ('frp_local_port', 'localPort', 'number'),
                         ('frp_server_port', 'remotePort', 'number')]
-        help_keys = {'localIP': 'frp_local_ip_help', 'localPort': 'frp_local_port_help',
-                     'remotePort': 'frp_server_port_help'}
         def fields(proxy, suffix):
             result = []
             for label, key, kind in proxy_fields:
@@ -217,8 +212,7 @@ class FrpMixin:
                                       for value in ('tcp', 'udp'))
                     result.append(f'<label>{esc(t[label])}<select name="type">{options}</select></label>')
                 else:
-                    title = (hint(label, help_keys[key], f'{suffix}-{key}') if key in help_keys else
-                             f'<label for="frp-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>')
+                    title = f'<label for="frp-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>'
                     result.append(f'<div class="frp-field">{title}'
                                   f'<input id="frp-{esc(suffix, quote=True)}-{key}" name="{"proxyName" if key == "name" else key}" '
                                   f'type="{kind}" aria-label="{esc(t[label], quote=True)}" '
@@ -233,9 +227,9 @@ class FrpMixin:
                          f'{fields(proxy, str(index))}<button type="submit">{esc(t["frp_save"])}</button></form></details>'
                          f'<div class="frp-proxy-facts"><strong>{esc(proxy["name"])}</strong>'
                          f'<dl class="frp-proxy-fields"><div><dt>{esc(t["proxy_type"])}</dt><dd>{esc(proxy["type"].upper())}</dd></div>'
-                         f'<div><dt>{hint("frp_local_ip", "frp_local_ip_help", f"fact-{index}-ip")}</dt><dd><code>{esc(proxy["localIP"])}</code></dd></div>'
-                         f'<div><dt>{hint("frp_local_port", "frp_local_port_help", f"fact-{index}-local-port")}</dt><dd>{proxy["localPort"]}</dd></div>'
-                         f'<div><dt>{hint("frp_server_port", "frp_server_port_help", f"fact-{index}-server-port")}</dt><dd>{proxy["remotePort"]}</dd></div></dl></div>'
+                         f'<div><dt>{esc(t["frp_local_ip"])}</dt><dd><code>{esc(proxy["localIP"])}</code></dd></div>'
+                         f'<div><dt>{esc(t["frp_local_port"])}</dt><dd>{proxy["localPort"]}</dd></div>'
+                         f'<div><dt>{esc(t["frp_server_port"])}</dt><dd>{proxy["remotePort"]}</dd></div></dl></div>'
                          f'<form method="post" action="/frp/client/structured" class="frp-delete-form" data-confirm="{esc(t["frp_delete_confirm"], quote=True)}">{base}'
                          f'<input type="hidden" name="section" value="delete"><input type="hidden" name="index" value="{index}">'
                          f'<button type="submit" class="node-action">{esc(t["frp_delete_proxy"])}</button></form></section>')
@@ -454,6 +448,13 @@ class FrpMixin:
             self.frpc_address_value(parsed)
         elif method == "GET" and path == "/frp/client/value":
             self.frpc_private_value(parsed)
+        elif method == "GET" and path == "/frp/server/value":
+            query = self.context.parse_qs(parsed.query)
+            if (set(query) != {"id", "field"} or query["id"] != ["frps"] or
+                    query["field"] not in (["port"], ["credential"])):
+                self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+            else:
+                self.handle_proxy_private_value(parsed)
         elif method == "POST" and path == "/frp/client/test":
             self.handle_frpc_test()
         elif method == "POST" and path in ("/frp/server/save", "/frp/client/toggle",

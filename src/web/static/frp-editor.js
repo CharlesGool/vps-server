@@ -54,6 +54,27 @@
     });
   });
 
+  document.querySelectorAll('.frp-fact-copy').forEach((control) => {
+    control.addEventListener('click', async () => {
+      const original = control.dataset.original || control.textContent;
+      control.dataset.original = original;
+      control.disabled = true;
+      let message = control.dataset.error;
+      try {
+        const query = new URLSearchParams({ name: control.dataset.name, field: control.dataset.field });
+        const response = await fetch(`/frp/client/value?${query}`, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error('value unavailable');
+        const value = (await response.json()).value;
+        if (await window.copyPrivateText(value)) message = control.dataset.copied;
+      } catch (_) { /* Keep the localized failure message. */ }
+      control.textContent = message;
+      setTimeout(() => {
+        if (control.isConnected) control.textContent = original;
+        control.disabled = false;
+      }, 1800);
+    });
+  });
+
   document.querySelectorAll('.frp-test-connection').forEach((control) => {
     control.addEventListener('click', async () => {
       const state = control.closest('.frp-target-card').querySelector('[data-frpc-state]');
@@ -94,31 +115,6 @@
     }
     const closer = event.target.closest('[data-dialog-close]');
     if (closer) closer.closest('dialog')?.close();
-  });
-
-  document.querySelectorAll('.frp-info-wrap').forEach((wrap) => {
-    const trigger = wrap.querySelector('.frp-info-trigger');
-    const close = () => {
-      wrap.classList.remove('is-open');
-      trigger.setAttribute('aria-expanded', 'false');
-    };
-    trigger.addEventListener('click', () => {
-      const open = !wrap.classList.contains('is-open');
-      wrap.classList.toggle('is-open', open);
-      wrap.classList.toggle('is-dismissed', !open);
-      trigger.setAttribute('aria-expanded', String(open));
-      if (!open) trigger.blur();
-    });
-    wrap.addEventListener('pointerleave', () => wrap.classList.remove('is-dismissed'));
-    trigger.addEventListener('focus', () => wrap.classList.remove('is-dismissed'));
-    document.addEventListener('pointerdown', (event) => { if (!wrap.contains(event.target)) close(); });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && wrap.matches(':hover, :focus-within, .is-open')) {
-        event.preventDefault();
-        close();
-        trigger.blur();
-      }
-    });
   });
 
   window.addEventListener('pagehide', () => {

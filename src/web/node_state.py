@@ -20,8 +20,7 @@ except ImportError:  # Installed helpers are copied into one flat directory.
 
 
 STATE_PATH = Path("/etc/vps-server-nodes/state.json")
-CONFIG_PATHS = {"anytls": Path("/etc/vps-server-anytls/config.json"),
-                "proxy": Path("/etc/vps-server-proxy/config.json")}
+CONFIG_PATHS = {"proxy": Path("/etc/vps-server-proxy/config.json")}
 
 
 def _read_json(path):
@@ -45,7 +44,7 @@ def _installed(config_paths):
 def _assert_matches(inventory, installed):
     for module, document in installed.items():
         expected = [node["inbound"] for node in inventory["nodes"]
-                    if node["enabled"] and (node["protocol"] == "anytls") == (module == "anytls")]
+                    if node["enabled"]]
         actual = [] if document is None else document.get("inbounds") if isinstance(document, dict) else None
         if actual != expected:
             raise InvalidInventory("installed node configuration differs from inventory")
@@ -91,39 +90,15 @@ def write_inventory(inventory, *, state_path=STATE_PATH):
 
 
 def initialize_inventory(*, state_path=STATE_PATH, config_paths=CONFIG_PATHS):
-    """Idempotent import, allowing a newly installed second module to join."""
+    """Import or check one service containing every proxy protocol."""
     current = read_inventory(state_path=state_path, config_paths=config_paths,
                              check_installed=False)
     if current is not None:
         installed = _installed(config_paths)
-        additions = []
-        for module in ("anytls", "proxy"):
-            existing = [node for node in current["nodes"]
-                        if (node["protocol"] == "anytls") == (module == "anytls")]
-            document = installed[module]
-            if existing:
-                if not isinstance(document, dict) or document.get("inbounds") != \
-                        [node["inbound"] for node in existing if node["enabled"]]:
-                    raise InvalidInventory("installed node configuration differs from inventory")
-            elif document is not None:
-                imported = import_legacy(document if module == "anytls" else None,
-                                         document if module == "proxy" else None,
-                                         migration_namespace=current["migration_namespace"])
-                if imported["base_config"] != current["base_config"]:
-                    raise InvalidInventory("new module base configuration differs")
-                additions.extend(imported["nodes"])
-                current["migration_hashes"].update(imported["migration_hashes"])
-        if additions:
-            for node in additions:
-                node["number"] = current["next_number"]
-                current["next_number"] += 1
-                current["nodes"].append(node)
-            validate_inventory(current)
-            write_inventory(current, state_path=state_path)
         _assert_matches(current, installed)
         return current
     documents = _installed(config_paths)
-    inventory = import_legacy(documents["anytls"], documents["proxy"],
+    inventory = import_legacy(None, documents["proxy"],
                               migration_namespace=str(uuid.uuid4()))
     write_inventory(inventory, state_path=state_path)
     return copy.deepcopy(inventory)

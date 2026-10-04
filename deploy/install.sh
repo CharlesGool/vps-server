@@ -8,6 +8,7 @@
 #   proxy    sing-box vmess/vless/trojan/shadowsocks, any subset (amd64 only)
 #   frps     offline FRP server (amd64 only)
 #   lucky    offline DDNS and reverse-proxy admin (amd64 only)
+#   tailscale  offline-installed Tailscale client (amd64 only)
 #
 #   sudo bash deploy/install.sh                             # console only
 #   sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
@@ -56,8 +57,10 @@ KNOWN_VARS="VPSSRV_CONSOLE_TLS VPSSRV_CONSOLE_PORT VPSSRV_CONSOLE_PORT_FILE VPSS
             VPSSRV_MAX_TEST_MB VPSSRV_TRACK_CONNECTIONS VPSSRV_CONN_POLL_SECONDS
             VPSSRV_TEST_SECONDS VPSSRV_WARMUP_SECONDS VPSSRV_DOWNLOAD_STREAMS
             VPSSRV_UPLOAD_STREAMS VPSSRV_PING_SAMPLES
-            VPSSRV_ANYTLS_CONFIG VPSSRV_ANYTLS_SERVICE
             VPSSRV_PROXY_CONFIG VPSSRV_PROXY_SERVICE"
+SCRIPT_VARS="PROXY_PROTOCOLS PROXY_SNI PROXY_ANYTLS_PORT PROXY_ANYTLS_PASSWORD
+             PROXY_VMESS_PORT PROXY_VMESS_UUID PROXY_VLESS_PORT PROXY_VLESS_UUID
+             PROXY_TROJAN_PORT PROXY_TROJAN_PASSWORD PROXY_SS_PORT PROXY_SS_PASSWORD"
 
 # What this install left behind, so the next one can tell what changed.
 # Deliberately not the unit file: the unit records only settings that were
@@ -73,6 +76,7 @@ PROXY_UNIT="/etc/systemd/system/vps-server-proxy.service"
 PROXY_CONFIG_PATH="/etc/vps-server-proxy/config.json"
 FRPS_UNIT="/etc/systemd/system/vps-server-frps.service"
 LUCKY_UNIT="/etc/systemd/system/vps-server-lucky.service"
+TAILSCALE_UNIT="/etc/systemd/system/vps-server-tailscale.service"
 
 declare -A PREV=()
 PREV_VERSION=""
@@ -114,7 +118,7 @@ unit_env() {
 }
 
 existing_install() {
-  [ -f "$STATE_FILE" ] || [ -f "$UNIT_PATH" ] || [ -f "$ANYTLS_UNIT" ] || [ -f "$PROXY_UNIT" ] || [ -f "$FRPS_UNIT" ] || [ -f "$PREFIX/app.py" ]
+  [ -f "$STATE_FILE" ] || [ -f "$UNIT_PATH" ] || [ -f "$ANYTLS_UNIT" ] || [ -f "$PROXY_UNIT" ] || [ -f "$FRPS_UNIT" ] || [ -f "$TAILSCALE_UNIT" ] || [ -f "$PREFIX/app.py" ]
 }
 
 load_previous() {
@@ -150,6 +154,7 @@ load_previous() {
     [ -f "$PROXY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}proxy"
     [ -f "$FRPS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}frps"
     [ -f "$LUCKY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}lucky"
+    [ -f "$TAILSCALE_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}tailscale"
   fi
   [ -n "$PREV_MODULES" ] || PREV_MODULES="$DEFAULT_MODULES"
 }
@@ -169,46 +174,7 @@ apply_previous() {
   msg upgrade_keeping "$kept"
 }
 
-# Keep the anytls node as it is. setup-anytls.sh defaults both values to fresh
-# randoms, so an upgrade that did not do this would rotate the credentials and
-# break every configured client — for no reason anyone asked for.
-preserve_anytls() {
-  local port password
-  [ -f "$ANYTLS_CONFIG_PATH" ] || return 0
-  [ -z "${ANYTLS_PORT:-}" ] || return 0
-  port="$(python3 -c 'import json,sys
-try:
-    c = json.load(open(sys.argv[1]))
-except Exception:
-    raise SystemExit
-for i in c.get("inbounds", []):
-    if i.get("type") == "anytls":
-        print(i.get("listen_port", ""))
-        break' "$ANYTLS_CONFIG_PATH" 2>/dev/null || true)"
-  password="$(python3 -c 'import json,sys
-try:
-    c = json.load(open(sys.argv[1]))
-except Exception:
-    raise SystemExit
-for i in c.get("inbounds", []):
-    if i.get("type") == "anytls":
-        u = (i.get("users") or [{}])[0]
-        print(u.get("password", ""))
-        break' "$ANYTLS_CONFIG_PATH" 2>/dev/null || true)"
-  if [ -n "$port" ] && [ -n "$password" ]; then
-    export ANYTLS_PORT="$port" ANYTLS_PASSWORD="$password"
-    msg upgrade_anytls_kept "$port"
-  fi
-}
-
-# Same reasoning as preserve_anytls(), for every protocol the proxy module
-# currently has installed. setup-proxy.sh regenerates a fresh port and
-# credential for any PROXY_<PROTO>_PORT/_UUID/_PASSWORD that arrives unset —
-# an upgrade that skipped this would rotate every client's config for no
-# reason anyone asked for. One python3 call reads back whichever of the four
-# protocols are actually present and prints them as KEY=VALUE lines,
-# including PROXY_PROTOCOLS itself so the installed protocol *set* survives
-# too, not just each one's credentials.
+# Preserve every protocol in the unified proxy configuration.
 preserve_proxy() {
   [ -f "$PROXY_CONFIG_PATH" ] || return 0
   [ -z "${PROXY_PROTOCOLS:-}" ] || return 0
@@ -221,7 +187,11 @@ except Exception:
 types = []
 for i in c.get("inbounds", []):
     t = i.get("type", "")
-    if t == "vmess":
+    if t == "anytls":
+        types.append("anytls")
+        print("PROXY_ANYTLS_PORT=%s" % i.get("listen_port", ""))
+        print("PROXY_ANYTLS_PASSWORD=%s" % (i.get("users") or [{}])[0].get("password", ""))
+    elif t == "vmess":
         types.append("vmess")
         print("PROXY_VMESS_PORT=%s" % i.get("listen_port", ""))
         print("PROXY_VMESS_UUID=%s" % (i.get("users") or [{}])[0].get("uuid", ""))
@@ -365,7 +335,7 @@ load_state_env() {
     key="${key%"${key##*[![:space:]]}"}"
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
-    case " $KNOWN_VARS " in *" $key "*) ;; *) continue ;; esac
+    case " $KNOWN_VARS $SCRIPT_VARS " in *" $key "*) ;; *) continue ;; esac
     [ "$key" != VPSSRV_STATE_DIR ] || continue
     [ -n "${!key:-}" ] || export "$key=$value"
   done < "$env_file"
@@ -473,6 +443,29 @@ if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
   case "$PREV_LANG" in
     en|zh_cn|es) INSTALL_LANG="$PREV_LANG" ;;
   esac
+  if [ -z "$PREV_LANG" ]; then
+    lang_file="$STATE_DIR/.env"
+    [ -f "$lang_file" ] || lang_file="$SRC_DIR/.env"
+    if [ -f "$lang_file" ]; then
+      env_lang="$(sed -n 's/^[[:space:]]*VPSSRV_DEFAULT_LANG[[:space:]]*=[[:space:]]*//p' "$lang_file" | tail -n1)"
+      case "$env_lang" in en|zh_cn|es) INSTALL_LANG="$env_lang" ;; esac
+    fi
+  fi
+  if [ -t 0 ] && [ -t 1 ]; then
+    case "$INSTALL_LANG" in en) default_choice=1 ;; zh_cn) default_choice=2 ;; es) default_choice=3 ;; esac
+    msg language_menu
+    while true; do
+      msg language_choice "$default_choice"
+      IFS= read -r choice || choice=""
+      choice="${choice:-$default_choice}"
+      case "$choice" in
+        1) INSTALL_LANG=en; break ;;
+        2) INSTALL_LANG=zh_cn; break ;;
+        3) INSTALL_LANG=es; break ;;
+        *) msg language_invalid ;;
+      esac
+    done
+  fi
 fi
 # Pass the selected locale to every module setup script.
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
@@ -509,6 +502,20 @@ if existing_install; then
   apply_previous
 fi
 
+# A legacy AnyTLS module becomes a protocol of the one proxy module. Keep
+# the other selected modules and their order without retaining a second unit.
+MODULES="$(python3 - "$MODULES" <<'PY'
+import sys
+modules = []
+for module in sys.argv[1].split(','):
+    if module == 'anytls':
+        module = 'proxy'
+    if module and module not in modules:
+        modules.append(module)
+print(','.join(modules))
+PY
+)"
+
 prepare_state_layout
 load_state_env
 load_state_paths
@@ -517,7 +524,6 @@ commit_state_layout
 PASSWORD_WAS_PRESENT=0
 [ -f "$VPSSRV_PASSWORD_FILE" ] && PASSWORD_WAS_PRESENT=1
 if [ "$UPGRADE" = 1 ]; then
-  preserve_anytls
   preserve_proxy
 fi
 if [ -n "${VPSSRV_DEFAULT_LANG:-}" ]; then
@@ -540,10 +546,6 @@ PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
 # Check final configuration after upgrade preservation.
-if { [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] || [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; } \
-   && ! command -v openssl >/dev/null 2>&1; then
-  die "$(msg no_openssl)"
-fi
 
 # ---------------------------------------------------------------------------
 # 1b. Modules.
@@ -576,33 +578,19 @@ install_iperf3() {
   mv -f "$PREFIX/vendor/iperf3/iperf3.tmp" "$PREFIX/vendor/iperf3/iperf3"
 }
 
-install_anytls() {
-  msg anytls_start
-  # Once node identity and limits exist, the UI owns edits. Re-running the
-  # legacy setup script would replace per-node TLS paths and desync state.
-  if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$ANYTLS_CONFIG_PATH" ] &&
-     [ -f /etc/systemd/system/vps-server-anytls.service ]; then
-    return 0
-  fi
-  # Its own script owns everything anytls: deps, binary, config, unit,
-  # firewall, BBR, and the client-config summary it prints at the end.
-  ANYTLS_PORT="${ANYTLS_PORT:-}" ANYTLS_PASSWORD="${ANYTLS_PASSWORD:-}" \
-  SNI="${SNI:-www.bing.com}" \
-  VPSSRV_NODE_LOCK_FD="${node_lock:-}" VPSSRV_DEFER_NODE_START=1 VPSSRV_EMPTY_NODE_INSTALL=1 bash "$PREFIX/anytls/setup-anytls.sh"
-}
-
 install_proxy() {
-  msg proxy_start "${PROXY_PROTOCOLS:-vmess,vless,trojan,shadowsocks}"
+  msg proxy_start "${PROXY_PROTOCOLS:-anytls,vmess,vless,trojan,shadowsocks}"
   if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$PROXY_CONFIG_PATH" ] &&
      [ -f /etc/systemd/system/vps-server-proxy.service ]; then
     return 0
   fi
-  # Same shape as install_anytls(): its own script owns deps, the shared
-  # binary, config, unit, firewall and the client-config summary. Every
+  # This script owns the one sing-box binary, config, unit, firewall and
+  # client-config summary for all five protocols. Every
   # PROXY_<PROTO>_* credential/port var is passed through unset by default —
   # preserve_proxy() above has already exported them on an upgrade, and
   # setup-proxy.sh generates fresh ones itself when they arrive empty.
   PROXY_PROTOCOLS="${PROXY_PROTOCOLS:-}" PROXY_SNI="${PROXY_SNI:-www.bing.com}" \
+  PROXY_ANYTLS_PORT="${PROXY_ANYTLS_PORT:-}" PROXY_ANYTLS_PASSWORD="${PROXY_ANYTLS_PASSWORD:-}" \
   PROXY_VMESS_PORT="${PROXY_VMESS_PORT:-}" PROXY_VMESS_UUID="${PROXY_VMESS_UUID:-}" \
   PROXY_VLESS_PORT="${PROXY_VLESS_PORT:-}" PROXY_VLESS_UUID="${PROXY_VLESS_UUID:-}" \
   PROXY_TROJAN_PORT="${PROXY_TROJAN_PORT:-}" PROXY_TROJAN_PASSWORD="${PROXY_TROJAN_PASSWORD:-}" \
@@ -611,7 +599,7 @@ install_proxy() {
 }
 
 install_node_meter() {
-  if ! has_module anytls && ! has_module proxy; then
+  if ! has_module proxy; then
     systemctl disable --now vps-server-node-meter.service >/dev/null 2>&1 || true
     return 0
   fi
@@ -621,28 +609,22 @@ install_node_meter() {
     exec {node_lock}>&-
     unset node_lock
   fi
-  if ! command -v nft >/dev/null 2>&1; then
-    apt-get update -qq && apt-get install -y -qq nftables || return 1
-  fi
+  /usr/bin/python3 "$PREFIX/src/web/nft_runtime.py" check >/dev/null 2>&1 || return 1
   /usr/bin/python3 "$PREFIX/src/web/node_control.py" init || return 1
-  local was_anytls=0 was_proxy=0
-  systemctl is-enabled --quiet vps-server-anytls.service && was_anytls=1 || true
+  local was_proxy=0
   systemctl is-enabled --quiet vps-server-proxy.service && was_proxy=1 || true
-  mkdir -p /etc/systemd/system/vps-server-anytls.service.d \
-           /etc/systemd/system/vps-server-proxy.service.d
-  for unit in vps-server-anytls vps-server-proxy; do
-    cat > "/etc/systemd/system/${unit}.service.d/node-meter.conf" <<EOF
+  mkdir -p /etc/systemd/system/vps-server-proxy.service.d
+  cat > /etc/systemd/system/vps-server-proxy.service.d/node-meter.conf <<EOF
 [Unit]
 Requires=vps-server-node-meter.service
 After=vps-server-node-meter.service
 EOF
-  done
   cat > /etc/systemd/system/vps-server-node-meter.service <<EOF
 [Unit]
 Description=vps-server node traffic accounting and limits
 After=network-online.target
 Wants=network-online.target
-Before=vps-server-anytls.service vps-server-proxy.service
+Before=vps-server-proxy.service
 
 [Service]
 Type=notify
@@ -658,10 +640,9 @@ ReadWritePaths=/etc/vps-server-nodes /etc/vps-server-node.lock
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
-  systemctl stop vps-server-anytls.service vps-server-proxy.service >/dev/null 2>&1 || true
+  systemctl stop vps-server-proxy.service >/dev/null 2>&1 || true
   systemctl enable vps-server-node-meter.service || return 1
   systemctl restart vps-server-node-meter.service || return 1
-  [ "$was_anytls" = 0 ] || systemctl start vps-server-anytls.service || return 1
   [ "$was_proxy" = 0 ] || systemctl start vps-server-proxy.service || return 1
 }
 
@@ -719,13 +700,29 @@ fi
 # port that will never be free. Our own listener is excluded by stopping the
 # service first — on a re-run it is the process holding the port.
 port_held() {
-  ss -lnt "( sport = :$1 )" 2>/dev/null | tail -n +2 | grep -q .
+  python3 - "$1" <<'PY'
+import socket, sys
+port = int(sys.argv[1])
+for family, host in ((socket.AF_INET, '0.0.0.0'), (socket.AF_INET6, '::')):
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as probe:
+            probe.bind((host, port))
+    except OSError as exc:
+        if family == socket.AF_INET6 and exc.errno in (93, 97):
+            continue
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
 }
 
 first_busy_public_port() {
-  local p
-  for p in "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT"; do
-    if port_held "$p"; then printf '%s' "$p"; return 0; fi
+  local name p enabled flag
+  for name in http https; do
+    if [ "$name" = http ]; then p="$PUBLIC_HTTP_PORT"; else p="$PUBLIC_HTTPS_PORT"; fi
+    flag="$VPSSRV_DATA_DIR/web-${name}-enabled"
+    enabled="${VPSSRV_PUBLIC_ENABLE:-0}"
+    if [ -f "$flag" ]; then enabled="$(tr -d '[:space:]' < "$flag")"; fi
+    if [ "$enabled" = 1 ] && port_held "$p"; then printf '%s' "$p"; return 0; fi
   done
   return 1
 }
@@ -733,13 +730,40 @@ first_busy_public_port() {
 # The checkout keeps the binary under third_party/, but installed modules still
 # expect the shared binary directly under PREFIX. Never copy stateful data.
 copy_singbox_binary() {
-  [ -f "$SRC_DIR/third_party/sing-box/sing-box" ] || return 0
-  cp "$SRC_DIR/third_party/sing-box/sing-box" "$PREFIX/sing-box"
+  [ -f "$SRC_DIR/third_party/sing-box/sing-box" ] || return 1
+  printf '%s  %s\n' '68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7' \
+    "$SRC_DIR/third_party/sing-box/sing-box" | sha256sum -c - >/dev/null || return 1
+  install -m 0755 "$SRC_DIR/third_party/sing-box/sing-box" "$PREFIX/sing-box"
+  install -m 0755 "$SRC_DIR/third_party/sing-box/sing-box" /usr/local/bin/sing-box-vps-server
   if [ "$SRC_DIR" != "$(cd "$PREFIX" && pwd)" ]; then
     mkdir -p "$PREFIX/vendor/sing-box"
     cp "$SRC_DIR/third_party/sing-box/LICENSE" "$SRC_DIR/third_party/sing-box/sing-box.version" \
       "$PREFIX/vendor/sing-box/"
   fi
+}
+
+stage_nft_runtime() {
+  has_module proxy || return 0
+  local asset="$SRC_DIR/third_party/nft/nft-runtime-bullseye.tar.gz"
+  if [ ! -f "$asset" ]; then
+    command -v nft >/dev/null 2>&1 || return 1
+    return 0
+  fi
+  printf '%s  %s\n' '42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb' "$asset" |
+    sha256sum -c - >/dev/null || return 1
+  mkdir -p "$PREFIX/vendor"
+  local staged="$PREFIX/vendor/.nft-staged-$$" previous="$PREFIX/vendor/.nft-previous-$$"
+  mkdir -p "$staged"
+  tar -xzf "$asset" -C "$staged" || return 1
+  [ -f "$staged/usr/sbin/nft" ] || return 1
+  if [ -d "$PREFIX/vendor/nft" ]; then mv "$PREFIX/vendor/nft" "$previous"; fi
+  mv "$staged" "$PREFIX/vendor/nft"
+  VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1 || {
+    rm -r -- "$PREFIX/vendor/nft"
+    if [ -d "$previous" ]; then mv "$previous" "$PREFIX/vendor/nft"; fi
+    return 1
+  }
+  if [ -d "$previous" ]; then rm -r -- "$previous"; fi
 }
 
 # Copy only program files; state (data, credentials, certs, install state)
@@ -753,7 +777,7 @@ copy_selected_files() {
     # Module setup and uninstall paths use PREFIX/<module> even when the
     # checkout itself is PREFIX. Keep deploy/<module> as tracked source.
     local module
-    for module in anytls proxy frps lucky; do
+    for module in proxy frps lucky tailscale; do
       has_module "$module" || continue
       [ -d "$SRC_DIR/deploy/$module" ] || continue
       mkdir -p "$PREFIX/$module"
@@ -765,19 +789,19 @@ copy_selected_files() {
     if has_module web; then
       copy_items="$copy_items systemd README.md LICENSE"
     fi
-    has_module anytls && copy_items="$copy_items anytls"
     has_module proxy && copy_items="$copy_items proxy"
     has_module frps && copy_items="$copy_items frps"
     has_module lucky && copy_items="$copy_items lucky"
+    has_module tailscale && copy_items="$copy_items tailscale"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in systemd|anytls|proxy|frps|lucky) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in systemd|proxy|frps|lucky|tailscale) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web || has_module anytls || has_module proxy || \
+  if has_module web || has_module proxy || has_module tailscale || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     if [ "$SRC_DIR" != "$prefix_abs" ]; then
       mkdir -p "$PREFIX/src/web"
@@ -807,18 +831,42 @@ copy_selected_files() {
   fi
   # Even in-place installs need the deployed root entry point, not merely
   # the checkout's vendor path. Source and destination are distinct here.
-  if has_module anytls || has_module proxy || [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
+  if has_module web || has_module proxy || [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     copy_singbox_binary
   fi
   if has_module lucky; then
     mkdir -p "$PREFIX/vendor/lucky"
     cp "$SRC_DIR/third_party/lucky/lucky" "$SRC_DIR/third_party/lucky/LICENSE" "$SRC_DIR/third_party/lucky/component.txt" "$PREFIX/vendor/lucky/"
   fi
+  if has_module tailscale; then
+    mkdir -p "$PREFIX/vendor/tailscale"
+    cp "$SRC_DIR/third_party/tailscale/tailscale_1.102.4_amd64.tgz" "$PREFIX/vendor/tailscale/"
+  fi
   if has_module frps; then
     mkdir -p "$PREFIX/vendor/frp"
     cp "$SRC_DIR/third_party/frp/frps" "$SRC_DIR/third_party/frp/frpc" \
        "$SRC_DIR/third_party/frp/LICENSE" "$SRC_DIR/third_party/frp/component.txt" "$PREFIX/vendor/frp/"
   fi
+}
+
+register_optional_listener() {
+  local module="$1" unit
+  case "$module" in
+    frps) unit=vps-server-frps.service ;;
+    lucky) unit=vps-server-lucky.service ;;
+    *) return 2 ;;
+  esac
+  python3 - "$PREFIX" "$module" <<'PY' || {
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from console_port import reserve_owned_port
+from module_manager import managed_listener
+reserve_owned_port(sys.argv[1], *managed_listener(sys.argv[2]), probe=False)
+PY
+    systemctl disable --now "$unit" >/dev/null 2>&1 || true
+    die "$(msg port_registration_failed "$module")"
+  }
 }
 
 # Keep a version-matched, root-owned installer payload so the control panel
@@ -843,16 +891,18 @@ prepare_module_source() {
   rm -rf -- "$PREFIX/.installer-source-old"
 }
 
-# anytls/proxy on their own: nothing below this point applies, since all of
+# proxy on its own: nothing below this point applies, since all of
 # it exists to install and configure the Python service.
 if ! has_module web; then
-  copy_selected_files
-  if has_module anytls || has_module proxy; then
-    systemctl stop vps-server-anytls.service vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
+  stage_nft_runtime || die "$(msg nft_runtime_failed)"
+  if [ -f "$ANYTLS_CONFIG_PATH" ]; then
+    [ -f "$SRC_DIR/src/web/proxy_migration.py" ] || die "$(msg proxy_migration_failed)"
+    PREFIX="$PREFIX" VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" VPSSRV_NODE_LOCK_FD="${node_lock:-}" \
+      /usr/bin/python3 "$SRC_DIR/src/web/proxy_migration.py" migrate || die "$(msg proxy_migration_failed)"
   fi
-  ANYTLS_FAILED=0
-  if has_module anytls; then
-    install_anytls || ANYTLS_FAILED=1
+  copy_selected_files
+  if has_module proxy; then
+    systemctl stop vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
   fi
   PROXY_FAILED=0
   if has_module proxy; then
@@ -862,8 +912,7 @@ if ! has_module web; then
   if has_module frps; then
     PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || FRPS_FAILED=1
   fi
-  msg to_remove "$PREFIX" "$SERVICE_NAME"
-  [ "$ANYTLS_FAILED" = "0" ] || { msg anytls_failed >&2; exit 1; }
+  msg to_remove "$PREFIX" "$SERVICE_NAME" "$PREFIX" "$SERVICE_NAME"
   [ "$PROXY_FAILED" = "0" ] || { msg proxy_failed >&2; exit 1; }
   install_node_meter || {
     journalctl -u vps-server-node-meter.service -n 40 --no-pager >&2 || true
@@ -872,8 +921,17 @@ if ! has_module web; then
   [ "$FRPS_FAILED" = "0" ] || die "$(msg frps_install_failed)"
   if has_module lucky; then
     PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
+    register_optional_listener lucky
+  fi
+  if has_module frps; then register_optional_listener frps; fi
+  if has_module tailscale; then
+    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.102.4_amd64.tgz" || die "$(msg tailscale_install_failed)"
   fi
   write_state
+  if [ -f "$PREFIX/src/web/proxy_migration.py" ]; then
+    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" /usr/bin/python3 "$PREFIX/src/web/proxy_migration.py" finalize ||
+      die "$(msg proxy_migration_failed)"
+  fi
   exit 0
 fi
 
@@ -921,8 +979,7 @@ fi
 # Check before stopping anything, and put the service back if stopping it did
 # not help. A console/frps conflict must be rejected before this block can
 # stop an existing web service. On a re-run our own service may hold 80/443.
-if has_module web && [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ] \
-   && command -v ss >/dev/null 2>&1; then
+if has_module web; then
   busy_port="$(first_busy_public_port || true)"
   if [ -n "$busy_port" ]; then
     if systemctl is-active --quiet "$SERVICE_NAME"; then
@@ -957,13 +1014,27 @@ fi
 # In-place upgrades skip same-source directory copies but still install the
 # root binary when a sing-box module is selected.
 PREFIX_ABS="$(cd "$PREFIX" && pwd)"
+stage_nft_runtime || die "$(msg nft_runtime_failed)"
+if [ -f "$ANYTLS_CONFIG_PATH" ]; then
+  [ -f "$SRC_DIR/src/web/proxy_migration.py" ] || die "$(msg proxy_migration_failed)"
+  [ -x /usr/local/bin/sing-box-vps-server ] &&
+    VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1 ||
+    die "$(msg proxy_migration_failed)"
+  PREFIX="$PREFIX" VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" VPSSRV_NODE_LOCK_FD="${node_lock:-}" /usr/bin/python3 "$SRC_DIR/src/web/proxy_migration.py" migrate ||
+    die "$(msg proxy_migration_failed)"
+fi
 copy_selected_files
 prepare_module_source
 if has_module lucky; then
   PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
+  register_optional_listener lucky
+fi
+if has_module tailscale; then
+  PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.102.4_amd64.tgz" || die "$(msg tailscale_install_failed)"
 fi
 if has_module frps; then
   PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || die "$(msg frps_install_failed)"
+  register_optional_listener frps
 fi
 
 # Whichever path was taken, the app must actually be there before we go on to
@@ -978,6 +1049,57 @@ if [ "$SRC_DIR" != "$PREFIX_ABS" ]; then
   mkdir -p "$PREFIX/config"
   printf '%s\n' "$NEW_VERSION" > "$PREFIX/config/VERSION"
 fi
+
+# Initialize the shared registry before Web starts. Runtime changes use a
+# fixed-action systemd helper outside Web's read-only parent directory.
+python3 - "$PREFIX" <<'PY'
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from console_port import read_rows, write_rows
+root = Path(sys.argv[1]).parent
+root.mkdir(parents=True, exist_ok=True)
+registry = root / 'PORTS.md'
+rows, _ = read_rows(registry)
+if not registry.exists():
+    write_rows(registry, rows)
+(root / '.ports.lock').touch(exist_ok=True)
+PY
+NEW_PUBLIC_PORTS="$(python3 - "$PREFIX" "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT" "${VPSSRV_PUBLIC_ENABLE:-1}" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from console_port import reserve_owned_port, release_owned_port
+from module_manager import public_listener_enabled
+prefix = Path(sys.argv[1])
+choices = (('web_http', int(sys.argv[2]), 'vps-server Web HTTP'),
+           ('web_https', int(sys.argv[3]), 'vps-server Web HTTPS'))
+new = []
+try:
+    for name, port, owner in choices:
+        if public_listener_enabled(prefix, name, sys.argv[4] == '1'):
+            if reserve_owned_port(prefix, port, owner, probe=False):
+                new.append((name, port, owner))
+except BaseException:
+    for _, port, owner in reversed(new):
+        release_owned_port(prefix, port, owner)
+    raise
+for name, _, _ in new:
+    print(name)
+PY
+)" || die "Public listener port registration failed"
+release_new_public_ports() {
+  python3 - "$PREFIX" "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT" "$NEW_PUBLIC_PORTS" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from console_port import release_owned_port
+for name, port, owner in (('web_http', int(sys.argv[2]), 'vps-server Web HTTP'),
+                          ('web_https', int(sys.argv[3]), 'vps-server Web HTTPS')):
+    if name in sys.argv[4].split():
+        release_owned_port(sys.argv[1], port, owner)
+PY
+}
 
 # Carry over any explicitly provided settings so the unit reproduces them.
 ENV_LINES=""
@@ -1031,10 +1153,11 @@ EOF
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" >/dev/null
-systemctl restart "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME" || { release_new_public_ports; die "$(msg web_start_failed)"; }
 
 sleep 2
 if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+  release_new_public_ports
   msg start_failed >&2
   journalctl -u "$SERVICE_NAME" -n 20 --no-pager >&2 || true
   exit 1
@@ -1133,32 +1256,17 @@ if [ "${VPSSRV_CONSOLE_TLS:-0}" = "1" ] && [ -z "${VPSSRV_TLS_CERT:-}" ]; then
   msg cert_note
 fi
 
-# Last, and after the web service is confirmed healthy: the anytls/proxy
-# scripts each print a client-configuration block of their own, and burying
-# that above the web summary would make it easy to miss.
-# `has_module anytls && install_anytls` looks equivalent, but under `set -e` a
-# failing install_anytls kills the script right here — before the teardown hint
-# is printed, and with a non-zero exit that makes the already-installed and
-# already-running web module look like it failed too. That is exactly what
-# happened on the first anytls install attempt. Same reasoning applies to proxy.
-if has_module anytls || has_module proxy; then
-  systemctl stop vps-server-anytls.service vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
-fi
-ANYTLS_FAILED=0
-if has_module anytls; then
-  install_anytls || ANYTLS_FAILED=1
+# Install proxy after Web has reported its own status.
+if has_module proxy; then
+  systemctl stop vps-server-proxy.service vps-server-node-meter.service >/dev/null 2>&1 || true
 fi
 PROXY_FAILED=0
 if has_module proxy; then
   install_proxy || PROXY_FAILED=1
 fi
 
-msg to_remove "$PREFIX" "$SERVICE_NAME"
+msg to_remove "$PREFIX" "$SERVICE_NAME" "$PREFIX" "$SERVICE_NAME"
 
-if [ "$ANYTLS_FAILED" = "1" ]; then
-  msg anytls_failed >&2
-  exit 1
-fi
 if [ "$PROXY_FAILED" = "1" ]; then
   msg proxy_failed >&2
   exit 1
@@ -1168,3 +1276,5 @@ install_node_meter || {
   die "$(msg node_meter_failed)"
 }
 write_state
+PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" /usr/bin/python3 "$PREFIX/src/web/proxy_migration.py" finalize ||
+  die "$(msg proxy_migration_failed)"

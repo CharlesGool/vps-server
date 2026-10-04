@@ -2,8 +2,8 @@
 """Per-listener dual-stack traffic counters and 1 Mbps kernel policing.
 
 Only the dedicated inet table is changed. Named counters cover TCP and UDP in
-both directions. A shared named quota starts policing both directions as soon
-as their combined transferred bytes exceed the configured cap. A short poll
+both directions. A shared named quota counts the observed total against half
+the configured cap, accounting for both sides of forwarded traffic. A short poll
 persists totals and turns date expiry into the same policy.
 """
 
@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from node_accounting import advance_cycles, desired_policy, update_accounting
+from node_accounting import BILLABLE_MULTIPLIER, advance_cycles, desired_policy, update_accounting
 from node_inventory import InvalidInventory
 from node_state import CONFIG_PATHS, STATE_PATH, _read_json, read_inventory, write_inventory, write_json
 
@@ -76,7 +76,7 @@ def parse_counters(document, inventory, epoch, *, new_ids=frozenset()):
 
 
 def _policy_key(inventory, policy):
-    inputs = [(LIMIT_BYTES_PER_SECOND, node["id"], node["port"], node["cap_bytes"],
+    inputs = [(LIMIT_BYTES_PER_SECOND, BILLABLE_MULTIPLIER, node["id"], node["port"], node["cap_bytes"],
                node["cap_action"], policy[node["id"]]["active"],
                policy[node["id"]]["blocked"], policy[node["id"]]["expired"],
                policy[node["id"]]["capped"],
@@ -110,14 +110,16 @@ def render_rules(inventory, policy, *, replace=False):
                              f"{{ rate over {(rate + 7) // 8} bytes/second "
                              "burst 16384 bytes; }")
         # A named quota is shared across upload/download and both IP families.
-        # It is needed only while below the cap; once crossed, unconditional
-        # directional limits take over on the next reconciliation.
+        # Keep enforcing the recorded lower bound even when an unobserved
+        # interval makes the total uncertain. Only a reached cap or expiry
+        # replaces the quota with an unconditional policy.
         quota = node["cap_bytes"] is not None and not (
-            decision["capped"] or decision["expired"] or decision["suspect"])
+            decision["capped"] or decision["expired"])
         if quota:
             used = node["upload_bytes"] + node["download_bytes"]
+            quota_bytes = max(1, node["cap_bytes"] // BILLABLE_MULTIPLIER)
             lines.append(f"add quota inet {TABLE} q_{stem} "
-                         f"{{ over {node['cap_bytes']} bytes used {used} bytes; }}")
+                         f"{{ over {quota_bytes} bytes used {used} bytes; }}")
             if node["cap_action"] == "throttle":
                 for direction in ("upload", "download"):
                     lines.append(f"add limit inet {TABLE} lcap_{stem}_{direction} "
@@ -146,8 +148,10 @@ def render_rules(inventory, policy, *, replace=False):
 
 class NftBackend:
     def _run(self, args, *, input=None):
-        return subprocess.run(["nft", *args], input=input, text=True,
-                              capture_output=True, timeout=20)
+        from nft_runtime import command
+        binary, env = command()
+        return subprocess.run([binary, *args], input=input, text=True,
+                              capture_output=True, timeout=20, env=env)
 
     def exists(self):
         result = self._run(["-j", "list", "tables"])
@@ -218,8 +222,8 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                     ledger["nodes"][identifier] = {"samples": zero[identifier], "suspect": False}
             else:
                 # After reboot or an external table deletion, an unobserved
-                # interval may have lost bytes. Keep lifetime lower bounds and
-                # police at 1 Mbps until the next configured reset.
+                # interval may have lost bytes. Keep recorded lower bounds
+                # and the quota rule, while exposing the accounting gap.
                 for entry in ledger["nodes"].values():
                     entry["suspect"] = True
                 old_fingerprint = None
@@ -270,7 +274,7 @@ def main():
         print(f"Node traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Existing rules may have disappeared or become stale. Stop the node
         # units instead of leaving unrestricted traffic running indefinitely.
-        for service in ("vps-server-anytls.service", "vps-server-proxy.service"):
+        for service in ("vps-server-proxy.service",):
             subprocess.run(["systemctl", "stop", service],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                            timeout=20, check=False)

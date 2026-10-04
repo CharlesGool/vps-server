@@ -26,7 +26,11 @@ case "$key" in
   line_pw_seefile) fmt='  密码：    见 %s\n' ;;
   line_lang) fmt='  语言：    %s （没有 cookie/查询参数/浏览器语言匹配时的默认值）\n' ;;
   cert_note) fmt='\n注意：使用的是自签证书，浏览器会弹出警告，需要手动点继续。\n想用真实证书的话，设置 VPSSRV_TLS_CERT 和 VPSSRV_TLS_KEY 后\n重新运行本安装脚本。\n' ;;
-  to_remove) fmt='\n卸载方法：\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  to_remove) fmt='\n保留数据卸载：\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash deploy/uninstall.sh\n完全卸载项目数据：\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  port_registration_failed) fmt='无法将 %s 监听端口登记到 PORTS.md；该服务已停止。\n' ;;
+  nft_runtime_failed) fmt='随附的 nftables 运行时缺失或校验失败。\n' ;;
+  tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
+  web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
   proxy_protocols_head) fmt='  哪些协议？下面每一项独立回答。\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;
   ask_proxy_vless) fmt='    vless [Y/n] ' ;;
@@ -60,7 +64,8 @@ case "$key" in
   ask_new_var) fmt='  %s [%s]： ' ;;
   upgrade_vars_unknown) fmt='旧安装没有记录它支持哪些配置项，因此无法判断哪些是新增的。它记录过的都会沿用，其余按 .env.example 里的默认值。想逐项复核就重跑一次、在上面回答 n。\n' ;;
   language_menu) fmt='语言:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
-  language_choice) fmt='Choice / 选择 / 選擇 [1]: ' ;;
+  language_choice) fmt='Choice / 选择 / Elección [%s]: ' ;;
+  language_invalid) fmt='请输入 1、2 或 3。\n' ;;
   host_placeholder) fmt='<本机地址>' ;;
   error_prefix) fmt='错误：' ;;
   public_requires_openssl) fmt='公开页面的设置需要 openssl\n' ;;
@@ -77,6 +82,7 @@ case "$key" in
   frps_port_verify) fmt='无法核实已有 frps 端口;拒绝安装 web 模块\n' ;;
   frps_console_conflict) fmt='控制台端口 %s 与已有 frps 的 bindPort 冲突\n' ;;
   node_meter_failed) fmt='节点流量统计或限速服务启动失败；代理服务保持停止。检查：journalctl -u vps-server-node-meter.service -e\n' ;;
+  proxy_migration_failed) fmt='旧 AnyTLS 合并到统一代理服务失败；安装已停止。请检查上方错误,保留迁移备份并核对原服务状态.\n' ;;
   frps_install_failed) fmt='frps 安装失败\n' ;;
   lucky_install_failed) fmt='Lucky 安装失败\n' ;;
   lucky_port_verify) fmt='无法核实已有 Lucky 管理端口;拒绝安装 web 模块\n' ;;

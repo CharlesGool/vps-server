@@ -3,24 +3,26 @@
 
 def _cert_common_name(context, path):
     """Read the node's requested server name from SAN, then legacy CN."""
-    if not path or not context.shutil.which("openssl"):
+    if not path:
         return ""
-    san = context._cmd_output(["openssl", "x509", "-in", path, "-noout", "-ext", "subjectAltName"])
-    match = context.re.search(r"(?:DNS:|IP Address:)([^,\s]+)", san)
-    if match:
-        return match.group(1).strip()
-    out = context._cmd_output(["openssl", "x509", "-in", path, "-noout", "-subject"])
-    match = context.re.search(r"CN\s*=\s*([^,/\n]+)", out)
-    return match.group(1).strip() if match else ""
+    try:
+        from ssl import _ssl
+        decoded = _ssl._test_decode_cert(path)
+        sans = decoded.get("subjectAltName") or ()
+        if sans:
+            return sans[0][1]
+        return next(value for group in decoded.get("subject", ()) for name, value in group if name == "commonName")
+    except (OSError, ValueError, StopIteration):
+        return ""
 
 def anytls_installed(context, ):
-    """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
-    return context.ANYTLS_CONFIG.is_file()
+    """Whether the unified proxy configuration contains an AnyTLS inbound."""
+    return anytls_node(context) is not None
 
 def anytls_node(context, ):
     """The installed node's parameters, or None if the module is not installed."""
     try:
-        config = context.json.loads(context.ANYTLS_CONFIG.read_text())
+        config = context.json.loads(context.PROXY_CONFIG.read_text())
     except (OSError, ValueError):
         return None
     for inbound in config.get("inbounds", []):
@@ -32,7 +34,7 @@ def anytls_node(context, ):
             "port": inbound.get("listen_port", ""),
             "password": users[0].get("password", ""),
             "sni": context._cert_common_name(tls.get("certificate_path", "")),
-            "running": context._run_quiet(["systemctl", "is-active", "--quiet", context.ANYTLS_SERVICE]),
+            "running": context._run_quiet(["systemctl", "is-active", "--quiet", context.PROXY_SERVICE]),
         }
     return None
 

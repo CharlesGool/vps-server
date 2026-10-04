@@ -164,18 +164,21 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
     page_title = (f"{server_label} — {title} — {t['title']}" if server_label
                   else f"{title} — {t['title']}")
     favicon = ('login' if bare else 'modules' if title == t['modules_heading'] else
+               'changelog' if title == t['module_detailed_logs'] else
                'security' if back_href == '/settings' else
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
                                     'visitors', 'changelog', 'settings') else
                'frp' if title in (t['frp_heading'], t['frps_heading'], t['frp_client_heading'])
-               or back_href in ('/frps', '/frpc') else 'lucky' if title == 'Lucky' else 'home')
+               or back_href in ('/frps', '/frpc') else 'lucky' if title == 'Lucky' else
+               'tailscale' if title == 'Tailscale' else 'home')
     version_tag = f'<a class="version" href="/changelog">{context.html.escape(context.VERSION_LABEL)}</a>'
     nav = ""
     if show_nav:
         def link(href, key):
             cls = ' class="active"' if active == key else ""
             current = ' aria-current="page"' if active == key else ""
-            icons = {"home": "server", "changelog": "scroll-text", "settings": "settings-2"}
+            icons = {"home": "server", "changelog": "scroll-text",
+                     "module_detailed_logs": "activity", "settings": "settings-2"}
             return f'<a{cls}{current} href="{href}">{context.ui_icon(icons[key])}<span>{context.html.escape(t[key])}</span></a>'
 
         # No session to end when auth is off — offering "Log out" would be a
@@ -192,6 +195,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
           <div class="navlinks">
             {link('/', 'home')}
             {link('/changelog', 'changelog')}
+            {link('/settings/logs', 'module_detailed_logs')}
             {link('/settings', 'settings') if context.AUTH_ENABLED and (password_authenticated or ip_authenticated) else ''}
             {logout_link}
           </div>

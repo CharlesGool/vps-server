@@ -32,7 +32,7 @@ metadata:
 
 The current installer installs only the Web console by default. Select other server modules with the module variable or later in Settings → Modules. Install FRPC separately. The historical goals below retain their original scope and validation record.
 
-- Install, on a fresh Debian/Ubuntu VPS, a selectable bundle providing five capabilities (the web module includes the public page
+- Install, on a fresh Debian/Ubuntu VPS, a console and network modules that can be enabled as needed (the web module includes the public page
   and private console):
   1. **Public reachability page** — a deliberately minimal page served on TCP
      **80 and 443** with no authentication, so that anyone given only the IP can
@@ -45,19 +45,20 @@ The current installer installs only the Web console by default. Select other ser
   3. **On-demand iperf3 window** — a bandwidth/latency test endpoint that is
      **off by default**; an operator opens a time-boxed window from the console,
      and it closes itself when the window expires.
-  4. **anytls proxy** — a sing-box `anytls` inbound with a self-signed
-     certificate, plus BBR.
-  5. **proxy** — any subset of sing-box `vmess`/`vless`/`trojan`/`shadowsocks`
-     inbounds, sharing one systemd unit, one config, and the same vendored
-     sing-box binary the anytls module uses. See "The proxy module" below.
-- Be installable with no outbound network access beyond the distro package
-  mirror. The sing-box binary ships in the repository.
+  4. **Unified proxy** — one sing-box service hosts AnyTLS, VMess, VLESS,
+     Trojan, and Shadowsocks.
+  5. **Tailscale** — local Linux client status, preferences, device list,
+     and logs.
+- The complete offline package includes service binaries and a private nftables
+  runtime for node accounting; target installation does not download source or
+  system packages.
 - Coexist on the same host with `vps-webserver` and `Anytsl-Serve` without
   colliding on systemd unit names, install prefixes, environment variable
   prefixes, or persisted ports.
 
 **Tracked goals and current status:**
 
+- [ ] 2026-10-04 separate state-layout target-host acceptance: unified-proxy migration must preserve old node IDs, ports, credentials, certificates, and accounting state. The complete offline package must install on supported Debian/Ubuntu hosts without Git or repository network access. Joining Tailscale still requires a reachable control server.
 - [x] 2026-09-19 Per-node traffic accounting and data caps: the five proxy protocols track upload/download independently. The original 1 Mbps response to a cap and the monthly or one-time reset passed live-host tests on 2026-09-27. The current branch adds separate upload/download speed caps, a choice of 1 Mbps throttling or blocking after the traffic cap, recurring cycles measured in days, calendar months or years, and an optional validity duration that blocks traffic on expiry. The new policy rules and state migration have automated checks; the current test host has verified the UI and migration, while live transfer through every policy combination remains unverified.
 - [x] 2026-09-19 Browser-based first-run setup was previously provided by `tools/setup_wizard/setup_wizard.py` and has been retired. v5.0.0 installation runs directly in the terminal and installs only the Web console when `VPSSRV_MODULES` is unset.
 - [x] 2026-09-22 Provide FRPS / FRPC connection information in the authenticated console. The page reports the local FRPS unit state, bind address, interface addresses, port, and auth token; sensitive values are fetched only on Show or Copy. A FRPC connection template uses the installed server values and a replaceable server-address placeholder. The server has no visibility into FRPC running on another device.
@@ -69,8 +70,8 @@ FRPC card review, 2026-09-29: the four operator screenshots showed the old conne
 - [x] 2026-09-29 Add console module management. The former browser setup flow is historical. The Settings → Modules page can install an omitted module from the installed, version-matched source payload or enable and disable an installed module. A transient systemd job runs the installer outside the Web service; explicit module choices preserve existing credentials. Systemd service switches retain configuration; the public listener switches affect only their selected port so the control panel remains reachable.
 
 The retired first-run listener registered its random port in `~/apps/PORTS.md` before serving and removed the registration on shutdown; its temporary password admitted only one browser session. The current Modules page is under ordinary Settings and uses the signed-in session. It submits fixed module names and actions to a separate privileged systemd job. The job records progress outside Web, allowing Web to restart during installation. Disabling proxy modules retains nodes and credentials; disabled units stay stopped when node controls are used. The iperf3 and public-page switches restart Web to apply listener changes while keeping the console available.
-- [ ] Scope the broader `gdy666/lucky` feature request recorded in the 2026-09-22 status snapshot. The checkout now offers a Lucky install path, but no broader feature list or acceptance criteria were recorded.
-- [ ] Provide a future Tailscale control interface based on the operator-selected OpenWrt plugin. The specific plugin version, pages, and controls remain to be defined; showing Tailscale addresses does not implement those controls.
+- [ ] Recreate all Lucky features in a later version. The current version only installs/removes the module and links to Lucky's native management page; the exact scope and acceptance criteria for later 1:1 recreation will be determined then.
+- [ ] Tailscale target-host acceptance: the console now provides Linux client overview, ordinary settings, device list, and runtime logs. The Web management port and node relay port are also registered in `PORTS.md`. These behaviors still need test-host confirmation; OpenWrt-specific dnsmasq forwarding does not apply to this Debian/Ubuntu project.
 - [x] Complete live-host acceptance of the node controls: display numbers stay contiguous after deletion and restart at 1 when all nodes are removed, while hidden UUIDs preserve identity; names, ports, credentials, and TLS SNI are editable; Shadowsocks shows SNI as not applicable; random port and credential reset leaves SNI unchanged. Each node can be disabled without deleting its configuration or traffic record and re-enabled on the same port. The controls passed live-host tests on 2026-09-27.
 - [x] Apply one accessible design system to the console and public reachability page. The browser setup wizard is retired. The shared spacing, control styles, bundled fonts and icons, visible focus, and responsive layouts remain in use. Ordinary Settings now offers eight persistent accent choices and separate persistent light and dark modes; the selected accent survives a mode switch.
 
@@ -103,7 +104,7 @@ The shared SQLite-lock concern is a [known unresolved measurement question][loca
 
 ## Architecture
 
-The web service, anytls service, and optional proxy service run as separate processes; the web service also spawns a transient iperf3 child. The console and public page use separate listeners within one Python process and share in-memory state. Only configured client traffic reaches these services.
+Web, the unified proxy, and optional Tailscale each run as separate services; AnyTLS is an inbound protocol of the unified proxy. Web also spawns a transient iperf3 child. The console and public page use separate listeners within one Python process and share in-memory state. Only configured client traffic reaches these services.
 
 ```
                        ┌──────────────────────── vps-server-web.service ───────┐
@@ -126,13 +127,13 @@ The web service, anytls service, and optional proxy service run as separate proc
   tester with iperf3      :5201 ◄────────────── iperf3 -s  (child process, ────────┘
   client                                         killed when window expires)
 
-                       ┌─── vps-server-anytls.service ───┐
-  proxy client ──────► │  sing-box, anytls inbound, TLS  │
-  :<random>            │  self-signed cert               │
-                       └─────────────────────────────────┘
+                       ┌─── vps-server-proxy.service ────────┐
+  proxy client ──────► │  one sing-box process, five protocols  │
+  :<node port>        │  AnyTLS is an inbound protocol          │
+                       └────────────────────────────────────────┘
 ```
 
-The diagram shows the web and anytls units; the optional `vps-server-proxy.service` runs multiple independent inbounds in a third process, sharing the vendored sing-box binary but not either unit's state. Each module can be selected separately; see [The proxy module][local-link-005].
+The proxy module has one sing-box configuration and one service. The shared `vps-server-node-meter.service` manages node accounting. The old AnyTLS service is retired only after a backed-up upgrade migration succeeds.
 
 ### Feature modules
 
@@ -161,6 +162,8 @@ The feature modules do not import this application's entry point.
 | Recent visitors | `features/visitors.py` | `src/web/static/visitors.js`, `src/web/static/styles/visitors.css` |
 | Changelog | `features/changelog.py` | `src/web/static/styles/changelog.css` |
 | Lucky status | `features/lucky.py` | Shared card styles |
+| Tailscale status, settings, and devices | `features/tailscale.py`, `tailscale_control.py` | `src/web/static/styles/modules.css`, shared private-value controls |
+| Browser root terminal | `features/terminal.py`, `terminal_session.py` | Bundled xterm.js and Fit Addon, `src/web/static/terminal.js` |
 | Public reachability page | `features/public.py` | `src/web/static/styles/public.css`, embedded into the response |
 
 `features/system.py` contains shared host command and firewall helpers;
@@ -173,7 +176,7 @@ selection controls. Ordered CSS source files under `src/web/static/styles/` buil
 the former rule order and does not add a runtime CSS dependency. The Web
 installer keeps the Python package, `features/`, and `static/` under
 `$PREFIX/src/web/`. The root `$PREFIX/app.py` compatibility entry point calls
-the package's `main()`. In v5.1.1, persistent data lives in the separate state
+the package's `main()`. In v5.2.0, persistent data lives in the separate state
 root; older flat code files are not the current runtime entry point. Reusing a
 feature in another project requires its context adapter and
 the shared styles or scripts it references; the routes are not a standalone
@@ -216,11 +219,11 @@ parses no request body, and sets no cookie.
 
 ### Upgrading over an existing install
 
-`v5.1.1` establishes persistent state layout `1`. Program files remain at
+`v5.2.0` establishes persistent state layout `1`. Program files remain at
 `$PREFIX`; the default state root is `/var/lib/vps-server`. It holds the
 password, console port, certificates, runtime data, installation record, and
 `.env`. `/etc/vps-server/state-dir` records the location of the state root.
-Root manages that directory with mode `0700`. Installers after `v5.1.1` **MUST**
+Root manages that directory with mode `0700`. Later installers **MUST**
 continue to read layout `1` and preserve its state when replacing program
 files.
 
@@ -237,9 +240,11 @@ still be read by later versions using the same layout.
 
 In-app settings and module management use the state root. Entries that read
 old paths such as `$PREFIX/data` directly have been changed to use unified
-state paths. Module configurations under `/etc/vps-server-anytls/`,
-`/etc/vps-server-proxy/`, `/etc/vps-server-nodes/`, and `/etc/frp/` remain
-separate; `PORTS.md` remains in the parent of the installation directory.
+state paths. Proxy configuration and node inventory live under
+`/etc/vps-server-proxy/` and `/etc/vps-server-nodes/`; the former
+`/etc/vps-server-anytls/` is an upgrade-migration input only. Tailscale device
+identity is under the state root at `tailscale/`, while FRP configuration
+remains under `/etc/frp/`. `PORTS.md` is in the installation directory's parent.
 Custom persistent paths are recorded in `paths.json`; a later installer
 rejects an unannounced path change for the operator to resolve manually.
 
@@ -265,99 +270,51 @@ services and ports, a default complete uninstall removes only a state root
 marked with layout `1`. Paths customized outside that root are not removed
 automatically, to avoid deleting another application's data.
 
-### The console's anytls section
-
-`/anytls` redirects to `/proxy`. The current proxy page reads only the
-validated managed-node registry. If it is missing or disagrees with installed
-configuration, the page asks for migration or repair instead of falling back
-to the old node editor. The installer uses `node_control.py init` to import
-older configurations while preserving stable node IDs. A restricted privileged
-helper validates and applies connection edits, traffic policies, and node
-resets made in the console; failures restore the previous configuration.
-The former page path that called the installation script to reset credentials
-is retired; see [HISTORY](HISTORY.md#retired-anytls-console).
-
-### The proxy module
+### Unified proxy module
 
 <a id="vps-proxy-module"></a>
 
-The former backlog asked whether the already-vendored sing-box binary covers more
-protocols than anytls, or whether a second backend would be needed. It does:
-`vmess`, `vless`, `trojan` and `shadowsocks` (2022-blake3-aes-128-gcm) each
-pass `sing-box check`, and — confirmed by actually running it, not just
-validating the config — all four bind their ports and accept connections
-simultaneously in one `sing-box run` process. No second backend was added.
+`/proxy` shows AnyTLS, VMess, VLESS, Trojan, and Shadowsocks nodes; `/anytls`
+redirects old bookmarks to the same page. The five protocols share
+`/etc/vps-server-proxy/config.json`, `vps-server-proxy.service`,
+`/usr/local/bin/sing-box-vps-server`, and the install and uninstall entry
+points. A stable ID connects each managed node to its configuration, traffic
+policy, and Clash share. New TLS nodes each receive a self-signed certificate;
+Shadowsocks needs none.
 
-Unlike anytls, this is **one systemd unit (`vps-server-proxy.service`) with
-multiple simultaneous inbounds in one `config.json`**, not four clones of the
-anytls shape. Reasons: one unit to monitor instead of four, one certificate at initial install
-and separate certificates for new TLS nodes (shadowsocks needs none), and it is
-the shape a later per-node traffic-accounting feature would want anyway — one
-process whose `inbounds` array is already the node list. `deploy/proxy/setup-proxy.sh`
-is first-party to vps-server, not vendored from anywhere, since none of these
-four protocols come from Anytsl-Serve.
+`proxy_migration.py` checks and merges `/etc/vps-server-anytls/config.json`
+from an old installation. It first archives the old configuration, node
+inventory, accounting state, and service files. It then switches while keeping
+node IDs, ports, credentials, and certificates. The old unit is retired only
+after the new configuration passes sing-box validation and service state is
+restored. A fully successful install removes the old configuration directory.
+Failure restores the old service and files, leaving the archive under the
+state root's `data/` directory.
 
-It **shares the vendored sing-box binary with the anytls module**
-(`/usr/local/bin/sing-box-vps-server`) rather than carrying a second ~57 MB
-copy. Both modules' `uninstall()` check whether the *other* module's config
-still exists before deleting that binary — anytls's own vendored
-`setup-anytls.sh` gained this check as a local, documented deviation (see
-`deploy/anytls/.upstream-version`) specifically because the binary is no longer
-anytls's alone to delete.
+Node creation, editing, enabling, disabling, deletion, and reset update the
+configuration, inventory, firewall, accounting, and `PORTS.md` under the
+`node_control.py` lock. Public ports are checked against listeners and the
+registry before an operation; a failure withdraws a new registration. Disabling
+or deleting a node releases only this project's registrations. Traffic caps
+count (upload + download) × 2, so the kernel quota uses half that cap as its
+raw accounting threshold. Accounting gaps do not cause early throttling.
+Monthly cycles reset at 00:00 UTC on the first day of each month; daily and
+yearly cycles retain their prior rules.
 
-`PROXY_PROTOCOLS` (comma-separated, default all four) is validated into a
-global array, not echoed through `$(...)` command substitution — an early
-version validated it inside a function called as `read -ra x <<< "$(fn)"`,
-and `exit 1` inside that substitution's subshell only killed the subshell:
-the parent script silently continued with an empty protocol list and started
-a service with zero inbounds. Same class of bug as the `prompt_new_settings()`
-entry in [Decisions][local-link-006]. Each protocol's port comes from a distinct
-5000-wide range under 60000 (not 10000-wide from 60000, which overflowed
-sing-box's `uint16 listen_port` past 65535 on whichever install happened to
-roll a high port — caught by five repeated fresh installs, not by the first
-one). Preserving credentials across an upgrade works the same way as anytls's
-`preserve_anytls()`: `preserve_proxy()` reads every installed protocol's port
-and credential back out of `config.json`, plus the protocol *set* itself, so
-`VPSSRV_MODULES=proxy` on a re-run does not silently drop or add a protocol.
+The node page masks interface addresses, ports, and credentials by default;
+authenticated private-value endpoints handle Show and Copy requests. If the
+managed inventory is missing or inconsistent with configuration, the page
+requests migration or repair instead of using the old editor. See
+[HISTORY](HISTORY.md#retired-anytls-console) for the former independent-module
+design and its retirement.
 
-The installer initially creates one inbound per selected protocol. The managed
-console can then create multiple numbered nodes for any installed protocol,
-delete individual nodes, and leave a module installed with zero listeners.
-Node IDs remain stable and hidden in the visible UI; every form and Clash
-subscription targets the ID, so repeated protocols stay independent. A node's
-connection editor replaces its visible facts in the same card. The separate
-traffic form accepts a GiB cap, Mbps upload/download limits, cap response,
-recurring reset interval and optional validity duration. A reset clears period
-usage and lifts quota enforcement; it does not renew the validity duration.
-The version-one inventory is converted to version two on read: old absolute
-expiry dates are cleared so their former 1 Mbps meaning cannot silently become
-a block, while identities, counters, caps and schedules remain intact. Adding or deleting a node
-changes the sing-box config, inventory, firewall and nft accounting under one
-lock, with rollback on failure. Newly created TLS nodes get their own
-self-signed certificate. The console uses a local system font stack so its
-text metrics stay consistent from the first paint through page refreshes.
+### Tailscale module
 
-The console's `/proxy` page shows installed AnyTLS and the four proxy
-protocols by stable node ID. `node_control.py` applies each node's connection
-settings, reset, and traffic policy, restoring the old configuration on
-failure. Before an upgrade of an older installation, the installer initializes
-the managed-node registry. If the registry is missing or differs from the
-installed configuration, the page asks for migration or repair instead of
-enabling the old editor. Earlier reset behavior is recorded in
-[HISTORY](HISTORY.md#retired-proxy-console).
+The offline package contains the official Linux amd64 static archive. The installer checks its digest, creates `vps-server-tailscale.service` and a private state directory, and registers the fixed UDP port in `PORTS.md` before startup. The console uses a local socket and fixed CLI arguments to read status, preferences, connectivity, devices, and the systemd journal; private addresses and accounts are masked by default. Auth keys are passed to the CLI in a temporary root-owned file, deleted after execution, and never saved in project state. Ordinary settings collect changes in one form and apply them with a single Linux `tailscale set` call. Blank route, exit-node, and relay-port fields preserve existing values; separate checkboxes request clearing. Device IPv4/IPv6 addresses are read separately on demand, and local subnets and available exit nodes can populate fields quickly. The experimental low-memory option uses a fixed-argument helper to write `GOGC=10` in a separate systemd drop-in, restart the service, and try to restore the previous configuration on failure; lower GOGC may increase CPU use. These controls do not simulate OpenWrt dnsmasq forwarding or router-firewall options. Binary installation is offline; joining a Tailnet requires access to the selected control server.
 
-`PortForwardManager.reserved_ports()` treats every installed proxy protocol's
-port the same way it already treats the anytls node's port and the console's
-own: reserved, so a port-forward rule cannot be pointed at a port a proxy
-protocol already owns.
+Lucky retains its native management page. This project only shows the management address, running state, and Open button; it does not show accounts and passwords managed by Lucky. `config.json` is startup configuration, while the native page persists settings in `lucky_base.lkcf`. Every 5 seconds the page and backend read the current port with the native `-baseConfInfo` command, then verify that Lucky's main process owns the listener and serves its management page to determine HTTP/HTTPS. Old and new ports may briefly listen together; process-port matching alone cannot identify the current address. A privileged helper atomically updates only Lucky-owned rows in `PORTS.md` and removes obsolete rows when listeners disappear. On the test host, `AllowInternetaccess=false` still permits wildcard listening and LAN access to the HTTP management page; it does not guarantee a `localhost`-only bind. HTTP login does not encrypt transport.
 
-**The console's `/proxy` page also shows the installed anytls node.**
-The operator considered a separate anytls page an artificial division of
-proxy nodes. `/anytls` redirects here. The two modules retain independent
-service status, and operations on the shared page are keyed by node ID.
-
-The node page lists host interface and optional Tailscale addresses without
-an install-time public-IP value.
+The browser terminal requires enabled Web administration and valid short-lived administrator-password verification; passwordless IP sessions cannot open it. A root PTY is established through a same-origin WebSocket with a CSRF token. Disconnection, leaving the page, expiration of the login session, or 30 minutes idle terminates the process. Verification expiry only controls opening the terminal and does not interrupt an active connection. Commands are not written to console access logs. The terminal container has a fixed height; out-of-range size reports do not disconnect it. HTTP terminal input/output is unencrypted. xterm.js static files and licenses are bundled offline, without a CDN. The continuous dark header and output area reference the frame appearance of [FileTerm](https://github.com/St0ff3l/fileterm) and are implemented in this project's CSS.
 
 ### iperf3 window lifecycle
 
@@ -448,14 +405,14 @@ or `tailscale ip` on that device.
 - Keep iperf3 time-boxed and remove the firewall rule on close or shutdown.
 - Reapply persisted forwards from JSON at process start; withdraw runtime rules at a clean stop without resetting the host-wide `ip_forward` toggle.
 - Preserve node credentials and selected settings on upgrade; use the owning setup scripts for rotation, outside the web unit's filesystem sandbox.
-- From v5.1.1 onward, later versions **MUST** keep persistent state layout `1` readable and **MUST NOT** move the default persistent state back into `$PREFIX`. The installer **MUST NOT** automatically migrate layouts from v5.1.0 or earlier and **MUST** refuse an old service or missing critical state before changing services. The operator **MUST** transfer changed custom state paths manually; the installer **MUST NOT** silently reset them.
+- From v5.2.0 onward, later versions **MUST** keep persistent state layout `1` readable and **MUST NOT** move the default persistent state back into `$PREFIX`. The installer **MUST NOT** automatically migrate layouts from v5.1.0 or earlier and **MUST** refuse an old service or missing critical state before changing services. The operator **MUST** transfer changed custom state paths manually; the installer **MUST NOT** silently reset them.
 - Do not decouple the shared `_db_lock` without evidence of harmful latency: the historical 60-flooder measurement did not reproduce a slowdown. See [Bugs][local-link-008].
 
 ## External Interfaces
 
 - HTTP/HTTPS: public listeners on 80/443 expose only the reachability page; the operator console uses a separate persisted port. iperf3 listens only within an authenticated time-boxed window.
 - The console reads `/proc/net/tcp[6]` to log inbound TCP connections; it does not export proxy secrets on public routes.
-- `install.sh` uses the distro package manager and does not look up a public IP. The service makes no outbound public-IP request at runtime. `setup-anytls.sh` and `setup-proxy.sh` manage sing-box units and certificates. iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs credential resets outside the web sandbox.
+- `install.sh` uses bundled binaries and the private nftables runtime when needed, without calling a package mirror or discovering the public IP on the target. Node accounting probes whether system nft can read the ruleset, preferring the host version when usable and otherwise falling back to the bundled version; this avoids older runtimes failing on newer systems. `setup-proxy.sh` manages the unified sing-box unit and certificates. Where present, iptables manages temporary iperf3 exposure and enabled forwards; systemd supervises services and runs restricted node-operation helpers outside the Web sandbox.
 
 ## Tech stack
 
@@ -463,7 +420,7 @@ or `tailscale ip` on that device.
 |---|---|---|---|
 | Runtime | Python, standard library only | 3.9+ | Inherited from `vps-webserver`: no third-party Python packages; the distro-managed interpreter and libraries still require security updates |
 | HTTP server | `http.server.ThreadingHTTPServer` | stdlib | Three listeners of a few requests each; a framework would be dead weight |
-| TLS | `ssl` + `openssl`-generated self-signed cert | stdlib / distro | No domain, no ACME (see non-goals) |
+| TLS | Python `ssl` + self-signed certificates generated by bundled sing-box | stdlib / sing-box | No domain, no ACME (see non-goals) |
 | Store | `sqlite3` | stdlib | Visitor log **MUST** survive restarts |
 | Speedtest engine | LibreSpeed, vendored unmodified | v6.2.1 | LGPL-3.0; already vendored and working in `vps-webserver` |
 | QR code rendering | kazuhikoarase/qrcode-generator, vendored unmodified | js2.0.4 | MIT; small, no build step, plain `<script>` tag like LibreSpeed |
@@ -484,8 +441,8 @@ Rejected alternatives and the reasoning behind each choice live in
 - OS: Debian 11+ / Ubuntu 20.04+, systemd, run as root
 - Runtime: Python 3.9+ (distro python3 is sufficient)
 - Architecture: the entire project supports x86-64 Linux only. Bundled FRPC,
-  FRPS, iperf3, sing-box, and Lucky executables target this platform.
-- Hardware: no GPU; ~150 MB disk (of which ~57 MB is the sing-box binary), any
+  FRPS, iperf3, sing-box, Lucky, Tailscale, and nftables executables target this platform.
+- Hardware: no GPU; allow at least 1 GiB of disk for the complete offline package, extracted source, and installed program together; any
   amount of RAM a VPS normally has
 - Vendored artifact integrity check: from the repository root, run
   `python3 tools/verify_dependencies/verify_dependencies.py`. This compares the nine tracked third-party
@@ -503,7 +460,9 @@ Rejected alternatives and the reasoning behind each choice live in
 |---|---|---|
 | `iperf3` | static artifact distributed with this repository | `$PREFIX/vendor/iperf3/iperf3` |
 | `frpc`,`frps` | distributed with this repository | `third_party/frp/`, copied during module installation |
-| `openssl`, `curl`, `jq`, `iproute2`, `procps`, `iptables`, `ca-certificates` | distro package manager or existing host installation | system path |
+| nftables and runtime libraries | Official Debian 11 packages included in the offline package | `$PREFIX/vendor/nft/`, without writing to the system package database |
+| Tailscale client | Official Linux static archive included when building the offline package | `/usr/local/bin/tailscale-vps-server` and `tailscaled-vps-server` |
+| Bash, systemd, Python, tar, coreutils | Base environment of a supported OS | system path |
 | sing-box binary | ships in this repository | `/usr/local/bin/sing-box-vps-server` |
 | LibreSpeed engine and qrcode-generator library | ship in this repository | `$PREFIX/src/web/static/` |
 | TLS certificates | generated on first run by the installer | `$VPSSRV_CERT_DIR` |
@@ -534,8 +493,8 @@ The installer does not perform an outbound public-IP lookup.
 | `$VPSSRV_DATA_DIR` | installer, default `$VPSSRV_STATE_DIR/data` | `visitors.db`, `session_secret.txt`, `portfwd.json`, `login-access.json` |
 | `$VPSSRV_CERT_DIR` | installer, default `$VPSSRV_STATE_DIR/certs` | Web self-signed certificate and key |
 | `/etc/vps-server/state-dir` | installer | Records the state root location for separate helpers |
-| `/etc/vps-server-anytls/` | installer | sing-box `config.json` and its own self-signed cert |
 | `/etc/vps-server-proxy/` | installer | sing-box `config.json` (multiple inbounds) and its initial self-signed cert; new node certs live under `/etc/vps-server-nodes/certs/` |
+| `$VPSSRV_STATE_DIR/tailscale/` | Tailscale daemon | Device identity and local connection state |
 
 ### Configuration reference
 
@@ -578,17 +537,12 @@ reconfigure another.
 | `VPSSRV_DOWNLOAD_STREAMS` / `VPSSRV_UPLOAD_STREAMS` | Parallel streams per direction | `6` / `3` | no |
 | `VPSSRV_PING_SAMPLES` | Round trips used for the latency figure | `20` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
-| `ANYTLS_PORT`, `ANYTLS_PASSWORD`, `SNI` | The anytls module keeps these upstream names | see `.env.example` | no |
-| `VPSSRV_ANYTLS_CONFIG` | Where the console reads the installed node from | `/etc/vps-server-anytls/config.json` | no |
-| `VPSSRV_ANYTLS_SERVICE` | Unit the console checks for node liveness | `vps-server-anytls.service` | no |
-| `PROXY_PROTOCOLS`, `PROXY_SNI` | The proxy module's own script-level knobs — first-party, so no vendoring constraint, but kept unprefixed to match anytls's script-vs-console distinction | see `.env.example` | no |
+| `PROXY_PROTOCOLS`, `PROXY_SNI` | Initial protocols and TLS name for the unified proxy, including AnyTLS | see `.env.example` | no |
 | `VPSSRV_PROXY_CONFIG` | Where the console reads the installed node set from | `/etc/vps-server-proxy/config.json` | no |
 | `VPSSRV_PROXY_SERVICE` | Unit the console checks for node liveness | `vps-server-proxy.service` | no |
 
-The anytls module deliberately keeps `Anytsl-Serve`'s variable names rather than
-renaming them to `VPSSRV_ANYTLS_*`: the vendored config generator reads them, and
-renaming would mean patching vendored code, which is what the vendoring policy
-exists to avoid.
+Old `ANYTLS_*` and `VPSSRV_ANYTLS_*` values are read only for upgrade migration;
+new configurations no longer create an independent AnyTLS service.
 
 ## Setup from scratch
 
@@ -599,13 +553,37 @@ exists to avoid.
 5. Enable public HTTPS on Home, then open `https://<ip>/` from another machine and accept the certificate warning. Verify that the page shows HTTPS as its protocol.
 6. Open `http://<ip>:<console port>/` and sign in. Verify that the dashboard loads and shows the iperf3 window closed.
 7. Open a five-minute iperf3 window in the console and run `iperf3 -c <ip> -p 5201 --json` from another machine. Verify throughput and `mean_rtt` in the result.
-8. If anytls was installed, run `systemctl status vps-server-anytls` and verify `active (running)`; its client configuration also appears in the installer's summary.
+8. If the proxy module was installed, run `systemctl status vps-server-proxy` and verify the unified service runs. After creating an AnyTLS node in the console, check its port and configuration.
 
 ## Data Design
 
-The signed-in Settings page lists nine running functions. Optional module installation and removal run through a serialized root helper. `data/module-job.json` holds job status and `data/module-job.log` stores the latest installer output, including package-manager errors. Before removal, the helper archives a module's current configuration under `data/`. Home provides a switch for every function other than Settings. Built-in feature flags persist under `data/`. The running Web process coordinates the Port forward flag, withdrawing or reapplying saved rules without invalidating the console session. Disabled feature routes show a localized closed-page notice. A module form accepts one submission per page load; concurrent jobs return to their originating page. The FRPC group switch records running instance names before stopping them and restores only those instances on re-enabling. The Proxy nodes group controls the AnyTLS and proxy units while retaining node inventory. Home links to FRPS at `/frps` and the FRPC list at `/frpc`; the client editor remains at `/frp/client/edit`. The old combined `/frp` route redirects bookmarks to the FRPC list.
+The signed-in Settings page directly displays runtime module cards; the old `/settings/modules` route redirects to their anchor. A serialized root helper installs/removes optional modules; `data/module-job.json` stores task state, `data/module-job.log` current output, and `data/module-history.log` appended operation history. Progress appears briefly only on the current operation page, collapses 30 seconds after the last output, and completion notices do not reappear after reload or return. The separate `/settings/logs` page combines module history and journals for Web, Singbox (including node traffic and access management), FRPS, FRPC, Lucky, and Tailscale. Service logs support journal-priority filtering; module history has no priority. Clearing module history truncates this project's file. Clearing service logs only records a display cutoff in `data/log-clear.json` and does not delete the host journal.
 
-The visitor database, `portfwd.json`, and `login-access.json` persist under `$VPSSRV_DATA_DIR`. The console password, selected port, Web certificate, and `install-state` are under `$VPSSRV_STATE_DIR`; the program directory can be replaced independently. Sing-box configurations and certificates live under `/etc/vps-server-anytls/` and `/etc/vps-server-proxy/`. See [Paths and mounts][local-link-012]. The iperf3 deadline is in memory only and does not survive restart.
+Home feature switches are independent of module installation state. Host ports
+used by public Web listeners, proxy nodes, Tailscale, FRPS, FRPC, port
+forwarding, and temporary iperf3 windows are registered in `PORTS.md` beside
+the installation directory.
+Runtime switches and node operations share `.ports.lock` and atomic writes;
+failures roll back new registrations, and stopping or deleting releases only
+this project's entries. The Web sandbox keeps the installation directory's
+parent read-only; a systemd helper with fixed arguments performs runtime
+`PORTS.md` updates. An iperf3 port is registered only while its window is
+open and released when the window closes or Web restarts. The FRPC group switch
+records running instances before stopping them and restores only those
+instances when re-enabled. The Proxy nodes group controls only the unified
+sing-box service. Home links to FRPS at `/frps`, the FRPC list at `/frpc`, and
+Tailscale at `/tailscale`; the old `/frp`
+bookmark redirects to the FRPC list.
+
+The visitor database, `portfwd.json`, and `login-access.json` persist under
+`$VPSSRV_DATA_DIR`. Recent Visitors can clear the visitor database through
+an authenticated session and CSRF check; the clear request itself is not
+written back, while later visits and devices still connected are recorded
+again. The console password, selected port, Web certificate, and
+`install-state` are under `$VPSSRV_STATE_DIR`; the program directory can be
+replaced independently. Sing-box configuration and certificates live under
+`/etc/vps-server-proxy/`. See [Paths and mounts][local-link-012]. The iperf3
+deadline is in memory only and does not survive restart.
 
 ### Data model / file layout
 
@@ -620,10 +598,10 @@ The visitor database, `portfwd.json`, and `login-access.json` persist under `$VP
     │   ├── install.sh         # module-selecting installer
     │   ├── uninstall.sh       # module removal
     │   ├── systemd/vps-server-web.service
-    │   ├── anytls/setup-anytls.sh
     │   ├── proxy/setup-proxy.sh
     │   ├── frps/setup-frps.sh
-    │   └── lucky/setup-lucky.sh
+    │   ├── lucky/setup-lucky.sh
+    │   └── tailscale/setup-tailscale.sh
     ├── src/web/static/        # first-party UI assets and vendored browser libraries
     │   └── third_party/
     │       ├── librespeed/    # speedtest.js, speedtest_worker.js
@@ -633,10 +611,12 @@ The visitor database, `portfwd.json`, and `login-access.json` persist under `$VP
     │   ├── sing-box           # vendored amd64 binary
     │   ├── sing-box.version   # binary version metadata
     │   └── LICENSE            # original upstream notice
+    ├── third_party/tailscale/  # pinned static-client metadata and license
+    ├── third_party/nft/        # pinned Debian runtime metadata
+    ├── tools/build_offline/    # checked offline asset and archive builder
     ├── tools/verify_dependencies/verify_dependencies.py # checks config/dependencies.lock.json from repo root
     ├── config/dependencies.lock.json
     ├── config/upstream-version # records: vps-webserver v0.4.1
-    ├── deploy/anytls/.upstream-version # records: Anytsl-Serve v1.2.0
     ├── LICENSE                # GPL-3.0
     └── doc/
         ├── DESIGN.md          # architecture, constraints, and tracked goals
@@ -653,7 +633,7 @@ These are checkout paths. Installation places Web code and browser assets at
 compatibility entry point `$PREFIX/app.py` remains systemd's `ExecStart`,
 but only calls `src.web.app.main()`. HTTP asset URLs do not change. The
 checkout's installer and uninstaller are `deploy/install.sh` and
-`deploy/uninstall.sh`. In v5.1.1 the persistent state root is separate from
+`deploy/uninstall.sh`. In v5.2.0 the persistent state root is separate from
 the installation directory; earlier in-directory data is not migrated
 automatically.
 
@@ -678,17 +658,14 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   sees it, and every such hit lands in the visitor log. That is the feature, but
   it also means the visitor log on a scanned IP fills with internet background
   noise within hours.
-- **Unit names differ from upstream on purpose.** `Anytsl-Serve` installs
-  `sing-box-anytls.service`; this project installs `vps-server-anytls.service`
-  and a separately-named binary, so both can exist. The installer still refuses
-  to proceed if the upstream unit is running, because two anytls inbounds on one
-  host is almost certainly a mistake rather than an intent.
-- **`iperf3` is not version-pinned.** It comes from the distro, so its version
-  varies by release. The wire protocol has been stable across the 3.x line, but
-  a client much older than the server can fail the version handshake.
-- **amd64 only for anytls and proxy.** The vendored binary is not multi-arch; on arm64 the
-  installer skips the module with an explanation rather than installing a binary
-  that cannot execute.
+- **Service names are isolated from upstream.** The unified proxy unit is
+  `vps-server-proxy.service`; the Tailscale unit is
+  `vps-server-tailscale.service`, leaving any existing standard Tailscale unit
+  untouched.
+- **The complete offline package supports only x86-64 Linux.** Its sing-box,
+  Tailscale, and nftables artifacts are amd64. The installer rejects other
+  architectures before changing state. Cross-distribution operation still
+  needs target-host acceptance.
 - **Self-signed TLS means a browser warning on 443, every time.** This is
   expected and is not worth "fixing" with an exception or an HSTS header.
 - **A restart closes any open iperf3 window.** Intentional; see the lifecycle
@@ -722,17 +699,6 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
   re-vendoring, check with `git ls-files -s` and restore the bit with
   `git update-index --chmod=+x <path>` — `chmod +x` alone is a no-op on that
   mount.
-- **Running `setup-anytls.sh` directly rotates its port and password.**
-  It defaults `ANYTLS_PORT` and `ANYTLS_PASSWORD` to fresh randoms and
-  rewrites `config.json` every run, so invoking it by hand invalidates every
-  client configured against the previous values. `install.sh` no longer does
-  this — the upgrade path reads both back out of `config.json` and passes
-  them in — but a direct call still will. To keep the node, pass the current
-  values, both of which are on the console's anytls section of `/proxy`:
-  `ANYTLS_PORT=<current> ANYTLS_PASSWORD='<current>' bash deploy/anytls/setup-anytls.sh`.
-  Upstream behaviour, inherited deliberately. `setup-anytls.sh reset` rotates
-  them on purpose, and the console's reset button is the supported way to ask
-  for that.
 - **The node page lists interface and Tailscale addresses.** The former
   install-time public-address block was removed because it duplicated a VPS
   interface address and could be misleading behind NAT. Setup scripts remove
@@ -783,7 +749,7 @@ rule objects (`id`, `label`, `protocol`, `public_port`, `target_host`,
 [local-link-002]: LOG.md#bugs
 [local-link-003]: HISTORY.md#completed-work-history-historical
 [local-link-004]: LOG.md#decisions
-[local-link-005]: #the-proxy-module
+[local-link-005]: #vps-proxy-module
 [local-link-006]: LOG.md#decisions
 [local-link-007]: LOG.md#decisions
 [local-link-008]: LOG.md#bugs

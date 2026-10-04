@@ -10,13 +10,12 @@ class ProxyMixin:
         """Show the verified, ID-based node inventory."""
         t = self.context.STRINGS[lang]
         installed = self.context.installed_modules(self.context.BASE_DIR)
-        if not ({"proxy", "anytls"} & installed):
+        if "proxy" not in installed:
             return self.page_module_not_installed(lang, query_lang, t["proxy_heading"], t["proxy"], active="proxy")
         try:
             inventory = self.context.read_inventory(
                 state_path=self.context.NODE_STATE_PATH,
-                config_paths={"anytls": self.context.ANYTLS_CONFIG,
-                              "proxy": self.context.PROXY_CONFIG})
+                config_paths={"proxy": self.context.PROXY_CONFIG})
             meter = self.context._read_json(self.context.NODE_METER_PATH) or {}
             meter_nodes = meter.get("ledger", {}).get("nodes", {})
         except (OSError, ValueError, TypeError, AttributeError):
@@ -39,12 +38,11 @@ class ProxyMixin:
         notice = (f'<p class="{"error" if key == "node_settings_failed" else "notice"}">'
                   f'{esc(t[key])}</p>') if key in self.context.NODE_APPLY_MESSAGE_KEYS else ""
         cards = []
-        running = {"anytls": bool(self.context.anytls_node() and self.context.anytls_node()["running"]),
-                   "proxy": self.context.proxy_running()}
+        running = {"proxy": self.context.proxy_running()}
         addresses_available = self.context.address_entries(t)
         for node in sorted(inventory["nodes"], key=lambda item: item["number"]):
             protocol = node["protocol"]
-            module = "anytls" if protocol == "anytls" else "proxy"
+            module = "proxy"
             identifier = node["id"]
             token = self.context.node_csrf_token(session, identifier)
             inbound = node["inbound"]
@@ -54,8 +52,9 @@ class ProxyMixin:
                         f'<div class="node-fact"><dt>{esc(t["proxy_sni"])}</dt><dd>{esc(t["node_not_applicable"])}</dd></div>')
             sni_input = (f'<label>{esc(t["proxy_sni"])}<input name="sni" value="{esc(sni, quote=True)}" required></label>'
                          if protocol != "shadowsocks" else "")
-            addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span><code>{esc(value)}</code></div>'
-                                for label, value in addresses_available)
+            addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span>'
+                                f'{self.private_value_control("interface-" + str(index), "address", t)}</div>'
+                                for index, (label, _) in enumerate(addresses_available))
             cap = "" if node["cap_bytes"] is None else str(self.context.Decimal(node["cap_bytes"]) / 1073741824)
             upload_speed = "" if node["upload_limit_bps"] is None else str(self.context.Decimal(node["upload_limit_bps"]) / 1000000)
             download_speed = "" if node["download_limit_bps"] is None else str(self.context.Decimal(node["download_limit_bps"]) / 1000000)
@@ -146,27 +145,24 @@ class ProxyMixin:
                 </form>
               </dialog>
             </article>''')
-        protocols = (["anytls"] if self.context.ANYTLS_CONFIG.is_file() else []) + \
-                    (["vmess", "vless", "trojan", "shadowsocks"] if self.context.PROXY_CONFIG.is_file() else [])
+        protocols = (["anytls", "vmess", "vless", "trojan", "shadowsocks"]
+                     if self.context.PROXY_CONFIG.is_file() else [])
         protocol_choices = "".join(f'<label class="node-radio"><input type="radio" name="protocol" value="{value}"'
                                    f'{" checked" if index == 0 else ""}><span>{esc(value)}</span></label>'
                                    for index, value in enumerate(protocols))
         create = (f'''<details class="node-create"><summary><span>{esc(t['node_create'])}</span><span>{esc(t['node_cancel'])}</span></summary>
-          <form method="post" action="/proxy/node/create" data-node-create
-                data-credential-password="{esc(t['node_credential_password_hint'], quote=True)}"
-                data-credential-uuid="{esc(t['node_credential_uuid_hint'], quote=True)}"
-                data-credential-ss="{esc(t['node_credential_ss_hint'], quote=True)}">
+          <form method="post" action="/proxy/node/create" data-node-create>
             <input type="hidden" name="csrf" value="{self.context.node_csrf_token(session, 'create')}">
             <fieldset class="node-reset-cycle"><legend>{esc(t['node_protocol'])}</legend>{protocol_choices}</fieldset>
             <div class="node-form-grid">
               <label>{esc(t['node_name'])}<input name="name" maxlength="64" required></label>
               <label>{esc(t['proxy_port'])}<input type="number" name="port" min="1" max="65535" placeholder="{esc(t['node_random_port'], quote=True)}"></label>
-              <div class="node-form-field">{self.context.render_password_field(t, 'node-create-credential', t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_credential_random'], quote=True) + '" autocomplete="new-password"', '<small class="node-field-hint" data-credential-hint>' + esc(t['node_credential_password_hint']) + '</small>')}</div>
+              <div class="node-form-field">{self.context.render_password_field(t, 'node-create-credential', t['node_credential'], 'credential', 'value="" placeholder="' + esc(t['node_credential_random'], quote=True) + '" autocomplete="new-password"')}</div>
               <label data-sni-field>{esc(t['proxy_sni'])}<input name="sni" value="www.bing.com" placeholder="{esc(t['node_sni_optional'], quote=True)}"></label>
             </div><button type="submit">{esc(t['node_create'])}</button>
           </form></details>''' if protocols else "")
         count = len(cards)
-        active_count = sum(bool(n["enabled"] and running["anytls" if n["protocol"] == "anytls" else "proxy"])
+        active_count = sum(bool(n["enabled"] and running["proxy"])
                            for n in inventory["nodes"])
         qr_scripts = ('<script src="/static/qrcode.js"></script><script src="/static/qrcode-utf8.js"></script>'
                       '<script src="/static/qrcode-render.js"></script>') if lan_host and cards else ''
@@ -184,9 +180,11 @@ class ProxyMixin:
         return self.send_html(200, self.render_page(t['proxy_heading'], body, lang, active="proxy"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
-    def private_value_control(self, identifier, field, t, copy=False):
+    def private_value_control(self, identifier, field, t, copy=False, endpoint='/proxy/private-value'):
         esc = self.context.html.escape
+        copy = copy or field != 'credential'
         return (f'<span class="private-value" data-private-id="{esc(identifier, quote=True)}" '
+                f'data-private-url="{esc(endpoint, quote=True)}" '
                 f'data-private-field="{field}" data-show="{esc(t["login_show_password"], quote=True)}" '
                 f'data-hide="{esc(t["login_hide_password"], quote=True)}" '
                 f'data-error="{esc(t["private_value_failed"], quote=True)}">'
@@ -211,16 +209,18 @@ class ProxyMixin:
         query = self.context.parse_qs(parsed.query)
         identifier = query.get('id', [''])[0]
         field = query.get('field', [''])[0]
-        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi', 'public-port', 'target-port', 'account'):
+        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi', 'public-port', 'target-port', 'account', 'address'):
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         try:
-            if identifier == 'lucky' and field in ('port', 'account', 'credential'):
-                data = self.context.lucky_admin()
-                if data is None:
-                    raise ValueError('no Lucky admin')
-                value = str(data['AdminWebListenPort'] if field == 'port' else
-                            data.get('AdminAccount', '') if field == 'account' else
-                            data.get('AdminPassword', ''))
+            if identifier.startswith('interface-') and field == 'address':
+                index = identifier[10:]
+                if not index.isascii() or not index.isdecimal():
+                    raise ValueError('invalid interface')
+                entries = self.context.address_entries(self.context.STRINGS['en'])
+                position = int(index)
+                if position >= len(entries):
+                    raise ValueError('unknown interface')
+                value = entries[position][1]
             elif identifier == 'iperf' and field in ('port', 'cmd-speed', 'cmd-single', 'cmd-multi'):
                 host = (self.headers.get('Host') or '').split(':')[0] or '<server-ip>'
                 suffix = {'cmd-speed': '', 'cmd-single': ' -P 1', 'cmd-multi': ' -P 4'}
@@ -259,7 +259,7 @@ class ProxyMixin:
     def managed_private_value(self, identifier, field):
         try:
             inventory = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
-                                       config_paths={'anytls': self.context.ANYTLS_CONFIG, 'proxy': self.context.PROXY_CONFIG})
+                                                   config_paths={'proxy': self.context.PROXY_CONFIG})
             node = next(item for item in inventory['nodes'] if item['id'] == identifier)
             if field == 'port':
                 value = str(node['port'])
@@ -290,8 +290,7 @@ class ProxyMixin:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
         try:
             inventory = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
-                                       config_paths={"anytls": self.context.ANYTLS_CONFIG,
-                                                     "proxy": self.context.PROXY_CONFIG})
+                                       config_paths={"proxy": self.context.PROXY_CONFIG})
             matches = [node for node in inventory["nodes"] if node["id"] == parts[3]]
             if not matches and parts[3] in self.context.NODE_PROTOCOLS:
                 # Previously issued links named the protocol. Preserve the
@@ -320,21 +319,27 @@ class ProxyMixin:
         if node is None:
             return ""
         def size(value):
-            return f"{value / 1048576:.1f} MiB"
-        used = node["upload_bytes"] + node["download_bytes"]
+            return (f"{value / 1073741824:.1f} GiB" if value >= 1073741824
+                    else f"{value / 1048576:.1f} MiB")
+        used = self.context.billable_bytes(node)
         cap = node["cap_bytes"]
-        try:
-            suspect = bool(meter_nodes[node["id"]]["suspect"])
-        except (KeyError, TypeError):
-            suspect = True
+        entry = meter_nodes.get(node["id"]) if isinstance(meter_nodes, dict) else None
+        if isinstance(entry, dict) and type(entry.get("suspect")) is bool and "samples" in entry:
+            suspect = entry["suspect"] or entry["samples"] is None
+        else:
+            suspect = None
         remaining = ((self.context.datetime.fromisoformat(node["expires_at"]) - self.context.datetime.now(self.context.timezone.utc)).total_seconds()
                      if node["expires_at"] else None)
         expired = remaining is not None and remaining <= 0
         capped = cap is not None and used >= cap
         blocked = expired or (capped and node["cap_action"] == "block")
-        limited = suspect or (capped and not blocked)
-        limit = t["node_blocked"] if blocked else t["node_limited"] if limited else t["node_normal"]
+        limit = (t["node_blocked"] if blocked else
+                 t["node_limited"] if capped else
+                 t["node_meter_unknown"] if suspect is None else t["node_normal"])
+        limit_class = "is-limited" if blocked or capped else "is-unknown" if suspect is None else ""
         cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
+        billed_label = (f'<small>{self.context.html.escape(t["node_billed_usage"].format(value=size(used)))}</small>'
+                        if cap is not None else "")
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
         speed = lambda direction: (f'{node[direction + "_limit_bps"] / 1000000:g} Mbps' if node[direction + "_limit_bps"] is not None else t["node_unlimited"])
         validity_label = (t["node_validity_expired"] if expired else
@@ -345,11 +350,11 @@ class ProxyMixin:
                     f'<strong>{self.context.html.escape(validity_label)}</strong></div>' if remaining is not None else "")
         return f'''<section class="node-usage" aria-label="{self.context.html.escape(t['node_traffic'])}">
           <div class="node-usage-heading"><h3>{self.context.html.escape(t['node_traffic'])}</h3>
-            <span class="node-limit {'is-limited' if limited or blocked else ''}">{self.context.html.escape(limit)}</span></div>
+            <span class="node-limit {limit_class}">{self.context.html.escape(limit)}</span></div>
           <div class="node-stats">
             <div><small>{self.context.html.escape(t['node_upload'])}</small><strong>{size(node['upload_bytes'])}</strong><small>{self.context.html.escape(speed('upload'))}</small></div>
             <div><small>{self.context.html.escape(t['node_download'])}</small><strong>{size(node['download_bytes'])}</strong><small>{self.context.html.escape(speed('download'))}</small></div>
-            <div><small>{self.context.html.escape(t['node_cap'])}</small><strong>{self.context.html.escape(cap_label)}</strong></div>
+            <div><small>{self.context.html.escape(t['node_cap'])}</small><strong>{self.context.html.escape(cap_label)}</strong>{billed_label}</div>
             <div><small>{self.context.html.escape(t['node_next_reset'])}</small><strong>{self.context.html.escape(reset_label)}</strong></div>
             {validity}
           </div>
@@ -392,7 +397,7 @@ class ProxyMixin:
         if action == "edit":
             try:
                 inventory = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
-                                           config_paths={"anytls": self.context.ANYTLS_CONFIG, "proxy": self.context.PROXY_CONFIG})
+                                           config_paths={"proxy": self.context.PROXY_CONFIG})
                 node = next(node for node in inventory["nodes"] if node["id"] == identifier)
             except (OSError, ValueError, TypeError, StopIteration):
                 return self.redirect("/proxy?msg=node_settings_failed")
@@ -465,7 +470,7 @@ class ProxyMixin:
                     count = int(count_value)
                     if not 1 <= count <= 9999 or unit_value not in ("days", "months", "years"):
                         raise ValueError("invalid duration")
-                    anchor = "-" if unit_value == "days" else str(now.day) if unit_value == "months" else now.strftime("%m-%d")
+                    anchor = "-" if unit_value == "days" else "1" if unit_value == "months" else now.strftime("%m-%d")
                     mode = f"every:{count}:{unit_value}:{anchor}"
                     return count, unit_value, mode, self.context.advance_reset_interval(now, mode).isoformat()
                 def date_value(value):
@@ -476,7 +481,7 @@ class ProxyMixin:
                     return self.context.datetime.fromisoformat(value).replace(tzinfo=self.context.timezone.utc).isoformat()
                 expiry_mode = form["expiry_mode"][0]
                 current = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
-                                         config_paths={"anytls": self.context.ANYTLS_CONFIG, "proxy": self.context.PROXY_CONFIG})
+                                         config_paths={"proxy": self.context.PROXY_CONFIG})
                 existing = next(node for node in current["nodes"] if node["id"] == identifier)
                 if expiry_mode == "set":
                     count, unit, _, due = duration(form["expiry_count"][0], form["expiry_unit"][0])

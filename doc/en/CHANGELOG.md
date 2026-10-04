@@ -27,6 +27,32 @@ metadata:
 
 ## Changelog
 
+### v5.2.0 — 2026-10-05
+
+#### Added
+
+- Browser root terminal with administrator password verification, automatic closure on navigation, scrollback and narrow-screen support.
+- Offline Tailscale module with status, device addresses, logs, batch Linux settings and an experimental low-memory option.
+- Detailed module and service logs with severity filters and project-scoped clearing; recent visitor history can be cleared.
+- Complete x86-64 Linux offline bundle with pinned Tailscale and nftables runtime archives and corresponding Debian sources.
+
+#### Changed
+
+- Persistent data uses a separate state root, `/var/lib/vps-server` by default; reinstalling the same layout preserves credentials, ports, certificates and configuration. **The v5.1.0 and earlier layout cannot be upgraded automatically; back up first and perform a fresh installation.**
+- AnyTLS and other protocols share the Singbox service; module cards appear directly in Settings and Lucky uses its actual native administration address.
+- Proxy accounting counts (upload + download) × 2; monthly resets begin on the first day of the selected month at 00:00 UTC. Logs and module progress notices follow the current operation.
+
+#### Fixed
+
+- FRPS editing without a port registry entry, masked value reveal/copy, unified proxy node creation/editing, and Lucky address synchronization after native port changes.
+- Terminal disconnects caused by resize reports, password verification return navigation, content sizing, scrollbars and background. Metering prefers a working system nft and avoids early throttling when accounting data is missing.
+- Web port updates use a privileged helper; FRPS reserves its port before installation and iperf3 reserves a port only while its window is open.
+
+#### Validation and limitations
+
+- On 2026-10-05 the operator confirmed current project tests were satisfactory and authorized release. Local release checks cover source syntax, style build, dependency digests and three-language structure; earlier Debian 13 x86-64 host checks are recorded in LOG and HISTORY.
+- Python 3.9, other Debian/Ubuntu versions, physical mobile devices and a full host reboot were not independently retested for this release. Publication does not upgrade the test host. The operator requested minor version v5.2.0; the installation layout still requires the migration steps above. Other documentation and record housekeeping is internal maintenance.
+
 ### v5.1.0 — 2026-10-04
 
 #### Added

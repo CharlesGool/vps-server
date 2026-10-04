@@ -26,125 +26,116 @@ metadata:
 
 ## Introducción
 
-Un paquete de módulos seleccionables para un VPS Debian/Ubuntu: página pública para comprobar la accesibilidad de los puertos web, consola para medir velocidad y registrar conexiones, ventana iperf3 bajo demanda y nodos proxy sing-box. La versión formal más reciente es v5.1.0; la rama `main` prepara un directorio independiente para el estado persistente y la corrección de la edición de FRPS en v5.1.1, que aún no se ha publicado. Consulta el alcance de las versiones y las comprobaciones en el [historial de cambios][local-link-001] y el [estado del proyecto](LOG.md).
+vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.0. Consulta el progreso en el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
-- **Permite a cualquiera comprobar la accesibilidad.** Una página deliberadamente mínima en los puertos **80** y
-  **443**, sin inicio de sesión. Dale a alguien la IP: si se muestra la página, tus puertos web son accesibles desde su ubicación. Muestra su IP de origen, la hora del servidor y el puerto y protocolo por los que entró, y nada más sobre el servidor.
-- **Mide la velocidad desde un navegador.** La consola, en un puerto alto aleatorio y persistente, realiza pruebas de subida y bajada con LibreSpeed. Admite la contraseña de administrador o una IP privada de LAN añadida expresamente. El botón de acceso por IP siempre aparece; quien no esté autorizado recibe indicaciones para entrar con contraseña y añadir una IP privada en los ajustes. Los ajustes de seguridad exigen una verificación reciente de la contraseña de administrador antes de mostrar la lista de IP o aceptar cambios. La lista admite direcciones IPv4 privadas o IPv6 locales únicas, una por entrada, y se puede desactivar el acceso por IP sin borrar las entradas. Cambiar la contraseña invalida las sesiones existentes. La página general de ajustes permite elegir apariencia e idioma directamente; cuando vence la verificación de la contraseña de administrador para seguridad, debe repetirse.
-- **Mide velocidad y latencia con iperf3, bajo demanda.** La consola abre una ventana de duración limitada; `iperf3 -s` solo funciona durante ese periodo y se cierra automáticamente al terminar. El cliente obtiene el ancho de banda con iperf3 y, en Linux, también el tiempo de ida y vuelta de `mean_rtt` en su salida `--json`: este campo procede de `TCP_INFO` del kernel y falta en clientes que no pueden leerlo, especialmente iperf3 bajo Cygwin en Windows. El modo UDP (`-u`) añade fluctuación y pérdida en cualquier plataforma. La consola muestra por separado el estado y el puerto; el puerto se puede cambiar con la ventana cerrada y el ajuste persiste tras reiniciar el servicio.
-- **Registra quién se conecta.** Cada conexión TCP entrante, en cualquier puerto y no solo HTTP, se lee de `/proc/net/tcp[6]` y se guarda en SQLite; se conservan las 1000 más recientes.
-- **Ofrece un proxy anytls.** sing-box usa un certificado autofirmado y BBR. La página autenticada `/proxy` muestra el estado, el tráfico y los ajustes de conexión editables; si hay una dirección LAN privada, también ofrece un enlace de importación directa en Clash Meta for Android y un código QR. La URL de suscripción también se puede copiar.
-- **Ofrece proxies vmess/vless/trojan/shadowsocks en cualquier combinación.** Otro proceso sing-box comparte el binario incluido con anytls. Cada protocolo instalado empieza con un nodo numerado; la consola permite crear más nodos del mismo protocolo y eliminarlos individualmente. Cada nodo tiene un límite de tráfico en GiB, editores separados para la conexión y los límites, controles de restablecimiento aleatorio y la misma opción de importación en Clash Meta solo por LAN. La URL de importación contiene un token opaco y se invalida cuando cambian el nombre o los ajustes de conexión del nodo. Los puertos públicos no ofrecen configuraciones proxy. Al crear un nodo se puede introducir la contraseña o la clave/UUID del protocolo o dejar el campo vacío para generarla al azar; el SNI predeterminado para TLS es `www.bing.com`. La página muestra las direcciones de las interfaces y de Tailscale. Cada nodo admite límites independientes de velocidad de subida y bajada en Mbps. Al alcanzar el límite de tráfico en GiB, se puede limitar ambas direcciones a 1 Mbps o bloquear el uso. El tráfico del período se reinicia cada número elegido de días, meses o años. Una duración de validez opcional bloquea el uso al terminar. También se puede copiar el enlace de suscripción de la LAN.
+- **Página pública de accesibilidad:** Una vez habilitada, muestra en los puertos 80 y 443 la IP del visitante, la hora del servidor y el puerto y protocolo de conexión. El puerto 443 usa un certificado autofirmado. La página no exige inicio de sesión ni muestra la configuración del servidor.
+- **Consola privada:** En un puerto independiente y persistente ofrece pruebas de subida y bajada con LibreSpeed y conserva las últimas 1000 conexiones TCP entrantes. Se puede entrar con la contraseña de administrador o una IP privada autorizada.
+- **iperf3:** La consola abre una ventana de duración limitada que se cierra al vencer. La salida `--json` de un cliente Linux puede contener `mean_rtt`; un cliente que no pueda leer `TCP_INFO` no mostrará ese campo. Las pruebas UDP permiten ver fluctuación y pérdida.
+- **Nodos proxy:** Un solo servicio sing-box ejecuta AnyTLS, VMess, VLESS, Trojan y Shadowsocks. La consola gestiona conexiones, límites de tráfico y velocidad, reinicios periódicos y vencimiento de los nodos. En la red local se puede importar la configuración a Clash Meta.
+- **FRP:** La consola gestiona el puerto, el token y el estado del servicio FRPS local, además de las instancias FRPC locales y los proxies TCP/UDP sencillos con autenticación por token. Verifica la configuración al editarla y la restaura si falla; no supervisa clientes de otros dispositivos. FRPC se instala con un recurso incluido en el repositorio.
+- **Lucky:** Se puede instalar o retirar junto con otros módulos. La consola solo muestra su dirección de administración y estado, con un acceso a la página de administración nativa. Si Lucky cambia su propio puerto, la consola actualiza periódicamente la dirección y el registro en `PORTS.md`. La reproducción completa de funciones queda para una versión posterior.
+- **Tailscale:** Se puede instalar o retirar el cliente Linux incluido en el paquete sin conexión. La consola muestra estado, conectividad, dispositivos y registros, y permite guardar juntos varios ajustes Linux de DNS, rutas, nodo de salida, protección y SSH. Las direcciones IPv4 e IPv6 de dispositivos se muestran o copian por separado cuando se necesitan. Unirse al Tailnet sigue requiriendo acceso al servidor de control elegido.
+- **Terminal:** El acceso desde Home abre una terminal root en el navegador tras verificar la contraseña de administrador. Desconectarse, salir de la página o perder la sesión de acceso termina el proceso PTY correspondiente. Los recursos de renderizado se incluyen en el paquete sin conexión.
 
-La primera instalación instala solo Web. `VPSSRV_MODULES` permite elegir otros módulos de servidor entre web, iperf3, anytls, proxy, frps y lucky; los módulos opcionales también se pueden instalar desde la consola. FRPC es una función de cliente local separada.
-La página FRPS autenticada muestra el estado del servicio local, las direcciones de las interfaces y los datos de conexión; el token y el puerto permanecen ocultos hasta que se solicitan. En ella se pueden modificar el puerto y el token de FRPS y activar o desactivar el servicio. La página FRPC independiente presenta las instancias locales del cliente como tarjetas con la IP oculta y un indicador de conexión basado en el socket TCP establecido. Su botón Probar conexión realiza un inicio de sesión FRPC separado con el servidor, el puerto y el token guardados. La página de cada instancia revela la IP o el token cuando se solicita y, antes de editar, muestra el tipo, la IP local, el puerto local y el puerto remoto de cada proxy TCP/UDP. Al guardar, el operador permanece en la página de la instancia; se verifica el archivo y, si falla la operación, se restaura la configuración anterior. Estas acciones de FRP utilizan la sesión iniciada; la verificación reciente de la contraseña del administrador se reserva para acciones de Ajustes de seguridad, como cambiar la contraseña o las IP de acceso sin contraseña. El editor de campos solo admite configuraciones TCP/UDP sencillas con autenticación por token y no modifica TOML de FRPC que no puede representar. La consola no muestra el estado en tiempo real de instancias FRPC de otros dispositivos. La página Módulos comprueba por separado el ejecutable local de FRPC y la plantilla `frpc@.service`, sin depender de las configuraciones de instancia del servidor. Ofrece Instalar si falta cualquiera de los dos. La instalación utiliza el binario FRPC v0.71.0 incluido y verificado; no crea conexiones ni abre puertos de escucha por sí sola. El registro del módulo muestra la instalación y la verificación. Los binarios FRPC y FRPS v0.71.0 se incluyen en el repositorio. La instalación de FRPC consulta primero `vendor/frp/frpc` y también puede usar la copia del paquete de origen conservada por el instalador, sin acceso a GitHub. Su procedencia y SHA-256 figuran en los [avisos de terceros](THIRD_PARTY_NOTICES.md). Desinstalar detiene las instancias locales de FRPC, guarda una copia de sus configuraciones en `data/` y conserva los archivos de configuración para instalarlos de nuevo más adelante.
-
-**Fuera de alcance:** ni ACME ni nombres de dominio (el certificado de 443 es autofirmado deliberadamente); iperf3 no permanece activo; ni proxy inverso ni contenedores; la página pública nunca revela el nombre del equipo, el kernel, el tiempo de actividad, la lista de servicios ni parámetros de proxy. Este proyecto no sustituye a `vps-webserver` ni a `Anytsl-Serve`: ambos siguen manteniéndose por separado y su código se incluye aquí sin absorberlos.
+La primera instalación habilita solo la consola Web; los demás módulos se instalan según sea necesario. Consulta los límites funcionales, las reglas de acceso y las restricciones del editor FRP en el [documento de diseño](DESIGN.md).
 
 ## Requisitos
 
-- SO: Debian 11+ o Ubuntu 20.04+, systemd; ejecutar como root.
-- Entorno: Python 3.9+ (basta el `python3` de la distribución; no hay dependencias de Python que instalar).
+- Sistema operativo: Debian 11+ o Ubuntu 20.04+, systemd; ejecutar como root.
+- Entorno: Python 3.9+ (basta el `python3` de la distribución, sin dependencias Python adicionales).
 - Arquitectura: todo el proyecto requiere Linux x86-64; el instalador rechaza otras plataformas antes de modificar el sistema.
-- Para el módulo web en sus puertos públicos predeterminados, 80 y 443 **DEBEN** estar libres: el instalador rechaza la instalación en vez de competir con nginx, Apache, Caddy o `vps-webserver`.
-- Servicios externos: ninguno en tiempo de ejecución. FRPS, FRPC e iperf3 se instalan desde los artefactos incluidos; otros paquetes del sistema que falten pueden requerir un repositorio de la distribución. Los resúmenes de nodos usan direcciones de interfaces y de Tailscale si están disponibles, sin consultar la IP pública en Internet.
-- Mínimo: el SO, entorno, arquitectura y puertos libres anteriores. No se registra ningún requisito de hardware recomendado adicional; un VPS con unos 180 MB de disco admite el binario incluido.
+- Si el módulo Web usa los puertos públicos predeterminados, 80 y 443 **DEBEN** estar libres; el instalador rechaza los que ocupen nginx, Apache, Caddy o `vps-webserver`.
+- Otras dependencias: la máquina de destino necesita Bash, systemd, Python y las herramientas básicas habituales del sistema. El paquete sin conexión completo incluye FRP, Lucky, Tailscale, sing-box, iperf3 y un entorno privado de nftables. La medición de nodos prefiere el nft del sistema si puede leer las reglas; en caso contrario usa la versión incluida. La máquina de destino no necesita Git ni acceso a repositorios de paquetes. La autenticación con el servidor de control, las actualizaciones de servicios y la conexión entre dispositivos sí requieren red.
+- Requisitos mínimos: el sistema, entorno y arquitectura indicados. Si se habilita la página pública, sus puertos deben estar libres. Se recomienda reservar al menos 1 GiB para el paquete sin conexión completo, el directorio de extracción y el programa instalado.
 
 ## Instalación
 
 ### Instalación rápida
 
-Ejecuta como root en una máquina de prueba nueva; de forma predeterminada solo se instala la consola Web y, en la primera instalación, el terminal muestra un puerto administrativo y una contraseña aleatorios. Estos comandos obtienen el código de prueba actual de `main`; la versión en ejecución muestra `test-<SHA>`. v5.1.1 aún no se ha publicado. Las instalaciones de v5.1.0 y versiones anteriores no admiten migración automática; lee primero [Actualización](#actualización).
+Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.0; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
 ### Instalación estándar
 
 ```bash
-git clone --branch main --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.0 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
 ```
 
-En el código de prueba actual, `PREFIX` vale `/root/apps/vps-server` de forma predeterminada y solo contiene archivos de programa reemplazables. La contraseña, el puerto de la consola, los certificados, los datos de ejecución, el registro de instalación y `.env` se guardan de forma predeterminada en `/var/lib/vps-server`. En la primera instalación se puede establecer `VPSSRV_STATE_DIR` en el entorno del comando para usar otro directorio externo. La primera instalación se hace en el terminal, sin asistente en el navegador. Usa `VPSSRV_MODULES=web,iperf3,anytls,proxy,frps,lucky` para elegir módulos de servidor; si se omite, solo se instala Web. Instala o retira funciones opcionales desde Settings → Modules. Activa los sitios públicos HTTP y HTTPS por separado desde Home; la consola administrativa usa otro puerto. Instala FRPC por separado cuando necesites un cliente local; la instalación usa directamente el binario incluido.
+`PREFIX` vale `/root/apps/vps-server` de forma predeterminada y solo contiene archivos de programa reemplazables. La contraseña, el puerto de la consola, los certificados, los datos de ejecución, el registro de instalación y `.env` se guardan de forma predeterminada en `/var/lib/vps-server`; en la primera instalación se puede establecer `VPSSRV_STATE_DIR` en el entorno del comando para usar otro directorio externo. `VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale` permite elegir módulos de servidor; si se omite, solo se instala Web. AnyTLS es un protocolo de `proxy`, sin módulo ni servicio independientes. Después se pueden instalar o retirar módulos opcionales desde Settings → Modules. Las páginas públicas HTTP y HTTPS se habilitan por separado en Home; la consola administrativa usa otro puerto. FRPC se instala por separado cuando se necesita un cliente local.
+
+### Paquete de instalación sin conexión
+
+El paquete sin conexión v5.2.0 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.0-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
+
+```bash
+mkdir -p /root/vps-server-v5.2.0
+tar -xzf /root/vps-server-v5.2.0-linux-amd64.tar.gz -C /root/vps-server-v5.2.0 --strip-components=1
+cd /root/vps-server-v5.2.0
+bash deploy/install.sh
+```
+
+Un equipo de construcción con red puede crear el paquete formal desde un árbol **limpio y ya confirmado en Git**; el destino recibe solo el `.tar.gz` final. Se necesitan Python 3, Git, `dpkg-deb` y GNU tar. El script de recursos comprueba hashes fijos. El paquete contiene el entorno nftables, sus fuentes correspondientes y el archivo Tailscale:
+
+```bash
+python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
+python3 tools/build_offline/build_offline.py \
+  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
+  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
+  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
+  --version 5.2.0 \
+  --output .local/vps-server-v5.2.0-linux-amd64.tar.gz
+```
 
 ## Orientaciones
 
-### Quick start
+El resumen del instalador muestra la dirección de la consola, la contraseña administrativa y los módulos instalados. Las páginas públicas están desactivadas por defecto; después de habilitarlas en Home, comprueba desde otra máquina la accesibilidad de los puertos 80 y 443 en `http://<ip>/` y `https://<ip>/`. HTTPS usa un certificado autofirmado. Comprueba el servicio con `systemctl status vps-server-web` y entra en la consola para administrar módulos, nodos proxy y FRP.
 
-La implementación Web está en `src/web/`, los recursos estáticos en `src/web/static/` y el instalador en `deploy/`. Los binarios y licencias incluidos están en `third_party/`; los metadatos de versión están en `config/`. El código Web instalado está en `$PREFIX/src/web/`, con la entrada compatible `$PREFIX/app.py` en la raíz. El estado persistente está en `$VPSSRV_STATE_DIR`; volver a clonar o sustituir el directorio del programa no borra esa raíz de estado. El código de prueba actual sigue incluyendo FRPC, FRPS e iperf3; el comportamiento de las etiquetas formales se describe en la documentación de cada versión.
+Para usar iperf3, abre primero una ventana de duración limitada en la consola y luego ejecuta `iperf3 -c <ip> -p 5201 --json` desde otra máquina. Al terminar la ventana, el puerto deja de escuchar. El código fuente no incluye una suite de pruebas automáticas; acepta manualmente los módulos que hayas habilitado. Consulta rutas de servicio, límites y archivos de estado en el [documento de diseño](DESIGN.md).
 
-```bash
-bash deploy/install.sh                       # primera instalación de la consola Web en el terminal
-sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # selecciona Web e iperf3
-systemctl status vps-server-web              # comprueba si está activo
-bash deploy/anytls/setup-anytls.sh status           # detalles del nodo anytls, si está instalado ese módulo
-bash deploy/proxy/setup-proxy.sh status             # detalles del nodo proxy, si está instalado ese módulo
-```
+El límite de tráfico de los nodos proxy cuenta (subida + bajada) × 2. La interfaz muestra la cantidad contabilizada; la falta de datos de medición por sí sola no adelanta la limitación de velocidad. El reinicio mensual empieza el día 1 del mes seleccionado a las 00:00 UTC; los períodos diarios y anuales conservan su cálculo anterior. Las direcciones de interfaz de los nodos se ocultan por defecto y se pueden mostrar o copiar. En «Visitantes recientes» se puede borrar el historial tras confirmar; las visitas posteriores y los dispositivos que sigan conectados se registrarán de nuevo. Ajustes muestra directamente las tarjetas de instalación de módulos; el progreso se oculta 30 segundos después de la última salida y el aviso de finalización solo aparece brevemente en la página de la operación actual, sin reaparecer al actualizar o volver. «Registros detallados», a la derecha de «Registro de cambios» en la cabecera, reúne el historial de operaciones y los registros de servicios; estos se pueden filtrar por nivel. Borrar el historial de módulos trunca su archivo; borrar un registro de servicio solo oculta entradas anteriores y no elimina el journal del servidor. Lucky conserva su página de administración nativa; si la red actual no permite acceder directamente, se puede reenviar el puerto mediante SSH.
 
-Después, desde otra máquina:
+### Configuración
 
-```bash
-curl -sS  http://<ip>/                     # comprueba la accesibilidad mediante HTTP sin cifrar
-curl -sSk https://<ip>/                    # ... y mediante TLS (certificado autofirmado)
-iperf3 -c <ip> -p 5201 --json              # solo mientras haya una ventana abierta
-```
-
-### Verify it works
-
-Después de `bash deploy/install.sh`, comprueba la dirección administrativa, la contraseña y el resumen de módulos que aparecen en el terminal. Los puertos públicos están desactivados por defecto; actívalos desde la consola antes de comprobarlos desde otra máquina:
-
-- `systemctl status vps-server-web` muestra `active (running)`.
-- Abrir `http://<ip>/` desde **otra máquina** muestra una página titulada «Reachable» con tu propia IP pública. Abrir `https://<ip>/` muestra la misma página después de aceptar la advertencia del certificado; la línea del protocolo indica HTTPS.
-- Iniciar sesión en `http://<ip>:<console port>/` muestra el panel con el control de iperf3 y la ventana cerrada.
-- Tras abrir una ventana de 5 minutos, `iperf3 -c <ip> -p 5201 --json` desde otra máquina muestra la velocidad y contiene `mean_rtt`. Cinco minutos después, el mismo comando no puede conectarse: significa que la ventana se cerró automáticamente, no que haya un fallo.
-- Si instalaste anytls: `systemctl status vps-server-anytls` muestra `active (running)`.
-- Si instalaste proxy: `systemctl status vps-server-proxy` muestra `active (running)`.
-
-### Configuration
-
-Cada variable tiene un valor predeterminado funcional. La primera instalación puede importar `.env` desde el directorio del código fuente; después se conserva en el archivo `.env` de la raíz de estado. Las más importantes:
+Cada variable tiene un valor predeterminado. La primera instalación puede importar `.env` desde el directorio del código fuente; después se conserva en el archivo `.env` de la raíz de estado. Variables principales:
 
 | Variable | Significado | Predeterminado | Obligatoria |
 |---|---|---|---|
 | `VPSSRV_STATE_DIR` | Raíz de estado persistente definida en el entorno antes de la primera instalación; `.env` no cambia su ubicación | `/var/lib/vps-server` | no |
-| `VPSSRV_PUBLIC_HTTP_PORT` | Página pública de accesibilidad, sin cifrar | `80` | no |
-| `VPSSRV_PUBLIC_HTTPS_PORT` | Página pública de accesibilidad, TLS | `443` | no |
-| `VPSSRV_PUBLIC_ENABLE` | Mostrar la página pública al instalar; después, HTTP y HTTPS se controlan por separado desde Home | `0` | no |
+| `VPSSRV_PUBLIC_HTTP_PORT` | Puerto sin cifrar de la página pública | `80` | no |
+| `VPSSRV_PUBLIC_HTTPS_PORT` | Puerto TLS de la página pública | `443` | no |
+| `VPSSRV_PUBLIC_ENABLE` | Mostrar la página pública al instalar; después se controlan HTTP y HTTPS por separado desde Home | `0` | no |
 | `VPSSRV_CONSOLE_PORT` | Puerto de la consola; `0` genera uno y lo recuerda | `0` | no |
 | `VPSSRV_AUTH` | Exigir contraseña en la consola | `1` | no |
 | `VPSSRV_IPERF_PORT` | Puerto donde escucha la ventana iperf3 abierta | `5201` | no |
-| `VPSSRV_IPERF_MAX_MINUTES` | Límite que la consola no puede superar | `60` | no |
+| `VPSSRV_IPERF_MAX_MINUTES` | Duración máxima permitida por la consola | `60` | no |
 | `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
 
 Referencia completa: [Referencia de configuración][local-link-002].
 
 ## Actualización
 
-La versión prevista `v5.1.1` establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, guárdalos fuera del directorio de instalación antes de realizar expresamente una instalación nueva. Los datos ya eliminados sin copia de seguridad no pueden recuperarse. Si el instalador detecta un servicio antiguo o falta el estado, se detiene antes de modificar los servicios y no genera una nueva contraseña ni un nuevo puerto para una instalación anterior.
+v5.2.0 establece la disposición `1` del estado persistente. Las versiones v5.1.0 y anteriores **no admiten migración automática**. Si aún quedan datos antiguos, cópialos fuera del directorio de instalación antes de realizar una instalación nueva; los datos ya borrados sin copia no se pueden recuperar. Si el instalador encuentra un servicio anterior pero falta el estado, se detiene antes de modificar los servicios.
 
-Para actualizar desde v5.1.1 a una versión posterior, clona el código nuevo en un directorio independiente, conserva `$VPSSRV_STATE_DIR` y las configuraciones de los módulos instalados bajo `/etc`, y ejecuta el instalador con el mismo `PREFIX`. El instalador reutiliza la contraseña, el puerto, los certificados, los datos de ejecución y los módulos registrados en la raíz de estado; no vuelve a mostrar la contraseña antigua. No borres los datos antiguos de `$PREFIX` para preparar la actualización. Si personalizaste la ruta persistente, **DEBES** usar la misma ruta en las instalaciones posteriores; cambiarla requiere que el operador traslade y verifique los datos manualmente. Conserva copias independientes del código y los datos anteriores hasta verificar el servicio nuevo.
+Para actualizar posteriormente desde la disposición `1`, obtén el código nuevo en un directorio independiente y ejecuta el instalador con los mismos `PREFIX` y `VPSSRV_STATE_DIR`. Conserva la raíz de estado y las configuraciones de módulos bajo `/etc`; el instalador reutiliza la contraseña, el puerto, los certificados, los datos de ejecución y los módulos registrados sin volver a mostrar la contraseña anterior. Conserva copias del código y los datos antes de actualizar; después comprueba el estado de los servicios, el puerto administrativo, el inicio de sesión y los módulos utilizados. Usa la misma ruta de estado personalizada en las instalaciones posteriores; si quieres cambiarla, traslada y comprueba los datos manualmente.
 
 ## Desinstalación
 
-Ejecuta como root desde el directorio del instalador, con los mismos valores `PREFIX` y `SERVICE_NAME` usados al instalar (el resumen del instalador muestra el comando exacto de desinstalación). Para eliminar los servicios y unidades **conservando** el directorio del programa y `$VPSSRV_STATE_DIR` para una reinstalación posterior:
+Ejecuta como root desde el directorio del código fuente de instalación y usa los mismos `PREFIX` y `SERVICE_NAME` que al instalar; el resumen muestra el comando exacto:
 
 ```bash
-KEEP_DATA=1 bash deploy/uninstall.sh
+KEEP_DATA=1 bash deploy/uninstall.sh  # detener servicios y conservar programa y estado persistente
+bash deploy/uninstall.sh              # desinstalación completa y borrado de la raíz de estado predeterminada
 ```
 
-Para eliminar los módulos instalados y **también borrar los datos de la raíz de estado predeterminada** (incluidos el registro de visitantes, la contraseña de la consola, el puerto guardado, los certificados y las configuraciones de instancias FRPC administradas por el proyecto):
-
-```bash
-bash deploy/uninstall.sh
-```
-
-Ambas modalidades eliminan los servicios anytls/proxy y sus configuraciones separadas, si están instalados. También detienen las instancias FRPC de este proyecto, retiran su plantilla de servicio y el binario coincidente, y liberan de forma atómica sus entradas en `PORTS.md` sin tocar las de otros proyectos. `KEEP_DATA=1` conserva `$PREFIX`, `$VPSSRV_STATE_DIR`, las configuraciones `/etc/frp/frpc-*.toml` y sus copias de recuperación, pero no las configuraciones anytls/proxy. Sin `KEEP_DATA=1`, la desinstalación completa elimina también las configuraciones FRPC, los alias y las copias reconocidas como propias, así como la raíz de estado predeterminada marcada con la disposición `1`. No borra automáticamente las rutas de datos personalizadas situadas fuera de esa raíz. Si encuentra instancias `frpc-*.toml` reconocibles por la consola, las detiene y elimina los archivos FRPC globales incluso cuando la plantilla antigua difiere de la actual: confirma antes la titularidad de esas instancias en servidores que compartan FRPC. Si no reconoce instancias y no puede determinar la titularidad, conserva los archivos FRPC globales e informa de ello. Un binario cuya suma de verificación no coincide detiene la limpieza.
+Ambos modos detienen los servicios gestionados por el proyecto y liberan sus registros de puertos. El modo que conserva datos mantiene el programa, la raíz de estado, la configuración del proxy unificado, la de FRPS y de las instancias FRPC y la identidad de Tailscale. La desinstalación completa elimina estas configuraciones propias del proyecto y sus copias de recuperación. En un servidor que comparta FRPC, comprueba primero a quién pertenecen las instancias. No se borran automáticamente las rutas de datos personalizadas situadas fuera de la raíz de estado. Consulta el alcance detallado de la limpieza en el [documento de diseño](DESIGN.md#desinstalación-completa).
 
 ## Agradecimientos
 

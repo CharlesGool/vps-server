@@ -6,6 +6,6 @@ main { width: min(100%, 36rem); padding: clamp(1.5rem, 4vw, 2.5rem); border: 1px
 h1 { display: flex; align-items: center; gap: .65rem; margin: 0 0 .5rem; font-size: clamp(1.45rem, 3vw, 1.8rem); line-height: 1.25; letter-spacing: -.03em; }
 p { margin: .5rem 0; }.ok { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 7px; background: var(--surface); color: var(--success); }
 dl { display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: .6rem 1rem; margin: 1.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--border); }
-dt,.note { color: var(--muted); }dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }.note { margin-top: 1.5rem; font-size: .85rem; }
+dt { color: var(--muted); }dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .iperf { margin: 1.25rem 0 0; padding: .75rem 1rem; border-radius: 8px; background: var(--surface); color: var(--success); font-size: .9rem; }
 @media (max-width: 30rem) { dl { grid-template-columns: 1fr; gap: .1rem; }dt:not(:first-child) { margin-top: .6rem; } }

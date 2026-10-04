@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+.local/
+.playwright-cli/
 admin_password.txt
 console_port.txt
 .install-state
