@@ -15,6 +15,13 @@
     return (await response.json()).value;
   };
 
+  const syncForwarding = (container, value = masked) => {
+    if (container.dataset.privateUrl !== '/frp/client/value' || container.dataset.privateField !== 'server') return;
+    const address = value !== masked && value.includes(':') ? `[${value}]` : value;
+    container.closest('.frp-target-card')?.querySelectorAll('[data-frpc-forward-server]')
+      .forEach(display => { display.textContent = address; });
+  };
+
   document.addEventListener('click', async (event) => {
     const reveal = event.target.closest('.private-reveal');
     if (reveal) {
@@ -22,6 +29,7 @@
       const display = container.querySelector('[data-private-text]');
       if (reveal.getAttribute('aria-pressed') === 'true') {
         display.textContent = masked;
+        syncForwarding(container);
         reveal.setAttribute('aria-pressed', 'false');
         reveal.textContent = container.dataset.show;
         return;
@@ -31,11 +39,13 @@
         const value = await fetchValue(container.dataset.privateId, container.dataset.privateField, container.dataset.privateUrl);
         if (!leaving && container.isConnected) {
           display.textContent = value;
+          syncForwarding(container, value);
           reveal.setAttribute('aria-pressed', 'true');
           reveal.textContent = container.dataset.hide;
         }
       } catch (_) {
         display.textContent = masked;
+        syncForwarding(container);
         flash(reveal, container.dataset.error);
       }
       finally { reveal.disabled = false; }
@@ -75,6 +85,7 @@
     leaving = true;
     document.querySelectorAll('.private-value').forEach((container) => {
       container.querySelector('[data-private-text]').textContent = masked;
+      syncForwarding(container);
       const reveal = container.querySelector('.private-reveal');
       reveal.setAttribute('aria-pressed', 'false');
       reveal.textContent = container.dataset.show;

@@ -515,5 +515,5 @@
   "tailscale_tun": "TUN 模式",
   "terminal_title": "终端",
   "terminal_disconnected": "终端已断开。",
-  "frp_forwarding": "公网:{remote} 转发至 {local}:{port}"
+  "frp_forwarding": "公网:{server}:{remote} 转发至 {local}:{port}"
 }

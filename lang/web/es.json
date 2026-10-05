@@ -515,5 +515,5 @@
   "tailscale_tun": "Modo TUN",
   "terminal_title": "Terminal",
   "terminal_disconnected": "La terminal se ha desconectado.",
-  "frp_forwarding": "Público:{remote} redirige a {local}:{port}"
+  "frp_forwarding": "Público:{server}:{remote} redirige a {local}:{port}"
 }

@@ -77,8 +77,9 @@ class FrpMixin:
                 proxies = (self.context.frpc_structured(name) or {}).get('proxies', [])
             except (OSError, ValueError, KeyError, TypeError):
                 proxies = []
+            server_placeholder = '<span data-frpc-forward-server>••••••</span>'
             forwarding = ''.join(
-                f'<li><strong>{esc(proxy["name"])}</strong><span>{esc(t["frp_forwarding"].format(remote=proxy["remotePort"], local=proxy["localIP"], port=proxy["localPort"]))}</span></li>'
+                f'<li><strong>{esc(proxy["name"])}</strong><span>{esc(t["frp_forwarding"]).format(server=server_placeholder, remote=proxy["remotePort"], local=esc(proxy["localIP"]), port=proxy["localPort"])}</span></li>'
                 for proxy in proxies)
             forwarding = f'<ul class="frp-forwarding">{forwarding}</ul>' if forwarding else f'<span class="muted small">{item["proxies"]} {esc(t["frp_proxies"])}</span>'
             clients.append(f'<article class="frp-target-card"><div class="frp-target-head">'
