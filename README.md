@@ -38,10 +38,10 @@
 
 ### 快速安装
 
-一条命令安装 Web, iperf3, Singbox, FRPS, Lucky 和 Tailscale. FRPC 客户端可在设置/模块中添加.
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -65,7 +65,7 @@ sha256sum -c SHA256SUMS
 mkdir -p /root/vps-server-v5.2.2
 tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
 cd /root/vps-server-v5.2.2
-VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
+VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
 完成语言选择后, 安装交给 systemd 后台任务执行. 源码目录在任务完成前**必须**保留. 默认路径下查看日志和结果:

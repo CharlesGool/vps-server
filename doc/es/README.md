@@ -38,10 +38,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale Web, iperf3, Singbox, FRPS, Lucky y Tailscale con un comando. Añada el cliente FRPC desde Configuración/Módulos.
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -65,7 +65,7 @@ sha256sum -c SHA256SUMS
 mkdir -p /root/vps-server-v5.2.2
 tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
 cd /root/vps-server-v5.2.2
-VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
+VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
 Después de elegir el idioma, systemd ejecuta la instalación en segundo plano. **DEBE** conservar el directorio fuente hasta que finalice. Para la ruta predeterminada, consulte:

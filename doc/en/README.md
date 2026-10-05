@@ -38,10 +38,10 @@ Run as root.
 
 ### Quick Install
 
-Install Web, iperf3, Singbox, FRPS, Lucky and Tailscale with one command. Add the FRPC client from Settings/Modules.
+Install only the Web console with one command. Add other modules as needed from Settings/Modules.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -65,7 +65,7 @@ sha256sum -c SHA256SUMS
 mkdir -p /root/vps-server-v5.2.2
 tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
 cd /root/vps-server-v5.2.2
-VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
+VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
 After language selection, systemd runs the installation in the background. You **MUST** keep the source directory until completion. For the default prefix, inspect the log and result:
