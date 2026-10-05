@@ -1,6 +1,6 @@
 .reference-select { position:relative; min-width:0; }
 .reference-native-select { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; opacity:0; pointer-events:none; }
-.reference-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:48px; padding:10px 14px; border:1px solid var(--card-border); border-radius:8px; background:var(--card-bg); color:var(--fg); text-align:start; font-weight:600; }
+.reference-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:2.75rem; padding:.6rem .75rem; border:1px solid var(--card-border); border-radius:8px; background:var(--card-bg); color:var(--fg); text-align:start; font-weight:600; }
 .reference-select-trigger:hover,.reference-select-trigger[aria-expanded="true"] { border-color:var(--accent); background:var(--card-bg); color:var(--fg); }
 .reference-select-chevron { width:9px; height:9px; flex:none; border-inline-end:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(45deg) translateY(-2px); }
 .reference-select-trigger[aria-expanded="true"] .reference-select-chevron { transform:rotate(225deg) translateY(-2px); }
@@ -9,3 +9,5 @@
 .reference-select-options button { display:block; width:100%; min-height:44px; padding:9px 12px; border:0; border-radius:6px; background:transparent; color:inherit; text-align:start; }
 .reference-select-options button:hover,.reference-select-options button:focus-visible,.reference-select-options button[aria-selected="true"] { background:var(--surface-2); color:var(--accent-strong); }
 .reference-select-options button:focus-visible { outline-offset:-2px; }
+
+.reference-select-options button { margin: 0; font-size: .86rem; line-height: 1.35; }

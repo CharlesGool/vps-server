@@ -1,4 +1,33 @@
 (() => {
+  document.querySelectorAll('.frp-inline-edit').forEach((details) => {
+    let generation = 0;
+    const load = async () => {
+      const request = ++generation;
+      const inputs = [...details.querySelectorAll('[data-frps-edit-field]')];
+      if (!details.open) { inputs.forEach(input => { input.value = ''; }); return; }
+      const submit = details.querySelector('[type="submit"]');
+      submit.disabled = true;
+      try {
+        const values = await Promise.all(inputs.map(async input => {
+          const query = new URLSearchParams({ id: 'frps', field: input.dataset.frpsEditField });
+          const response = await fetch(`/frp/server/value?${query}`, { credentials: 'same-origin', cache: 'no-store' });
+          if (!response.ok) throw new Error('value unavailable');
+          return (await response.json()).value;
+        }));
+        if (request === generation && details.open) {
+          inputs.forEach((input, index) => { input.value = values[index]; });
+          submit.disabled = false;
+        }
+      } catch (_) { /* Keep saving disabled until the original values load. */ }
+    };
+    details.addEventListener('toggle', load);
+    if (details.open) load();
+    window.addEventListener('pagehide', () => {
+      ++generation;
+      inputsReset();
+    });
+    const inputsReset = () => details.querySelectorAll('[data-frps-edit-field]').forEach(input => { input.value = ''; });
+  });
   const serverAddress = document.querySelector('[data-load-address]');
   if (serverAddress) {
     const details = serverAddress.closest('details');

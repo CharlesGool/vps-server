@@ -163,9 +163,9 @@ class TailscaleMixin:
                         f'<div class="tailscale-checks">{badges}</div>')
             if state == "Running":
                 token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:logout")
-                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout">'
+                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout" data-confirm="{esc(t["tailscale_logout_confirm"], quote=True)}">'
                             f'<input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="{token}">'
-                            f'<label><input type="checkbox" name="confirm" value="yes" required>{esc(t["tailscale_logout_confirm"])}</label>'
+                            '<input type="hidden" name="confirm" value="yes">'
                             f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></form>')
         elif tab == "settings":
             choices = (("accept-dns", "tailscale_accept_dns", "RouteAll"),
@@ -206,14 +206,19 @@ class TailscaleMixin:
                 field = ('<input name="value" type="number" min="1" max="65535" required>' if kind == "relay" else
                          '<input name="value" value="" maxlength="255">')
                 field = field.replace('name="value"', f'name="{kind}_value"').replace(' required', '')
-                suggestions = ("".join(f'<button type="button" class="tailscale-choice" data-route-choice="{esc(route, quote=True)}">{esc(route)}</button>'
-                                       for route in subnets) if kind == "routes" else
-                               "".join(f'<button type="button" class="tailscale-choice" data-exit-choice="{esc(peer["selector"], quote=True)}">{esc(peer["name"])}</button>'
-                                       for peer in exit_nodes) if kind == "exit" else "")
-                fields_html += (f'<div class="tailscale-setting-card"><label>{esc(t[label])}{field}</label>{current_html}'
-                                f'{"<div class=tailscale-suggestions>" + suggestions + "</div>" if suggestions else ""}'
-                                f'<label class="tailscale-clear-choice"><input type="checkbox" name="{kind}_clear" value="1" '
-                                f'{"" if current else "disabled"}>{esc(t["tailscale_clear"])}</label></div>')
+                if kind in ("routes", "exit"):
+                    candidates = [(route, route) for route in subnets] if kind == "routes" else [(peer["selector"], peer["name"]) for peer in exit_nodes]
+                    if current and str(current) not in [value for value, _ in candidates]:
+                        candidates.insert(0, (str(current), str(current)))
+                    options = f'<option value="">{esc(t["tailscale_clear"])}</option>' + ''.join(
+                        f'<option value="{esc(value, quote=True)}" {"selected" if str(current) == value else ""}>{esc(title)}</option>'
+                        for value, title in candidates)
+                    field = f'<select name="{kind}_value" data-tailscale-single="{kind}">{options}</select>'
+                    clear_control = f'<input type="hidden" name="{kind}_clear" value="{0 if current else 1}">'
+                else:
+                    clear_control = (f'<label class="tailscale-clear-choice"><input type="checkbox" name="{kind}_clear" value="1" '
+                                     f'{"" if current else "disabled"}>{esc(t["tailscale_clear"])}</label>')
+                fields_html += (f'<div class="tailscale-setting-card"><label>{esc(t[label])}{field}</label>{current_html}{clear_control}</div>')
             token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:batch")
             content += (f'<form method="post" action="/tailscale/action" class="tailscale-batch">'
                         f'<input type="hidden" name="action" value="batch"><input type="hidden" name="csrf" value="{token}">'
@@ -254,7 +259,7 @@ class TailscaleMixin:
                         f'<pre class="logs-output" role="log">{esc((output or t["logs_empty"]) if output is not None else t["logs_unavailable"])}</pre>')
         body = (f'<div class="card wide tailscale-page">{headline}<nav class="log-sources" aria-label="Tailscale">{nav}</nav>'
                 f'{content}</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
-                '<script src="/static/password-fields.js"></script><script src="/static/tailscale.js" defer></script>'
+                '<script src="/static/tailscale.js" defer></script>'
                 '<script src="/static/log-controls.js" defer></script>')
         self.send_html(200, self.render_page("Tailscale", body, lang, back_href="/"),
                        {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})

@@ -7,7 +7,7 @@
     setTimeout(() => { if (button.isConnected && button.textContent === message) button.textContent = original; }, 1800);
   };
   const fetchValue = async (id, field, endpoint = '/proxy/private-value') => {
-    const query = new URLSearchParams({ id, field });
+    const query = new URLSearchParams(endpoint === "/frp/client/value" ? { name: id, field } : { id, field });
     const response = await fetch(`${endpoint}?${query}`, {
       credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }
     });

@@ -108,3 +108,32 @@
   .managed-node .proxy-node-facts { grid-template-columns: minmax(0, 1fr); }
   .managed-node .node-fact-secret { grid-column: 1; }
 }
+
+/* Shared secondary and destructive actions. */
+.node-share :is(.private-share-copy, .node-import) { min-height: 2.75rem; padding: .45rem .75rem; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--accent-strong); font-size: .85rem; font-weight: 600; }
+:is(.node-action-danger, .access-remove), .frp-target-foot .node-action-danger { border-color: var(--error-solid); background: var(--error-solid); color: var(--on-error); text-decoration: none; }
+:is(.node-action-danger, .access-remove):hover { background: var(--error-solid); color: var(--on-error); }
+.frp-test-connection { background: var(--card-bg); border-color: var(--card-border); color: var(--accent-strong); }
+.frp-test-connection:hover { background: var(--surface-2); }
+.frp-target-actions .proxy-node-status { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .85rem; }
+.frp-target-name { font-size: 1rem; }
+.frp-proxy-card { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.frp-proxy-card > .node-inline-edit { grid-column: 1; grid-row: 1; margin: 0; }
+.frp-proxy-card > .frp-delete-form { grid-column: 2; grid-row: 1; margin: 0; }
+.frp-proxy-card > .frp-proxy-facts { grid-column: 1 / -1; }
+.frp-proxy-card .node-inline-edit > summary { display: inline-flex; align-items: center; min-height: 2.75rem; padding: .45rem .75rem; margin: 0; font-size: .85rem; }
+.frp-forwarding { display: grid; gap: .5rem; min-width: 0; margin: 0; padding: 0; list-style: none; font-size: .85rem; overflow-wrap: anywhere; }
+.frp-forwarding li { display: grid; gap: .15rem; }
+.frp-forwarding li span { color: var(--muted); }
+.frp-target-foot { align-items: start; flex-wrap: wrap; }
+.frp-target-foot > button { margin-inline-start: auto; }
+.tailscale-fact { font-size: .85rem; }
+.tailscale-fact strong { font-size: .9rem; font-weight: 600; }
+.tailscale-fact .private-value { flex-wrap: wrap; }
+.tailscale-fact .private-value code { flex: 1 1 100%; white-space: normal; overflow-wrap: anywhere; font-family: inherit; font-size: .85rem; }
+.tailscale-fact .private-value button { white-space: nowrap; flex: none; }
+.log-filter :is(.reference-select-trigger, select, button[type="submit"]) { min-height: 2.75rem; margin: 0; }
+.log-filter .reference-select-options button { margin: 0; }
+.module-page > h2, .settings-content .access-card h2 { font-size: 1.1rem; }
+.module-card { font-size: .85rem; }
+.module-card h2 { font-size: .95rem; }

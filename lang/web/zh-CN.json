@@ -514,5 +514,6 @@
   "tailscale_hairpinning": "回环连接",
   "tailscale_tun": "TUN 模式",
   "terminal_title": "终端",
-  "terminal_disconnected": "终端已断开。"
+  "terminal_disconnected": "终端已断开。",
+  "frp_forwarding": "公网:{remote} 转发至 {local}:{port}"
 }

@@ -1,4 +1,12 @@
 (() => {
+  document.querySelector('.tailscale-logout')?.addEventListener('submit', event => {
+    if (!window.confirm(event.currentTarget.dataset.confirm)) event.preventDefault();
+  });
+  document.querySelectorAll('[data-tailscale-single]').forEach(select => {
+    select.addEventListener('change', () => {
+      select.closest('form').querySelector(`[name="${select.dataset.tailscaleSingle}_clear"]`).value = select.value ? '0' : '1';
+    });
+  });
   const button = document.querySelector('.tailscale-web-open');
   document.addEventListener('click', (event) => {
     const route = event.target.closest('[data-route-choice]');
