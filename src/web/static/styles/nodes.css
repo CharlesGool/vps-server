@@ -117,7 +117,7 @@
 .frp-test-connection:hover { background: var(--surface-2); }
 .frp-target-actions .proxy-node-status { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .85rem; }
 .frp-target-name { font-size: 1rem; }
-.frp-proxy-card { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.frp-proxy-card { grid-template-columns: auto auto minmax(0, 1fr); align-items: start; }
 .frp-proxy-card > .node-inline-edit { grid-column: 1; grid-row: 1; margin: 0; }
 .frp-proxy-card > .frp-delete-form { grid-column: 2; grid-row: 1; margin: 0; }
 .frp-proxy-card > .frp-proxy-facts { grid-column: 1 / -1; }
@@ -137,3 +137,5 @@
 .module-page > h2, .settings-content .access-card h2 { font-size: 1.1rem; }
 .module-card { font-size: .85rem; }
 .module-card h2 { font-size: .95rem; }
+
+.frp-proxy-card > .node-inline-edit[open] { grid-column: 1 / -1; grid-row: 2; }

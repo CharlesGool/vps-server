@@ -481,7 +481,7 @@
   "tailscale_shields": "Shields up",
   "tailscale_snat": "Subnet route SNAT",
   "tailscale_ssh": "Enable Tailscale SSH",
-  "tailscale_routes": "Advertise subnet routes (comma separated)",
+  "tailscale_routes": "Advertise subnet route",
   "tailscale_exit_node": "Use exit node",
   "tailscale_devices": "Devices",
   "tailscale_no_devices": "No devices to show",

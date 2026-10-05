@@ -481,7 +481,7 @@
   "tailscale_shields": "Modo de protección",
   "tailscale_snat": "SNAT de rutas de subred",
   "tailscale_ssh": "Activar SSH de Tailscale",
-  "tailscale_routes": "Anunciar rutas de subred (separadas por comas)",
+  "tailscale_routes": "Anunciar ruta de subred",
   "tailscale_exit_node": "Usar nodo de salida",
   "tailscale_devices": "Dispositivos",
   "tailscale_no_devices": "No hay dispositivos para mostrar",

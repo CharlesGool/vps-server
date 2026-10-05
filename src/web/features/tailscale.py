@@ -214,7 +214,7 @@ class TailscaleMixin:
                         f'<option value="{esc(value, quote=True)}" {"selected" if str(current) == value else ""}>{esc(title)}</option>'
                         for value, title in candidates)
                     field = f'<select name="{kind}_value" data-tailscale-single="{kind}">{options}</select>'
-                    clear_control = f'<input type="hidden" name="{kind}_clear" value="{0 if current else 1}">'
+                    clear_control = f'<input type="hidden" name="{kind}_clear" value="1" {"disabled" if current else ""}>'
                 else:
                     clear_control = (f'<label class="tailscale-clear-choice"><input type="checkbox" name="{kind}_clear" value="1" '
                                      f'{"" if current else "disabled"}>{esc(t["tailscale_clear"])}</label>')

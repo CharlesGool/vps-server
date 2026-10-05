@@ -18,10 +18,14 @@
   });
 
   document.querySelectorAll('[data-node-edit-id]').forEach((details) => {
+    let generation = 0;
     details.addEventListener('toggle', async () => {
+      const request = ++generation;
+      const submit = details.querySelector('[type="submit"]');
       const port = details.querySelector('[data-node-edit-port]');
       const credential = details.querySelector('[data-node-edit-credential]');
       if (!details.open) { port.value = ''; credential.value = ''; return; }
+      submit.disabled = true;
       try {
         const id = encodeURIComponent(details.dataset.nodeEditId);
         const values = await Promise.all(['port', 'credential'].map(async (field) => {
@@ -30,7 +34,7 @@
           if (!response.ok) throw new Error('value unavailable');
           return (await response.json()).value;
         }));
-        if (details.open) { port.value = values[0]; credential.value = values[1]; }
+        if (details.open && request === generation) { port.value = values[0]; credential.value = values[1]; submit.disabled = false; }
       } catch (_) { port.value = ''; credential.value = ''; }
     });
   });

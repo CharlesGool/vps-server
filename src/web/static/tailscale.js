@@ -4,24 +4,10 @@
   });
   document.querySelectorAll('[data-tailscale-single]').forEach(select => {
     select.addEventListener('change', () => {
-      select.closest('form').querySelector(`[name="${select.dataset.tailscaleSingle}_clear"]`).value = select.value ? '0' : '1';
+      select.closest('form').querySelector(`[name="${select.dataset.tailscaleSingle}_clear"]`).disabled = !!select.value;
     });
   });
   const button = document.querySelector('.tailscale-web-open');
-  document.addEventListener('click', (event) => {
-    const route = event.target.closest('[data-route-choice]');
-    const exit = event.target.closest('[data-exit-choice]');
-    if (!route && !exit) return;
-    const kind = route ? 'routes' : 'exit';
-    const field = document.querySelector(`[name="${kind}_value"]`);
-    if (!field) return;
-    const value = route ? route.dataset.routeChoice : exit.dataset.exitChoice;
-    const existing = route ? field.value.split(',').map(item => item.trim()).filter(Boolean) : [];
-    field.value = route ? [...new Set([...existing, value])].join(', ') : value;
-    const clear = document.querySelector(`[name="${kind}_clear"]`);
-    if (clear) clear.checked = false;
-    field.focus();
-  });
   button?.addEventListener('click', async () => {
     button.disabled = true;
     try {

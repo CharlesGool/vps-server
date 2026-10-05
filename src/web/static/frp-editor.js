@@ -31,7 +31,10 @@
   const serverAddress = document.querySelector('[data-load-address]');
   if (serverAddress) {
     const details = serverAddress.closest('details');
+    let generation = 0;
     details.addEventListener('toggle', async () => {
+      const request = ++generation;
+      const submit = details.querySelector('[type="submit"]');
       const port = details.querySelector('[data-load-port]');
       const token = details.querySelector('[data-load-token]');
       if (!details.open) {
@@ -40,6 +43,7 @@
         if (token) token.value = '';
         return;
       }
+      submit.disabled = true;
       try {
         const fields = ['server', 'port', 'token'];
         const values = await Promise.all(fields.map(async (field) => {
@@ -48,7 +52,8 @@
           if (!response.ok) throw new Error('value unavailable');
           return (await response.json()).value;
         }));
-        if (details.open) {
+        if (details.open && request === generation) {
+          submit.disabled = false;
           serverAddress.value = values[0];
           port.value = values[1];
           token.value = values[2];
