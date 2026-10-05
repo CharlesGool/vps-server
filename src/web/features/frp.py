@@ -42,7 +42,7 @@ class FrpMixin:
             edit_entry = edit
             server = (f'<div class="frp-status-line"><span class="proxy-node-status {"is-open" if running else "is-closed"}">{esc(status)}</span>{toggle}</div>'
                       f'{edit_entry}'
-                      f'<dl class="frp-facts"><div><dt>{esc(t["frps_status"])}</dt><dd>{esc(status)}</dd></div>'
+                      f'<dl class="frp-facts">'
                       f'<div><dt>{esc(t["frps_bind"])}</dt><dd><code>{esc(node["address"])}</code></dd></div>'
                       f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t, endpoint="/frp/server/value")}</dd></div>'
                       f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True, endpoint="/frp/server/value")}</dd></div></dl>'
@@ -50,9 +50,9 @@ class FrpMixin:
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ("done", "failed") else ""
-        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frps_heading"])}</h1></div>{feedback}'
+        body = (f'<div class="frp-workspace">{feedback}'
                 f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("server")}'
-                f'<h2>{esc(t["frps_heading"])}</h2></div>{server}</section></div>'
+                f'<h1>{esc(t["frps_heading"])}</h1></div>{server}</section></div>'
                 '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -80,7 +80,7 @@ class FrpMixin:
                            f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie("session"), "frp:toggle:" + name + ":" + toggle_action)}">'
                            f'<button type="submit" class="node-toggle" role="switch" aria-checked="{str(running_client).lower()}" '
                            f'aria-label="{esc(t["frp_stop_client"] if running_client else t["frp_start_client"], quote=True)}"><span aria-hidden="true"></span></button></form>'
-                           f'<span class="proxy-node-status {"is-open" if connected else "is-closed"}" '
+                           f'<div class="frp-target-actions"><span class="proxy-node-status {"is-open" if connected else "is-closed"}" '
                            f'data-frpc-state aria-live="polite">{esc(state)}</span>'
                            f'<button type="button" class="frp-test-connection" data-name="{esc(name, quote=True)}" '
                            f'data-csrf="{self.context.access_csrf_token(self.get_cookie("session"), "frp:test:" + name)}" '
@@ -89,7 +89,7 @@ class FrpMixin:
                            f'data-disconnected="{esc(t["frp_disconnected"], quote=True)}" '
                            f'data-failed="{esc(t["frp_test_failed"], quote=True)}">'
                            f'{esc(t["frp_test_connection"])}</button>'
-                           f'<a class="button-link frp-card-edit" href="/frp/client/edit?name={self.context.quote(name)}">{esc(t["frp_edit_client_button"])}</a></div>'
+                           f'<a class="button-link frp-card-edit" href="/frp/client/edit?name={self.context.quote(name)}">{esc(t["frp_edit_client_button"])}</a></div></div>'
                            f'<div class="frp-target-meta"><button type="button" class="frp-fact-reveal frp-card-ip" '
                            f'data-name="{esc(name, quote=True)}" data-field="server" '
                            f'data-masked="{esc(self.context.masked_frpc_ip(item["server"]), quote=True)}" '
@@ -119,10 +119,10 @@ class FrpMixin:
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get('msg', [''])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ('done', 'failed') else ''
-        body = (f'<div class="frp-workspace"><div class="frp-heading"><h1>{esc(t["frp_client_heading"])}</h1></div>{feedback}'
+        body = (f'<div class="frp-workspace">{feedback}'
                 f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("network")}'
-                f'<h2>{esc(t["frp_client_heading"])}</h2></div>{availability}'
-                f'<h3>{esc(t["frp_instances"])}</h3>{client_list}'
+                f'<h1>{esc(t["frp_client_heading"])}</h1></div>{availability}'
+                f'<h2 class="frp-instances-heading">{esc(t["frp_instances"])}</h2><div class="frp-client-grid">{client_list}</div>'
                 f'<p><a class="button-link frp-install-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
                 f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a></p>'
                 '</section></div>'
@@ -194,7 +194,7 @@ class FrpMixin:
                   f'<label>{esc(t["frp_server_ip"])}<input name="server" data-load-address="{esc(name, quote=True)}" required></label>'
                   f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" '
                   f'data-load-port="{esc(name, quote=True)}" required></label>'
-                  f'{server_token_field}'
+                  f'<div class="frp-password-field">{server_token_field}</div>'
                   f'<button type="submit">{esc(t["frp_save"])}</button>'
                   f'</form></details><dl class="frp-facts frp-server-facts"><div><dt>{esc(t["frp_server_ip"])}</dt>'
                   f'<dd>{reveal("server", self.context.masked_frpc_ip(config["serverAddr"]), t["frp_server_ip"])}</dd></div>'
@@ -251,7 +251,7 @@ class FrpMixin:
                 f'<label>{esc(t["frp_instance_name"])}<input name="name" maxlength="32" required></label>'
                 f'<label>{esc(t["frp_server_ip"])}<input name="server" required></label>'
                 f'<label>{esc(t["proxy_port"])}<input type="number" name="port" min="1" max="65535" required></label>'
-                f'{token_field}<button type="submit">{esc(t["frp_new_client"])}</button></form></section>')
+                f'<div class="frp-password-field">{token_field}</div><button type="submit">{esc(t["frp_new_client"])}</button></form></section>')
 
     def frpc_address_value(self, parsed):
         name = self.context.parse_qs(parsed.query).get('name', [''])[0]

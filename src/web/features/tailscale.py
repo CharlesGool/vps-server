@@ -150,12 +150,6 @@ class TailscaleMixin:
                             f'data-error="{esc(t["tailscale_web_open_failed"], quote=True)}">'
                             f'{esc(t["tailscale_open_web"])}</button>'
                             '<span class="error tailscale-web-status" role="status" hidden></span></p>')
-            if state == "Running":
-                token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:logout")
-                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout">'
-                            f'<input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="{token}">'
-                            f'<label><input type="checkbox" name="confirm" value="yes" required>{esc(t["tailscale_logout_confirm"])}</label>'
-                            f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></form>')
             checks = ((t["tailscale_varies"], net.get("MappingVariesByDestIP")),
                       ("IPv4", net.get("IPv4")), ("IPv6", net.get("IPv6")),
                       ("UDP", net.get("UDP")), ("UPnP", net.get("UPnP")),
@@ -167,6 +161,12 @@ class TailscaleMixin:
             content += (f'<div class="tailscale-facts">{facts}</div><h2>{esc(t["tailscale_connectivity"])}</h2>'
                         f'<p>{esc(t["tailscale_derp"])}: {esc(str(net.get("PreferredDERP") or "—"))}</p>'
                         f'<div class="tailscale-checks">{badges}</div>')
+            if state == "Running":
+                token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:logout")
+                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout">'
+                            f'<input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="{token}">'
+                            f'<label><input type="checkbox" name="confirm" value="yes" required>{esc(t["tailscale_logout_confirm"])}</label>'
+                            f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></form>')
         elif tab == "settings":
             choices = (("accept-dns", "tailscale_accept_dns", "RouteAll"),
                        ("accept-routes", "tailscale_accept_routes", "RouteAll"),

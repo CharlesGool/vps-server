@@ -40,7 +40,7 @@
 .node-toggle { position: relative; display: inline-flex; align-items: center; justify-content: flex-start; width: 3.5rem; height: 2.75rem; min-height: 2.75rem; padding: 0; border: 0; border-radius: 999px; background: transparent; cursor: pointer; }
 .node-toggle::before { content: ''; position: absolute; inset-inline-start: .125rem; width: 3.25rem; height: 1.875rem; border: 1px solid var(--card-border); border-radius: 999px; background: var(--surface-2); transition: background-color .16s ease, border-color .16s ease; }
 .node-toggle[aria-checked="true"]::before { border-color: var(--accent); background: var(--accent); }
-.node-toggle span { position: absolute; inset-inline-start: .39rem; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--card-bg); box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 30%, transparent); transition: inset-inline-start .16s ease; }
+.node-toggle span { position: absolute; inset-inline-start: .39rem; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--switch-thumb); box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 30%, transparent); transition: inset-inline-start .16s ease; }
 .node-toggle[aria-checked="true"] span { inset-inline-start: 1.77rem; }
 .node-toggle:hover { background: transparent; }
 .node-toggle:hover::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -98,3 +98,5 @@
   .proxy-summary > div { flex: 1; }
   .proxy-node-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+.node-toggle[aria-checked="true"] span { background: var(--on-accent); }

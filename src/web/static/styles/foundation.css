@@ -5,7 +5,7 @@
   --accent: #365779; --accent-strong: #365779; --accent-2: #506e8d;
   --on-accent: #ffffff; --error: #ad3744; --error-strong: #ad3744;
   --error-solid: #ad3744; --on-error: #ffffff; --success: #236b4d;
-  --fg-2: #455961; --qr-bg: #ffffff;
+  --switch-thumb: #ffffff; --fg-2: #455961; --qr-bg: #ffffff;
   --in-fg: #155c3b; --in-bg: #dcf2e5; --in-border: #9bd5b2;
   --out-fg: #854211; --out-bg: #fff0db; --out-border: #ebc193;
   --shadow: 0 10px 32px rgba(23, 45, 52, .06);

@@ -50,7 +50,7 @@ class PortfwdMixin:
             add_form = f"""
             <div class="node-addr">
               <h2>{self.context.html.escape(t['portfwd_add'])}</h2>
-              <form method="post" action="/portfwd/add" class="inline-form">
+              <form method="post" action="/portfwd/add" class="portfwd-add-form">
                 <label>{self.context.html.escape(t['portfwd_label'])}
                   <input type="text" name="label" maxlength="80">
                 </label>
