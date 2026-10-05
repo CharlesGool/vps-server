@@ -38,18 +38,10 @@
 
 ### 快速安装
 
-下载完整 Release 包并验证摘要, 或在联网机器下载后把两个文件传到目标机.
+一条命令安装 Web, iperf3, Singbox, FRPS, Lucky 和 Tailscale. FRPC 客户端可在设置/模块中添加.
 
 ```bash
-mkdir -p /root/vps-server-download
-cd /root/vps-server-download
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS
-sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.2
-tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
-cd /root/vps-server-v5.2.2
-bash deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -61,6 +53,19 @@ git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.gi
 cd /root/vps-server-source
 cp .env.example .env
 bash deploy/install.sh
+```
+
+#### 离线安装
+
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机需预先具备上述系统基础依赖.
+
+```bash
+cd /root/vps-server-download
+sha256sum -c SHA256SUMS
+mkdir -p /root/vps-server-v5.2.2
+tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+cd /root/vps-server-v5.2.2
+VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
 ```
 
 完成语言选择后, 安装交给 systemd 后台任务执行. 源码目录在任务完成前**必须**保留. 默认路径下查看日志和结果:

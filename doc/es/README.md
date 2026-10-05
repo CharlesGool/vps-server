@@ -38,18 +38,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Descargue el paquete Release completo y compruebe su suma, o transfiera ambos archivos desde una máquina con red.
+Instale Web, iperf3, Singbox, FRPS, Lucky y Tailscale con un comando. Añada el cliente FRPC desde Configuración/Módulos.
 
 ```bash
-mkdir -p /root/vps-server-download
-cd /root/vps-server-download
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS
-sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.2
-tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
-cd /root/vps-server-v5.2.2
-bash deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -61,6 +53,19 @@ git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.gi
 cd /root/vps-server-source
 cp .env.example .env
 bash deploy/install.sh
+```
+
+#### Instalación sin conexión
+
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
+
+```bash
+cd /root/vps-server-download
+sha256sum -c SHA256SUMS
+mkdir -p /root/vps-server-v5.2.2
+tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+cd /root/vps-server-v5.2.2
+VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
 ```
 
 Después de elegir el idioma, systemd ejecuta la instalación en segundo plano. **DEBE** conservar el directorio fuente hasta que finalice. Para la ruta predeterminada, consulte:

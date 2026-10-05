@@ -38,18 +38,10 @@ Run as root.
 
 ### Quick Install
 
-Download the complete Release and verify its checksum, or download both files elsewhere and transfer them to the host.
+Install Web, iperf3, Singbox, FRPS, Lucky and Tailscale with one command. Add the FRPC client from Settings/Modules.
 
 ```bash
-mkdir -p /root/vps-server-download
-cd /root/vps-server-download
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz
-curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS
-sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.2
-tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
-cd /root/vps-server-v5.2.2
-bash deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -61,6 +53,19 @@ git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.gi
 cd /root/vps-server-source
 cp .env.example .env
 bash deploy/install.sh
+```
+
+#### Offline Install
+
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
+
+```bash
+cd /root/vps-server-download
+sha256sum -c SHA256SUMS
+mkdir -p /root/vps-server-v5.2.2
+tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+cd /root/vps-server-v5.2.2
+VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale bash deploy/install.sh
 ```
 
 After language selection, systemd runs the installation in the background. You **MUST** keep the source directory until completion. For the default prefix, inspect the log and result:
