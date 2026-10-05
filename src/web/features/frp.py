@@ -396,6 +396,8 @@ class FrpMixin:
         systemd_run = self.context.shutil.which('systemd-run')
         if not systemd_run and self.context.Path('/run/systemd/system').exists():
             return self.send_html(503, 'FRP helper unavailable', {'Cache-Control': 'no-store'})
+        if systemd_run and (structured or path.endswith('client/rename')):
+            return self.queue_frpc_save(request, name, path)
         command = (['systemd-run', '--pipe', '--wait', '--collect', '--unit=vps-server-frp-control.service', *direct]
                    if systemd_run else direct)
         try:
@@ -420,10 +422,59 @@ class FrpMixin:
                              ('done' if succeeded else 'failed'),
                              {'Cache-Control': 'no-store'})
 
+    def queue_frpc_save(self, request, name, path):
+        # Respond before a restart can sever the FRPC tunnel carrying this request.
+        jobs = self.context.DATA_DIR / 'frp-jobs'
+        jobs.mkdir(mode=0o700, exist_ok=True)
+        ident = self.context.secrets.token_hex(16)
+        target = ('/frp/client/edit?' if request.get('section') == 'create' else
+                  '/frp/client/edit?name=' + self.context.quote(name) + '&')
+        success = '/frp/client/edit?name=' + self.context.quote(request.get('new_name', name))
+        job = {'state': 'queued', 'at': self.context.time.time(), 'request': request,
+               'success': success + '&msg=done', 'failure': target + 'msg=failed'}
+        job_path = jobs / (ident + '.json')
+        self.context._atomic_private_text(job_path, self.context.json.dumps(job))
+        command = ['systemd-run', '--collect', '--unit=vps-server-frp-control',
+                   '--property=RuntimeMaxSec=240', '/usr/bin/python3',
+                   str(self.context.FRP_CONTROL_HELPER), '--job', str(job_path)]
+        try:
+            result = self.context.subprocess.run(command, stdout=self.context.subprocess.DEVNULL,
+                stderr=self.context.subprocess.DEVNULL, timeout=10, check=False)
+            if result.returncode:
+                raise OSError('FRP job unavailable')
+        except (OSError, self.context.subprocess.TimeoutExpired):
+            job_path.unlink(missing_ok=True)
+            return self.redirect(target + 'msg=failed', {'Cache-Control': 'no-store'})
+        return self.redirect('/frp/job?job=' + ident, {'Cache-Control': 'no-store'})
+
+    def frpc_job(self, parsed, lang):
+        query = self.context.parse_qs(parsed.query)
+        ident = query.get('job', [''])[0]
+        if set(query) not in ({'job'}, {'job', 'status'}) or any(len(values) != 1 for values in query.values()) or not self.context.re.fullmatch(r'[0-9a-f]{32}', ident):
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            job = self.context.json.loads((self.context.DATA_DIR / 'frp-jobs' / (ident + '.json')).read_text())
+        except (OSError, ValueError):
+            return self.send_html(404, 'Job unavailable', {'Cache-Control': 'no-store'})
+        state = job['state']
+        if state in ('queued', 'running') and self.context.time.time() - job['at'] > 250:
+            state = 'failed'
+        if 'status' in query:
+            return self.send_json(200, {'state': state, 'target': job.get('target', job['failure'])},
+                                  {'Cache-Control': 'no-store'})
+        t, esc = self.context.STRINGS[lang], self.context.html.escape
+        body = (f'<section class="card"><h1>{esc(t["frp_client_heading"])}</h1>'
+                f'<p role="status" data-frpc-job="{ident}">{esc(t["frp_saving"])}</p></section>'
+                '<script src="/static/frp-editor.js" defer></script>')
+        return self.send_html(200, self.render_page(t['frp_client_heading'], body, lang),
+                              {'Cache-Control': 'no-store'})
+
     def route_frp(self, method, path, parsed, lang, query_lang):
         if not self.context.AUTH_ENABLED:
             return False
-        if method == "GET" and path == "/frps":
+        if method == "GET" and path == "/frp/job":
+            self.frpc_job(parsed, lang)
+        elif method == "GET" and path == "/frps":
             self.page_frps(lang, query_lang)
         elif method == "GET" and path == "/frpc":
             self.page_frpc(lang, query_lang)

@@ -1,5 +1,9 @@
 # Catálogo nativo de shell para deploy/install.sh. Solo lo carga el instalador.
 case "$key" in
+  install_detached) fmt='La instalación continúa en segundo plano. Registro: %s\nCódigo de salida al finalizar (0 = éxito): %s\n' ;;
+  install_detach_failed) fmt='No se pudo iniciar la instalación en segundo plano; no se cambiaron los servicios.\n' ;;
+  install_already_running) fmt='Ya hay una instalación en curso.\n' ;;
+
   need_root) fmt='Debe ejecutarse como root (prueba: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='No se encontró systemd; este instalador está dirigido a hosts con systemd\n' ;;
   platform_unsupported) fmt='Solo se admite Linux x86-64.\n' ;;

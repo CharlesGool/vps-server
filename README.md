@@ -73,6 +73,8 @@ bash deploy/install.sh
 
 `PREFIX` 默认是 `/root/apps/vps-server`,只存放可替换的程序文件.密码,控制台端口,证书,运行数据,安装记录和 `.env` 默认保存在 `/var/lib/vps-server`;首次安装可在命令环境中设置 `VPSSRV_STATE_DIR` 改用其他外部目录.可用 `VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale` 明确选择服务端模块;省略时只安装 Web.AnyTLS 是 `proxy` 中的协议,没有独立模块或服务.安装后在 Settings → Modules 安装或移除可选模块.HTTP 和 HTTPS 公开页面分别从 Home 启用;管理控制台使用独立端口.FRPC 需在需要本机客户端时单独安装.
 
+安装脚本完成语言选择后会交给 systemd 后台任务执行,终端断开不影响安装或升级.默认日志为 `/root/apps/vps-server/.local/install-job/install.log`;任务完成后同目录的 `exit-code` 为 `0` 表示成功,其他值表示失败.脚本返回只表示任务已启动,请检查完成结果.正在执行时不要修改或删除安装源目录.控制台的模块安装本身已在后台执行,会等待安装器完成后报告结果.
+
 ### 离线安装包
 
 v5.2.1 离线包包含完整源码和已校验的 Tailscale,nftables 等离线资源;生成及目标机安装均不要求目标机具备 Git.下载正式包后先核对提供的 SHA-256,再将包解压到独立目录,不要直接覆盖已安装的 `$PREFIX`.从 GitHub Release 下载 `vps-server-v5.2.1-linux-amd64.tar.gz` 与 `SHA256SUMS`,核验摘要后安装:

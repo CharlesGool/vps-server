@@ -138,4 +138,6 @@
 .module-card { font-size: .85rem; }
 .module-card h2 { font-size: .95rem; }
 
-.frp-proxy-card > .node-inline-edit[open] { grid-column: 1 / -1; grid-row: 2; }
+.frp-proxy-card > .node-inline-edit[open] { display: contents; }
+.frp-proxy-card > .node-inline-edit[open] > summary { grid-column: 1; grid-row: 1; }
+.frp-proxy-card > .node-inline-edit[open] > form { grid-column: 1 / -1; grid-row: 2; }

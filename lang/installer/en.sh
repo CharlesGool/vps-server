@@ -1,5 +1,9 @@
 # Native shell catalog for deploy/install.sh. Sourced only by the installer.
 case "$key" in
+  install_detached) fmt='Installation continues in the background. Log: %s\nCompletion exit code (0 = success): %s\n' ;;
+  install_detach_failed) fmt='Could not start the background installer; services were not changed.\n' ;;
+  install_already_running) fmt='An installation is already running.\n' ;;
+
   need_root) fmt='must run as root (try: sudo bash deploy/install.sh)\n' ;;
   no_systemd) fmt='systemd not found; this installer targets systemd hosts\n' ;;
   platform_unsupported) fmt='Only x86-64 Linux is supported.\n' ;;

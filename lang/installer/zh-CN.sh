@@ -1,5 +1,9 @@
 # Native shell catalog for deploy/install.sh. Sourced only by the installer.
 case "$key" in
+  install_detached) fmt='安装已交给后台任务执行。日志：%s\n完成后退出码（0 表示成功）：%s\n' ;;
+  install_detach_failed) fmt='无法启动后台安装任务，未更改服务。\n' ;;
+  install_already_running) fmt='已有安装任务正在执行。\n' ;;
+
   need_root) fmt='必须以 root 运行（试试：sudo bash deploy/install.sh）\n' ;;
   no_systemd) fmt='找不到 systemd；本安装脚本只支持使用 systemd 的主机\n' ;;
   platform_unsupported) fmt='仅支持 x86-64 Linux.\n' ;;

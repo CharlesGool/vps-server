@@ -7,6 +7,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); outline
 input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent-color: var(--accent); }
 button { min-height: 2.75rem; padding: .55rem 1rem; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: var(--on-accent); font-family: inherit; font-size: .9rem; font-weight: 600; line-height: 1.35; cursor: pointer; }
 button:hover { background: var(--accent-2); }button:disabled { opacity: .55; cursor: not-allowed; }
+button.danger:hover { border-color: var(--error-solid); background: color-mix(in srgb, var(--error-solid) 88%, black); color: var(--on-error); }
 button.danger { border-color: var(--error-solid); background: var(--error-solid); color: var(--on-error); }
 button.copybtn, button.chip { min-height: 2.35rem; padding: .35rem .7rem; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--fg-2); font-size: .82rem; }
 button.copybtn:hover, button.chip:hover { background: var(--surface-2); }button.copybtn.copied { color: var(--success); border-color: var(--success); }

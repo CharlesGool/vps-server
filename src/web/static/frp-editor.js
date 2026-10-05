@@ -1,4 +1,24 @@
 (() => {
+  const job = document.querySelector('[data-frpc-job]');
+  if (job) {
+    let leaving = false;
+    window.addEventListener('pagehide', () => { leaving = true; });
+    const poll = async () => {
+      try {
+        const query = new URLSearchParams({ job: job.dataset.frpcJob, status: '1' });
+        const response = await fetch(`/frp/job?${query}`, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error('job unavailable');
+        const status = await response.json();
+        if (!leaving && ['done', 'failed'].includes(status.state)) {
+          window.location.replace(status.target);
+          return;
+        }
+      } catch (_) { /* The FRPC tunnel may need to reconnect after applying changes. */ }
+      if (!leaving) setTimeout(poll, 1000);
+    };
+    poll();
+  }
+
   document.querySelectorAll('.frp-inline-edit').forEach((details) => {
     let generation = 0;
     const load = async () => {

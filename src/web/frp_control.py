@@ -509,7 +509,10 @@ def toggle_server(enable):
 def main():
     if os.geteuid() != 0:
         raise ValueError("root required")
-    request = json.load(sys.stdin)
+    execute_request(json.load(sys.stdin))
+
+
+def execute_request(request):
     action = request.get("action")
     if action == "server":
         save_server(request.get("port"), request.get("token"))
@@ -537,7 +540,28 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        if os.geteuid() != 0:
+            raise ValueError("root required")
+        if len(sys.argv) == 3 and sys.argv[1] == '--job':
+            job_path = Path(sys.argv[2])
+            job = json.loads(job_path.read_text())
+            time.sleep(2)
+            job['state'] = 'running'
+            request = job.pop('request')
+            _write_private(job_path, json.dumps(job))
+            try:
+                execute_request(request)
+                job['state'] = 'done'
+                job['target'] = job['success']
+            except Exception as exc:
+                print(type(exc).__name__, file=sys.stderr)
+                job['state'] = 'failed'
+                job['target'] = job['failure']
+            finally:
+                job.pop('request', None)
+                _write_private(job_path, json.dumps(job))
+        else:
+            main()
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print(type(exc).__name__, file=sys.stderr)
         raise SystemExit(1)

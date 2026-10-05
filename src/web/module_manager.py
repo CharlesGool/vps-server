@@ -355,7 +355,8 @@ def run_install(prefix, module):
                 subprocess.run(["systemctl", "is-enabled", "--quiet", UNITS[item]],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0]
     env = dict(os.environ, PREFIX=str(prefix), VPSSRV_MODULES=','.join(selected),
-               TERM="dumb", NO_COLOR="1", DEBIAN_FRONTEND="noninteractive")
+               TERM="dumb", NO_COLOR="1", DEBIAN_FRONTEND="noninteractive", VPSSRV_INSTALL_WORKER="1")
+    env.pop("VPSSRV_INSTALL_JOB_DIR", None)
     env.pop("VPSSRV_SETUP_PUBLIC", None)
     # The installer owns package dependencies, node inventory, service units,
     # preservation of all prior credentials, and the installed-module record.

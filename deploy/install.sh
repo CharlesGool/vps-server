@@ -469,6 +469,52 @@ if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
 fi
 # Pass the selected locale to every module setup script.
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
+# Interactive selection finishes before handing the installer to systemd.
+# Module jobs already run outside the login session and explicitly use worker mode.
+if [ "${VPSSRV_INSTALL_WORKER:-0}" != 1 ]; then
+  command -v systemd-run >/dev/null 2>&1 || die "$(msg install_detach_failed)"
+  INSTALL_JOB_DIR="$PREFIX/.local/install-job"
+  install -d -m 0700 "$INSTALL_JOB_DIR"
+  exec 8>"$INSTALL_JOB_DIR/request.lock"
+  flock -x 8
+  case "$(systemctl show -p ActiveState --value vps-server-install.service 2>/dev/null || true)" in
+    active|activating|reloading|deactivating) die "$(msg install_already_running)" ;;
+  esac
+  export PREFIX SERVICE_NAME
+  export VPSSRV_INSTALL_WORKER=1 VPSSRV_INSTALL_JOB_DIR="$INSTALL_JOB_DIR"
+  python3 - "$INSTALL_JOB_DIR" <<'PYENV'
+import os, pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+for name in ('environment', 'install.log'):
+    path = root / name
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, 'w') as output:
+        if name == 'environment':
+            for key, value in os.environ.items():
+                if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key):
+                    value = value.replace('\\', '\\\\').replace('"', '\\"')
+                    output.write(f'{key}="{value}"\n')
+(root / 'exit-code').unlink(missing_ok=True)
+PYENV
+  systemd-run --collect --unit=vps-server-install \
+    --property="WorkingDirectory=$SRC_DIR" \
+    --property="EnvironmentFile=$INSTALL_JOB_DIR/environment" \
+    --property="StandardOutput=append:$INSTALL_JOB_DIR/install.log" \
+    --property="StandardError=append:$INSTALL_JOB_DIR/install.log" \
+    /usr/bin/bash "$SRC_DIR/deploy/install.sh" || die "$(msg install_detach_failed)"
+  msg install_detached "$INSTALL_JOB_DIR/install.log" "$INSTALL_JOB_DIR/exit-code"
+  exit 0
+fi
+if [ -n "${VPSSRV_INSTALL_JOB_DIR:-}" ]; then
+  python3 - "$VPSSRV_INSTALL_JOB_DIR/environment" <<'PYENV'
+from pathlib import Path
+import sys
+Path(sys.argv[1]).unlink(missing_ok=True)
+PYENV
+  trap 'job_exit=$?; printf "%s\n" "$job_exit" > "$VPSSRV_INSTALL_JOB_DIR/exit-code"' EXIT
+  sleep 2
+fi
 MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
 
 # ---------------------------------------------------------------------------
