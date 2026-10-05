@@ -134,13 +134,10 @@ class TailscaleMixin:
             auth_url = snapshot.get("AuthURL") or ""
             if state != "Running":
                 token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:connect")
-                content += (f'<form method="post" action="/tailscale/action"><input type="hidden" name="action" value="connect">'
+                content += (f'<form method="post" action="/tailscale/action" class="tailscale-connect-form"><input type="hidden" name="action" value="connect">'
                             f'<input type="hidden" name="csrf" value="{token}">'
                             f'<label>{esc(t["tailscale_login_server"])}<input name="login_server" type="url" placeholder="https://controlplane.tailscale.com" maxlength="255"></label>'
-                            f'<label class="password-field">{esc(t["tailscale_auth_key"])}<input name="auth_key" type="password" autocomplete="off" maxlength="2048">'
-                            f'<button type="button" class="password-toggle" aria-pressed="false" data-show-label="{esc(t["login_show_password"], quote=True)}" '
-                            f'data-hide-label="{esc(t["login_hide_password"], quote=True)}" data-show-accessible="{esc(t["login_show_password"], quote=True)}" '
-                            f'data-hide-accessible="{esc(t["login_hide_password"], quote=True)}">{esc(t["login_show_password"])}</button></label>'
+                            f'<div class="tailscale-connect-field">{self.context.render_password_field(t, "tailscale-auth-key", t["tailscale_auth_key"], "auth_key", "autocomplete=off maxlength=2048")}</div>'
                             f'<button type="submit">{esc(t["tailscale_connect"])}</button></form>')
             parsed_auth = urlsplit(auth_url)
             if parsed_auth.scheme == "https" and parsed_auth.hostname and not parsed_auth.username and not parsed_auth.password:
