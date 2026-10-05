@@ -26,6 +26,92 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 - Optional modules, port forwarding, detailed logs, a password-protected browser root terminal, three languages and themes.
 - Fresh installs include only Web; public reachability pages are disabled. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
+### Interface screenshots
+
+Captured from the v5.2.2 test environment with the Simplified Chinese interface. These views show installed modules, creation forms, and Tailscale before sign-in; the default installation still includes only Web. Addresses and credentials remain hidden, and log screenshots show only categories and filters.
+
+![Home and feature shortcuts](../resources/screenshots/zh-cn/home.jpg)
+
+<details>
+<summary>Login and testing</summary>
+
+**Login**
+
+![Login](../resources/screenshots/zh-cn/login.jpg)
+
+**iperf3 server and client**
+
+![iperf3 server and client](../resources/screenshots/zh-cn/iperf3.jpg)
+
+</details>
+
+<details>
+<summary>Singbox and FRP</summary>
+
+**Singbox node overview**
+
+![Singbox node overview](../resources/screenshots/zh-cn/singbox.jpg)
+
+**Create a Singbox node**
+
+![Create a Singbox node](../resources/screenshots/zh-cn/singbox-create.jpg)
+
+**Singbox access management**
+
+![Singbox access management](../resources/screenshots/zh-cn/singbox-access.jpg)
+
+**FRPS server**
+
+![FRPS server](../resources/screenshots/zh-cn/frps.jpg)
+
+**Create an FRPC instance**
+
+![Create an FRPC instance](../resources/screenshots/zh-cn/frpc-create.jpg)
+
+</details>
+
+<details>
+<summary>Tailscale</summary>
+
+**Tailscale overview and connection form**
+
+![Tailscale overview and connection form](../resources/screenshots/zh-cn/tailscale-overview.jpg)
+
+**Tailscale general settings**
+
+![Tailscale general settings](../resources/screenshots/zh-cn/tailscale-settings.jpg)
+
+**Tailscale log filters**
+
+![Tailscale log filters](../resources/screenshots/zh-cn/tailscale-log-filters.jpg)
+
+</details>
+
+<details>
+<summary>Settings and logs</summary>
+
+**Theme and language settings**
+
+![Theme and language settings](../resources/screenshots/zh-cn/settings-appearance.jpg)
+
+**Module management**
+
+![Module management](../resources/screenshots/zh-cn/settings-modules.jpg)
+
+**Administrator password verification**
+
+![Administrator password verification](../resources/screenshots/zh-cn/password-verification.jpg)
+
+**Detailed log categories and filters**
+
+![Detailed log categories and filters](../resources/screenshots/zh-cn/detailed-log-filters.jpg)
+
+**Changelog**
+
+![Changelog](../resources/screenshots/zh-cn/changelog.jpg)
+
+</details>
+
 ## Requirements
 
 Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported.

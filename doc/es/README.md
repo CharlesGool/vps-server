@@ -26,6 +26,92 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Módulos opcionales, reenvío de puertos, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
+### Capturas de pantalla
+
+Capturas del entorno de prueba v5.2.2 con la interfaz en chino simplificado. Muestran módulos instalados, formularios de creación y Tailscale sin iniciar sesión; la instalación predeterminada sigue incluyendo solo Web. Las direcciones y credenciales permanecen ocultas, y las capturas de registros muestran solo categorías y filtros.
+
+![Inicio y accesos a funciones](../resources/screenshots/zh-cn/home.jpg)
+
+<details>
+<summary>Inicio de sesión y pruebas</summary>
+
+**Inicio de sesión**
+
+![Inicio de sesión](../resources/screenshots/zh-cn/login.jpg)
+
+**Servidor y cliente iperf3**
+
+![Servidor y cliente iperf3](../resources/screenshots/zh-cn/iperf3.jpg)
+
+</details>
+
+<details>
+<summary>Singbox y FRP</summary>
+
+**Vista de nodos Singbox**
+
+![Vista de nodos Singbox](../resources/screenshots/zh-cn/singbox.jpg)
+
+**Crear un nodo Singbox**
+
+![Crear un nodo Singbox](../resources/screenshots/zh-cn/singbox-create.jpg)
+
+**Gestión de acceso de Singbox**
+
+![Gestión de acceso de Singbox](../resources/screenshots/zh-cn/singbox-access.jpg)
+
+**Servidor FRPS**
+
+![Servidor FRPS](../resources/screenshots/zh-cn/frps.jpg)
+
+**Crear una instancia FRPC**
+
+![Crear una instancia FRPC](../resources/screenshots/zh-cn/frpc-create.jpg)
+
+</details>
+
+<details>
+<summary>Tailscale</summary>
+
+**Vista y formulario de conexión de Tailscale**
+
+![Vista y formulario de conexión de Tailscale](../resources/screenshots/zh-cn/tailscale-overview.jpg)
+
+**Configuración general de Tailscale**
+
+![Configuración general de Tailscale](../resources/screenshots/zh-cn/tailscale-settings.jpg)
+
+**Filtros de registros de Tailscale**
+
+![Filtros de registros de Tailscale](../resources/screenshots/zh-cn/tailscale-log-filters.jpg)
+
+</details>
+
+<details>
+<summary>Configuración y registros</summary>
+
+**Configuración de tema e idioma**
+
+![Configuración de tema e idioma](../resources/screenshots/zh-cn/settings-appearance.jpg)
+
+**Gestión de módulos**
+
+![Gestión de módulos](../resources/screenshots/zh-cn/settings-modules.jpg)
+
+**Verificación de contraseña de administrador**
+
+![Verificación de contraseña de administrador](../resources/screenshots/zh-cn/password-verification.jpg)
+
+**Categorías y filtros de registros detallados**
+
+![Categorías y filtros de registros detallados](../resources/screenshots/zh-cn/detailed-log-filters.jpg)
+
+**Historial de cambios**
+
+![Historial de cambios](../resources/screenshots/zh-cn/changelog.jpg)
+
+</details>
+
 ## Requisitos
 
 Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas.

@@ -26,6 +26,92 @@
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).
 
+### 界面预览
+
+以下为 v5.2.2 测试环境实拍, 使用简体中文界面. 展示已安装模块, 创建表单和 Tailscale 未登录状态;默认安装仍仅包含 Web. 地址与凭据保持隐藏, 日志截图只展示分类和筛选控件.
+
+![主页与功能入口](doc/resources/screenshots/zh-cn/home.jpg)
+
+<details>
+<summary>登录与测速</summary>
+
+**登录**
+
+![登录](doc/resources/screenshots/zh-cn/login.jpg)
+
+**iperf3 服务端与客户端**
+
+![iperf3 服务端与客户端](doc/resources/screenshots/zh-cn/iperf3.jpg)
+
+</details>
+
+<details>
+<summary>Singbox 与 FRP</summary>
+
+**Singbox 节点概览**
+
+![Singbox 节点概览](doc/resources/screenshots/zh-cn/singbox.jpg)
+
+**创建 Singbox 节点**
+
+![创建 Singbox 节点](doc/resources/screenshots/zh-cn/singbox-create.jpg)
+
+**Singbox 访问管理**
+
+![Singbox 访问管理](doc/resources/screenshots/zh-cn/singbox-access.jpg)
+
+**FRPS 服务端**
+
+![FRPS 服务端](doc/resources/screenshots/zh-cn/frps.jpg)
+
+**创建 FRPC 实例**
+
+![创建 FRPC 实例](doc/resources/screenshots/zh-cn/frpc-create.jpg)
+
+</details>
+
+<details>
+<summary>Tailscale</summary>
+
+**Tailscale 概览与连接表单**
+
+![Tailscale 概览与连接表单](doc/resources/screenshots/zh-cn/tailscale-overview.jpg)
+
+**Tailscale 常规设置**
+
+![Tailscale 常规设置](doc/resources/screenshots/zh-cn/tailscale-settings.jpg)
+
+**Tailscale 日志筛选**
+
+![Tailscale 日志筛选](doc/resources/screenshots/zh-cn/tailscale-log-filters.jpg)
+
+</details>
+
+<details>
+<summary>设置与日志</summary>
+
+**主题与语言设置**
+
+![主题与语言设置](doc/resources/screenshots/zh-cn/settings-appearance.jpg)
+
+**模块管理**
+
+![模块管理](doc/resources/screenshots/zh-cn/settings-modules.jpg)
+
+**管理员密码验证**
+
+![管理员密码验证](doc/resources/screenshots/zh-cn/password-verification.jpg)
+
+**详细日志分类与筛选**
+
+![详细日志分类与筛选](doc/resources/screenshots/zh-cn/detailed-log-filters.jpg)
+
+**更新日志**
+
+![更新日志](doc/resources/screenshots/zh-cn/changelog.jpg)
+
+</details>
+
 ## 要求
 
 最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持.
