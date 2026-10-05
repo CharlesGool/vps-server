@@ -21,8 +21,9 @@ class FrpMixin:
             status = t['node_active'] if running else t['frp_not_running']
             addresses = self.context.address_entries(t)
             address_list = (f'<div class="frp-addresses"><h3>{esc(t["frp_addresses"])}</h3><ul>' +
-                            ''.join(f'<li><span>{esc(label)}</span><code>{esc(address)}</code></li>'
-                                    for label, address in addresses) + '</ul></div>') if addresses else ''
+                            ''.join(f'<li><span>{esc(label)}</span>'
+                                    f'{self.private_value_control("interface-" + str(index), "address", t)}</li>'
+                                    for index, (label, _) in enumerate(addresses)) + '</ul></div>') if addresses else ''
             toggle_action = 'disable' if running else 'enable'
             toggle = (f'<form method="post" action="/frp/server/toggle" class="node-toggle-form">'
                       f'<input type="hidden" name="action" value="{toggle_action}">'
