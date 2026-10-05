@@ -26,7 +26,7 @@ metadata:
 
 ## Introducción
 
-vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.1. Consulta el progreso en el [estado del proyecto](LOG.md).
+vps-server ofrece páginas Web de accesibilidad de puertos, pruebas de velocidad y una consola de registros de conexiones para VPS Debian/Ubuntu, con módulos opcionales proxy, FRP, Lucky y Tailscale. La versión formal actual es v5.2.2. Consulta el progreso en el [estado del proyecto](LOG.md).
 
 ## Qué hace
 
@@ -54,18 +54,18 @@ La primera instalación habilita solo la consola Web; los demás módulos se ins
 
 ### Instalación rápida
 
-Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.1; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
+Ejecuta como root en la máquina de destino. Solo se instala Web por defecto. La primera instalación interactiva ofrece los idiomas 1/2/3 e imprime un puerto administrativo y una contraseña aleatorios. Para una instalación sin intervención, usa `VPSSRV_DEFAULT_LANG=en|zh_cn|es`. Los comandos siguientes usan la etiqueta formal v5.2.2; para todos los módulos sin conexión, sigue el procedimiento del archivo comprimido.
 
 ```bash
-git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
-Desde v5.2.1, el código fuente incluye el archivo de instalación Tailscale 1.102.4. Aunque inicialmente solo se instale Web, la consola puede instalar Tailscale sin conexión más adelante. El código de la etiqueta v5.2.0 aún carece de ese archivo; para esa versión, usa el paquete Release completo. El archivo privado nftables y su código fuente correspondiente siguen incluidos en el paquete completo sin conexión.
+Desde v5.2.2, el código fuente incluye el archivo de instalación Tailscale 1.102.4. Aunque inicialmente solo se instale Web, la consola puede instalar Tailscale sin conexión más adelante. El código de la etiqueta v5.2.0 aún carece de ese archivo; para esa versión, usa el paquete Release completo. El archivo privado nftables y su código fuente correspondiente siguen incluidos en el paquete completo sin conexión.
 
 ### Instalación estándar
 
 ```bash
-git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # opcional: ajusta los valores siguiendo los comentarios
 bash deploy/install.sh
@@ -75,12 +75,12 @@ bash deploy/install.sh
 
 ### Paquete de instalación sin conexión
 
-El paquete sin conexión v5.2.1 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.1-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
+El paquete sin conexión v5.2.2 contiene el código fuente completo y los recursos Tailscale, nftables y otros ya comprobados. La instalación en destino no requiere Git. Verifica SHA-256 y extrae en un directorio independiente, sin sobrescribir directamente el `$PREFIX` instalado. Descarga `vps-server-v5.2.2-linux-amd64.tar.gz` y `SHA256SUMS` de GitHub Release, comprueba el hash e instala:
 
 ```bash
-mkdir -p /root/vps-server-v5.2.1
-tar -xzf /root/vps-server-v5.2.1-linux-amd64.tar.gz -C /root/vps-server-v5.2.1 --strip-components=1
-cd /root/vps-server-v5.2.1
+mkdir -p /root/vps-server-v5.2.2
+tar -xzf /root/vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+cd /root/vps-server-v5.2.2
 bash deploy/install.sh
 ```
 
@@ -92,8 +92,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version 5.2.1 \
-  --output .local/vps-server-v5.2.1-linux-amd64.tar.gz
+  --version 5.2.2 \
+  --output .local/vps-server-v5.2.2-linux-amd64.tar.gz
 ```
 
 ## Orientaciones

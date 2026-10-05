@@ -26,7 +26,7 @@ metadata:
 
 ## Introduction
 
-vps-server provides Web port-reachability pages, speed tests, and a connection-log console for Debian/Ubuntu VPS hosts, with optional proxy, FRP, Lucky, and Tailscale modules. The current formal release is v5.2.1. See [project status](LOG.md) for progress.
+vps-server provides Web port-reachability pages, speed tests, and a connection-log console for Debian/Ubuntu VPS hosts, with optional proxy, FRP, Lucky, and Tailscale modules. The current formal release is v5.2.2. See [project status](LOG.md) for progress.
 
 ## Features
 
@@ -56,18 +56,18 @@ rules, and FRP editor limits.
 
 ### Quick Install
 
-Run as root on the target host. The installer enables only the Web console by default. The first interactive install offers language choices 1/2/3 and prints a random management port and password. Use `VPSSRV_DEFAULT_LANG=en|zh_cn|es` for unattended installation. The source commands below use the formal v5.2.1 tag; use the archive procedure below for complete offline modules.
+Run as root on the target host. The installer enables only the Web console by default. The first interactive install offers language choices 1/2/3 and prints a random management port and password. Use `VPSSRV_DEFAULT_LANG=en|zh_cn|es` for unattended installation. The source commands below use the formal v5.2.2 tag; use the archive procedure below for complete offline modules.
 
 ```bash
-git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
+git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
 ```
 
-From v5.2.1 onward, the source includes the Tailscale 1.102.4 installation archive. Even when the initial installation selects only Web, the console can install Tailscale offline later. The v5.2.0 source tag still lacks this archive; use the complete Release package for that version. The private nftables archive and its corresponding source remain available through the complete offline package.
+From v5.2.2 onward, the source includes the Tailscale 1.102.4 installation archive. Even when the initial installation selects only Web, the console can install Tailscale offline later. The v5.2.0 source tag still lacks this archive; use the complete Release package for that version. The private nftables archive and its corresponding source remain available through the complete offline package.
 
 ### Normal Install
 
 ```bash
-git clone --branch v5.2.1 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
+git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
 cd vps-server
 cp .env.example .env  # Optional: set overrides described in the file
 bash deploy/install.sh
@@ -87,12 +87,12 @@ is needed.
 
 ### Offline installation package
 
-The v5.2.1 offline package contains the full source and verified offline resources, including Tailscale and nftables. Target installation does not require Git. Verify SHA-256 before extracting into a separate directory; do not overwrite the installed `$PREFIX` directly. Download `vps-server-v5.2.1-linux-amd64.tar.gz` and `SHA256SUMS` from GitHub Release, verify the digest, and install:
+The v5.2.2 offline package contains the full source and verified offline resources, including Tailscale and nftables. Target installation does not require Git. Verify SHA-256 before extracting into a separate directory; do not overwrite the installed `$PREFIX` directly. Download `vps-server-v5.2.2-linux-amd64.tar.gz` and `SHA256SUMS` from GitHub Release, verify the digest, and install:
 
 ```bash
-mkdir -p /root/vps-server-v5.2.1
-tar -xzf /root/vps-server-v5.2.1-linux-amd64.tar.gz -C /root/vps-server-v5.2.1 --strip-components=1
-cd /root/vps-server-v5.2.1
+mkdir -p /root/vps-server-v5.2.2
+tar -xzf /root/vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+cd /root/vps-server-v5.2.2
 bash deploy/install.sh
 ```
 
@@ -104,8 +104,8 @@ python3 tools/build_offline/build_offline.py \
   --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
   --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
   --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version 5.2.1 \
-  --output .local/vps-server-v5.2.1-linux-amd64.tar.gz
+  --version 5.2.2 \
+  --output .local/vps-server-v5.2.2-linux-amd64.tar.gz
 ```
 
 ## Guidance

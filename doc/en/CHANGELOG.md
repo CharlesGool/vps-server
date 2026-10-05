@@ -27,6 +27,25 @@ metadata:
 
 ## Changelog
 
+### v5.2.2 — 2026-10-05
+
+#### Fixed
+
+- Align typography, buttons, dropdowns and narrow layouts across settings/modules, iperf3, Singbox, FRPC and Tailscale. Correct log filter alignment, settings navigation highlighting and the port forwarding form. Add detailed logs beside the changelog on Home.
+- Load existing values before editing FRPS, FRPC and proxy nodes so blank inputs do not replace saved ports or tokens. Keep proxy edit and delete actions together, with red delete buttons and clear hover feedback.
+- Show each FRPC proxy's server IP, remote port and local forwarding target. Reveal and hide the server IP together with the card control. Hide FRPS interface addresses by default and provide reveal and copy controls.
+- FRPC saves and renames return a background task page before restarting the instance. Result polling retries through tunnel interruptions and reports the actual outcome after reconnection, avoiding empty responses after successful saves. Invalid changes retain or restore the previous configuration; credentials are removed from the task request before execution.
+- Confirm Tailscale logout in a dialog and use single-choice dropdowns for advertised subnet routes and exit nodes. Fix version and long account text, disconnected connection forms, key reveal controls and runtime log layout.
+
+#### Installation and upgrades
+
+- After language selection, the installer runs as an independent systemd background task. Terminal or FRPC disconnections do not stop upgrades. Private logs and a completion exit code record the outcome; console module installs continue waiting for their existing background job before reporting results.
+
+#### Verification and limits
+
+- Checks passed on Debian 13 x86-64 for upgrades, service health and Web autostart, Unicode FRPC renames and server/proxy saves, save results across an actual FRPC tunnel restart, retention of invalid configurations, private address endpoints, and desktop/narrow layouts. The operator confirmed the reported issues were fixed and approved publication.
+- The test host was not logged into a Tailnet, so logout from an authenticated account was not exercised. Real mobile devices, other distributions, Python 3.9 and a host reboot were not independently retested. Syntax, stylesheet builds, three languages, offline asset checksums and third-party notices passed. Documentation and release records are internal maintenance.
+
 ### v5.2.1 — 2026-10-05
 
 #### Fixed

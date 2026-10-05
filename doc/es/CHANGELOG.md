@@ -30,6 +30,25 @@ metadata:
 
 Aquí solo se enumeran los lanzamientos etiquetados. Las siguientes entradas conservan el historial completo del registro de cambios anterior y registran el contenido de la versión actual.
 
+### v5.2.2 — 2026-10-05
+
+#### Correcciones
+
+- Unifica fuentes, botones, listas desplegables y diseños estrechos en ajustes/módulos, iperf3, Singbox, FRPC y Tailscale. Corrige la alineación de filtros de registros, la navegación de ajustes y el formulario de reenvío de puertos. Añade registros detallados junto al historial de cambios en Inicio.
+- Carga los valores existentes antes de editar FRPS, FRPC y nodos proxy para que los campos vacíos no sustituyan puertos o tokens guardados. Mantiene juntos los botones de edición y eliminación, con fondo rojo y una respuesta clara al pasar el cursor.
+- Muestra la IP del servidor, el puerto remoto y el destino local de cada proxy FRPC. La IP se muestra u oculta junto con el control de la tarjeta. Las direcciones de interfaces FRPS se ocultan inicialmente y ofrecen controles para mostrarlas y copiarlas.
+- Guardar o renombrar FRPC abre una página de tarea en segundo plano antes de reiniciar la instancia. La consulta del resultado reintenta tras cortes del túnel y muestra el resultado real al reconectarse, evitando respuestas vacías después de guardar. Los cambios inválidos conservan o restauran la configuración anterior; las credenciales se eliminan de la solicitud antes de ejecutarla.
+- Confirma la salida de Tailscale mediante un diálogo y usa listas de selección única para rutas de subred anunciadas y nodos de salida. Corrige la versión, las cuentas largas, el formulario sin conexión, los controles de claves y los registros de ejecución.
+
+#### Instalación y actualización
+
+- Tras seleccionar el idioma, el instalador se ejecuta como tarea independiente de systemd. Desconectar el terminal o FRPC no interrumpe la actualización. Los registros privados y el código de salida final indican el resultado; la instalación de módulos desde la consola sigue esperando a que termine su tarea en segundo plano.
+
+#### Verificación y límites
+
+- Pasaron las comprobaciones en Debian 13 x86-64 de actualización, servicios e inicio automático de Web, nombres Unicode y guardado de servidores/proxies FRPC, resultados tras reiniciar un túnel FRPC real, conservación de configuraciones inválidas, controles de privacidad y diseños de escritorio/estrechos. El operador confirmó las correcciones y autorizó la publicación.
+- El equipo de prueba no había iniciado sesión en un Tailnet, por lo que no se probó la salida de una cuenta autenticada. No se repitieron pruebas independientes en dispositivos móviles reales, otras distribuciones, Python 3.9 ni tras reiniciar el equipo. Pasaron sintaxis, compilación de estilos, tres idiomas, sumas de recursos sin conexión y avisos de terceros. La documentación y los registros de publicación son mantenimiento interno.
+
 ### v5.2.1 — 2026-10-05
 
 #### Corregido
