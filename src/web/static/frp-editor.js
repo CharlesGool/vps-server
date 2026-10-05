@@ -1,4 +1,16 @@
 (() => {
+  document.querySelectorAll('[data-frp-proxy-edit]').forEach(button => {
+    button.addEventListener('click', () => {
+      const card = button.closest('.frp-proxy-card');
+      const form = card.querySelector('.frp-proxy-edit-form');
+      const facts = card.querySelector('.frp-proxy-facts');
+      const open = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(open));
+      button.textContent = open ? button.dataset.cancel : button.dataset.edit;
+      form.hidden = !open;
+      facts.hidden = open;
+    });
+  });
   const job = document.querySelector('[data-frpc-job]');
   if (job) {
     let leaving = false;

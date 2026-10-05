@@ -211,11 +211,14 @@ class FrpMixin:
             return ''.join(result)
         cards = []
         for index, proxy in enumerate(config.get('proxies', [])):
-            cards.append(f'<section class="frp-proxy-card"><details class="node-inline-edit"><summary>'
-                         f'<span>{esc(t["frp_edit_proxy"])}</span><span>{esc(t["node_cancel"])}</span></summary>'
-                         f'<form method="post" action="/frp/client/structured">{base}'
+            cards.append(f'<section class="frp-proxy-card"><button type="button" class="node-action frp-proxy-edit-toggle" '
+                         f'data-frp-proxy-edit data-edit="{esc(t["frp_edit_proxy"], quote=True)}" '
+                         f'data-cancel="{esc(t["node_cancel"], quote=True)}" aria-expanded="false" '
+                         f'aria-controls="frp-proxy-editor-{index}">{esc(t["frp_edit_proxy"])}</button>'
+                         f'<form method="post" action="/frp/client/structured" class="frp-proxy-edit-form" '
+                         f'id="frp-proxy-editor-{index}" hidden>{base}'
                          f'<input type="hidden" name="section" value="edit"><input type="hidden" name="index" value="{index}">'
-                         f'{fields(proxy, str(index))}<button type="submit">{esc(t["frp_save"])}</button></form></details>'
+                         f'{fields(proxy, str(index))}<button type="submit">{esc(t["frp_save"])}</button></form>'
                          f'<div class="frp-proxy-facts"><strong>{esc(proxy["name"])}</strong>'
                          f'<dl class="frp-proxy-fields"><div><dt>{esc(t["proxy_type"])}</dt><dd>{esc(proxy["type"].upper())}</dd></div>'
                          f'<div><dt>{esc(t["frp_local_ip"])}</dt><dd>{esc(proxy["localIP"])}</dd></div>'
