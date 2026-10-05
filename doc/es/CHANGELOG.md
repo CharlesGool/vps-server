@@ -26,6 +26,16 @@ metadata:
 
 ## Historial de cambios
 
+### v5.2.3 — 2026-10-05
+
+#### Cambios
+
+- Se reescribió la documentación conforme a las normas actuales, en chino simplificado, inglés y español.
+
+- Se simplificó la instalación rápida a un comando que instala solo Web por defecto, y se añadieron pasos sin conexión bajo la instalación normal.
+
+- Se añadieron 16 capturas reales al README, agrupadas en secciones desplegables con direcciones y credenciales ocultas.
+
 ### v5.2.2 — 2026-10-05
 
 #### Cambiado

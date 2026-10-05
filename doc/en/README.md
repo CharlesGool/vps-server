@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.2)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.3)
 
 ## Documentation
 
@@ -127,7 +127,7 @@ Run as root.
 Install only the Web console with one command. Add other modules as needed from Settings/Modules.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -135,7 +135,7 @@ curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-
 Source installs include the Tailscale archive; the private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.2.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 cp .env.example .env
 bash deploy/install.sh
@@ -143,14 +143,14 @@ bash deploy/install.sh
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.2
-tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
-cd /root/vps-server-v5.2.2
+mkdir -p /root/vps-server-v5.2.3
+tar -xzf vps-server-v5.2.3-linux-amd64.tar.gz -C /root/vps-server-v5.2.3 --strip-components=1
+cd /root/vps-server-v5.2.3
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -229,7 +229,7 @@ Layout-1 v5.1.1 test builds, v5.2.0 and v5.2.1 can be upgraded using the install
 
 v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.2.2, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.2.3, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 

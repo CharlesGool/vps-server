@@ -26,6 +26,16 @@ metadata:
 
 ## Changelog
 
+### v5.2.3 — 2026-10-05
+
+#### Changed
+
+- Rebuilt project documentation using the current standards, with Simplified Chinese, English, and Spanish versions.
+
+- Simplified quick installation to one command that installs only Web by default, and added offline steps under regular installation.
+
+- Added 16 real interface screenshots to README, grouped in collapsible sections with addresses and credentials hidden.
+
 ### v5.2.2 — 2026-10-05
 
 #### Changed

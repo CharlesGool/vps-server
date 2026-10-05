@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.2)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.3)
 
 ## Documentación
 
@@ -127,7 +127,7 @@ Ejecute como root.
 Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -135,7 +135,7 @@ curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-
 La instalación desde código incluye el archivo Tailscale; el entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.2.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 cp .env.example .env
 bash deploy/install.sh
@@ -143,14 +143,14 @@ bash deploy/install.sh
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.2
-tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
-cd /root/vps-server-v5.2.2
+mkdir -p /root/vps-server-v5.2.3
+tar -xzf vps-server-v5.2.3-linux-amd64.tar.gz -C /root/vps-server-v5.2.3 --strip-components=1
+cd /root/vps-server-v5.2.3
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -229,7 +229,7 @@ Las versiones de esquema 1, v5.1.1 de prueba, v5.2.0 y v5.2.1, se actualizan con
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.2.2, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.2.3, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 
