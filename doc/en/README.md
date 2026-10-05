@@ -1,16 +1,10 @@
----
-name: project-readme-en
-description: Project overview and usage
-metadata:
-  version: "1.0.0"
-  lang: "en"
----
-
 # vps-server
 
-## Multi-language
-
 [简体中文](../../README.md) | **English** | [Español](../es/README.md)
+
+Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
+
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.2)
 
 ## Documentation
 
@@ -26,180 +20,148 @@ metadata:
 
 ## Introduction
 
-vps-server provides Web port-reachability pages, speed tests, and a connection-log console for Debian/Ubuntu VPS hosts, with optional proxy, FRP, Lucky, and Tailscale modules. The current formal release is v5.2.2. See [project status](LOG.md) for progress.
-
-## Features
-
-- **Public reachability page:** When enabled, ports 80 and 443 show the visitor IP, server time, connection port, and protocol. Port 443 uses a self-signed certificate. The page requires no login and does not show host configuration.
-- **Private console:** On a separate persistent port, LibreSpeed measures upload and download speed and shows the most recent 1000 inbound TCP connections. An administrator password or approved private IP grants access.
-- **iperf3:** Open a time-limited window from the console; it closes automatically. A Linux client's `--json` output may include `mean_rtt`. Clients unable to read `TCP_INFO` will not show that field. UDP tests report jitter and packet loss.
-- **Proxy nodes:** One sing-box service hosts AnyTLS, VMess, VLESS, Trojan, and Shadowsocks. The console manages node connections, traffic caps, rate limits, periodic resets, and validity periods. Clash Meta configurations can be imported over the LAN.
-- **FRP:** The console manages the local FRPS port, token, and service state, as well as local FRPC instances and simple token-authenticated TCP/UDP proxies. It validates edits and restores the previous configuration on failure. It does not monitor clients on other devices. FRPC installs from bundled resources.
-- **Lucky:** Install or remove it with other modules. The console shows only its management address and running state, with a link to its native management page. When Lucky changes its own management port, the console periodically refreshes the address and `PORTS.md` registration. Full feature recreation is deferred to a later version.
-- **Tailscale:** Install or remove the Linux client included in the offline package. The console shows status, connectivity, devices, and service logs, and saves several Linux settings for DNS, routes, exit nodes, shields-up, and SSH together. Device IPv4 and IPv6 addresses can be shown or copied separately as needed. Joining a Tailnet still requires access to the selected control server.
-- **Terminal:** The Home entry opens a browser-based root terminal after administrator-password verification. Disconnecting, leaving the page, or expiration of the login session terminates its PTY process. Terminal rendering resources are included in the offline package.
-
-The first installation enables only the Web console; other modules are installed
-as needed. See the [design document](DESIGN.md) for feature boundaries, login
-rules, and FRP editor limits.
+- Browser upload/download tests, visitor records, timed iperf3 server windows and client tests.
+- Managed Singbox nodes for AnyTLS, VMess, VLESS, Trojan and Shadowsocks, with sharing, quotas, rate limits and expiry.
+- FRPS server, FRPC instances and TCP/UDP proxies, a native Lucky management entry, and Tailscale status and devices.
+- Optional modules, port forwarding, detailed logs, a password-protected browser root terminal, three languages and themes.
+- Fresh installs include only Web; public reachability pages are disabled. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
 ## Requirements
 
-- OS: Debian 11+ or Ubuntu 20.04+, systemd, run as root.
-- Runtime: Python 3.9+ (the distribution's `python3` suffices; no Python dependencies to install).
-- Architecture: the entire project supports only x86-64 Linux; the installer rejects other platforms before changing system state.
-- When the Web module uses its default public ports, 80 and 443 **MUST** be free. The installer refuses to compete with nginx, Apache, Caddy, or `vps-webserver`.
-- Other dependencies: the target needs its OS-provided Bash, systemd, Python, and common base tools. The complete offline package includes FRP, Lucky, Tailscale, sing-box, iperf3, and a private nftables runtime. Node accounting prefers the host nft command if it can read the ruleset, otherwise it uses the bundled version; the target needs neither Git nor a package mirror. Control-server authentication, service updates, and communication between devices still need network access.
-- Minimum: the OS, runtime, and architecture above. Public-page ports must be free if enabled. Allow at least 1 GiB of disk space for the full offline package, extracted source, and installed program together.
+Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported.
+
+Use a maintained Debian/Ubuntu release, reserve backup space and allow ports for enabled features. Debian 13 x86-64 was tested on a host; Python 3.9 and other distributions have not been independently accepted. Complete Release packages contain offline artifacts, but missing base OS packages still require a working package repository. Building the complete offline package from source requires network access.
 
 ## Install
 
+Run as root.
+
 ### Quick Install
 
-Run as root on the target host. The installer enables only the Web console by default. The first interactive install offers language choices 1/2/3 and prints a random management port and password. Use `VPSSRV_DEFAULT_LANG=en|zh_cn|es` for unattended installation. The source commands below use the formal v5.2.2 tag; use the archive procedure below for complete offline modules.
+Download the complete Release and verify its checksum, or download both files elsewhere and transfer them to the host.
 
 ```bash
-git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server && cd vps-server && bash deploy/install.sh
-```
-
-From v5.2.2 onward, the source includes the Tailscale 1.102.4 installation archive. Even when the initial installation selects only Web, the console can install Tailscale offline later. The v5.2.0 source tag still lacks this archive; use the complete Release package for that version. The private nftables archive and its corresponding source remain available through the complete offline package.
-
-### Normal Install
-
-```bash
-git clone --branch v5.2.2 --depth 1 https://github.com/CharlesGool/vps-server.git vps-server
-cd vps-server
-cp .env.example .env  # Optional: set overrides described in the file
-bash deploy/install.sh
-```
-
-`PREFIX` defaults to `/root/apps/vps-server` and holds
-replaceable program files. Passwords, the console port, certificates, runtime
-data, installation records, and `.env` default to `/var/lib/vps-server`. Set
-`VPSSRV_STATE_DIR` in the command environment before the first install to use
-another external directory. There is no browser-based first-run wizard. Set
-`VPSSRV_MODULES=web,iperf3,proxy,frps,lucky,tailscale` to select server modules;
-when omitted, only Web is installed. Install or remove optional modules from
-Settings → Modules. AnyTLS is a protocol within `proxy`, with no separate
-module or service. Enable public HTTP and HTTPS pages separately from Home;
-the console uses a separate port. Install FRPC separately when a local client
-is needed.
-
-### Offline installation package
-
-The v5.2.2 offline package contains the full source and verified offline resources, including Tailscale and nftables. Target installation does not require Git. Verify SHA-256 before extracting into a separate directory; do not overwrite the installed `$PREFIX` directly. Download `vps-server-v5.2.2-linux-amd64.tar.gz` and `SHA256SUMS` from GitHub Release, verify the digest, and install:
-
-```bash
+mkdir -p /root/vps-server-download
+cd /root/vps-server-download
+curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/vps-server-v5.2.2-linux-amd64.tar.gz
+curl -fL -O https://github.com/CharlesGool/vps-server/releases/download/v5.2.2/SHA256SUMS
+sha256sum -c SHA256SUMS
 mkdir -p /root/vps-server-v5.2.2
-tar -xzf /root/vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
+tar -xzf vps-server-v5.2.2-linux-amd64.tar.gz -C /root/vps-server-v5.2.2 --strip-components=1
 cd /root/vps-server-v5.2.2
 bash deploy/install.sh
 ```
 
-A connected build host can create the formal offline package from a **clean, committed** worktree; the target receives only the final `.tar.gz`. The build host requires Python 3, Git, `dpkg-deb`, and GNU tar. The asset-fetch script checks fixed digests. The package includes the nftables runtime, its corresponding source, and the Tailscale archive:
+### Normal Install
+
+Source installs include the Tailscale archive; the private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-python3 tools/build_offline/fetch_assets.py --output-dir .local/offline-assets
-python3 tools/build_offline/build_offline.py \
-  --tailscale-archive .local/offline-assets/tailscale_1.102.4_amd64.tgz \
-  --nft-runtime .local/offline-assets/nft-runtime-bullseye.tar.gz \
-  --nft-sources .local/offline-assets/nft-sources-bullseye.tar.gz \
-  --version 5.2.2 \
-  --output .local/vps-server-v5.2.2-linux-amd64.tar.gz
+git clone --depth 1 --branch v5.2.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+cd /root/vps-server-source
+cp .env.example .env
+bash deploy/install.sh
 ```
 
-## Guidance
+After language selection, systemd runs the installation in the background. You **MUST** keep the source directory until completion. For the default prefix, inspect the log and result:
 
-The installation summary shows the console address, administrator password,
-and installed modules. Public pages are off by default. After enabling them
-from Home, visit `http://<ip>/` and `https://<ip>/` from another machine to
-check ports 80 and 443. HTTPS uses a self-signed certificate. Check the service
-with `systemctl status vps-server-web`, then sign in to manage modules, proxy
-nodes, and FRP.
+```bash
+tail -f /root/apps/vps-server/.local/install-job/install.log
+cat /root/apps/vps-server/.local/install-job/exit-code
+```
 
-For iperf3, open a time-limited window in the console, then run
-`iperf3 -c <ip> -p 5201 --json` from another machine. The port stops listening
-when the window closes. The source has no automated test suite; manually
-accept the enabled modules. See the [design document](DESIGN.md) for service
-paths, limitations, and state files.
+A missing `exit-code` means the job has not finished; `0` means success and any other value failure. Adjust the path for a custom `PREFIX`. On completion, the log contains console addresses, initial password and module results. Terminal disconnection does not mean installation failure.
 
-Proxy-node traffic caps count (upload + download) × 2. The interface shows counted usage; incomplete accounting alone does not trigger early throttling. Monthly resets start on day 1 of the selected month at 00:00 UTC; daily and yearly cycles retain their existing calculation. Node interface addresses are masked by default and can be shown or copied as needed. Recent Visitors can clear history after confirmation; later visits and still-connected devices are recorded again. Settings directly shows module installation cards; progress collapses 30 seconds after the last output, and completion notices appear briefly only on the current operation page. Reloading or returning does not reproduce them. Detailed Logs, to the right of Changelog in the header, combines module operation history and service logs, with severity filtering for service logs. Clearing module history truncates its file; clearing one service log only hides earlier entries and does not delete the host journal. Lucky retains its native management page; use SSH port forwarding if the current network cannot reach it directly.
+## Usage
 
-### Configuration
+Log in using the address and password in the installation log. Install components in Settings/Modules, then manage nodes, FRPC instances or timed tests. Addresses and credentials are hidden by default; editors load existing values. The browser root terminal and security settings require admin password verification. Connect and authenticate Tailscale before use; advertised subnet routes still require Tailnet approval.
 
-Every variable has a working default. A first install can import `.env` from
-the source directory; afterward it is stored as `.env` in the state root. Key
-variables:
+Configuration template: [.env.example](../../.env.example). All variables have defaults; credentials need not be supplied. Use absolute paths, `0/1` switches, ports `1-65535` (console `0` is an exception), and integer counts/durations. Except for `PREFIX` and the initial `VPSSRV_STATE_DIR`, these settings are stored in the state-root `.env`; restart Web after changes. Initial module values apply when installing the module.
 
-| Variable | Meaning | Default | Required |
-|---|---|---|---|
-| `VPSSRV_STATE_DIR` | Persistent state root, set in the command environment before first install; `.env` cannot move it | `/var/lib/vps-server` | no |
-| `VPSSRV_PUBLIC_HTTP_PORT` | Public reachability page, plaintext | `80` | no |
-| `VPSSRV_PUBLIC_HTTPS_PORT` | Public reachability page, TLS | `443` | no |
-| `VPSSRV_PUBLIC_ENABLE` | Whether to serve public pages at first install; Home controls HTTP and HTTPS separately afterward | `0` | no |
-| `VPSSRV_CONSOLE_PORT` | Console port; `0` generates and remembers it | `0` | no |
-| `VPSSRV_AUTH` | Require a password on the console | `1` | no |
-| `VPSSRV_IPERF_PORT` | Port an open iperf3 window listens on | `5201` | no |
-| `VPSSRV_IPERF_MAX_MINUTES` | Maximum duration allowed by the console | `60` | no |
-| `VPSSRV_DEFAULT_LANG` | `en` / `zh_cn` / `es` | `en` | no |
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `PREFIX` | `/root/apps/vps-server` | Code prefix, passed to the installer/uninstaller environment; setting it in `.env` has no effect. |
+| `VPSSRV_STATE_DIR` | `/var/lib/vps-server` | State root environment parameter for first install; editing `.env` does not migrate data. |
+| `VPSSRV_DATA_DIR` | empty | Data directory; empty uses `data/` under the state root. |
+| `VPSSRV_CERT_DIR` | empty | Certificate directory; empty uses `certs/` under the state root. |
+| `VPSSRV_PUBLIC_ENABLE` | `0` | Public reachability pages; 1 enables them. |
+| `VPSSRV_PUBLIC_HTTP_PORT` | `80` | Public HTTP port. |
+| `VPSSRV_PUBLIC_HTTPS_PORT` | `443` | Public HTTPS port. |
+| `VPSSRV_HOST` | `0.0.0.0` | Web bind address. |
+| `VPSSRV_CONSOLE_PORT` | `0` | Console port; 0 selects and persists a port in 20000-59999. |
+| `VPSSRV_CONSOLE_PORT_FILE` | empty | Port file; empty uses `console_port.txt` under the state root. |
+| `VPSSRV_CONSOLE_TLS` | `0` | Console TLS switch. |
+| `VPSSRV_AUTH` | `1` | Console authentication; 0 permits unauthenticated management access. |
+| `VPSSRV_PASSWORD_FILE` | empty | Admin password file; empty uses `admin_password.txt` under the state root. |
+| `VPSSRV_IP_ALLOWLIST_FILE` | empty | Passwordless IP allowlist file; empty uses the default state-root list. |
+| `VPSSRV_LOGIN_MAX_ATTEMPTS` | `5` | Maximum failed attempts per login window. |
+| `VPSSRV_LOGIN_WINDOW_SECONDS` | `60` | Failed-login tracking window in seconds. |
+| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | Lockout duration after the limit, in seconds. |
+| `VPSSRV_TLS_CERT` | empty | Custom TLS certificate path; supply together with its key. |
+| `VPSSRV_TLS_KEY` | empty | Custom TLS key path; an unspecified pair uses a generated self-signed certificate. |
+| `VPSSRV_IPERF_ENABLE` | `1` | iperf3 feature switch. |
+| `VPSSRV_IPERF_PORT` | `5201` | Timed server port. |
+| `VPSSRV_IPERF_DEFAULT_MINUTES` | `10` | Default server window duration in minutes. |
+| `VPSSRV_IPERF_MAX_MINUTES` | `60` | Maximum server window duration in minutes. |
+| `VPSSRV_PORTFWD_ENABLE` | `1` | Port-forwarding feature switch. |
+| `VPSSRV_PORTFWD_MAX_RULES` | `20` | Maximum configured forwarding rules. |
+| `VPSSRV_TRACK_CONNECTIONS` | `1` | Collect kernel TCP connection records. |
+| `VPSSRV_CONN_POLL_SECONDS` | `5` | Connection polling interval in seconds. |
+| `VPSSRV_TRUST_PROXY` | `0` | Trust proxy address headers; only for a controlled reverse proxy, and disables passwordless IP login. |
+| `VPSSRV_MAX_TEST_MB` | `200` | Single browser test transfer ceiling in MB. |
+| `VPSSRV_TEST_SECONDS` | `10` | Speed-test measurement duration in seconds. |
+| `VPSSRV_WARMUP_SECONDS` | `2` | Warmup seconds excluded from results. |
+| `VPSSRV_DOWNLOAD_STREAMS` | `6` | Parallel download streams. |
+| `VPSSRV_UPLOAD_STREAMS` | `3` | Parallel upload streams. |
+| `VPSSRV_PING_SAMPLES` | `20` | Latency sample count. |
+| `VPSSRV_DEFAULT_LANG` | `en` | Default language: `en`, `zh_cn`, `es`. |
+| `VPSSRV_PROXY_CONFIG` | `/etc/vps-server-proxy/config.json` | Unified proxy configuration path. |
+| `VPSSRV_PROXY_SERVICE` | `vps-server-proxy.service` | Unified proxy service name. |
+| `PROXY_PROTOCOLS` | empty | Comma-separated protocol subset; empty installs all five protocols. |
+| `PROXY_SNI` | `www.bing.com` | Initial TLS SNI for VMess, VLESS and Trojan. |
+| `PROXY_ANYTLS_PORT` | empty | Initial protocol port; empty selects one automatically. |
+| `PROXY_ANYTLS_PASSWORD` | empty | Initial protocol credential; empty generates one. |
+| `PROXY_VMESS_PORT` | empty | Initial protocol port; empty selects one automatically. |
+| `PROXY_VMESS_UUID` | empty | Initial protocol credential; empty generates one. |
+| `PROXY_VLESS_PORT` | empty | Initial protocol port; empty selects one automatically. |
+| `PROXY_VLESS_UUID` | empty | Initial protocol credential; empty generates one. |
+| `PROXY_TROJAN_PORT` | empty | Initial protocol port; empty selects one automatically. |
+| `PROXY_TROJAN_PASSWORD` | empty | Initial protocol credential; empty generates one. |
+| `PROXY_SS_PORT` | empty | Initial protocol port; empty selects one automatically. |
+| `PROXY_SS_PASSWORD` | empty | Initial protocol credential; empty generates one. |
 
-Full reference: [Configuration reference][local-link-002].
+The installer also accepts environment arguments `VPSSRV_MODULES` (comma-separated `web,iperf3,proxy,frps,lucky,tailscale`; fresh default `web`, existing modules retained on reinstall) and `SERVICE_NAME` (default `vps-server-web`). Uninstall argument `KEEP_DATA=1` preserves data. These are not Web settings.
 
 ## Upgrade
 
-v5.2.0 establishes persistent state layout `1`. **Automatic migration is not supported** from v5.1.0 or earlier. Back
-up remaining old data outside the installation directory, then perform a fresh
-installation. Deleted data without a backup cannot be recovered. If the
-installer finds an old service but missing state, it stops before changing
-services.
+Layout-1 v5.1.1 test builds, v5.2.0 and v5.2.1 can be upgraded using the installation steps above. Back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and native Lucky configuration. Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.
 
-For later upgrades from layout `1`, check out new source in a separate
-directory and run the installer with the same `PREFIX` and `VPSSRV_STATE_DIR`.
-Preserve the state root and module configurations under `/etc`; the installer
-retains the password, port, certificates, runtime data, and recorded modules
-without printing the old password again. Keep code and data backups, then
-check service state, console port, login, and enabled modules after upgrading.
-Use the same customized state paths on later installations; moving them
-requires manual transfer and verification.
+v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
+
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.2.2, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 
-Run as root from the installation source directory with the same `PREFIX` and
-`SERVICE_NAME` used at installation (the exact command is in the install
-summary):
+The first command block removes services while retaining program files, configuration and data; the second performs complete removal. Pass the same custom `PREFIX`, or run from a retained source directory.
 
 ```bash
-KEEP_DATA=1 bash deploy/uninstall.sh  # Stop services; keep program and persistent state
-bash deploy/uninstall.sh              # Complete uninstall; delete default state root
+cd /root/apps/vps-server/installer-source
+KEEP_DATA=1 bash deploy/uninstall.sh
 ```
 
-Both modes stop project-managed services and release port registrations.
-Retained-data mode keeps the program, state root, unified proxy configuration,
-FRPS configuration, FRPC instance configurations, Lucky native settings and tasks, and Tailscale device identity.
-A complete uninstall removes these project-named configurations and recovery
-copies, including native settings, DDNS and reverse-proxy tasks in `/etc/vps-server-lucky`, and the Tailscale login identity in the state root. Confirm instance ownership first on a host with shared FRPC. Data paths
-customized outside the state root are not deleted automatically. See the
-[design document](DESIGN.md#complete-uninstall) for the full cleanup scope.
+```bash
+cd /root/apps/vps-server/installer-source
+bash deploy/uninstall.sh
+```
+
+Both stop managed services and release project ports. Complete removal also deletes the default state root, project FRPS/unified-proxy/FRPC configuration, Lucky settings/tasks and Tailscale identity. Custom data paths outside the state root are not automatically removed. Check instance ownership on hosts sharing FRPC. Firewall cleanup failure stops complete removal and preserves ownership records.
 
 ## Acknowledgements
 
-The browser test uses [LibreSpeed](https://github.com/librespeed/speedtest);
-QR rendering uses [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);
-the bundled proxy core is [sing-box](https://github.com/SagerNet/sing-box).
-The optional modules bundle [frp](https://github.com/fatedier/frp) and
-[Lucky](https://github.com/gdy666/lucky). See [third-party notices][local-link-003]
-for the inventory and original license paths.
+This project uses or draws on: [LibreSpeed](https://github.com/librespeed/speedtest), [sing-box](https://github.com/SagerNet/sing-box), [frp](https://github.com/fatedier/frp), [Lucky](https://github.com/gdy666/lucky), [Tailscale](https://github.com/tailscale/tailscale), [iperf3](https://github.com/esnet/iperf), [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), [xterm.js](https://github.com/xtermjs/xterm.js), [Fontsource](https://github.com/fontsource/font-files), [Lucide](https://github.com/lucide-icons/lucide).
+
+See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for original attribution and terms.
 
 ## License
 
-Project license: GPL-3.0 (SPDX: `GPL-3.0-only`); read the full [LICENSE][local-link-004]. The historical combination rationale is in [Decisions][local-link-005]. Bundled components, their original licenses, verified artifact sources, and remaining legal-review limits are in [THIRD_PARTY_NOTICES.md][local-link-006].
-
-This project is not affiliated with or endorsed by sing-box/SagerNet or
-LibreSpeed.
-
-[local-link-001]: ../CHANGELOG.md
-[local-link-002]: DESIGN.md#configuration-reference
-[local-link-003]: THIRD_PARTY_NOTICES.md
-[local-link-004]: ../../LICENSE
-[local-link-005]: LOG.md#decisions
-[local-link-006]: THIRD_PARTY_NOTICES.md
+GNU General Public License v3.0, SPDX: `GPL-3.0-only`. Full text: [LICENSE](../../LICENSE). Third-party components retain their original licenses. This project is not affiliated with or endorsed by sing-box/SagerNet or LibreSpeed.

@@ -188,7 +188,7 @@ def _ensure_ip_forward(context, ):
     Never turned back off: it is a single host-wide toggle, and other
     software already running here (Docker, for one) may depend on it too.
     Symmetrically closing it when the last forward is removed would risk
-    breaking whatever else asked for it first — see doc/LOG.md#decisions.
+    breaking whatever else asked for it first — see doc/LOG.md#决策.
     """
     try:
         current = context.Path("/proc/sys/net/ipv4/ip_forward").read_text().strip()

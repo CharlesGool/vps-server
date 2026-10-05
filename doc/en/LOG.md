@@ -1,8 +1,8 @@
 ---
 name: project-log-en
-description: Current project status, decisions, and handoff
+description: Project bugs, limitations, decisions, and handoff
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   lang: "en"
 ---
 
@@ -24,89 +24,49 @@ metadata:
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
-
 ## Records
 
-- [Historical records](HISTORY.md)
-- [Version changelog](CHANGELOG.md)
+- [History](HISTORY.md)
+- [Changelog](CHANGELOG.md)
 
 ## Bugs
 
-- [x] 2026-10-05 [P2] Default complete uninstall still retained Lucky native settings and tasks. Current source clears the project Lucky, FRPS and unified proxy configuration directories even if service units have already been removed; retained-data mode continues to preserve them. Tailscale identity is deleted with the layout 1 state root; default uninstall no longer prints that Lucky configuration is retained. Lucky firewall-cleanup failure stops uninstall and preserves ownership records. Isolated-directory tests passed; uninstall was not run on the user's host. Fixed in v5.2.1.
+- [x] Successful FRPC saves yielding empty responses, or rename showing Invalid request: fixed in v5.2.2 with a background waiting page and result retries.
+- [x] Inconsistent existing-value editing, privacy controls, delete hover colors, fonts and button/filter layouts: fixed in v5.2.2 and confirmed by the operator.
+- [x] Installation interrupted by FRPC disconnection during upgrade: v5.2.2 uses a systemd background installer.
+- [x] Missing Tailscale archive in Git installs: fixed in v5.2.1.
+- [ ] Python 3.9, other target distributions, host reboot recovery and real mobile devices still need independent acceptance.
+- [ ] Authenticated Tailscale logout and real Tailnet routing policies were not verified on this test host.
+- [ ] Monthly quotas and sustained real-traffic/rate-limit policies were not comprehensively retested for v5.2.2; earlier operator confirmation is not an independent rerun.
+- [ ] English/Spanish documentation has not received independent native-language review.
 
-- [x] 2026-10-05 [P2] Current source bundles and locks the official Tailscale 1.102.4 amd64 archive, fixing the missing resource that prevented offline console installation after installing from Git. Isolated installer payload-retention checks and artifact digest verification passed; the old v5.2.0 tag and Release are not rewritten. A retry on the real host still awaits operator confirmation.
-
-- [x] 2026-10-05 [P2] After in-place installation from v5.2.0 Git source, the missing Tailscale offline archive produced only a generic installation-files-unavailable message. The operator confirmed the installer and version markers existed while all three archive locations were absent; the source did not include the archive fetched during the build. The fix distinguishes a missing installer from a missing Tailscale package; request-branch checks passed in all three languages, and README explains the complete Release package requirement. The affected host can add the official archive with its pinned digest and retry; its actual installation outcome still awaits operator confirmation. Fixed in v5.2.1.
-
-- [x] 2026-10-05 [P1] Browser terminal disconnected immediately after input: fitting reported 2261 rows and triggered backend disconnect; administrator password reverification also redirected to Security settings. `test-86ae9a9` fixes container height, ignores invalid sizes, and returns directly to the terminal after verification. Isolated Firefox stayed connected while typing `ls`, executing it, and running `pwd` after narrowing the window. The target verified the return path and command execution after oversized reports. Final experience in the operator's original browser still awaited retesting.
-
-- [x] 2026-10-05 [P1] Detecting Lucky management-port changes cannot rely only on `/etc/vps-server-lucky/config.json`: `lucky_base.lkcf` stores post-startup settings, and old/new ports can briefly listen together after a native command changes the port. `test-a9e3cdb` uses the persistent port from `-baseConfInfo`, then verifies process listener and management page. On the target, address API, HTTP management page, and `PORTS.md` synchronized after the change; restoring the old port also passed.
-
-- [x] 2026-10-05 [P1] Node metering repeatedly restarted on the Debian 13 test host: bundled nft v0.9.8 could not read the ruleset, while host nft v1.1.3 could. `test-68e7c5f` probes usable system nft first and falls back to the offline package if unavailable. The target selected `/usr/sbin/nft`, node metering became active, and it recovered after reboot under `test-a9e3cdb`.
-
-- [x] 2026-10-05 [P1] Singbox node-creation POST returned 500: target Web logs showed `UnboundLocalError`; `features/proxy.py` had indented node-save execution into only the access-management branch. `test-68e7c5f` restores the call to the shared action path. Target Web creation of a temporary VMess node returned 200; deleting it restored node inventory and port registration.
-
-- [ ] 2026-10-04 [P1] Actual 1 Mbps throttling occurred far below the recorded traffic cap: the old policy treated an accounting gap marked `suspect` as grounds for early throttling. Source now applies the cap action only when counted traffic reaches the cap; a gap warns of possible undercounting. The cap counts (upload + download) × 2, with the kernel quota threshold halved accordingly and rebuilt through the policy fingerprint. Isolated boundary checks passed; the target host has not been retested.
-
-- [ ] 2026-10-04 [P1] The operator reported that the token input in Edit FRPS stayed masked after clicking Show. Both the outer page and FRP content loaded `password-fields.js`, causing two toggles for one click. Source now removes the duplicate load from the FRPS/FRPC editors. A browser-simulated page confirmed show/hide, unchanged value and focus, and no form submission. Fix `34b8918` was pushed to the public test branch; target-host verification is pending.
-
-- [ ] 2026-10-04 [P1] The operator reported that the FRPS server's Show button did not work in the current test release. Source now reads the FRPS port and token through an FRP-specific path. A browser-simulated page verified show/hide and copy; the actual target-host cause and outcome remain unverified.
-
-- [ ] 2026-10-04 [P1] FRPS editing still failed in `v5.1.1-test.1`: the installed helper matched the test tag, but `$PREFIX/frps/setup-frps.sh` was absent. Installing FRPS later through the console left its script only under `$PREFIX/installer-source/deploy/frps/`; the old Save path exited before registering the port, including on an unchanged Save. Helper logs showed status 1 and FRPS remained `active`; no causal link to client token-mismatch logs was established. Source now uses the retained installer script with an old-path fallback. Isolated checks passed; target-host retesting is pending. Formal `v5.1.1` has not been released.
-
-- [ ] 2026-10-04 [P1] Deleting the old installation directory loses the console port and some state: the operator confirmed deleting the old `$PREFIX` before placing source there, with no directory backup. The old console port is no longer reachable; the old password has not been tested. The old layout stored the administrator password, random port, certificates, and `data/` inside `$PREFIX`. The installer still recognizes the residual systemd unit as an existing installation and may then regenerate missing state. Source cannot recover deleted data without a backup. The proposed v5.1.1 layout moves state outside the installation directory and refuses an installation with missing state before changing services. A fresh installation and later reinstall on the target host remain unverified.
-
-- [x] 2026-10-04 Complete uninstall missed FRPC instance data and `PORTS.md` entries: `3335a7f` first added cleanup, but the operator reproduced an old template without an ownership marker being classified `unowned`. FRPC configuration and registrations remained, and a Web-only reinstall listed the old client. Source change `01b76ba` includes console-recognizable instances with old templates in a default complete uninstall. Isolated local checks passed; the operator confirmed cleanup on the test host after rerunning it. Fixed in `v5.1.0`; this session did not independently connect to the host.
-
-- [x] 2026-10-04 [P1] A non-ASCII administrator password could be saved but could not log in: `src/web/features/auth.py` accepted Chinese in `change_admin_password`, while old login and Security verification called `hmac.compare_digest` with strings. Isolated checks reproduced a TypeError. Source now compares UTF-8 bytes while preserving password validation and session invalidation. The operator confirmed login; fixed in `v5.1.0`.
-- [x] 2026-10-04 [P1] A cycle reset did not refresh kernel quota: the old `src/web/node_meter.py` policy fingerprint omitted cycle identity. Isolated checks cleared usage from 600 against a 1000-byte quota without changing the fingerprint. Source now rebuilds on a cycle change. The operator confirmed node and traffic behavior; fixed in `v5.1.0`.
-- [ ] 2026-10-04 [P1] Python 3.9 compatibility has not been tested: the old `src/web/node_inventory.py` used `int | None` without postponed annotations, conflicting with the README's 3.9+ claim. Source now postpones annotation evaluation. Python 3.9 is unavailable locally; only syntax and import on a newer Python were checked. Installation and Web startup still need verification on a Python 3.9 target.
-- [x] 2026-10-04 [P2] A port-forward application failure was reported as success: old add/set_enabled/load paths ignored a False result from `portfwd_rule_apply`. Injected failure returned success while retaining enabled=true. Source now rolls back or reports that application failed. The operator confirmed port forwarding; fixed in `v5.1.0`.
-- [x] 2026-10-04 [P2] Diagnostic exceptions were discarded: the old `_dispatch` returned a generic 500 without a stack log, and node helper errors were discarded. Source now logs sanitized operation stages and error types while keeping generic client errors. Isolated local checks passed; fixed in `v5.1.0`. Real failure cases remain unverified.
-
-- [ ] 2026-09-12 Decide whether the shared `_db_lock` needs decoupling: every public-page hit takes a process-wide lock and does a synchronous SQLite write, and the console shares that lock, so in principle anonymous flooding can slow an authenticated page. **Measured and not reproduced**: 60 concurrent flooders left console latency at 0.4–0.6 ms, identical to idle. Keep this record so the mechanism is not rediscovered as new; do not rearchitect without a measurement showing harm.
-
-Still to verify are installation and reinstallation of the new state layout on the target host, Python 3.9 installation and Web startup, and the `_db_lock` performance concern without demonstrated harm. Earlier branch status is in [Historical records](HISTORY.md).
+Unchecked items are acceptance gaps, not reproduced runtime failures.
 
 ## Limitations
 
-- Automated checks cover interface key names, placeholders, and document structure, but the new translations have not had independent native-language review.
-- Before migration, Simplified Chinese source and older translations of four core documents lived in different paths; no complete single synchronization baseline can be recovered. This release resynchronizes English and Spanish against current Simplified Chinese. The next update can use this synchronization commit as its incremental baseline. Other older translations and English-only test records remain in Git history; the boundary is in [HISTORY](HISTORY.md).
-- During standardization on 2026-10-03, ignored runtime state and caches at the source checkout root were moved intact to `private/local-runtime-prestandardization-20261003/`. The current worktree passed the structure check. On a CIFS worktree mounted with fixed 0644 file and 0755 directory modes, `chmod` does not change displayed local secret modes; assess mount access controls separately.
-- The new bundled iperf3 3.22 was built locally from upstream source. It was checked as a static ELF on Ubuntu 22.04 x86-64 and ran `--version`. Address resolution and real TCP/UDP traffic on Debian 11 and Ubuntu 20.04 targets have not been accepted. The build omits SCTP and OpenSSL authentication.
-- FRPC, FRPS, and iperf3 install offline from a complete source checkout. Other modules may still need the distro package repository when foundational system packages such as Python, OpenSSL, or nftables are missing.
-- `third_party/frp/frpc` is 16,593,080 bytes, blob `e2a8dc5b1bd2d995ec49896d20e1b2a4a8252ada`. It was already public at `origin/main` commit `f306f6e` before this task and was not changed here. It remains to preserve the accepted offline installation from a complete checkout. Future new or modified large files still require the GitHub Release asset process.
-- The real-host acceptance limits for the current branch are in the Simplified Chinese handoff below.
+- Deleted state without a backup cannot be recovered because the original data no longer exists.
+- Local interfaces cannot reliably identify a public address behind NAT; this project does not query external public-IP services.
+- The structured editor cannot losslessly reconstruct arbitrary complex FRP configuration; unsupported fields must be retained and managed natively.
 
 ## Decisions
 
-<a id="vps-decisions"></a>
-
-The dated decisions below preserve both rejected alternatives and their costs. A historical decision is not a new legal or release approval.
-
-| Decisions | Reasons, rejected alternatives, and costs |
-| --- | --- |
-| 2026-10-04 — Integrate AnyTLS into the unified proxy service | The operator requires AnyTLS as one protocol in the unified proxy service, sharing its configuration, systemd unit, executable, installation, and removal entry point with vmess, vless, trojan, and shadowsocks. A recoverable migration must preserve the old independent service's port, credentials, certificate, and node identity before retiring it after successful validation. The shared node-meter service still covers all protocols and is not an independent AnyTLS runtime. The former two-service arrangement remains only as history. |
-| 2026-10-04 — Complete offline installation package | The operator requires installation from an archive without Git, GitHub, or network access on the target. Bundled service binaries alone do not meet that requirement; missing system tools and libraries must also be supplied for supported systems and accepted offline. The target is assumed to have a base OS, systemd, and a supported Python runtime. Formal support needs acceptance on x86-64 Debian 11+/Ubuntu 20.04+ with systemd and base Python. Tailscale was subsequently included in v6.0.0, superseding the earlier deferral recorded here. |
-| 2026-10-04 — Establish persistent state layout `1` in v6.0.0 | New installations store the password, port, certificates, runtime data, installation record, and `.env` under `/var/lib/vps-server`; later versions retain readability of this layout. The installer rejects an old layout or missing critical state before changing services, without generating replacement values. **Rejected:** Automatic migration from v5.1.0 and earlier directories; the user asked for backward compatibility starting with the new standard, not for earlier layouts. **Cost:** Older installations need an operator backup and an explicit fresh install. Deleted old data without a backup cannot be recovered. |
-| 2026-10-03 — Remove `tests/` from this project and accept features manually | The operator explicitly requested removal of the automated test directory during source review and simplification; `tests/` was removed from source and the test-host install. The cost is losing those regression checks after changes. Structure, syntax, and build checks still run, followed by manual acceptance of enabled modules. Old tests remain in Git history. |
-| 2026-09-22 — `proxy` is one sing-box process with up to four inbounds, not four clones of anytls | - **Resolved, not rejected:** whether the vendored sing-box binary covers   vmess/vless/trojan/shadowsocks — confirmed by actually running all four   simultaneously in one process (not just `sing-box check`); no second   backend needed. hysteria2/tuic tried and left out (different field/TLS   requirements). - **Rejected:** one systemd unit + config per protocol, mirroring anytls's   own shape exactly — four units to monitor, three redundant self-signed   certs, and it fights the shape a future per-node traffic-accounting   feature would want (one process whose `inbounds` list is already the node   list). - **Cost:** the shared vendored binary was used by two independent   modules; each module's `uninstall()` **MUST** check the other's config exists   before deleting it (anytls's vendored script gained this as a documented   local deviation — see `anytls/.upstream-version`). The 2026-10-04 unified-proxy decision superseded the independent AnyTLS service arrangement. |
-| 2026-09-21 — `prompt_new_settings()` ends with an explicit `return 0`, not just falling off the loop | - **Rejected:** letting the function's exit status fall out of its final `for`   loop, as most other functions in `install.sh` do — the loop's last   statement used to be a bare `[ -n "$value" ] && export ...`, so leaving the   *last* prompted setting at its default made that test false, which became   the function's own return status. Called bare (`prompt_new_settings` inside   an `if`-body, not itself exempt from `set -e`) that silently killed the   whole installer right after the last prompt — no error, no file copy, no   `VERSION` stamp, no service restart. Reproduced live on v1.0.4 → v1.1.1 and   fixed by wrapping the export in `if`/`fi` and adding an explicit trailing   `return 0`, so the function's exit status no longer depends on which   setting happened to be prompted last. - **Do not remove the trailing `return 0` as apparent dead code.** It is the   fix, not boilerplate. |
-| 2026-09-19 — Port forwards are iptables DNAT, reapplied from JSON at every start; nothing written outside the process | - **Rejected:** a per-rule `socat` userspace relay — safer (no NAT table or   `ip_forward` changes), but the user explicitly chose kernel-level   DNAT+MASQUERADE for this project instead. - **Rejected:** `iptables-persistent` to survive a reboot at the kernel level   — that makes the console and a system package two sources of truth for the   same rules. `app.py` reapplies from its own JSON on every start instead   (DESIGN.md, "Port forwarding lifecycle"), so there is exactly one. - **Rejected:** auto-reverting `net.ipv4.ip_forward` to `0` once the last   forward is removed — it is host-wide, and other software (this project's   own test host runs Docker) may depend on it staying on. - **Cost:** stopping `vps-server-web` (not restarting it) withdraws every   forward's kernel state, even enabled ones — same fail-safe direction as the   iperf3 window. Do not move the rules into a separate always-on unit to   "fix" this; that was considered and rejected above. |
-| 2026-09-12 — The public page and the console are separate listeners with separate handler classes | - **Rejected:** One listener serving both, with console routes gated behind a path prefix plus an auth check — an auth check can be bugged into allowing; a route that does not exist cannot. - **Rejected:** Putting the console itself on 80/443 behind the password and dropping the random port — that discards the obscurity layer `vps-webserver` deliberately chose. - **Cost:** Three listeners in one process, and two handler classes that each need the visitor-logging hook wired in separately. - **Do not re-add this as an improvement.** |
-| 2026-09-12 — iperf3 runs only inside an operator-opened, time-boxed window | - **Rejected:** An always-on public `iperf3 -s` — any stranger can saturate the uplink indefinitely and nothing surfaces that it is happening. - **Rejected:** Always-on with `--authorized-users-path` RSA authentication — credentials would have to be handed over out of band before anyone can test, which defeats the point of "give someone the IP and let them measure". - **Cost:** A remote tester cannot test unattended; someone has to open a window first. The public page advertises an open window so the tester knows when to connect. |
-| 2026-09-12 — Port 443 uses a self-signed certificate; no ACME, no domain | - **Rejected:** certbot / acme.sh against a real domain — the page exists to answer "can you reach this IP", and a browser warning page already proves reachability. A domain dependency and a renewal timer buy nothing for that question. - **Rejected:** Serving only port 80 — that cannot distinguish "the host is unreachable" from "443 specifically is blocked", which is the common case worth detecting. - **Cost:** Every HTTPS visit shows a certificate warning. Expected; do not "fix" it with HSTS or a pinned exception. |
-| 2026-09-12 — The sing-box binary ships in the repository, so the whole project is GPL-3.0 | - **Rejected:** Downloading sing-box at install time to keep the repo small and the licence Apache-2.0 — `Anytsl-Serve` already rejected exactly this to keep installation working without GitHub access; re-deciding it here would silently undo that goal. - **Rejected:** Dropping the anytls module to preserve `vps-webserver`'s Apache-2.0 — the brief was to combine the two projects, not to pick one. - **Cost:** ~57 MB in git, growing with every sing-box bump; and `vps-webserver`'s Apache-2.0 code is redistributed here under GPL-3.0. |
-| 2026-09-12 — Upstream projects are vendored, not superseded and not submoduled | - **Rejected:** Letting vps-server replace `vps-webserver` and `Anytsl-Serve` and archiving both — all three are to stay independently maintained and independently released. - **Rejected:** git submodules pointing at the two upstream repos — a submodule cannot carry the renames this project needs (unit names, binary name, `VPSWS_` → `VPSSRV_`), and a clone would then need network access to two more repos. - **Cost:** The same code lives in three repositories and will drift. Mitigation: `.upstream-version` files record the exact upstream tag each vendored tree came from, and **MUST** be updated in the same commit as any refresh. |
-
-<a id="development-updates"></a>
-
-## Development Updates
-
-- FRPS editing registers this project's current port when its `PORTS.md` entry is missing, while continuing to reject ports owned by other services. A failed port change removes the new reservation; the operator reports that this correction passed manual testing.
-- New installations store the password, console port, certificates, runtime data, and installation record under `/var/lib/vps-server`. Later versions retain layout `1`; old layouts are not migrated automatically, and the installer stops before changing services if state is missing.
-- The new layout has passed only isolated local checks. Fresh installation on the target host, reinstall and uninstall after replacing the program directory, a Python 3.9 runtime, reboot recovery, and real mobile devices still need acceptance.
+| Date | Decision | Status | Reason |
+| --- | --- | --- | --- |
+| 2026-10-05 | Rewrite 18 documents from current templates; retain original third-party licenses. | Accepted | The user requested a full rewrite while original license notices remain distribution obligations. |
+| 2026-10-05 | Use background tasks for installation and FRPC updates. | Accepted | Service restarts can interrupt the connection carrying installation or save responses. |
+| 2026-10-04 | Use a separate layout-1 persistent state root. | Accepted | Replacing code must not delete credentials and settings. |
+| 2026-10-04 | Automatically migrate v5.1.0 and earlier layouts. | Rejected | Legacy directories mix state and code, preventing safe assumptions about paths and ownership. |
+| 2026-10-04 | Include AnyTLS in the unified Singbox service. | Accepted | This unifies node/policy management and removes duplicate control paths. |
+| 2026-10-04 | Include nft runtime and corresponding sources in complete offline packages. | Accepted | Pinned service binaries alone do not supply missing libraries; a base OS remains required. |
+| 2026-10-03 | Remove the automated test directory; use change-specific checks and manual acceptance. | Accepted | This follows the operator's explicit request. |
+| 2026-09-19 | Use kernel DNAT and project JSON replay for forwarding. | Accepted | This avoids userspace relay overhead and ownership of the host-wide ruleset. |
+| 2026-09-12 | Use GPL-3.0-only and retain component notices and the [compliance review](THIRD_PARTY_NOTICES.md#compliance-review). | Accepted | Distribution includes a GPL proxy core and the author publishes this project under that license. |
+| 2026-09-21 | End prompt functions with explicit `return 0`. | Accepted | A final empty-value test can silently terminate installation under `set -e`. |
+| 2026-09-12 | Separate public and console listeners/routes. | Accepted | The public handler has no management routes and the console retains a separate random port. |
+| 2026-09-12 | Use timed iperf3 windows rather than a permanent server. | Accepted | This bounds unplanned continuous bandwidth consumption. |
+| 2026-09-12 | Use self-signed public HTTPS without ACME. | Accepted | The page checks IP/port reachability without domain/renewal requirements. |
+| 2026-09-12 | Vendor own-project copies without submodules or archiving originals. | Accepted | The three projects remain independent with imported revisions recorded in provenance files. |
 
 ## Handoff
 
-The current handoff, including completed checks, remaining release steps, blockers, and the next action, is maintained in the [Simplified Chinese LOG.md](../LOG.md#交接).
+The current handoff is maintained in the [Simplified Chinese LOG.md](../LOG.md#交接).

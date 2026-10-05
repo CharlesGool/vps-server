@@ -12,10 +12,10 @@ Three listeners in one process, served by two request handlers:
 The split is a security property, not an organisational one: a request
 arriving on 80/443 cannot reach a console route because ProbeHandler has no
 such route — not because a check rejected it. An authorization check can be
-bugged into allowing; an absent route cannot. See doc/LOG.md#decisions (2026-09-12)
+bugged into allowing; an absent route cannot. See doc/LOG.md#决策 (2026-09-12)
 before considering merging the two.
 
-Standard-library only (see doc/LOG.md#decisions). Run with `python3 app.py`.
+Standard-library only (see doc/DESIGN.md#架构). Run with `python3 app.py`.
 """
 
 import base64
@@ -276,7 +276,7 @@ AUTH_ENABLED = os.environ.get("VPSSRV_AUTH", "1") == "1"
 # Login rate limiting — defensive depth, not a fix for a real hole: the
 # generated password is secrets.token_urlsafe(15), already far out of brute
 # force reach. This only slows down noise and gives a floor against a
-# password chosen by hand instead of generated. See doc/LOG.md#decisions (2026-09-22).
+# password chosen by hand instead of generated. See doc/HISTORY.md#历史记录 (2026-09-22).
 LOGIN_MAX_ATTEMPTS = int(os.environ.get("VPSSRV_LOGIN_MAX_ATTEMPTS", "5"))
 LOGIN_WINDOW_SECONDS = int(os.environ.get("VPSSRV_LOGIN_WINDOW_SECONDS", "60"))
 LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30"))
@@ -284,7 +284,7 @@ LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30")
 # iperf3 window. There is no "leave it running" option on purpose: an
 # unauthenticated public `iperf3 -s` lets any stranger saturate the uplink for
 # as long as they like, and nothing about the host surfaces that it is
-# happening. See doc/LOG.md#decisions (2026-09-12).
+# happening. See doc/LOG.md#决策 (2026-09-12).
 IPERF_MODULE_SWITCH = DATA_DIR / "iperf3-enabled"
 IPERF_BINARY = iperf_binary(BASE_DIR)
 IPERF_ENABLED = (IPERF_MODULE_SWITCH.read_text().strip() == "1" if IPERF_MODULE_SWITCH.exists()
@@ -429,7 +429,7 @@ IPERF_CLIENT = IperfClient(find_binary=lambda _: IPERF_BINARY)
 # one that has none. Unlike the iperf3 window this is meant to survive a
 # restart, so the rule set lives in PORTFWD_STATE_FILE and is (re-)applied to
 # iptables every time this process starts, never trusted to still be sitting
-# in the kernel's tables from before. See doc/DESIGN.md#data-design and doc/LOG.md#decisions
+# in the kernel's tables from before. See doc/DESIGN.md#数据设计 and doc/LOG.md#决策
 # (2026-09-19).
 # ---------------------------------------------------------------------------
 
@@ -534,7 +534,7 @@ def address_entries(*args, **kwargs):
 #
 # Same shape as the anytls block above, generalized to sing-box's multiple
 # inbounds sharing ONE service/config (proxy/setup-proxy.sh's own design —
-# see doc/LOG.md#completed-work-history and doc/LOG.md#decisions):
+# see doc/HISTORY.md#历史记录 and doc/LOG.md#决策):
 # a single install can have any subset of the four protocols, so proxy_nodes() returns a list instead of the single
 # dict anytls_node() returns.
 #
@@ -1286,7 +1286,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 # Two paths, two methods, no session, no query string, no request body. That
 # narrowness *is* the security boundary: a request arriving on 80 or 443
 # cannot reach a console route because no such route exists on this class.
-# Read doc/LOG.md#decisions (2026-09-12) before adding anything here.
+# Read doc/LOG.md#决策 (2026-09-12) before adding anything here.
 #
 # The stylesheet is inlined rather than served from /static/, so this listener
 # has no file-serving route at all.

@@ -2,11 +2,11 @@
 name: project-third-party-notices-en
 description: Third-party attribution and compliance notices
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   lang: "en"
 ---
 
-# Third-party notices
+# Third-Party Notices
 
 ## Multi-language
 
@@ -24,214 +24,69 @@ metadata:
 
 - Third-party notices: [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)
 
+## Third-Party Notices
 
-## Third-Party-Notice
+This inventory records distributed component identity and obligations, preserves upstream texts and does not describe OS packages as pinned dependencies. [Pinned hashes](../../config/dependencies.lock.json) cover 15 artifacts.
 
-The table inventories bundled and OS-supplied components. The original nine
-repository artifacts have SHA-256 values in [config/dependencies.lock.json][local-link-001];
-run `python3 tools/verify_dependencies/verify_dependencies.py` from the repository
-root to compare their bytes offline. The Tailscale archive is bundled with the current source and verified by the lock file. The nftables archive enters the generated offline package; the builder checks fixed digests; their sources
-and licenses are recorded in their respective `component.txt` files. The
-2026-09-27 checks of the original seven artifacts remain unchanged; the
-sources of the later FRPC and iperf3 artifacts are recorded below. These checks
-establish artifact identity, not cross-distribution compatibility or a complete
-system dependency closure.
+### Components
 
-| Component / resource | Version / hash | Source | License as recorded | How used | Attribution / original license path | Release obligations to review | Verified on |
+| Component | Version or hash | Upstream | License | Usage | Copyright holder | Distribution obligations | Verification date |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | `v0.71.0`; binary SHA-256 `b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frps executable | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Keep the included Apache-2.0 license; no NOTICE file was in the official binary archive | 2026-09-27: archive, binary, and license matched |
-| frpc | `v0.71.0`; binary SHA-256 `f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068` | [fatedier/frp](https://github.com/fatedier/frp) | Apache-2.0, per upstream license | Bundled frpc executable, verified before installation | [included license](../../third_party/frp/LICENSE); [artifact record](../../third_party/frp/component.txt) | Distribute the same upstream license with the source and retain the asset checksum | 2026-10-04: bundled client binary matched the upstream archive member |
-| Lucky | `v2.27.2`; binary SHA-256 `7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a` | [gdy666/lucky](https://github.com/gdy666/lucky) | MIT, per upstream license | Bundled Lucky executable | [included license](../../third_party/lucky/LICENSE); [artifact record](../../third_party/lucky/component.txt) | Keep the included MIT copyright and license notice | 2026-09-27: archive, binary, and license matched |
-| sing-box | `v1.13.14`; revision `25a600db24f7680ad9806ce5427bd0ab8afe1114`; binary SHA-256 `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7` | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | GPL version 3 or later plus upstream naming condition (as stated in notice) | Vendored executable, shared by anytls and proxy | [upstream notice][local-link-002]; [GPL full text][local-link-003] | Keep corresponding source links and upstream name/association condition | 2026-09-27: archive, binary, license, and tag revision matched |
-| LibreSpeed | `v6.2.1` | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 per upstream license | Vendored browser engine | [original LGPL text][local-link-006] and [GPL text][local-link-007] | Keep license text and upstream source available | 2026-09-27: two tag files and license matched |
-| qrcode-generator | `js2.0.4`; revision `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [kazuhikoarase/qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT per upstream license | Vendored client-side QR library | [original MIT text][local-link-008] | Keep required attribution and license notice | 2026-09-27: two tag files and license matched |
-| Inter | `5.3.0` | [Fontsource Inter](https://github.com/fontsource/font-files/blob/main/fonts/google/inter/README.md) | SIL OFL 1.1 | Bundled Latin interface font, weights 400/600/700 | [included license](../../src/web/static/licenses/OFL-Inter.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
-| Noto Sans SC | `5.3.0` | [Fontsource Noto Sans SC](https://github.com/fontsource/font-files/blob/main/fonts/google/noto-sans-sc/README.md) | SIL OFL 1.1 | Bundled CJK interface font, weights 400/700 | [included license](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt) | Keep the included OFL and copyright notice | 2026-09-27: upstream npm package |
-| Lucide icons | Upstream `main` on 2026-09-27 | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled interface SVG icons | [included license](../../src/web/static/licenses/Lucide-ISC.txt) | Keep the included copyright and license notice | 2026-09-27: upstream SVG files |
-| xterm.js and Fit Addon | `@xterm/xterm` 6.0.0, `@xterm/addon-fit` 0.11.0; JavaScript SHA-256 respectively `14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972`, `ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527` | [xtermjs/xterm.js](https://github.com/xtermjs/xterm.js) | MIT per licenses bundled in npm archives | Offline browser-terminal rendering and fitting | [xterm license](../../src/web/static/third_party/xterm/LICENSE-xterm); [Fit Addon license](../../src/web/static/third_party/xterm/LICENSE-addon-fit); [artifact record](../../src/web/static/third_party/xterm/component.txt) | Preserve both upstream copyright and permission notices with static files | 2026-10-05: pinned npm archive members copied byte for byte and SHA-256 recorded |
-| iperf3 | `3.22`; bundled binary SHA-256 `f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2` | [ESnet/iperf](https://github.com/esnet/iperf) | BSD-3-Clause | Locally built x86-64 Linux static executable from official source | [upstream LICENSE](../../third_party/iperf3/LICENSE); [build record](../../third_party/iperf3/component.txt) | Retain copyright and the full license with the binary; target-distro compatibility awaits acceptance | 2026-10-04: official source digest, local build, and local execution checked |
-| Tailscale | `1.102.4`; official amd64 static archive SHA-256 `50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9` | [official Linux packages](https://pkgs.tailscale.com/stable/) | BSD-3-Clause per upstream LICENSE | Archive bundled with the current source and offline package; installs the client and daemon on the target | [upstream license](../../third_party/tailscale/LICENSE); [dependency notices](../../third_party/tailscale/DEPENDENCY_NOTICES.md); [patent grant](../../third_party/tailscale/PATENTS); [artifact record](../../third_party/tailscale/component.txt) | Include upstream license, patent grant, and version-matched dependency notices in the offline package; include dependency license texts and a source/digest manifest | 2026-10-04: official archive digest and locally running version matched; notice files from the upstream tag are included |
-| nftables and 10 runtime libraries | Debian 11 amd64 `nftables 0.9.8-3.1+deb11u2`; runtime archive SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb`; corresponding source archive SHA-256 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83` | [official Debian package repository](https://deb.debian.org/debian/) | Each package license is under `usr/share/doc/<package>/copyright` in the archive | Private nft runtime for node accounting in the v5.2.0 offline package; not installed into the system package database | [package list and SHA-256 record](../../third_party/nft/component.txt); [source manifest](../../third_party/nft/source-manifest.json) | Provide the corresponding original source and Debian packaging patches in the same offline package; cross-distribution compatibility awaits target-host acceptance | 2026-10-04: each `.deb` and source file matched its Debian index digest; local quota-syntax parsing passed |
+| frps | 0.71.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Independent server binary. | fatedier/frp contributors | Retain license; official archive has no NOTICE. | 2026-09-27 |
+| frpc | 0.71.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Instance client binary. | fatedier/frp contributors | Retain attribution and full license. | 2026-10-04 |
+| Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | Independent management service. | gdy (2022) | Retain attribution and full license. | 2026-09-27 |
+| sing-box | 1.13.14 / `25a600db24f7680ad9806ce5427bd0ab8afe1114` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Independent proxy core. | nekohasekai (2022) | Retain source access and upstream naming/affiliation conditions. | 2026-09-27 |
+| LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | Browser speed-test engine. | LibreSpeed contributors | Retain LGPL/GPL texts, provide corresponding source and replaceable client files. | 2026-09-27 |
+| qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | Client QR library. | Kazuhiko Arase (2009) | Retain attribution and full license. | 2026-09-27 |
+| Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | Bundled font, 400/600/700. | The Inter Project Authors (2016) | Retain OFL/attribution and reserved font-name conditions. | 2026-09-27 |
+| Noto Sans SC | Fontsource 5.3.0 | [Noto Sans SC](https://github.com/fontsource/font-files/tree/main/fonts/google/noto-sans-sc) | OFL-1.1 | Bundled font, 400/700. | Google Inc. | Retain OFL and attribution. | 2026-09-27 |
+| Lucide | main, 2026-09-27 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled SVG icons. | Lucide Icons and Contributors; Cole Bemis | Retain attribution and full license. | 2026-09-27 |
+| xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Terminal rendering and fitting. | The xterm.js authors; SourceLair; Christopher Jeffrey | Retain both original license/attribution texts. | 2026-10-05 |
+| iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Static build from unchanged source for TCP/UDP tests. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Retain attribution and full license. | 2026-10-04 |
+| Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | Official static client/daemon archive. | Tailscale Inc & contributors (2020) | Retain LICENSE, PATENTS and original dependency notices/licenses. | 2026-10-04 |
+| nftables + 10 libraries | Debian 11 amd64, nftables 0.9.8-3.1+deb11u2 | [nftables + 10 libraries](https://deb.debian.org/debian/) | Per-package copyright: GPL/LGPL/BSD and others. | Private runtime, supplied only in complete offline packages. | Upstream package authors; see original archive notices. | Distribute complete corresponding sources, patches and package notices together. | 2026-10-04 |
 
-The existing project record identifies GPL-3.0 for this project ([LICENSE][local-link-009]) and records the redistribution of a GPL-licensed sing-box executable as its reason; [Decisions][local-link-010] retains the rationale and rejected alternatives. The prior record describes `vps-webserver` as Apache-2.0 upstream and redistributed here under GPL-3.0. This inventory records the files and terms checked for v2.0.0; it does not provide an independent legal opinion.
+Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, OpenSSL, iptables and similar OS components are not pinned by this lock; their licenses/security updates follow distribution channels.
 
-There are no third-party Python packages. `src/web/app.py` uses the standard library,
-so there is no Python package lock. The vendored-artifact lock above does not
-pin OS-supplied Python or other system packages: their versions and
-security updates are managed through the target Debian/Ubuntu distribution's
-package channels. The installer does not select exact package versions or a
-repository snapshot; a fully reproducible system dependency closure remains
-unresolved (see [Reproduction requirements][local-link-011]).
+### License Texts
 
----
+- [frp](../../third_party/frp/LICENSE)
+- [Lucky](../../third_party/lucky/LICENSE)
+- [sing-box](../../third_party/sing-box/LICENSE)
+- [GPL-3.0](../../LICENSE)
+- [LibreSpeed LGPL-3.0](../../src/web/static/licenses/LGPL-3.0.txt)
+- [qrcode-generator MIT](../../src/web/static/licenses/MIT.txt)
+- [Inter OFL](../../src/web/static/licenses/OFL-Inter.txt)
+- [Noto Sans SC OFL](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt)
+- [Lucide ISC](../../src/web/static/licenses/Lucide-ISC.txt)
+- [xterm.js MIT](../../src/web/static/third_party/xterm/LICENSE-xterm)
+- [Fit Addon MIT](../../src/web/static/third_party/xterm/LICENSE-addon-fit)
+- [iperf3](../../third_party/iperf3/LICENSE)
+- [Tailscale LICENSE](../../third_party/tailscale/LICENSE)
+- [Tailscale PATENTS](../../third_party/tailscale/PATENTS)
+- [Tailscale dependencies](../../third_party/tailscale/DEPENDENCY_NOTICES.md)
+- [Tailscale license manifest](../../third_party/tailscale/license-manifest.json)
 
-## sing-box
+Tailscale's 80 dependency licenses, freetype license and 3 NOTICE files total 84 original files in `third_party/tailscale/licenses/`; the manifest pins origins and hashes. The upstream dependency list still calls freetype Unknown; this project supplements the original BSD-style text at a fixed revision without altering that list. The nftables runtime retains each package's `usr/share/doc/<package>/copyright`; package names/hashes are in [component.txt](../../third_party/nft/component.txt).
 
-This repository redistributes a sing-box executable as `third_party/sing-box/sing-box` in the
-repository checkout. On 2026-09-27 its bytes and included upstream license
-matched the official v1.13.14 release archive.
-It is installed as `/usr/local/bin/sing-box-vps-server`.
+### Source Code Offer
 
-- Component: `sing-box`
-- Upstream project: https://github.com/SagerNet/sing-box
-- Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
-- Version: `v1.13.14`
-- Source revision: `25a600db24f7680ad9806ce5427bd0ab8afe1114`
-- Distributed artifact: `sing-box-1.13.14-linux-amd64.tar.gz`
-- Repository binary SHA-256: `68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7`
-- License: GNU GPL version 3 or any later version, plus the upstream
-  name/association condition; see [`third_party/sing-box/LICENSE`][local-link-012]
+- sing-box: [v1.13.14 source](https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114), [source archive](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz).
+- LibreSpeed: [v6.2.1 source](https://github.com/librespeed/speedtest/tree/v6.2.1).
+- iperf3: [3.22 source archive](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- Tailscale: [v1.102.4 source](https://github.com/tailscale/tailscale/tree/v1.102.4).
 
-The downloaded release archive SHA-256 was
-`f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697`.
-The repository binary and license matched its extracted members byte for byte.
+The complete Release includes `third_party/nft/nft-runtime-bullseye.tar.gz` and `third_party/nft/nft-sources-bullseye.tar.gz`, pinned to SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb` and `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83`. The source archive supplies 10 upstream source groups, Debian patches and source descriptors corresponding to 11 binary packages; files are pinned in [source-manifest.json](../../third_party/nft/source-manifest.json). The build script downloads and verifies them from Debian; a source checkout alone does not include these two nft archives. Source descriptors/patches restore the corresponding Debian tree with packaging build files. Hosts use the private runtime without replacing system nft.
 
-### Corresponding source
+Unchanged iperf3 source was built on Ubuntu 22.04 x86-64 with `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` and stripped, without SCTP/OpenSSL authentication; static name-resolution compatibility on older hosts still needs acceptance.
 
-The v1.13.14 tag resolved to source revision
-`25a600db24f7680ad9806ce5427bd0ab8afe1114` on 2026-09-27. The
-following upstream source links accompany the bundled executable:
+### Compliance Review
 
-- Tagged source tree: https://github.com/SagerNet/sing-box/tree/v1.13.14
-- Exact source revision: https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114
-- Source archive: https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz
+Publication review on 2026-10-05: hashes for 15 pinned artifacts and 84 Tailscale notices/licenses passed, nft corresponding sources accompanied the runtime and original licenses were unchanged. The [license decision](LOG.md#decisions) records GPL-3.0-only. Distribution analysis:
 
-The upstream Release archive cited in the prior project record is:
+- sing-box is distributed as a separate executable/process, not statically linked into Python; separation does not waive GPL source/notice obligations. Upstream naming conditions remain, without affiliation or endorsement.
+- LibreSpeed JavaScript remains independently replaceable, with LGPL/GPL texts. `speedtest-ui.js` is project glue; Python endpoints implement the protocol independently rather than copying the PHP backend.
+- nft repackages unchanged Debian artifacts with original notices and complete corresponding source packages; separate paths do not waive package obligations.
+- Tailscale retains original dependency notices, patent grant and supplemental original texts; license identity checks do not prove cross-environment compatibility.
 
-- https://github.com/SagerNet/sing-box/releases/download/v1.13.14/sing-box-1.13.14-linux-amd64.tar.gz
-
-This project is independent and is not affiliated with or endorsed by the
-sing-box or SagerNet authors.
-
----
-
-## LibreSpeed
-
-The browser speed test uses a vendored LibreSpeed client engine. On
-2026-09-27, its two bundled JavaScript files and license matched the upstream
-v6.2.1 tag files byte for byte.
-
-- Component: LibreSpeed client engine — `src/web/static/third_party/librespeed/speedtest.js`, `src/web/static/third_party/librespeed/speedtest_worker.js`
-- Upstream project: https://github.com/librespeed/speedtest
-- Version: `v6.2.1`
-- License: GNU LGPL version 3; full text at [`src/web/static/licenses/LGPL-3.0.txt`][local-link-013]
-- Verification: both files and the original license matched the v6.2.1 tag;
-  the exact tag commit is not recorded in this inventory.
-
-`src/web/static/speedtest-ui.js` is this project's own glue code and is not part of
-LibreSpeed. The server-side endpoints in `src/web/app.py` (`/speedtest/garbage`,
-`/speedtest/empty`, `/speedtest/getip`) reimplement LibreSpeed's documented
-client/server contract; they are original code, not derived from the upstream
-PHP backend.
-
-The LGPL-3.0 text is bundled and the upstream source is linked; this inventory
-does not provide an independent legal opinion about the combination.
-
----
-
-## qrcode-generator
-
-The console's `/proxy` page renders share links as scannable QR codes using
-this vendored client-side library. On 2026-09-27, its two bundled JavaScript
-files and original license matched the upstream js2.0.4 tag files byte for byte.
-
-- Component: `src/web/static/third_party/qrcode/qrcode.js`, `src/web/static/third_party/qrcode/qrcode-utf8.js`
-- Upstream project: https://github.com/kazuhikoarase/qrcode-generator
-- Copyright (c) 2009 Kazuhiko Arase
-- Version: `js2.0.4`
-- Source revision: `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8`
-- License: MIT; full text at [`src/web/static/licenses/MIT.txt`][local-link-014]
-- Verification: both files matched upstream `js/dist/qrcode.js` and
-  `js/dist/qrcode_UTF8.js`; the original MIT license matched too.
-
-`src/web/static/qrcode-render.js` is this project's own glue code (finds
-`[data-qr-text]` elements and fills them with the rendered SVG) and is not
-part of the vendored library.
-
-The MIT copyright and license notice is bundled with the client library.
-
----
-
-## iperf3
-
-- Component: `iperf3`
-- Upstream project: https://github.com/esnet/iperf
-- License: BSD 3-Clause
-- Source: [official 3.22 archive](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz),
-  SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
-- Build: on Ubuntu 22.04 x86-64, run
-  `./configure --enable-static-bin --disable-shared --without-sctp && make -j2`,
-  then `strip` `src/iperf3`. Source was unmodified; see the binary SHA-256 above.
-- Distribution: `third_party/iperf3/iperf3`, with BSD-3-Clause copyright and
-  full license in [`third_party/iperf3/LICENSE`](../../third_party/iperf3/LICENSE).
-  Installed at `$PREFIX/vendor/iperf3/iperf3`.
-- Limits: the build omits SCTP and OpenSSL authentication. Static glibc
-  address resolution on older target distributions still needs acceptance;
-  this project's time-limited TCP/UDP test uses neither optional feature.
-
----
-
-## Offline nftables runtime and corresponding source
-
-The complete offline package includes both
-`third_party/nft/nft-runtime-bullseye.tar.gz` and
-`third_party/nft/nft-sources-bullseye.tar.gz`. The former contains executables,
-dynamic libraries, and `usr/share/doc/<package>/copyright` files extracted
-byte-for-byte from 11 Debian 11 amd64 `.deb` packages. The latter contains
-the 10 complete upstream source groups corresponding to those 11 binary
-packages, Debian packaging patches, and source-package description files.
-The [source manifest](../../third_party/nft/source-manifest.json) fixes each
-filename, size, and SHA-256. On the build host, the
-[asset-fetch script](../../tools/build_offline/fetch_assets.py) downloads and
-checks them against the official Debian repository. Target installation does
-not download or install `.deb` packages.
-
-This project has not modified those sources or the artifact bytes within the
-`.deb` packages; repackaging changes only their placement. The Debian 11
-source tree can be reconstructed from the source-package descriptions and
-patches when rebuilding is needed. The target's private nftables runtime does
-not replace any existing system `nft` command; only the node-accounting helper
-uses it. The command ran successfully on the Debian 13 test host. Other
-supported distributions have not yet had live-host acceptance.
-
----
-
-## Tailscale client notices
-
-The bundled Tailscale v1.102.4 static archive comes from the official Linux release site; the target extracts only the client and daemon. The project preserves the original [BSD-3-Clause license](../../third_party/tailscale/LICENSE), [patent grant](../../third_party/tailscale/PATENTS), and [CLI/daemon dependency inventory](../../third_party/tailscale/DEPENDENCY_NOTICES.md) from that tag. The 80 upstream licenses referenced by the inventory, the freetype license text, and three original NOTICE files are saved in `third_party/tailscale/licenses/`; sources and SHA-256 are recorded in the [license manifest](../../third_party/tailscale/license-manifest.json). After checking copyright, redistribution conditions, and notice-retention requirements, original texts, inventory, patent grant, and source references are included in the package. Apache-2.0 notices and exceptions remain in the fetched texts. The upstream inventory labels freetype Unknown; this project adds the BSD-style license text from its pinned source revision without rewriting the inventory. This check is not independent legal interpretation.
-
----
-
-## Vendored from this author's own projects
-
-Not third-party, but recorded here because the code did not originate in this
-repository and its provenance matters for updates:
-
-- `src/web/app.py`, `src/web/static/speedtest-ui.js`, `src/web/static/style.css`, `src/web/static/visitors.js`,
-  `deploy/install.sh`, `deploy/uninstall.sh`, `deploy/systemd/` (with root installer entries) — from `vps-webserver`
-  v0.4.1 (Apache-2.0 upstream, relicensed GPL-3.0 here). See `config/upstream-version`.
-- The choice of `third_party/sing-box/sing-box` and `third_party/sing-box/sing-box.version`
-  originally followed `Anytsl-Serve`. The independent AnyTLS installer script
-  was removed from the v5.2.0. See the table above for the binary's
-  upstream source and license.
-
----
-
-The bundled third-party fonts and icons are listed in the table above. No
-third-party image datasets or model weights are included. The Tailscale archive is stored with the source. An online build machine downloads and verifies nftables resources while building the offline package. Installation on the target does not download FRPC or
-other executables and does not look up a public IP.
-
-[local-link-001]: ../../config/dependencies.lock.json
-[local-link-002]: ../../third_party/sing-box/LICENSE
-[local-link-003]: ../../LICENSE
-[local-link-004]: #corresponding-source
-[local-link-005]: LOG.md#decisions
-[local-link-006]: ../../src/web/static/licenses/LGPL-3.0.txt
-[local-link-007]: ../../LICENSE
-[local-link-008]: ../../src/web/static/licenses/MIT.txt
-[local-link-009]: ../../LICENSE
-[local-link-010]: LOG.md#decisions
-[local-link-011]: DESIGN.md#reproduction-requirements
-[local-link-012]: ../../third_party/sing-box/LICENSE
-[local-link-013]: ../../src/web/static/licenses/LGPL-3.0.txt
-[local-link-014]: ../../src/web/static/licenses/MIT.txt
+This is a project-file/distribution review without an independent legal interpretation. This author's imported `vps-webserver v0.4.1` code is redistributed from Apache-2.0 under GPL-3.0-only; provenance: [config/upstream-version](../../config/upstream-version). The initial Anytsl-Serve selection explains sing-box provenance; standalone AnyTLS scripts are retired.

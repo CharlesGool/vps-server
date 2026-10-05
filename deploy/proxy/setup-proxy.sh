@@ -172,13 +172,13 @@ close_firewall(){
 # The first real run of this script did exactly that: an unknown protocol
 # name printed its error and then went on to install a service with an EMPTY
 # inbounds list. Same class of bug as the 2026-09-21 entry in
-# doc/LOG.md#decisions on `prompt_new_settings()` — an exit status quietly absorbed by the wrong
+# doc/LOG.md#决策 on `prompt_new_settings()` — an exit status quietly absorbed by the wrong
 # shell. Setting a global array instead means `exit 1` here really is
 # `exit 1` for the whole script.
 compute_selected_protocols(){
   local wanted=",${PROXY_PROTOCOLS//[[:space:]]/}," proto
   # Reject unknown tokens outright rather than silently ignoring a typo —
-  # The iperf3-only install in doc/LOG.md#completed-work-history illustrates
+  # The protocol-validation record in doc/HISTORY.md#历史记录 illustrates
   # this class of bug: a bad value that looks like it did something.
   local token tokens
   IFS=',' read -ra tokens <<< "${PROXY_PROTOCOLS//[[:space:]]/}"
