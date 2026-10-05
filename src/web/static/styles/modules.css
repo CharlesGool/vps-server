@@ -95,3 +95,5 @@
 .tailscale-connect-field { display: grid; align-content: start; gap: .35rem; min-width: 0; }
 .tailscale-connect-form > button[type="submit"] { grid-column: 1 / -1; justify-self: start; }
 @media (max-width: 42rem) { .tailscale-connect-form { grid-template-columns: 1fr; } }
+
+.tailscale-connect-form input:not([type="hidden"]) { height: 2.75rem; font-size: .86rem; }
