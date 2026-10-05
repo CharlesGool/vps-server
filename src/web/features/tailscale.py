@@ -160,10 +160,14 @@ class TailscaleMixin:
                         f'<div class="tailscale-checks">{badges}</div>')
             if state == "Running":
                 token = self.context.access_csrf_token(self.get_cookie("session"), "tailscale:logout")
-                content += (f'<form method="post" action="/tailscale/action" class="tailscale-logout" data-confirm="{esc(t["tailscale_logout_confirm"], quote=True)}">'
+                content += (f'<div class="tailscale-logout"><button type="button" class="danger" data-tailscale-logout-open>{esc(t["tailscale_logout"])}</button></div>'
+                            f'<dialog class="node-confirm-dialog tailscale-logout-dialog" aria-labelledby="tailscale-logout-title">'
+                            f'<form method="post" action="/tailscale/action">'
+                            f'<h3 id="tailscale-logout-title">{esc(t["tailscale_logout"])}</h3><p>{esc(t["tailscale_logout_confirm"])}</p>'
                             f'<input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="{token}">'
                             '<input type="hidden" name="confirm" value="yes">'
-                            f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></form>')
+                            f'<div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-tailscale-logout-close>{esc(t["node_cancel"])}</button>'
+                            f'<button type="submit" class="danger">{esc(t["tailscale_logout"])}</button></div></form></dialog>')
         elif tab == "settings":
             choices = (("accept-dns", "tailscale_accept_dns", "RouteAll"),
                        ("accept-routes", "tailscale_accept_routes", "RouteAll"),

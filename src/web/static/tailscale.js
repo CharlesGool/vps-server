@@ -1,7 +1,10 @@
 (() => {
-  document.querySelector('.tailscale-logout')?.addEventListener('submit', event => {
-    if (!window.confirm(event.currentTarget.dataset.confirm)) event.preventDefault();
+  const logoutDialog = document.querySelector('.tailscale-logout-dialog');
+  document.querySelector('[data-tailscale-logout-open]')?.addEventListener('click', () => {
+    logoutDialog.showModal();
+    logoutDialog.querySelector('[data-tailscale-logout-close]').focus();
   });
+  document.querySelector('[data-tailscale-logout-close]')?.addEventListener('click', () => logoutDialog.close());
   document.querySelectorAll('[data-tailscale-single]').forEach(select => {
     select.addEventListener('change', () => {
       select.closest('form').querySelector(`[name="${select.dataset.tailscaleSingle}_clear"]`).disabled = !!select.value;
