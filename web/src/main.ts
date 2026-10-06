@@ -10,7 +10,7 @@ import { initResizeReflow } from '@/lib/resize-reflow'
 import { i18n } from '@/lib/i18n'
 import '@/styles/main.css'
 
-type Config = {version: string; title: string; label: string; login: boolean; back?: {to: string; label: string}; items: {href: string; label: string; key: string; current?: 'page' | 'location'}[]}
+type Config = {version: string; title: string; serverLabel?: string; label: string; login: boolean; back?: {to: string; label: string}; items: {href: string; label: string; key: string; current?: 'page' | 'location'}[]}
 const data = document.getElementById('ui-context')
 if (!data) throw new Error('Missing UI context')
 const config = JSON.parse(data.textContent || '{}') as Config

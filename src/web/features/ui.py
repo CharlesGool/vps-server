@@ -235,7 +235,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
                           'page' if active == key else None})
         if context.AUTH_ENABLED and (password_authenticated or ip_authenticated):
             items.append({'href': '/logout', 'key': 'logout', 'label': t['logout']})
-    ui_context = {'version': context.VERSION_LABEL, 'title': title,
+    ui_context = {'version': context.VERSION_LABEL, 'title': title, 'serverLabel': server_label,
                   'label': t['nav_label'], 'login': bare, 'items': items}
     if show_nav and active != 'home':
         ui_context['back'] = {'to': destination,
