@@ -455,9 +455,11 @@ class ModulesMixin:
                       if occupied_port is not None else "")
             target = ("/closed?module=" + module
                       if closed or module in ("web_http", "web_https") and not enabled else href)
+            # The public pages are meant to be seen from outside, so they open in a tab of their own.
+            blank = ' target="_blank" rel="noopener noreferrer"' if module in ("web_http", "web_https") else ""
             tiles.append(f'<article class="tile{" tile-public" if module in ("web_http", "web_https") else ""}" data-module="{module}"><div class="tile-top">'
                          f'<span class="tile-icon">{self.context.ui_icon(icon)}</span>{switch}</div>'
-                         f'<a class="tile-label" href="{target}">{esc(title)}</a>{detail}</article>')
+                         f'<a class="tile-label" href="{target}"{blank}>{esc(title)}</a>{detail}</article>')
         job_names = {key: title for key, title, *_ in items}
         notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(module_job_text(t, job, job_names))}</p>'
                   if show_operation and (busy or notice_recent) else '')
