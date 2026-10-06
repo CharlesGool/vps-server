@@ -396,20 +396,20 @@ class ModulesMixin:
         installed = self.context.installed_modules(self.context.BASE_DIR)
         states = self.context.module_states(installed)
         items = (
-            ("web_http", t["module_web_http"], "/public/http", "network", states["web_http"]),
+            ("web_http", t["module_web_http"], "/public/http", "globe", states["web_http"]),
             ("web_https", t["module_web_https"], "/public/https", "lock-keyhole", states["web_https"]),
             ("speedtest", t["speedtest"], "/speedtest", "gauge", states["speedtest"]),
-            ("iperf3", t["iperf"], "/iperf", "activity", states["iperf3"]),
+            ("iperf3", t["iperf"], "/iperf", "arrow-up-down", states["iperf3"]),
             ("proxy_nodes", t["proxy"], "/proxy", "network", states["proxy_nodes"]),
             ("frps", "FRPS", "/frps", "radio", states["frps"]),
-            ("frpc", "FRPC", "/frpc", "network", states["frpc"]),
-            ("lucky", "Lucky", "/lucky", "network", states["lucky"]),
+            ("frpc", "FRPC", "/frpc", "cable", states["frpc"]),
+            ("lucky", "Lucky", "/lucky", "clover", states["lucky"]),
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
-            ("terminal", t["terminal_title"], "/terminal", "activity", states["terminal"]),
+            ("terminal", t["terminal_title"], "/terminal", "terminal", states["terminal"]),
             ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
-            ("logs", t["module_detailed_logs"], "/settings/logs", "scroll-text", True),
+            ("logs", t["module_detailed_logs"], "/settings/logs", "activity", True),
             ("settings", t["settings"], "/settings", "settings-2", True),
         )
         job = {}

@@ -859,7 +859,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "clover", "terminal"})
 _UI_ICON_CACHE = {}
 
 
