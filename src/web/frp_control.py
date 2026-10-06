@@ -225,6 +225,9 @@ def _free_port(port):
         for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
             try:
                 with socket.socket(family, kind) as sock:
+                    if kind == socket.SOCK_STREAM:
+                        # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     sock.bind((address, port))
             except OSError as exc:
                 if family == socket.AF_INET6 and exc.errno in (97, 93):

@@ -135,7 +135,10 @@ active = subprocess.run(['systemctl', 'is-active', '--quiet', 'vps-server-lucky.
 if not (active and port == old_port):
     for family, address in ((socket.AF_INET, '0.0.0.0'), (socket.AF_INET6, '::')):
         try:
-            with socket.socket(family) as sock: sock.bind((address, port))
+            with socket.socket(family) as sock:
+                # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind((address, port))
         except OSError as exc:
             if family == socket.AF_INET6 and exc.errno == 97: continue
             raise SystemExit(os.environ['LUCKY_MSG_UNAVAILABLE'] % exc)

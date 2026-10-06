@@ -207,6 +207,8 @@ class IperfMixin:
                 for family, address in ((self.context.socket.AF_INET, "0.0.0.0"), (self.context.socket.AF_INET6, "::")):
                     try:
                         with self.context.socket.socket(family, self.context.socket.SOCK_STREAM) as probe:
+                            # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                            probe.setsockopt(self.context.socket.SOL_SOCKET, self.context.socket.SO_REUSEADDR, 1)
                             probe.bind((address, port))
                     except OSError as exc:
                         if family == self.context.socket.AF_INET6 and exc.errno in (97, 93):

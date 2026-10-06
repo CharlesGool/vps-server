@@ -74,6 +74,9 @@ def _free_port(port):
         for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
             try:
                 with socket.socket(family, kind) as probe:
+                    if kind == socket.SOCK_STREAM:
+                        # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     probe.bind((address, port))
             except OSError as exc:
                 # A host may have IPv6 disabled. Other bind failures are real
