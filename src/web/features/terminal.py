@@ -13,9 +13,9 @@ class TerminalMixin:
         if not self.context.security_settings_valid(token):
             return self.page_security_verify(lang, next_page="terminal")
         ws_token = self.context.access_csrf_token(token, "terminal")
-        body = (f'<div class="card wide terminal-page" data-token="{esc(ws_token, quote=True)}" '
+        body = (f'<h1>{esc(t["terminal_title"])}</h1>'
+                f'<div class="card wide terminal-page" data-token="{esc(ws_token, quote=True)}" '
                 f'data-disconnected="{esc(t["terminal_disconnected"], quote=True)}">'
-                f'<div class="terminal-head"><h1>{esc(t["terminal_title"])}</h1></div>'
                 '<p class="terminal-status" role="status"></p>'
                 '<div class="terminal-frame"><div class="terminal-screen" tabindex="0"></div></div></div>'
                 '<link rel="stylesheet" href="/static/third_party/xterm/xterm.css">'

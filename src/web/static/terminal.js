@@ -9,7 +9,7 @@
   }
   const terminalStyle = getComputedStyle(screen);
   const terminal = new window.Terminal({
-    cursorBlink: true, convertEol: false, scrollback: 5000, fontSize: 14,
+    cursorBlink: true, convertEol: false, scrollback: 5000, fontSize: 12,
     fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
     theme: { background: terminalStyle.getPropertyValue('--terminal-bg').trim(),
       foreground: terminalStyle.getPropertyValue('--terminal-fg').trim(),
