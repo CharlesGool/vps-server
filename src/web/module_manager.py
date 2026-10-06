@@ -306,6 +306,18 @@ def switch_public_listener(prefix, listener, enabled):
         raise
 
 
+KEPT_PROXY_CONFIG = Path("/etc/vps-server-proxy/config.json")
+
+
+def kept_nodes(state_path=NODE_STATE_PATH):
+    """Enabled nodes that an earlier uninstall kept together with their configuration."""
+    state_path = Path(state_path)
+    if not (state_path.is_file() and KEPT_PROXY_CONFIG.is_file()):
+        return []
+    return [node for node in json.loads(state_path.read_text()).get("nodes", [])
+            if node.get("enabled", True)]
+
+
 def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
                             lock_path=Path("/etc/vps-server-node.lock")):
     """Discard inventory entries left by a previously removed node module.
@@ -314,6 +326,8 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
     still-installed modules remain protected by the normal inventory checks.
     """
     state_path = Path(state_path)
+    if KEPT_PROXY_CONFIG.is_file():
+        return  # An uninstall kept the nodes together with their configuration.
     with Path(lock_path).open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         inventory = read_inventory(state_path=state_path, check_installed=False)
@@ -363,8 +377,38 @@ def run_install(prefix, module):
     env.pop("VPSSRV_SETUP_PUBLIC", None)
     # The installer owns package dependencies, node inventory, service units,
     # preservation of all prior credentials, and the installed-module record.
+    restored = kept_nodes() if "proxy" in requested and "proxy" not in installed else []
+    registered = []
+    if restored:
+        from node_control import NodeControlError, _node_port_row
+        current = None
+        try:
+            for current in restored:
+                if _node_port_row(current["port"], current["id"], True):
+                    registered.append(current)
+        except NodeControlError as exc:
+            for node in reversed(registered):
+                _node_port_row(node["port"], node["id"], False)
+            # Name the port instead of the internal error, so the console can show it.
+            raise PublicPortOccupied(current["port"]) from exc
+        except BaseException:
+            for node in reversed(registered):
+                _node_port_row(node["port"], node["id"], False)
+            raise
     try:
         run_logged(["/usr/bin/bash", str(source)], env=env, timeout=900)
+        if restored:
+            from node_control import HostBackend
+            backend = HostBackend()
+            for node in restored:
+                backend.firewall(node["port"], True, node["protocol"])
+            print(f"Restored {len(restored)} node(s) kept by the earlier uninstall.", flush=True)
+    except BaseException:
+        if registered:
+            from node_control import _node_port_row
+            for node in reversed(registered):
+                _node_port_row(node["port"], node["id"], False)
+        raise
     finally:
         # A module install must not silently re-enable a prior module.
         for item in disabled:
@@ -813,11 +857,14 @@ def run_uninstall(prefix, module):
         node_state = Path("/etc/vps-server-nodes/state.json")
         proxy_nodes = json.loads(node_state.read_text()).get("nodes", []) if node_state.is_file() else []
         script = Path(prefix) / "proxy" / "setup-proxy.sh"
-        run_logged(["/usr/bin/bash", str(script), "uninstall"], timeout=180)
+        # Keep the sing-box configuration and the node inventory, like the other
+        # modules keep theirs: a later reinstall restores the nodes. Only the
+        # service, firewall rules and port registrations are removed.
+        run_logged(["/usr/bin/bash", str(script), "uninstall"],
+                   env=dict(os.environ, VPSSRV_KEEP_CONFIG="1"), timeout=180)
         from node_control import _node_port_row
         for node in proxy_nodes:
             _node_port_row(node["port"], node["id"], False)
-        reconcile_removed_nodes(prefix, present - targets)
         if "proxy" not in (present - targets):
             subprocess.run(["systemctl", "disable", "--now", "vps-server-node-meter.service"],
                            check=False, timeout=60)

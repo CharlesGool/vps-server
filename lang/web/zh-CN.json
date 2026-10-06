@@ -432,7 +432,7 @@
   "frp_rename_client": "重命名",
   "frp_server_port": "服务器端口",
   "module_uninstall": "卸载",
-  "module_uninstall_confirm": "确定卸载 {name}？当前配置会备份到服务器。",
+  "module_uninstall_confirm": "确定卸载 {name}？配置和节点会保留并备份到服务器，重新安装后恢复。",
   "module_log": "安装日志",
   "module_action_install_queued": "正在安装 {name}",
   "module_action_install_running": "正在安装 {name}",

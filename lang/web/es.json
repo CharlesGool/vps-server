@@ -432,7 +432,7 @@
   "frp_rename_client": "Cambiar nombre",
   "frp_server_port": "Puerto del servidor",
   "module_uninstall": "Desinstalar",
-  "module_uninstall_confirm": "¿Desinstalar {name}? La configuración se guardará en el servidor.",
+  "module_uninstall_confirm": "¿Desinstalar {name}? Su configuración y sus nodos se conservan y se copian en el servidor, y se restauran al volver a instalarlo.",
   "module_log": "Registro de instalación",
   "module_action_install_queued": "Instalando {name}",
   "module_action_install_running": "Instalando {name}",

@@ -432,7 +432,7 @@
   "frp_rename_client": "Rename",
   "frp_server_port": "Server port",
   "module_uninstall": "Uninstall",
-  "module_uninstall_confirm": "Uninstall {name}? Current configuration will be backed up on the server.",
+  "module_uninstall_confirm": "Uninstall {name}? Its configuration and nodes are kept and backed up on the server, and restored when you install it again.",
   "module_log": "Installation log",
   "module_action_install_queued": "Installing {name}",
   "module_action_install_running": "Installing {name}",
