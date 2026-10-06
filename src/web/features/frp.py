@@ -51,9 +51,8 @@ class FrpMixin:
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ("done", "failed") else ""
-        body = (f'<div class="frp-workspace">{feedback}'
-                f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("server")}'
-                f'<h1>{esc(t["frps_heading"])}</h1></div>{server}</section></div>'
+        body = (f'<h1>{esc(t["frps_heading"])}</h1><div class="frp-workspace">{feedback}'
+                f'<section class="card frp-card">{server}</section></div>'
                 '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script><script src="/static/frp-editor.js" defer></script>')
         return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -119,12 +118,12 @@ class FrpMixin:
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get('msg', [''])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ('done', 'failed') else ''
-        body = (f'<div class="frp-workspace">{feedback}'
-                f'<section class="card frp-card"><div class="frp-card-head">{self.context.ui_icon("network")}'
-                f'<h1>{esc(t["frp_client_heading"])}</h1></div>{availability}'
-                f'<h2 class="frp-instances-heading">{esc(t["frp_instances"])}</h2><div class="frp-client-grid">{client_list}</div>'
-                f'<p><a class="button-link frp-install-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
-                f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a></p>'
+        install_link = (f'<a class="button-link frp-install-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
+                        f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a>')
+        body = (f'<h1>{esc(t["frp_client_heading"])}</h1><div class="frp-workspace">{feedback}'
+                f'<section class="card frp-card">{availability}'
+                f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["frp_instances"])}</h2>{install_link}</div>'
+                f'<div class="frp-client-grid">{client_list}</div>'
                 '</section></div>'
                 '<script src="/static/copy.js"></script><script src="/static/frp-editor.js" defer></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page(t["frp_client_heading"], body, lang),

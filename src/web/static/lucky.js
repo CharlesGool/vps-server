@@ -29,11 +29,15 @@
   };
   button.addEventListener('click', async () => {
     button.disabled = true;
+    // Open the tab inside the click so the browser allows it, then point it at Lucky.
+    const tab = window.open('', '_blank');
     try {
       await refresh();
-      if (!currentUrl || button.disabled) throw new Error('Lucky unavailable');
-      window.location.assign(currentUrl);
+      if (!currentUrl || button.disabled || !tab) throw new Error('Lucky unavailable');
+      tab.opener = null;
+      tab.location.href = currentUrl;
     } catch (_) {
+      tab?.close();
       errorLabel.textContent = button.dataset.error;
       errorLabel.hidden = false;
     }

@@ -14,13 +14,14 @@ class LuckyMixin:
         running = (self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
                    and self.context.lucky_listener_active(data['AdminWebListenPort']))
         status = t['node_active'] if running else t['node_stopped']
-        body = (f'<div class="card lucky-page" data-active="{self.context.html.escape(t["node_active"], quote=True)}" '
-                f'data-stopped="{self.context.html.escape(t["node_stopped"], quote=True)}"><h1>Lucky</h1>'
-                f'<p>{self.context.html.escape(t["lucky_admin"])}: <span class="lucky-address" role="status">—</span></p>'
-                f'<p>{self.context.html.escape(t["frps_status"])}: <span class="lucky-state">{self.context.html.escape(status)}</span></p>'
-                f'<button type="button" class="lucky-open" '
-                f'data-error="{self.context.html.escape(t["lucky_open_failed"], quote=True)}" {"disabled" if not running else ""}>'
-                f'{self.context.html.escape(t["lucky_open"])}</button><p class="error lucky-open-status" role="status" hidden></p>'
+        esc = self.context.html.escape
+        body = (f'<h1>Lucky</h1><div class="card lucky-page" data-active="{esc(t["node_active"], quote=True)}" '
+                f'data-stopped="{esc(t["node_stopped"], quote=True)}">'
+                f'<dl class="lucky-facts"><div><dt>{esc(t["lucky_admin"])}</dt><dd class="lucky-address" role="status">—</dd></div>'
+                f'<div><dt>{esc(t["frps_status"])}</dt><dd class="lucky-state">{esc(status)}</dd></div></dl>'
+                f'<div class="lucky-actions"><button type="button" class="lucky-open" '
+                f'data-error="{esc(t["lucky_open_failed"], quote=True)}" {"disabled" if not running else ""}>'
+                f'{esc(t["lucky_open"])}</button></div><p class="error lucky-open-status" role="status" hidden></p>'
                 '</div>'
                 '<script src="/static/lucky.js" defer></script>')
         return self.send_html(200, self.render_page('Lucky', body, lang),
