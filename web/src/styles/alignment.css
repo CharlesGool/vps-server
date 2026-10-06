@@ -21,7 +21,7 @@ input, select, textarea { min-height: calc(var(--spacing) * 10); font-size: var(
 .preferences-choices > [role="radiogroup"], .login-language-field > [role="radiogroup"] { justify-self: start; max-width: 100%; }
 .preferences-choices:has(> [role="radiogroup"]) { display: flex; }
 p[role="status"]:not(:empty):not([hidden]):not(.terminal-status) { margin: 0 0 calc(var(--spacing) * 6); }
-@media (max-width: 48rem) { main { padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4); } .card, .access-card { padding: calc(var(--spacing) * 5); } }
+@media (width < 48rem) { main { padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4); } .card, .access-card { padding: calc(var(--spacing) * 5); } }
 
 /* Shared Vue controls inherit their template variants, not native form defaults. */
 button[data-ui-control] { background: transparent; color: inherit; border: 0; padding: 0; min-height: 0; font: inherit; }
