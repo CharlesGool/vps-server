@@ -1,9 +1,0 @@
-body.public-probe { display: grid; place-items: center; min-height: 100dvh; padding: calc(var(--spacing) * 6); }
-.public-probe main { width: 100%; max-width: var(--container-reading); padding: calc(var(--spacing) * 8); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); box-shadow: var(--shadow-sm); }
-.public-probe h1 { display: flex; align-items: center; gap: calc(var(--spacing) * 3); }
-.public-probe .ok { display: grid; place-items: center; width: calc(var(--spacing) * 12); height: calc(var(--spacing) * 12); border-radius: var(--radius-md); background: var(--secondary); color: var(--success); }
-.public-probe dl { display: grid; grid-template-columns: auto 1fr; gap: calc(var(--spacing) * 3) calc(var(--spacing) * 6); width: 100%; }
-.public-probe dt { color: var(--muted-foreground); }
-.public-probe dd { overflow-wrap: anywhere; }
-.public-probe .iperf { padding: calc(var(--spacing) * 4); border-radius: var(--radius-md); background: var(--secondary); color: var(--success); }
-@media (max-width: 30rem) { .public-probe dl { grid-template-columns: 1fr; } }

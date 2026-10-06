@@ -1288,11 +1288,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 # cannot reach a console route because no such route exists on this class.
 # Read doc/LOG.md#决策 (2026-09-12) before adding anything here.
 #
-# The stylesheet is inlined rather than served from /static/, so this listener
-# has no file-serving route at all.
+# The page is plain text and this listener has no file-serving route at all.
 # ---------------------------------------------------------------------------
-
-PROBE_CSS = STATIC_FILES["/static/style.css"][1].read_text(encoding="utf-8")
 
 class ProbeHandler(PublicMixin, BaseHTTPRequestHandler):
     """The unauthenticated page on 80 and 443."""

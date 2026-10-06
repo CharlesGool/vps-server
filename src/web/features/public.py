@@ -40,8 +40,8 @@ class PublicMixin:
         path = self.context.urlsplit(self.path).path
         try:
             if path == "/":
-                body = self._page().encode("utf-8")
-                self._send(200, body, "text/html; charset=utf-8", send_body)
+                # Plain text, nothing but the address the server sees.
+                self._send(200, (self.client_ip() + "\n").encode("utf-8"), "text/plain; charset=utf-8", send_body)
             elif path == "/favicon.ico":
                 self._send(200, (self.context.STATIC_DIR / "favicon.svg").read_bytes(), "image/svg+xml", send_body)
             else:
@@ -69,52 +69,3 @@ class PublicMixin:
         self.end_headers()
         if send_body and body:
             self.wfile.write(body)
-
-    def _page(self):
-        # No cookie and no ?lang= here — the page has no navigation and sets
-        # nothing. Accept-Language is all there is to go on, which is right for
-        # a stranger who was handed an IP and nothing else.
-        lang = self.context.pick_lang(None, None, self.headers.get("Accept-Language", ""))
-        t = self.context.STRINGS[lang]
-        # self.server is the listener this request actually arrived on, so the
-        # port is the real one even with several running.
-        arrived_port = self.server.server_address[1]
-        scheme = "HTTPS" if getattr(self.server, "is_tls", False) else "HTTP"
-        now = self.context.datetime.now(self.context.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
-        iperf_html = ""
-        if self.context.IPERF_ENABLED:
-            is_open, remaining = self.context.IPERF_WINDOW.state()
-            if is_open:
-                # Advertised on purpose: a tester who cannot see that the
-                # window is open has no way to know when to connect, and the
-                # window is deliberately open anyway.
-                text = t["probe_iperf"].format(
-                    port=self.context.IPERF_WINDOW.port, mins=remaining // 60, secs=remaining % 60
-                )
-                iperf_html = f'<p class="iperf">{self.context.html.escape(text)}</p>'
-
-        label = self.context.server_label()
-        page_title = f"{label} — {t['probe_title']}" if label else t['probe_title']
-        return f"""<!doctype html>
-<html lang="{self.context.HTML_LANG_TAGS.get(lang, lang)}"{self.context.RTL_ATTR.get(lang, "")}>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{self.context.html.escape(page_title)}</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.ico">
-<style>{self.context.PROBE_CSS}</style>
-</head>
-<body class="public-probe">
-<main>
-<h1><span class="ok">&#10003;</span> {self.context.html.escape(t['probe_title'])}</h1>
-<p>{self.context.html.escape(t['probe_ok'])}</p>
-{iperf_html}
-<dl>
-  <dt>{self.context.html.escape(t['probe_your_ip'])}</dt><dd>{self.context.html.escape(self.client_ip())}</dd>
-  <dt>{self.context.html.escape(t['probe_arrived_on'])}</dt><dd>{scheme} :{arrived_port}</dd>
-  <dt>{self.context.html.escape(t['probe_server_time'])}</dt><dd>{now}</dd>
-</dl>
-</main>
-</body>
-</html>"""
