@@ -272,6 +272,7 @@
   "appearance_dark": "Oscuro",
   "theme_color": "Color de acento",
   "node_cancel": "Cancelar",
+  "dialog_close": "Cerrar",
   "node_limit_manage": "Gestión de acceso",
   "node_save_limits": "Guardar límites",
   "node_create": "Crear nodo",

@@ -200,9 +200,12 @@ class ProxyMixin:
           <button type="button" class="private-share-copy" data-copied="{self.context.html.escape(t['copied'], quote=True)}" data-error="{self.context.html.escape(t['private_copy_failed'], quote=True)}"
             aria-label="{self.context.html.escape(t['node_clash_copy_label'], quote=True)}">{self.context.html.escape(t['copy'])}</button>
           <button type="button" class="node-import private-share-import" data-error="{self.context.html.escape(t['private_value_failed'], quote=True)}">{self.context.html.escape(t['node_clash_import'])}</button>
-          <details class="qr-details"><summary>{self.context.html.escape(t['node_clash_qr'])}</summary>
+          <button type="button" class="node-import private-share-qr">{self.context.html.escape(t['node_clash_qr'])}</button>
+          <dialog class="node-confirm-dialog node-qr-dialog" aria-labelledby="qr-title-{self.context.html.escape(node['id'], quote=True)}">
+            <h3 id="qr-title-{self.context.html.escape(node['id'], quote=True)}">{self.context.html.escape(t['node_clash_qr'])}</h3>
             <div class="qr" data-private-qr data-error="{self.context.html.escape(t['private_value_failed'], quote=True)}"></div>
-          </details>
+            <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-qr-close>{self.context.html.escape(t['dialog_close'])}</button></div>
+          </dialog>
         </div>'''
 
     def handle_proxy_private_value(self, parsed):
