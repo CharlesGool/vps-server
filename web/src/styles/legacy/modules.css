@@ -73,9 +73,8 @@
 .tailscale-peer-address .private-value code,
 .tailscale-fact .private-value code { min-width: 0; font-size: var(--text-sm); white-space: nowrap; overflow-wrap: normal; }
 .card.terminal-page { --terminal-bg: var(--compat-color-48); --terminal-fg: var(--compat-color-49); padding: 0; overflow: hidden; background: var(--terminal-bg); color: var(--terminal-fg); }
-.terminal-head { padding: var(--compat-size-33) var(--compat-size-24); border-bottom: 1px solid var(--compat-color-50); background: var(--compat-color-51); }
-.terminal-head h1 { margin: 0; font-size: var(--text-base); line-height: var(--leading-normal); }
-.terminal-frame { height: clamp(var(--compat-size-52),60vh,var(--compat-size-53)); padding: var(--compat-size-24); background: var(--terminal-bg); overflow: hidden; }
+.card.wide.terminal-page { max-width: none; }
+.terminal-frame { height: clamp(var(--compat-size-52),76vh,var(--compat-size-27)); padding: var(--compat-size-24); background: var(--terminal-bg); overflow: hidden; }
 .terminal-screen { height: 100%; overflow: hidden; }
 .terminal-screen .xterm { height: 100%; }
 .terminal-status:empty { display: none; }
