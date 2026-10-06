@@ -1,4 +1,4 @@
-.access-workspace { width: min(100%, var(--compat-size-91)); }
+.access-workspace { width: 100%; }
 .access-verify-workspace { width: min(100%, var(--compat-size-92)); }
 .access-verify-form { display: grid; gap: var(--compat-size-1); margin-top: var(--compat-size-9); }
 .access-verify-form label, .access-verify-form input { margin: 0; }

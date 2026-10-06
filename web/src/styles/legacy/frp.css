@@ -1,4 +1,4 @@
-.frp-workspace { width: min(100%, var(--compat-size-91)); }
+.frp-workspace { width: 100%; }
 .frp-heading h1 { margin-bottom: var(--compat-size-24); }
 .frp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-82)), 1fr)); gap: var(--compat-size-24); align-items: stretch; }
 .frp-card { max-width: none; min-width: 0; }
@@ -83,7 +83,7 @@
 .frp-target-head .node-toggle-form { margin-inline-start: auto; margin-inline-end: 0; }
 .frp-target-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--compat-size-11); width: 100%; }
 .frp-target-actions .proxy-node-status { margin-inline-start: 0; margin-inline-end: auto; }
-.lucky-page { display: grid; gap: var(--compat-size-24); }
+.card.lucky-page { max-width: none; display: grid; gap: var(--compat-size-24); }
 .lucky-facts { display: grid; gap: 0; margin: 0; }
 .lucky-facts > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--compat-size-15) var(--compat-size-24); padding: var(--compat-size-33) 0; border-top: 1px solid var(--border); }
 .lucky-facts > div:first-child { border-top: 0; padding-top: 0; }
