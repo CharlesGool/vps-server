@@ -516,5 +516,21 @@
   "terminal_title": "终端",
   "terminal_disconnected": "终端已断开。",
   "frp_saving": "正在保存设置；连接中断时将在恢复后自动显示结果。",
-  "frp_forwarding": "公网:{server}:{remote} 转发至 {local}:{port}"
+  "frp_forwarding": "公网:{server}:{remote} 转发至 {local}:{port}",
+  "nav.label": "导航",
+  "nav.version": "{version}",
+  "nav.home": "首页",
+  "nav.changelog": "更新日志",
+  "nav.settings": "设置",
+  "nav.logout": "退出登录",
+  "action.settings": "设置",
+  "action.close": "退出登录",
+  "theme.slate-blue": "石板蓝",
+  "theme.sage": "鼠尾草绿",
+  "theme.teal": "青蓝",
+  "theme.plum": "梅紫",
+  "theme.ocean": "海蓝",
+  "theme.olive": "橄榄绿",
+  "theme.terracotta": "陶土红",
+  "theme.indigo": "靛蓝"
 }

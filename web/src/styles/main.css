@@ -1,0 +1,61 @@
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./legacy/public.css" layer(legacy);
+@import "./legacy/modules.css" layer(legacy);
+@import "./legacy/select.css" layer(legacy);
+@import "./legacy/shell.css" layer(legacy);
+@import "./legacy/frp.css" layer(legacy);
+@import "./legacy/components.css" layer(legacy);
+@import "./legacy/login.css" layer(legacy);
+@import "./legacy/settings.css" layer(legacy);
+@import "./legacy/forms.css" layer(legacy);
+@import "./legacy/feedback.css" layer(legacy);
+@import "./legacy/dashboard.css" layer(legacy);
+@import "./legacy/speedtest.css" layer(legacy);
+@import "./legacy/visitors.css" layer(legacy);
+@import "./legacy/changelog.css" layer(legacy);
+@import "./legacy/iperf.css" layer(legacy);
+@import "./legacy/data-layout.css" layer(legacy);
+@import "./legacy/proxy.css" layer(legacy);
+@import "./legacy/responsive.css" layer(legacy);
+@import "./legacy/nodes.css" layer(legacy);
+@import "./alignment.css" layer(legacy);
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  :root {
+    transition:
+      --theme-h var(--duration-theme) var(--ease-standard),
+      --theme-c var(--duration-theme) var(--ease-standard);
+  }
+
+  html,
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root,
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+      animation-duration: 0s !important;
+    }
+  }
+}

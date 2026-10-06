@@ -1,4 +1,0 @@
-.changelog h2 { margin: 1.6rem 0 .5rem; padding-bottom: .4rem; border-bottom: 1px solid var(--card-border); font-size: 1.05rem; }.changelog h2:first-child { margin-top: 0; }.changelog h3 { margin: 1rem 0 .3rem; color: var(--muted); font-size: .85rem; }.changelog ul { padding-inline-start: 1.2rem; }.changelog li { margin-bottom: .35rem; }.changelog code,pre.cmd,dl.kv dd.secret code { padding: .15rem .4rem; border-radius: 5px; background: var(--surface-2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }pre.cmd { overflow-x: auto; padding: .8rem; border: 1px solid var(--card-border); font-size: .8rem; }
-
-.changelog { overflow-wrap: anywhere; }
-.changelog code { white-space: normal; }

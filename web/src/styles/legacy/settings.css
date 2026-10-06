@@ -1,0 +1,72 @@
+.access-workspace { width: min(100%, var(--compat-size-91)); }
+.access-verify-workspace { width: min(100%, var(--compat-size-92)); }
+.access-verify-form { display: grid; gap: var(--compat-size-1); margin-top: var(--compat-size-9); }
+.access-verify-form label, .access-verify-form input { margin: 0; }
+.access-verify-form button { justify-self: start; margin-top: var(--compat-size-11); }
+.settings-layout { display: grid; grid-template-columns: var(--compat-size-37) minmax(0, 1fr); align-items: start; gap: var(--compat-size-9); }
+.section-nav { position: sticky; top: var(--compat-size-35); display: grid; gap: var(--compat-size-20); }
+.section-nav a { display: block; min-height: var(--compat-size-38); padding: var(--compat-size-42) var(--compat-size-26); border-radius: var(--radius-md); color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.section-nav a:hover, .section-nav a[aria-current="location"] { background: var(--secondary); color: var(--primary); }
+.settings-content { display: grid; min-width: 0; gap: var(--compat-size-29); }
+.settings-content > * { scroll-margin-top: var(--compat-size-19); }
+.settings-content .access-card { padding: var(--compat-size-9); width: 100%; max-width: none; margin: 0; }
+.preferences-card { margin: 0; }
+.server-label-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--compat-size-14); margin-top: var(--compat-size-24); }
+.server-label-form label { flex: 0 0 100%; margin: 0; }
+.server-label-form input { flex: 1 1 var(--compat-size-41); min-width: 0; margin: 0; }
+.server-label-form button { flex: none; }
+.preferences-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-11); }
+.preferences-choice { display: flex; align-items: center; gap: var(--compat-size-1); min-height: var(--compat-size-93); padding: var(--compat-size-55) var(--compat-size-33); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-medium); text-align: start; text-decoration: none; cursor: pointer; }
+.preferences-choice:hover, .preferences-choice[aria-pressed="true"], .preferences-choice[aria-current="true"] { border-color: var(--primary); background: var(--secondary); color: var(--foreground); }
+.preferences-choice[aria-pressed="true"] { box-shadow: var(--compat-shadow-94); }
+.preferences-mode { margin-bottom: var(--compat-size-29); }
+.preferences-mode h3, .preferences-group-title { margin: 0 0 var(--compat-size-11); font-size: var(--text-sm); }
+.motion-switch { position: relative; flex: none; width: var(--compat-size-36); min-height: var(--compat-size-30); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--secondary); }
+.motion-switch:hover { background: var(--secondary); border-color: var(--primary); }
+.motion-switch[aria-checked="true"] { border-color: var(--primary); background: var(--primary); }
+.motion-switch span { position: absolute; inset-inline-start: var(--compat-size-45); top: var(--compat-size-45); width: var(--compat-size-9); height: var(--compat-size-9); border-radius: var(--radius-full); background: var(--card); box-shadow: var(--compat-shadow-95); transition: transform var(--compat-size-96) ease; }
+.motion-switch[aria-checked="true"] span { transform: translateX(var(--compat-size-25)); }
+html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX(var(--compat-size-97)); }
+.preferences-security-card { display: grid; justify-items: start; gap: var(--compat-size-24); }
+.preferences-security-enter { display: inline-flex; align-items: center; min-height: var(--compat-size-38); padding: var(--compat-size-23) var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--primary); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.preferences-security-enter:hover { border-color: var(--primary); background: var(--secondary); }
+.preferences-security-heading { display: flex; align-items: center; gap: var(--compat-size-42); }
+.preferences-security-heading .ui-icon { width: var(--compat-size-34); height: var(--compat-size-34); color: var(--primary); }
+.preferences-security-details { display: flex; flex-wrap: wrap; gap: var(--compat-size-11); color: var(--foreground); font-size: var(--text-sm); }
+.preferences-security-details span { padding: var(--compat-size-18) var(--compat-size-1); border-radius: var(--radius-md); background: var(--secondary); }
+@media (max-width: 48rem) { .settings-layout { display: block; }.section-nav { position: static; display: flex; overflow-x: auto; gap: var(--compat-size-20); margin-bottom: var(--compat-size-29); }.section-nav a { flex: none; white-space: nowrap; }.settings-content > * { scroll-margin-top: var(--compat-size-24); } }
+.access-page-title { margin-bottom: var(--compat-size-98); }
+.access-card { max-width: none; margin-bottom: var(--compat-size-24); }
+.access-ip-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); box-shadow: var(--shadow-md); }
+.access-card-header { display: flex; justify-content: space-between; align-items: center; gap: var(--compat-size-24); padding: var(--compat-size-99) var(--compat-size-9); border-bottom: 1px solid var(--border); }
+.access-card-header .ui-icon { width: var(--compat-size-9); height: var(--compat-size-9); color: var(--primary); }
+.access-eyebrow { margin: 0 0 var(--compat-size-18); color: var(--primary); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); letter-spacing: var(--compat-tracking-71); text-transform: uppercase; }
+.access-card h2 { margin: 0; font-size: var(--text-xl); }
+.access-card-body { padding: var(--compat-size-99) var(--compat-size-9) var(--compat-size-9); }
+.access-card-body p { margin: 0 0 var(--compat-size-1); color: var(--muted-foreground); }
+.access-card-body p:last-of-type { margin-bottom: var(--compat-size-24); }
+.access-ip-list { display: grid; gap: var(--compat-size-23); margin: 0 0 var(--compat-size-24); padding: 0; list-style: none; }
+.access-ip-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--compat-size-42); min-height: var(--compat-size-17); padding: var(--compat-size-15) var(--compat-size-33); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); }
+.access-ip-list code { overflow-wrap: anywhere; font-size: var(--text-sm); }
+.access-ip-list form { margin: 0 0 0 auto; }
+.access-remove { min-height: var(--compat-size-38); padding: var(--compat-size-20) var(--compat-size-13); border: 0; background: transparent; color: var(--foreground); font-size: var(--text-sm); font-weight: var(--font-weight-normal); text-decoration: underline; text-underline-offset: var(--compat-size-39); }
+.access-remove:hover { background: var(--secondary); }
+.access-ip-form { display: flex; align-items: center; gap: var(--compat-size-23); }
+.access-ip-form input { flex: 1 1 auto; min-width: 0; min-height: var(--compat-size-17); margin: 0; }
+.access-ip-form button { flex: 0 0 auto; min-height: var(--compat-size-17); }
+.access-toggle-form { display: flex; align-items: center; justify-content: space-between; gap: var(--compat-size-24); margin: 0 0 var(--compat-size-24); padding: var(--compat-size-14) 0; border-bottom: 1px solid var(--border); }
+.access-toggle-form button { min-width: var(--compat-size-19); border-color: var(--border); background: var(--card); color: var(--foreground); }
+.access-toggle-form button:hover { background: var(--secondary); }
+.card.access-card h2 { margin-bottom: var(--compat-size-55); }
+@media (max-width: 34rem) {
+  .preferences-choices { grid-template-columns: 1fr; }
+  .app-login-header { padding-inline: var(--compat-size-66); }
+  .login-page main.app-login-main { padding: var(--compat-size-4) var(--compat-size-66); }
+  .login-panel.app-login-card { padding: var(--compat-size-4); }
+  .access-card-header, .access-card-body { padding-inline: var(--compat-size-24); }
+  .access-ip-form { align-items: stretch; flex-direction: column; }
+  .access-ip-form input, .access-ip-form button { width: 100%; }
+  .node-header-controls { gap: var(--compat-size-18); }
+}
+
+.motion-switch[aria-checked="true"] span { background: var(--primary-foreground); }

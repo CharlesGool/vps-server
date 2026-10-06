@@ -513,6 +513,9 @@ PYENV
   sleep 2
 fi
 MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
+if has_module web; then
+  test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"
+fi
 
 # ---------------------------------------------------------------------------
 # 1a. An existing install, if there is one.
@@ -857,6 +860,12 @@ copy_selected_files() {
       cp -r "$SRC_DIR/src/web/features" "$PREFIX/src/web/features"
       cp -r "$SRC_DIR/src/web/static" "$PREFIX/src/web/static"
     fi
+    # The production bundle is built on the maintainer host, not the VPS.
+    test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"
+    cp "$SRC_DIR/web/dist/ui.js" "$SRC_DIR/web/dist/ui.css" "$PREFIX/src/web/static/"
+    mkdir -p "$PREFIX/web"
+    rm -rf "$PREFIX/web/dist"
+    cp -a "$SRC_DIR/web/dist" "$PREFIX/web/dist"
     cp "$SRC_DIR/deploy/runtime-entry.py" "$PREFIX/app.py"
   fi
   if has_module web && [ "$SRC_DIR" != "$prefix_abs" ]; then
@@ -920,8 +929,13 @@ prepare_module_source() {
   case "$SRC_DIR/" in "$PREFIX_ABS/installer-source/"*) return 0 ;; esac
   local stage item
   stage="$(mktemp -d "$PREFIX/.installer-source.XXXXXX")"
-  for item in src deploy tools lang third_party config doc README.md LICENSE .env.example; do
-    [ -e "$SRC_DIR/$item" ] && cp -a "$SRC_DIR/$item" "$stage/$item"
+  for item in src deploy tools lang third_party config doc web README.md LICENSE .env.example; do
+    if [ "$item" = web ]; then
+      mkdir -p "$stage/web"
+      cp -a "$SRC_DIR/web/dist" "$stage/web/dist"
+    else
+      [ -e "$SRC_DIR/$item" ] && cp -a "$SRC_DIR/$item" "$stage/$item"
+    fi
   done
   printf '%s\n' "$NEW_VERSION" > "$stage/config/VERSION"
   chown -R root:root "$stage"

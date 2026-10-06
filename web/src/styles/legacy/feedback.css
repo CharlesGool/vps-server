@@ -1,0 +1,2 @@
+.error, .notice, .iperf-state { margin: 0 0 var(--compat-size-24); padding: var(--compat-size-55) var(--compat-size-100); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); color: var(--foreground); }
+.error { color: var(--destructive); border-color: var(--destructive); }.notice { color: var(--primary); }.iperf-state.is-open { color: var(--success); }.iperf-state.is-closed { color: var(--muted-foreground); }

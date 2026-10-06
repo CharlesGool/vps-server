@@ -516,5 +516,21 @@
   "terminal_title": "Terminal",
   "terminal_disconnected": "La terminal se ha desconectado.",
   "frp_saving": "Guardando ajustes. Si la conexión se interrumpe, el resultado aparecerá al reconectarse.",
-  "frp_forwarding": "Público:{server}:{remote} redirige a {local}:{port}"
+  "frp_forwarding": "Público:{server}:{remote} redirige a {local}:{port}",
+  "nav.label": "Navegación",
+  "nav.version": "{version}",
+  "nav.home": "Inicio",
+  "nav.changelog": "Registro de cambios",
+  "nav.settings": "Configuración",
+  "nav.logout": "Cerrar sesión",
+  "action.settings": "Configuración",
+  "action.close": "Cerrar sesión",
+  "theme.slate-blue": "Azul pizarra",
+  "theme.sage": "Verde salvia",
+  "theme.teal": "Verde azulado",
+  "theme.plum": "Ciruela",
+  "theme.ocean": "Azul océano",
+  "theme.olive": "Oliva",
+  "theme.terracotta": "Terracota",
+  "theme.indigo": "Índigo"
 }

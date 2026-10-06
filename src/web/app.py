@@ -890,11 +890,10 @@ CHANGELOG_PATHS = {
 CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
-    "/static/style.css": ("text/css", STATIC_DIR / "style.css"),
-    "/static/theme.js": ("application/javascript", STATIC_DIR / "theme.js"),
+    "/static/ui.js": ("application/javascript", STATIC_DIR / "ui.js" if (STATIC_DIR / "ui.js").exists() else BASE_DIR / "web/dist/ui.js"),
+    "/static/style.css": ("text/css", STATIC_DIR / "ui.css" if (STATIC_DIR / "ui.css").exists() else BASE_DIR / "web/dist/ui.css"),
     "/static/password-fields.js": ("application/javascript", STATIC_DIR / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
-    "/static/settings-sections.js": ("application/javascript", STATIC_DIR / "settings-sections.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
     "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
@@ -906,7 +905,6 @@ STATIC_FILES = {
     "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
-    "/static/layout-motion.js": ("application/javascript", STATIC_DIR / "layout-motion.js"),
     "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
@@ -1292,7 +1290,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 # has no file-serving route at all.
 # ---------------------------------------------------------------------------
 
-PROBE_CSS = (STATIC_DIR / "styles/public.css").read_text()
+PROBE_CSS = STATIC_FILES["/static/style.css"][1].read_text(encoding="utf-8")
 
 class ProbeHandler(PublicMixin, BaseHTTPRequestHandler):
     """The unauthenticated page on 80 and 443."""

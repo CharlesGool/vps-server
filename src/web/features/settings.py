@@ -81,7 +81,7 @@ class SettingsMixin:
               <span class="preferences-security-details"><span>{esc(t['access_ips'])}</span><span>{esc(t['access_password'])}</span></span>
               <a class="preferences-security-enter" href="/settings/security">{esc(t['access_enter_security'])}</a>
             </section>
-          </div></div></div><script src="/static/settings-sections.js" defer></script>'''
+          </div></div></div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -143,7 +143,7 @@ class SettingsMixin:
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
           </section></div></div><script src="/static/access-settings.js" defer></script>
-          <script src="/static/settings-sections.js" defer></script></div>'''
+          </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 

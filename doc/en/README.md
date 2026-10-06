@@ -223,7 +223,9 @@ Configuration template: [.env.example](../../.env.example). All variables have d
 
 The installer also accepts environment arguments `VPSSRV_MODULES` (comma-separated `web,iperf3,proxy,frps,lucky,tailscale`; fresh default `web`, existing modules retained on reinstall) and `SERVICE_NAME` (default `vps-server-web`). Uninstall argument `KEEP_DATA=1` preserves data. These are not Web settings.
 
-When maintaining source, run `python3 tools/check-project/check_project.py`. It requires Git, Bash, Python 3.9+ and Node.js; Node.js only checks JavaScript syntax and is not a server runtime dependency. Use `--node /absolute/path/to/node` if it is outside PATH. Tool directories changed from `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` to `build-styles`, `build-offline`, `verify-dependencies` respectively; replace paths in old maintenance commands. Installation commands are unchanged. The check does not start services or replace deployment acceptance.
+When maintaining source, run `python3 tools/check-project/check_project.py`. It requires Git, Bash, Python 3.9+ and Node.js 24; Node.js builds the frontend and checks JavaScript syntax and is not a server runtime dependency. Use `--node /absolute/path/to/node` if it is outside PATH. Tool directories changed from `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` to `build-styles`, `build-offline`, `verify-dependencies` respectively; replace paths in old maintenance commands. Installation commands are unchanged. The check does not start services or replace deployment acceptance.
+
+Before installing development source, **MUST** run `npm ci && npm run check` in `web/` (Node.js 24 is required to build). Full offline packages already include frontend output; the test server needs no Node.js. The unified check also runs frontend design/type checks and a production build.
 
 ## Upgrade
 

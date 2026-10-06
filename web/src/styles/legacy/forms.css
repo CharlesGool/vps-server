@@ -1,0 +1,13 @@
+.card.narrow { max-width: var(--compat-size-104); }.card.wide { max-width: var(--compat-size-91); }
+h1 { margin: 0 0 var(--compat-size-29); font-size: var(--text-2xl); line-height: var(--leading-tight); letter-spacing: var(--compat-tracking-71); }
+h2 { line-height: var(--leading-tight); letter-spacing: var(--compat-tracking-71); }.muted { color: var(--muted-foreground); }.small { font-size: var(--text-sm); }
+form label { display: block; margin-bottom: var(--compat-size-24); color: var(--foreground); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+input, select, textarea { display: block; width: 100%; min-height: var(--compat-size-38); margin-top: var(--compat-size-18); padding: var(--compat-size-1) var(--compat-size-14); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: var(--compat-size-39) solid var(--compat-color-141); }
+input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent-color: var(--primary); }
+button { min-height: var(--compat-size-38); padding: var(--compat-size-23) var(--compat-size-24); border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--primary); color: var(--primary-foreground); font-family: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); line-height: var(--leading-normal); cursor: pointer; }
+button:hover { background: var(--primary); }button:disabled { opacity: .55; cursor: not-allowed; }
+button.danger:hover { border-color: var(--destructive); background: var(--compat-color-142); color: var(--destructive-foreground); }
+button.danger { border-color: var(--destructive); background: var(--destructive); color: var(--destructive-foreground); }
+button.copybtn, button.chip { min-height: var(--compat-size-21); padding: var(--compat-size-18) var(--compat-size-55); border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: var(--text-sm); }
+button.copybtn:hover, button.chip:hover { background: var(--secondary); }button.copybtn.copied { color: var(--success); border-color: var(--success); }

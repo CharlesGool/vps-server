@@ -516,5 +516,21 @@
   "terminal_title": "Terminal",
   "terminal_disconnected": "Terminal disconnected.",
   "frp_saving": "Saving settings. If the connection drops, the result will appear when it reconnects.",
-  "frp_forwarding": "Public:{server}:{remote} forwards to {local}:{port}"
+  "frp_forwarding": "Public:{server}:{remote} forwards to {local}:{port}",
+  "nav.label": "Navigation",
+  "nav.version": "{version}",
+  "nav.home": "Home",
+  "nav.changelog": "Changelog",
+  "nav.settings": "Settings",
+  "nav.logout": "Log out",
+  "action.settings": "Settings",
+  "action.close": "Log out",
+  "theme.slate-blue": "Slate blue",
+  "theme.sage": "Sage",
+  "theme.teal": "Teal",
+  "theme.plum": "Plum",
+  "theme.ocean": "Ocean",
+  "theme.olive": "Olive",
+  "theme.terracotta": "Terracotta",
+  "theme.indigo": "Indigo"
 }

@@ -1,0 +1,27 @@
+/* Shared design contract for the server-rendered module forms. */
+html, body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+main { max-width: var(--container-content); padding: calc(var(--spacing) * 8) calc(var(--spacing) * 6); gap: calc(var(--spacing) * 6); }
+.ui-page-heading { width: 100%; }
+h1, .login-panel h1 { margin: 0; font-size: var(--text-2xl); line-height: var(--text-2xl--line-height); font-weight: var(--font-weight-semibold); letter-spacing: var(--compat-tracking-1, 0); }
+h2 { font-size: var(--text-xl); font-weight: var(--font-weight-semibold); }
+h3 { font-size: var(--text-lg); font-weight: var(--font-weight-semibold); }
+.card, .access-card, .managed-node, .node-card, .frp-client-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: calc(var(--spacing) * 6); }
+button { min-height: calc(var(--spacing) * 9); font-size: var(--text-sm); font-weight: var(--font-weight-medium); padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4); border-radius: var(--radius-md); }
+input, select, textarea { min-height: calc(var(--spacing) * 10); font-size: var(--text-base); border-color: var(--input); border-radius: var(--radius-md); }
+.page-back { color: var(--primary); }
+.native-card { display: flex; min-width: 0; }
+.native-card .tile { width: 100%; flex: 1; min-height: calc(var(--spacing) * 32); padding: calc(var(--spacing) * 5); border-radius: var(--radius-lg); background: var(--card); }
+.tile-label { font-size: var(--text-base); font-weight: var(--font-weight-semibold); }
+.tile-icon { width: calc(var(--spacing) * 10); height: calc(var(--spacing) * 10); border-radius: var(--radius-md); background: var(--secondary); }
+.card:has(.card-grid) { max-width: none; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.settings-layout { width: 100%; gap: calc(var(--spacing) * 8); }
+.login-panel.app-login-card { max-width: var(--container-login); padding: calc(var(--spacing) * 8); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.login-panel input, .login-submit, .login-ip-form button { min-height: calc(var(--spacing) * 12); border-radius: var(--radius-md); }
+.preferences-choices { align-items: center; }
+@media (max-width: 48rem) { main { padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4); } .card, .access-card { padding: calc(var(--spacing) * 5); } }
+
+/* Shared Vue controls inherit their template variants, not native form defaults. */
+button[data-ui-control] { background: transparent; color: inherit; border: 0; padding: 0; min-height: 0; font: inherit; }
+
+body { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: var(--text-base--line-height); }
+:focus-visible { outline: var(--focus-ring-width) solid var(--ring); outline-offset: var(--focus-ring-offset); }

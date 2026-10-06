@@ -1,0 +1,4 @@
+.changelog h2 { margin: var(--compat-size-77) 0 var(--compat-size-11); padding-bottom: var(--compat-size-15); border-bottom: 1px solid var(--border); font-size: var(--text-base); }.changelog h2:first-child { margin-top: 0; }.changelog h3 { margin: var(--compat-size-24) 0 var(--compat-size-22); color: var(--muted-foreground); font-size: var(--text-sm); }.changelog ul { padding-inline-start: var(--compat-size-98); }.changelog li { margin-bottom: var(--compat-size-18); }.changelog code,pre.cmd,dl.kv dd.secret code { padding: var(--compat-size-58) var(--compat-size-15); border-radius: var(--radius-md); background: var(--secondary); font-family: var(--font-mono); font-size: var(--text-sm); }pre.cmd { overflow-x: auto; padding: var(--compat-size-33); border: 1px solid var(--border); font-size: var(--text-sm); }
+
+.changelog { overflow-wrap: anywhere; }
+.changelog code { white-space: normal; }

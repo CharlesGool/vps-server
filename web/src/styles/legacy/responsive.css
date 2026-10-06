@@ -1,0 +1,25 @@
+
+/* Narrow screens. The two-column key/value grid is the one that actually
+   breaks: a label like "SNI (read back from the certificate CN)" takes the
+   auto column wide enough to squeeze the value it is labelling. */
+@media (max-width: 34rem) {
+  .topnav:not(.minimal) { position: static; flex-direction: column; align-items: stretch; gap: var(--compat-size-117); padding: var(--compat-size-118); }
+  .topnav:not(.minimal) .navlinks { gap: var(--compat-size-147); }
+  .topnav:not(.minimal) .navlinks > a { padding: var(--compat-size-120) var(--compat-size-117); }
+  main { padding: var(--compat-size-29) var(--compat-size-118) var(--compat-size-30); }
+  .card { padding: var(--compat-size-29); }
+  dl.kv { grid-template-columns: 1fr; gap: var(--compat-size-119); }
+  dl.kv dt { margin-top: var(--compat-size-117); }
+  dl.kv dt:first-child { margin-top: 0; }
+  .inline-form { align-items: stretch; }
+  .inline-form label { width: 100%; }
+  .inline-form input[type="number"] { width: 100%; }
+  .copyhead { flex-wrap: wrap; }
+  .proxy-node-facts { grid-template-columns: minmax(var(--compat-size-148), 26%) minmax(0, 1fr); }
+  .proxy-node-facts dt { margin-top: 0; }
+}
+
+@media (max-width: 65rem) { .topnav { align-items: flex-start; flex-direction: column; }.navlinks { justify-content: flex-start; }.navlinks > a, .navlinks summary { min-height: var(--compat-size-38); } }
+@media (max-width: 36rem) { .topnav { position: static; padding: var(--compat-size-14); }.navlinks { width: 100%; flex-wrap: wrap; padding-bottom: var(--compat-size-22); }.navlinks > a { flex: none; }.navlinks details { flex: none; }.language-options,.theme-options { position: absolute; inset-inline-end: auto; inset-inline-start: 0; min-width: var(--compat-size-80); }.card { padding: var(--compat-size-98); }main { padding: var(--compat-size-24) var(--compat-size-14) var(--compat-size-30); }.gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gauge { padding: var(--compat-size-24) var(--compat-size-14); }dl.kv { grid-template-columns: 1fr; gap: var(--compat-size-72); }dl.kv dt:not(:first-child) { margin-top: var(--compat-size-1); }.inline-form label { width: 100%; }.inline-form input[type="number"] { width: 100%; }.copyhead { flex-wrap: wrap; } }
+@media (max-width: 24rem) { .brandwrap { min-width: 0; flex-wrap: wrap; }.navlinks { min-width: 0; }.navlinks > a { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; animation-duration: var(--compat-size-149) !important; transition-duration: var(--compat-size-149) !important; } }

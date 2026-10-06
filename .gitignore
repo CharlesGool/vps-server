@@ -64,3 +64,6 @@ Thumbs.db
 
 # Bundled binaries under third_party/ are tracked. The ignored root copies
 # above are created only by an in-place installation.
+
+/web/dist/
+**/.npm/

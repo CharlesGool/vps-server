@@ -105,7 +105,7 @@ class PublicMixin:
 <link rel="icon" type="image/svg+xml" href="/favicon.ico">
 <style>{self.context.PROBE_CSS}</style>
 </head>
-<body>
+<body class="public-probe">
 <main>
 <h1><span class="ok">&#10003;</span> {self.context.html.escape(t['probe_title'])}</h1>
 <p>{self.context.html.escape(t['probe_ok'])}</p>

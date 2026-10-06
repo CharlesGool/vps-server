@@ -1,0 +1,34 @@
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node node_modules/vite/bin/vite.js",
+    "build": "node node_modules/vite/bin/vite.js build && node scripts/copy-notices.mjs",
+    "preview": "vite preview",
+    "check:design": "node scripts/check-design.mjs",
+    "check:types": "node node_modules/vue-tsc/bin/vue-tsc.js --noEmit",
+    "check": "npm run check:design && npm run check:types && npm run build"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.52.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide": "^1.52.0",
+    "reka-ui": "^2.11.0",
+    "tailwind-merge": "^3.7.0",
+    "vue": "^3.5.43",
+    "vue-i18n": "^11.4.13",
+    "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9",
+    "vite": "^8.3.3",
+    "vue-tsc": "^3.3.12"
+  }
+}

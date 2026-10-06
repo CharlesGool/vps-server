@@ -48,6 +48,8 @@ This inventory records distributed component identity and obligations, preserves
 
 Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, OpenSSL, iptables and similar OS components are not pinned by this lock; their licenses/security updates follow distribution channels.
 
+The Vue frontend adds Vue 3.5.43, vue-i18n 11.4.13, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 and tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), and class-variance-authority 0.7.1 (Apache-2.0). Exact identities and download sources are in the [npm lock file](../../web/package-lock.json). They provide shared components and compiled browser resources; copyright ownership follows upstream texts. Verified on 2026-10-06. Distribution retains original copyrights and license texts. The build copies them and a version/source-download manifest to `web/dist/licenses/`, retained by installation and offline packages. Build-tool notices are included as well; this does not imply those tools run on the VPS.
+
 ### License Texts
 
 - [frp](../../third_party/frp/LICENSE)

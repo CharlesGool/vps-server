@@ -15,6 +15,7 @@ import shutil
 import string
 import subprocess
 import sys
+import tempfile
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +32,17 @@ def load_json(path):
             result[key] = value
         return result
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique)
+
+
+def flatten(value, prefix=""):
+    result = {}
+    for key, item in value.items():
+        name = prefix + key
+        if isinstance(item, dict):
+            result.update(flatten(item, name + "."))
+        else:
+            result[name] = item
+    return result
 
 
 def fields(value):
@@ -137,9 +149,9 @@ def main():
         if not directory.is_dir() or not list(directory.glob("*.json")):
             continue
         try:
-            source = load_json(directory / "zh-CN.json")
+            source = flatten(load_json(directory / "zh-CN.json"))
             for language in ("en", "es"):
-                translation = load_json(directory / f"{language}.json")
+                translation = flatten(load_json(directory / f"{language}.json"))
                 if source.keys() != translation.keys():
                     errors.append(f"{directory.name}/{language}: translation keys differ")
                 for key in source.keys() & translation.keys():
@@ -184,6 +196,19 @@ def main():
                 errors.append(f".env.example: missing {variable}")
 
     run([sys.executable, "tools/build-styles/build_styles.py", "--check"])
+    with tempfile.TemporaryDirectory(prefix="vps-server-startup-check-") as temporary:
+        environment = dict(os.environ)
+        environment.update({"VPSSRV_STATE_DIR": temporary,
+                            "VPSSRV_DATA_DIR": str(Path(temporary) / "data"),
+                            "VPSSRV_PASSWORD_FILE": str(Path(temporary) / "password"),
+                            "VPSSRV_CONSOLE_PORT_FILE": str(Path(temporary) / "port"),
+                            "PYTHONPATH": str(ROOT / "src/web")})
+        result = subprocess.run([sys.executable, "-c", "import app"], cwd=ROOT,
+                                env=environment, capture_output=True, text=True,
+                                timeout=30)
+        if result.returncode:
+            errors.append("backend startup import: " + result.stderr.strip())
+
     run([sys.executable, "tools/verify-dependencies/verify_dependencies.py"])
     run(["git", "diff", "--check"])
     print("Checked " + ", ".join(f"{count} {kind}" for kind, count in counts.items()))
@@ -192,7 +217,7 @@ def main():
     if errors:
         print(f"FAIL: {len(errors)} issue(s)", file=sys.stderr)
         return 1
-    print("PASS: static checks, translations, local links, configuration and artifact hashes")
+    print("PASS: static checks, translations, local links, configuration, backend startup and artifact hashes")
     return 0
 
 

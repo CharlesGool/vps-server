@@ -195,7 +195,6 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
           <div class="navlinks">
             {link('/', 'home')}
             {link('/changelog', 'changelog')}
-            {link('/settings/logs', 'module_detailed_logs')}
             {link('/settings', 'settings') if context.AUTH_ENABLED and (password_authenticated or ip_authenticated) else ''}
             {logout_link}
           </div>
@@ -228,6 +227,20 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
                              t['frp_heading'] if destination == '/frp' else t['dashboard'])
         body = (f'<a class="page-back" href="{context.html.escape(destination, quote=True)}">'
                 f'{context.html.escape(t["back_to"].format(destination=destination_label))}</a>' + body)
+    items = []
+    if show_nav:
+        for href, key in (('/', 'home'), ('/changelog', 'changelog'), ('/settings', 'settings')):
+            items.append({'href': href, 'key': key, 'label': t[key],
+                          'current': 'location' if key == 'settings' and back_href == '/settings' else
+                          'page' if active == key else None})
+        if context.AUTH_ENABLED and (password_authenticated or ip_authenticated):
+            items.append({'href': '/logout', 'key': 'logout', 'label': t['logout']})
+    ui_context = {'version': context.VERSION_LABEL, 'title': title,
+                  'label': t['nav_label'], 'login': bare, 'items': items}
+    if show_nav and active != 'home':
+        ui_context['back'] = {'to': destination,
+                              'label': t['back_to'].format(destination=destination_label)}
+    ui_data = context.json.dumps(ui_context, ensure_ascii=False).replace('<', '\\u003c')
     history_guard = ('<script src="/static/auth-history.js"></script>'
                      if password_authenticated or ip_authenticated else '')
     return f"""<!doctype html>
@@ -237,16 +250,17 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{context.html.escape(page_title)}</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon-{favicon}.svg">
-<script src="/static/layout-motion.js"></script>
+
 {history_guard}
 <script>try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
-<script src="/static/theme.js" defer></script>
+<script type="module" src="/static/ui.js"></script>
 <script src="/static/password-fields.js" defer></script>
 <script src="/static/reference-select.js" defer></script>
 </head>
 <body{' class="login-page"' if bare else ''}>
-{nav}
+<div id="ui-header">{nav}</div>
+<script id="ui-context" type="application/json">{ui_data}</script>
 <main{' class="app-login-main"' if bare else ''}>
 {body}
 </main>

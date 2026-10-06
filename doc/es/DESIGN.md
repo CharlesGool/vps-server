@@ -44,6 +44,7 @@ Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guard
 | `.local/` | Archivos de mantenimiento, instantáneas históricas y notas privadas ignorados por Git; excluidos del despliegue. |
 | `.github/` | Comprobaciones continuas y mantenimiento de dependencias Actions. |
 | `src/` | Código Web, manejadores y recursos estáticos. |
+| `web/` | Componentes Vue, tokens, estilos y configuración de compilación frontend. |
 | `deploy/` | Instalación, desinstalación, configuración de módulos y plantillas systemd. |
 | `config/` | Versión, sumas de artefactos y procedencia. |
 | `lang/` | Traducciones; el valor `zh_cn` selecciona chino simplificado. |
@@ -51,9 +52,11 @@ Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guard
 | `tools/` | Construcción de estilos, verificación y empaquetado sin conexión. |
 | `doc/` | Diseño, estado, historia, cambios, avisos y traducciones. |
 
-Los estilos se encuentran en `src/web/static/styles/` y generan `src/web/static/style.css`. `tools/build-offline/build_offline.py` produce el paquete en el directorio elegido con programa, instalador, artefactos y avisos; excluye estado privado, `.git` y archivos locales de depuración. `tools/build-offline/fetch_assets.py` verifica las descargas nftables en la máquina de construcción.
+El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y componentes shadcn-vue de la plantilla. Python conserva los formularios, la autenticación y la autorización. Los componentes compartidos proporcionan cabecera, título, tarjetas, navegación de secciones, selector de tema y control de modo. La navegación utiliza enlaces completos del mismo origen.
 
-El punto de entrada de mantenimiento es `python3 tools/check-project/check_project.py`, que requiere Python 3.9+, Git, Bash y Node.js. Comprueba la sintaxis Python/Bash/JavaScript propia, claves JSON duplicadas, claves y marcadores de formato de los tres idiomas, enlaces locales, cobertura de variables de entorno, estilos generados y hashes de artefactos fijados. `.github/` ejecuta la misma comprobación en CI, y `.editorconfig` y `.gitattributes` definen la codificación y los saltos de línea; los bytes originales de terceros se conservan. Los directorios de herramientas usan minúsculas y guiones; los archivos Python conservan guiones bajos.
+`web/src/styles/tokens.css` es la única fuente de valores visuales; `web/src/styles/legacy/` adapta los formularios mediante tokens semánticos. Ejecute `npm ci && npm run check` en `web/` para comprobar diseño, tipos y compilación. La salida `web/dist/ui.js` y `ui.css` se copia a los recursos instalados y se incluye en el paquete sin conexión; el VPS no necesita Node.js. Los textos e identidades de las dependencias se incluyen en `web/dist/licenses/`. Las dependencias y la salida compilada se ignoran en Git.
+
+`.github/` ejecuta las mismas comprobaciones; `.claude/settings.json` ejecuta la comprobación de diseño después de editar. `tools/check-project/check_project.py` comprueba también Python/Bash/JavaScript, traducciones, documentos y artefactos fijados. `tools/build-offline/build_offline.py` crea paquetes y `fetch_assets.py` verifica los recursos. Los componentes reciben la versión real del backend; los registros formales siguen usando CHANGELOG traducidos.
 
 ## Restricciones de diseño
 
@@ -68,7 +71,7 @@ El punto de entrada de mantenimiento es `python3 tools/check-project/check_proje
 
 ## Tokens de diseño
 
-El servicio Python existente conserva su sistema de diseño. Los colores se definen en `src/web/static/styles/foundation.css`, los temas y variantes oscuras en `shell.css`, y las fuentes en `components.css`; no se migra a la plantilla Vue. La coherencia de los estilos se comprueba con `python3 tools/build-styles/build_styles.py --check`. Esto verifica que el archivo combinado coincide con sus fuentes, no la aceptación visual.
+Se usan los tokens actuales de la plantilla para tipografía, espaciado, radios, sombras, contenedores, ocho temas y movimiento. Los componentes proceden de la plantilla; los enlaces conservan la navegación Python. Los tokens adicionales `compat-*` mantienen dimensiones de tablas y diálogos y variantes de estado de los módulos. La tipografía, los pesos, radios y temas usan los valores de la plantilla. Los componentes nuevos solo referencian tokens. Compruebe con `cd web && npm run check`.
 
 ## Diseño de datos
 

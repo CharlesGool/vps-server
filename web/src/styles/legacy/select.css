@@ -1,0 +1,13 @@
+.reference-select { position: relative; min-width: 0; }
+.reference-native-select { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0; pointer-events: none; }
+.reference-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--compat-size-3); width: 100%; min-height: var(--compat-size-38); padding: var(--compat-size-1) var(--compat-size-14); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); text-align: start; font-weight: var(--font-weight-semibold); }
+.reference-select-trigger:hover,.reference-select-trigger[aria-expanded="true"] { border-color: var(--primary); background: var(--card); color: var(--foreground); }
+.reference-select-chevron { width: var(--compat-size-85); height: var(--compat-size-85); flex: none; border-inline-end: var(--compat-size-39) solid currentColor; border-bottom: var(--compat-size-39) solid currentColor; transform: rotate(45deg) translateY(var(--compat-size-86)); }
+.reference-select-trigger[aria-expanded="true"] .reference-select-chevron { transform: rotate(225deg) translateY(var(--compat-size-86)); }
+.reference-select-options { position: absolute; z-index: var(--layer-87); top: calc(100% + var(--compat-size-88)); inset-inline: 0; max-height: min(var(--compat-size-32),55dvh); overflow: auto; padding: var(--compat-size-89); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); box-shadow: var(--compat-shadow-90); }
+.reference-select-options[hidden] { display: none; }
+.reference-select-options button { display: block; width: 100%; min-height: var(--compat-size-12); padding: var(--compat-size-85) var(--compat-size-3); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; text-align: start; }
+.reference-select-options button:hover,.reference-select-options button:focus-visible,.reference-select-options button[aria-selected="true"] { background: var(--secondary); color: var(--primary); }
+.reference-select-options button:focus-visible { outline-offset: var(--compat-size-86); }
+
+.reference-select-options button { margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal); }

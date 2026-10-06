@@ -67,6 +67,10 @@ def build(asset, nft_asset, nft_sources, output, version):
         staged = Path(temporary) / "vps-server"
         staged.mkdir()
         _tracked_source(staged)
+        bundle = ROOT / "web/dist"
+        if not all((bundle / name).is_file() for name in ("ui.js", "ui.css")):
+            raise ValueError("frontend bundle missing; run npm ci and npm run check in web/")
+        shutil.copytree(bundle, staged / "web/dist")
         destination = staged / "third_party" / "tailscale" / "tailscale_1.102.4_amd64.tgz"
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(asset, destination)

@@ -44,6 +44,7 @@ After language selection, the installer starts background job `vps-server-instal
 | `.local/` | Git-ignored maintenance files, historical snapshots and private notes; excluded from deployment. |
 | `.github/` | Continuous checks and Actions dependency maintenance. |
 | `src/` | Web source, feature handlers and static resources. |
+| `web/` | Vue shared components, tokens, feature styles and frontend build configuration. |
 | `deploy/` | Install/uninstall scripts, module setup and systemd templates. |
 | `config/` | Version, pinned artifact hashes and import provenance. |
 | `lang/` | UI/installer translations; config value `zh_cn` selects Simplified Chinese. |
@@ -51,9 +52,11 @@ After language selection, the installer starts background job `vps-server-instal
 | `tools/` | Style build, dependency verification and offline packaging tools. |
 | `doc/` | Design, status, history, changes, notices and translations. |
 
-Style sources live in `src/web/static/styles/`, with output at `src/web/static/style.css`. `tools/build-offline/build_offline.py` writes packages to a selected output directory, containing code, installer, pinned artifacts and notices; private state, `.git` and local debugging files are excluded. `tools/build-offline/fetch_assets.py` verifies nftables downloads on the build host.
+Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and shadcn-vue template components to enhance server pages. Python retains business forms, authentication and authorization. Shared components provide the header, page heading, card grid, section navigation, theme listbox and mode control. Navigation uses full same-origin links.
 
-The maintenance entry point is `python3 tools/check-project/check_project.py`, requiring Python 3.9+, Git, Bash and Node.js. It checks first-party Python/Bash/JavaScript syntax, duplicate JSON keys, three-language keys and format placeholders, local documentation links, environment-variable coverage, stylesheet output and pinned artifact hashes. `.github/` runs the same check in CI, while `.editorconfig` and `.gitattributes` define text encoding and line endings; original third-party bytes remain unchanged. Tool directories use lowercase words and hyphens; Python filenames retain underscores.
+`web/src/styles/tokens.css` is the only visual-value source; `web/src/styles/legacy/` bridges existing forms through semantic tokens. Run `npm ci && npm run check` in `web/` for design/type checks and the production build. Output is `web/dist/ui.js` and `ui.css`, copied into installed static resources and included in offline packages; the VPS needs no Node.js. Original dependency texts and identities accompany the build in `web/dist/licenses/`. Build output and dependencies are Git-ignored.
+
+`.github/` runs the same checks; `.claude/settings.json` runs the template design check after edits. `tools/check-project/check_project.py` also checks Python/Bash/JavaScript, translations, documents and pinned artifacts. `tools/build-offline/build_offline.py` builds offline packages and `fetch_assets.py` verifies assets. Components receive the actual backend build version; formal changelogs still come from translated CHANGELOG files.
 
 ## Design Constraints
 
@@ -68,7 +71,7 @@ The maintenance entry point is `python3 tools/check-project/check_project.py`, r
 
 ## Design Tokens
 
-The existing Python service retains its design system. Color tokens live in `src/web/static/styles/foundation.css`, themes and dark variants in `shell.css`, and fonts in `components.css`; it does not migrate to the Vue starter. Check stylesheet consistency with `python3 tools/build-styles/build_styles.py --check`. This verifies that the combined asset matches its sources, not visual acceptance.
+Use the latest starter tokens for typography, spacing, radii, shadows, containers, eight themes and motion. Shared components come directly from the starter; header/page-heading links preserve Python navigation. Additional `compat-*` tokens retain module-specific table/dialog dimensions and status variants. Typography, weights, radii and themes use template values. New components and pages only reference tokens. Check with `cd web && npm run check`.
 
 ## Data Design
 

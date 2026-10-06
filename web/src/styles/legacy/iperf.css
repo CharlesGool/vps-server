@@ -1,0 +1,18 @@
+.iperf-actions,.inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--compat-size-14); }.inline-form { margin: 0; }.inline-form label { display: flex; flex-direction: column; gap: var(--compat-size-22); margin: 0; }.inline-form input { margin: 0; }.inline-form input[type="number"] { width: var(--compat-size-54); }
+.iperf-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-14); margin-bottom: var(--compat-size-24); }
+.iperf-fact { display: flex; flex-direction: column; gap: var(--compat-size-20); min-width: 0; padding: var(--compat-size-26) var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
+.iperf-fact > span { color: var(--muted-foreground); font-size: var(--text-sm); }
+.iperf-fact > strong { font-size: var(--text-base); }
+.iperf-fact .iperf-state { margin: 0; padding: 0; border: 0; background: transparent; }
+.iperf-port-form { display: flex; align-items: end; flex-wrap: wrap; gap: var(--compat-size-55); margin-bottom: var(--compat-size-29); }
+.iperf-port-form label { margin: 0; }
+.iperf-port-form input { width: var(--compat-size-56); }
+@media (max-width: 28rem) { .iperf-facts { grid-template-columns: 1fr; } }
+.iperf-client-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: var(--compat-size-20) var(--compat-size-24); }
+.iperf-client-form label { min-width: 0; }
+.iperf-client-form > button { justify-self: start; margin-bottom: var(--compat-size-24); }
+@media (max-width: 36rem) { .iperf-client-form { grid-template-columns: 1fr; }.iperf-client-form > button { width: 100%; } }
+.iperf-panels { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-57)), 1fr)); align-items: start; gap: var(--compat-size-24); }
+.iperf-panels > .card { min-width: 0; margin: 0; }
+
+.iperf-panels > .card > :is(h1, h2) { margin: 0 0 var(--compat-size-29); font-size: var(--text-2xl); line-height: var(--leading-tight); }
