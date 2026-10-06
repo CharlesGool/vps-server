@@ -10,6 +10,11 @@
       select.closest('form').querySelector(`[name="${select.dataset.tailscaleSingle}_clear"]`).disabled = !!select.value;
     });
   });
+  document.querySelector('.tailscale-connect-form')?.addEventListener('submit', (event) => {
+    const submit = event.currentTarget.querySelector('button[type="submit"]');
+    // Disable after the browser has collected the form so a second click cannot start another connection.
+    setTimeout(() => { submit.disabled = true; }, 0);
+  });
   const button = document.querySelector('.tailscale-web-open');
   button?.addEventListener('click', async () => {
     button.disabled = true;

@@ -90,10 +90,11 @@
   .portfwd-add-form .protocol-choice { grid-column: auto; }
 }
 
-.tailscale-connect-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: var(--compat-size-24); margin: 0 0 var(--compat-size-9); }
+.tailscale-connect-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: var(--compat-size-24); margin: 0 0 var(--compat-size-9); }
 .tailscale-connect-form > label, .tailscale-connect-field label { margin: 0; }
 .tailscale-connect-field { display: grid; align-content: start; gap: var(--compat-size-18); min-width: 0; }
-.tailscale-connect-form > button[type="submit"] { grid-column: 1 / -1; justify-self: start; }
+.tailscale-connect-form > button[type="submit"] { justify-self: start; }
+.tailscale-auth { margin: 0 0 var(--compat-size-9); }
 @media (max-width: 42rem) { .tailscale-connect-form { grid-template-columns: 1fr; } }
 
 .tailscale-connect-form input:not([type="hidden"]) { height: var(--compat-size-38); font-size: var(--text-sm); }

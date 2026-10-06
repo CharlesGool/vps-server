@@ -3,11 +3,15 @@
 import html
 import json
 import subprocess
+import threading
+import time
 from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 
 import tailscale_control as control
 from features.modules import LOG_LEVELS, log_clear_form, log_cutoffs, log_level_form, service_log_text
+
+_CONNECT_LOCK = threading.Lock()
 
 
 class TailscaleMixin:
@@ -120,7 +124,7 @@ class TailscaleMixin:
         content = f'<p role="status" class="error">{esc(error)}</p>' if error else ""
         if tab == "overview":
             details = (("tailscale_control_server", tailnet.get("Name") or "—"),
-                       ("tailscale_version", snapshot.get("Version") or "—"),
+                       ("tailscale_version", (snapshot.get("Version") or "—").split("-", 1)[0]),
                        ("tailscale_tun", t["tailscale_yes"] if snapshot.get("TUN") is True else
                         t["tailscale_no"] if snapshot.get("TUN") is False else "—"),
                        ("tailscale_ipv4", next((ip for ip in addresses if ":" not in ip), "")),
@@ -141,7 +145,8 @@ class TailscaleMixin:
                             f'<button type="submit">{esc(t["tailscale_connect"])}</button></form>')
             parsed_auth = urlsplit(auth_url)
             if parsed_auth.scheme == "https" and parsed_auth.hostname and not parsed_auth.username and not parsed_auth.password:
-                content += f'<p><a href="{esc(auth_url, quote=True)}" target="_blank" rel="noopener noreferrer">{esc(t["tailscale_authorize"])}</a></p>'
+                content += (f'<p class="tailscale-auth"><a class="button-link" href="{esc(auth_url, quote=True)}" target="_blank" '
+                            f'rel="noopener noreferrer">{esc(t["tailscale_authorize"])}</a></p>')
             if state == "Running" and addresses and settings.get("webclient") is True:
                 content += (f'<p><button type="button" class="tailscale-web-open" '
                             f'data-error="{esc(t["tailscale_web_open_failed"], quote=True)}">'
@@ -211,7 +216,7 @@ class TailscaleMixin:
                     candidates = [(route, route) for route in subnets] if kind == "routes" else [(peer["selector"], peer["name"]) for peer in exit_nodes]
                     if current and str(current) not in [value for value, _ in candidates]:
                         candidates.insert(0, (str(current), str(current)))
-                    options = f'<option value="">{esc(t["tailscale_clear"])}</option>' + ''.join(
+                    options = '<option value=""></option>' + ''.join(
                         f'<option value="{esc(value, quote=True)}" {"selected" if str(current) == value else ""}>{esc(title)}</option>'
                         for value, title in candidates)
                     field = f'<select name="{kind}_value" data-tailscale-single="{kind}">{options}</select>'
@@ -363,12 +368,21 @@ class TailscaleMixin:
                                                     "vps-server Tailscale Relay")
                 self.context.snapshot_tailscale_ports()
             elif action == "connect":
-                try:
-                    control.connect(form.get("login_server", [""])[0], form.get("auth_key", [""])[0])
-                except RuntimeError:
-                    # A login URL can be issued while `up` waits for browser approval.
-                    if not control.status().get("AuthURL"):
-                        raise
+                # Overlapping `tailscale up` runs reset each other's login, so only one runs at a time.
+                if _CONNECT_LOCK.acquire(blocking=False):
+                    try:
+                        try:
+                            control.connect(form.get("login_server", [""])[0], form.get("auth_key", [""])[0])
+                        except (RuntimeError, subprocess.TimeoutExpired):
+                            # A login URL can be issued while `up` waits for browser approval.
+                            for _ in range(10):
+                                if control.status().get("AuthURL"):
+                                    break
+                                time.sleep(0.5)
+                            else:
+                                raise
+                    finally:
+                        _CONNECT_LOCK.release()
             elif action == "logout":
                 control.call("logout")
             elif action == "memory":
