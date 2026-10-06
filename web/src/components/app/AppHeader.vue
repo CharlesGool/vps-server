@@ -6,7 +6,7 @@ const icons = {home: Server, changelog: ScrollText, settings: Settings, logout: 
 </script>
 <template>
   <header class="min-h-18 border-b border-border bg-card">
-    <div class="mx-auto flex min-h-18 max-w-content flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+    <div class="mx-auto flex min-h-18 max-w-content flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 md:px-6">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <a href="/" data-reflow class="flex items-center gap-3 rounded-md text-lg font-semibold">
           <span class="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Server class="size-6" aria-hidden="true" /></span>
