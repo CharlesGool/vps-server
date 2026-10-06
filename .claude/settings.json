@@ -2,11 +2,11 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Edit|MultiEdit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "cd web && npm run check:design"
+            "command": "node \"$CLAUDE_PROJECT_DIR/web/scripts/check-design.mjs\" 1>&2 || exit 2"
           }
         ]
       }
