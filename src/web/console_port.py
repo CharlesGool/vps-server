@@ -128,6 +128,9 @@ def available(port):
         for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
             try:
                 with socket.socket(family, kind) as sock:
+                    if kind == socket.SOCK_STREAM:
+                        # Match the servers: lingering TIME_WAIT sockets are not a holder.
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     sock.bind((address, port))
             except OSError as exc:
                 if family == socket.AF_INET6 and exc.errno in (errno.EAFNOSUPPORT, errno.EPROTONOSUPPORT):

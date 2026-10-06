@@ -752,6 +752,8 @@ port = int(sys.argv[1])
 for family, host in ((socket.AF_INET, '0.0.0.0'), (socket.AF_INET6, '::')):
     try:
         with socket.socket(family, socket.SOCK_STREAM) as probe:
+            # Match the servers: lingering TIME_WAIT sockets are not a holder.
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             probe.bind((host, port))
     except OSError as exc:
         if family == socket.AF_INET6 and exc.errno in (93, 97):
