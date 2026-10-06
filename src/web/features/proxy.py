@@ -167,11 +167,10 @@ class ProxyMixin:
         qr_scripts = ('<script src="/static/qrcode.js"></script><script src="/static/qrcode-utf8.js"></script>'
                       '<script src="/static/qrcode-render.js"></script>') if lan_host and cards else ''
         empty_state = ''.join(cards) if cards else f'<p class="muted">{esc(t["node_empty"])}</p>'
-        body = f'''<div class="proxy-workspace"><header class="proxy-overview">
-          <div><p class="proxy-eyebrow">{esc(t['node_overview'])}</p><h1>{esc(t['proxy_heading'])}</h1></div>
-          <div class="proxy-summary" aria-label="{esc(t['node_summary'])}">
+        body = f'''<h1>{esc(t['proxy_heading'])}</h1>
+          <div class="proxy-workspace"><div class="proxy-summary" aria-label="{esc(t['node_summary'])}">
             <div><strong>{count}</strong><span>{esc(t['node_total'])}</span></div>
-            <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div></header>
+            <div><strong>{active_count}</strong><span>{esc(t['node_active'])}</span></div></div>
           {notice}{create}<div class="proxy-node-grid managed-node-grid">{empty_state}</div></div>
           <script src="/static/copy.js"></script>
           <script src="/static/private-values.js"></script>

@@ -150,7 +150,6 @@
   "anytls_reset_confirm": "Entiendo que todos los clientes existentes dejarán de funcionar",
   "proxy": "Singbox",
   "proxy_heading": "Singbox",
-  "node_overview": "Resumen",
   "node_overview_intro": "Consulta la conexión y administra los ajustes de los nodos en un solo lugar.",
   "node_summary": "Resumen de nodos",
   "node_total": "Nodos",

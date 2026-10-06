@@ -150,7 +150,6 @@
   "anytls_reset_confirm": "我知道这会让所有现有客户端立刻失效",
   "proxy": "Singbox",
   "proxy_heading": "Singbox",
-  "node_overview": "概览",
   "node_overview_intro": "在一处查看连接信息并管理节点设置。",
   "node_summary": "节点概况",
   "node_total": "节点总数",
