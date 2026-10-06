@@ -254,7 +254,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
 <link rel="icon" type="image/svg+xml" href="/static/favicon-{favicon}.svg">
 
 {history_guard}
-<script>document.documentElement.classList.add('ui-pending');var ready={{}};window.vpsReady=function(k){{ready[k]=1;if(ready.ui&&ready.sel)document.documentElement.classList.remove('ui-pending')}};setTimeout(function(){{document.documentElement.classList.remove('ui-pending')}},3000);try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;if(localStorage.getItem('vps-server-mode')==='dark')document.documentElement.classList.add('dark')}}catch(e){{}}</script>
+<script>document.documentElement.classList.add('ui-pending');var ready={{}};window.vpsReady=function(k){{ready[k]=1;if(ready.ui&&ready.sel)document.documentElement.classList.remove('ui-pending')}};setTimeout(function(){{document.documentElement.classList.remove('ui-pending')}},3000);try{{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;var m=localStorage.getItem('vps-server-mode');if(m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}}catch(e){{}}</script>
 <link rel="stylesheet" href="/static/style.css">
 <script type="module" src="/static/ui.js"></script>
 <script src="/static/password-fields.js" defer></script>

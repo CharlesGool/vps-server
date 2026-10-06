@@ -31,7 +31,7 @@ class SettingsMixin:
         modes = "".join(
             f'<button type="button" class="preferences-choice" data-mode-choice="{mode}" '
             f'aria-pressed="{str(mode == "light").lower()}">{esc(t[key])}</button>'
-            for mode, key in (("light", "appearance_light"), ("dark", "appearance_dark")))
+            for mode, key in (("light", "appearance_light"), ("dark", "appearance_dark"), ("system", "appearance_system")))
         languages = "".join(
             f'<a class="preferences-choice" href="/settings?lang={code}"'
             + (' aria-current="true"' if code == lang else '')

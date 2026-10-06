@@ -265,6 +265,7 @@
   "appearance_mode": "Mode",
   "appearance_light": "Light",
   "appearance_dark": "Dark",
+  "appearance_system": "System",
   "theme_color": "Accent color",
   "node_cancel": "Cancel",
   "dialog_close": "Close",

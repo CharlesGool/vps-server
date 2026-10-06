@@ -265,6 +265,7 @@
   "appearance_mode": "Modo",
   "appearance_light": "Claro",
   "appearance_dark": "Oscuro",
+  "appearance_system": "Sistema",
   "theme_color": "Color de acento",
   "node_cancel": "Cancelar",
   "dialog_close": "Cerrar",
