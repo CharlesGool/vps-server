@@ -249,6 +249,9 @@ def wait_public_listener_applied(prefix, listener, enabled, old_pid):
 
 
 def switch_web_setting(path, enabled):
+    # The restart below drops the console for a moment. Wait first so the browser can load the
+    # status page the job's redirect points to instead of hitting the restarting service.
+    time.sleep(2)
     previous = path.read_bytes() if path.exists() else None
     path.write_text("1\n" if enabled else "0\n")
     os.chmod(path, 0o600)

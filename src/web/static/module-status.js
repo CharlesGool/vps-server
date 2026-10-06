@@ -4,6 +4,7 @@
   cleanUrl.searchParams.delete('operation');
   history.replaceState(history.state, '', cleanUrl);
   let leaving = false;
+  let interrupted = false;
   const refresh = async () => {
     if (leaving) return;
     if (document.visibilityState !== 'visible') {
@@ -13,6 +14,11 @@
     try {
       const response = await fetch(pollUrl, { cache: 'no-store', credentials: 'same-origin' });
       if (!response.ok) throw new Error('status unavailable');
+      if (interrupted) {
+        // The console was unreachable (a restart): reload so the final state is shown.
+        location.reload();
+        return;
+      }
       const next = new DOMParser().parseFromString(await response.text(), 'text/html');
       const oldProgress = document.querySelector('.module-progress');
       const newProgress = next.querySelector('.module-progress');
@@ -36,7 +42,7 @@
         return;
       }
       if (!next.querySelector('script[src="/static/module-status.js"]')) return;
-    } catch (_) { /* Keep the current log visible and retry. */ }
+    } catch (_) { interrupted = true; /* Keep the current log visible and retry. */ }
     setTimeout(refresh, 1500);
   };
   const hideStaleProgress = () => {
