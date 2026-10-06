@@ -28,3 +28,7 @@ button[data-ui-control] { background: transparent; color: inherit; border: 0; pa
 
 body { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: var(--text-base--line-height); }
 :focus-visible { outline: var(--focus-ring-width) solid var(--ring); outline-offset: var(--focus-ring-offset); }
+body { display: flex; flex-direction: column; min-height: 100dvh; }
+main { flex: 1 0 auto; }
+#ui-footer { margin-top: auto; }
+body.login-page main.app-login-main { min-height: 0; }

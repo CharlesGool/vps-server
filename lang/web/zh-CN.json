@@ -268,6 +268,8 @@
   "theme_color": "主题色",
   "node_cancel": "取消",
   "dialog_close": "关闭",
+  "footer_github": "GitHub 主页",
+  "footer_repo": "项目仓库",
   "node_limit_manage": "访问管理",
   "node_save_limits": "保存限制",
   "node_create": "新建节点",

@@ -1,5 +1,6 @@
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
 import AppHeader from '@/components/app/AppHeader.vue'
+import AppFooter from '@/components/app/AppFooter.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import CardGrid from '@/components/app/CardGrid.vue'
 import SectionNav from '@/components/app/SectionNav.vue'
@@ -7,10 +8,11 @@ import ThemeSelect from '@/components/app/ThemeSelect.vue'
 import SegmentedControl from '@/components/app/SegmentedControl.vue'
 import { initAppearance, mode } from '@/lib/appearance'
 import { initResizeReflow } from '@/lib/resize-reflow'
+import { syncFavicon } from '@/lib/favicon-theme'
 import { i18n } from '@/lib/i18n'
 import '@/styles/main.css'
 
-type Config = {version: string; title: string; serverLabel?: string; label: string; login: boolean; back?: {to: string; label: string}; items: {href: string; label: string; key: string; current?: 'page' | 'location'}[]}
+type Config = {footer?: {href: string; label: string; key: string}[]; version: string; title: string; serverLabel?: string; label: string; login: boolean; back?: {to: string; label: string}; items: {href: string; label: string; key: string; current?: 'page' | 'location'}[]}
 const data = document.getElementById('ui-context')
 if (!data) throw new Error('Missing UI context')
 const config = JSON.parse(data.textContent || '{}') as Config
@@ -18,9 +20,12 @@ function mount(component: Parameters<typeof createApp>[0], props: Record<string,
   createApp(component, props).use(i18n).mount(element)
 }
 initAppearance()
+syncFavicon()
 const header = document.getElementById('ui-header')
 if (header) mount(AppHeader, config, header)
 const main = document.querySelector('main')!
+const footer = document.getElementById('ui-footer')
+if (footer) mount(AppFooter, {links: config.footer ?? []}, footer)
 if (!config.login) {
   const heading = main.querySelector('h1')
   const title = heading?.textContent || config.title

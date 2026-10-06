@@ -268,6 +268,8 @@
   "theme_color": "Accent color",
   "node_cancel": "Cancel",
   "dialog_close": "Close",
+  "footer_github": "GitHub profile",
+  "footer_repo": "Project repository",
   "node_limit_manage": "Access management",
   "node_save_limits": "Save limits",
   "node_create": "Create node",

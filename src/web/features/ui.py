@@ -235,7 +235,9 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
                           'page' if active == key else None})
         if context.AUTH_ENABLED and (password_authenticated or ip_authenticated):
             items.append({'href': '/logout', 'key': 'logout', 'label': t['logout']})
-    ui_context = {'version': context.VERSION_LABEL, 'title': title, 'serverLabel': server_label,
+    footer_links = [{'key': 'profile', 'label': t['footer_github'], 'href': 'https://github.com/CharlesGool'},
+                    {'key': 'repository', 'label': t['footer_repo'], 'href': 'https://github.com/CharlesGool/vps-server'}]
+    ui_context = {'version': context.VERSION_LABEL, 'title': title, 'serverLabel': server_label, 'footer': footer_links,
                   'label': t['nav_label'], 'login': bare, 'items': items}
     if show_nav and active != 'home':
         ui_context['back'] = {'to': destination,
@@ -265,5 +267,6 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
 <main{' class="app-login-main"' if bare else ''}>
 {body}
 </main>
+<div id="ui-footer"></div>
 </body>
 </html>"""
