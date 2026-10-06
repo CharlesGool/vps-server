@@ -11,7 +11,7 @@
 .module-progress[hidden] { display: none; }
 .module-progress h2 { font-size: var(--text-base); }
 .module-progress pre { max-height: var(--compat-size-37); overflow: auto; padding: var(--compat-size-24); border-radius: var(--radius-md); background: var(--secondary); color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-sm); }
-.module-notice { padding: var(--compat-size-14) var(--compat-size-24); border-radius: var(--radius-md); background: var(--secondary); }
+.module-notice { margin: 0 0 var(--compat-size-24); padding: var(--compat-size-14) var(--compat-size-24); border-radius: var(--radius-md); background: var(--secondary); }
 .module-notice[hidden] { display: none; }
 .module-manage { display: inline-flex; align-items: center; min-height: var(--compat-size-38); padding: var(--compat-size-23) var(--compat-size-24); border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--primary); color: var(--primary-foreground); font-weight: var(--font-weight-semibold); text-decoration: none; }
 .log-sources { display: flex; flex-wrap: wrap; gap: var(--compat-size-11); margin: var(--compat-size-24) 0 var(--compat-size-9); }
@@ -30,6 +30,8 @@
 .tailscale-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-24); }
 .tailscale-head h1 { margin: 0; }
 .tailscale-head form { margin: 0; }
+.tailscale-facts + h2 { margin: var(--compat-size-30) 0 var(--compat-size-14); }
+.tailscale-facts + h2 + p { margin: 0 0 var(--compat-size-14); }
 .tailscale-facts { display: flex; flex-wrap: wrap; gap: var(--compat-size-14); }
 .tailscale-fact { display: grid; gap: var(--compat-size-18); flex: 1 1 min(100%,var(--compat-size-41)); min-width: 0; padding: var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
 .tailscale-fact span { color: var(--muted-foreground); }
@@ -76,8 +78,6 @@
 .terminal-frame { height: clamp(var(--compat-size-52),60vh,var(--compat-size-53)); padding: var(--compat-size-24); background: var(--terminal-bg); overflow: hidden; }
 .terminal-screen { height: 100%; overflow: hidden; }
 .terminal-screen .xterm { height: 100%; }
-.terminal-screen .xterm .xterm-viewport { background-color: var(--terminal-bg); overflow-x: hidden; scrollbar-width: none; }
-.terminal-screen .xterm-viewport::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .terminal-status:empty { display: none; }
 .terminal-status:not(:empty) { margin: var(--compat-size-14) var(--compat-size-24) 0; color: var(--terminal-fg); }
 

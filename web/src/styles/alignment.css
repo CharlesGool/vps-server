@@ -18,6 +18,9 @@ input, select, textarea { min-height: calc(var(--spacing) * 10); font-size: var(
 .login-panel.app-login-card { max-width: var(--container-login); padding: calc(var(--spacing) * 8); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
 .login-panel input, .login-submit, .login-ip-form button { min-height: calc(var(--spacing) * 12); border-radius: var(--radius-md); }
 .preferences-choices { align-items: center; }
+.preferences-choices > [role="radiogroup"], .login-language-field > [role="radiogroup"] { justify-self: start; max-width: 100%; }
+.preferences-choices:has(> [role="radiogroup"]) { display: flex; }
+p[role="status"]:not(:empty):not([hidden]):not(.terminal-status) { margin: 0 0 calc(var(--spacing) * 6); }
 @media (max-width: 48rem) { main { padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4); } .card, .access-card { padding: calc(var(--spacing) * 5); } }
 
 /* Shared Vue controls inherit their template variants, not native form defaults. */
