@@ -1,7 +1,6 @@
 
 /* Proxy management keeps connection facts visible and secondary controls folded. */
-.proxy-workspace { width: 100%; min-width: 0; max-width: var(--compat-size-91); }
-.proxy-workspace:has(.managed-node-grid) { max-width: var(--compat-size-27); }
+.proxy-workspace { width: 100%; min-width: 0; }
 .proxy-summary { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--compat-size-117); margin-bottom: var(--compat-size-9); }
 .proxy-summary > div {
   display: flex; flex-direction: column; min-width: var(--compat-size-19); padding: var(--compat-size-118) var(--compat-size-24);
