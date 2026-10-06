@@ -28,7 +28,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
 ### Interface screenshots
 
-Captured from test build test-7cadd3c in the test environment with the Simplified Chinese interface. These views show installed modules, creation forms, and Tailscale before sign-in; the default installation still includes only Web. Addresses and credentials remain hidden, and log screenshots show only categories and filters.
+Captured from test build test-5c7e808 in the test environment with the Simplified Chinese interface. These views show installed modules, creation forms, and Tailscale before sign-in; the default installation still includes only Web. Addresses and credentials remain hidden, and log screenshots show only categories and filters.
 
 ![Home and feature shortcuts](../resources/screenshots/zh-cn/home.jpg)
 
