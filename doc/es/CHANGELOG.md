@@ -26,6 +26,20 @@ metadata:
 
 ## Historial de cambios
 
+### v5.3.1 — 2026-10-07
+
+#### Corregido
+
+- Instalar con un `VPSSRV_MODULES` más corto (como la instalación rápida del README) eliminaba módulos instalados del registro y detenía sing-box por la dependencia del medidor de nodos: una lista explícita ahora solo añade módulos y los módulos que siguen en disco se vuelven a contar.
+
+- Un proceso ajeno en un puerto de la página pública abortaba todas las instalaciones y tareas de módulos de una instalación existente; ahora es una advertencia. Si falta el paquete del frontend, la instalación se detiene antes de escribir nada, en lugar de dejar un directorio de estado parcial que bloqueaba instalaciones posteriores.
+
+- Desinstalar Singbox eliminaba todos los nodos: ahora conserva la configuración de sing-box y el inventario de nodos y solo libera el servicio, las reglas del cortafuegos y los registros de puertos. Al reinstalar se registran de nuevo los puertos de los nodos conservados (falla limpiamente si alguno está en uso) y se reabren sus reglas. La confirmación de desinstalación ahora indica que la configuración se conserva.
+
+- Reinstalar Lucky fallaba con "Address already in use" porque las conexiones recién cerradas por la consola estaban en TIME_WAIT: los scripts de instalación de Lucky y FRPS y las comprobaciones de puertos de nodos, FRP e iperf3 ahora sondean con `SO_REUSEADDR` como los servidores.
+
+- Desinstalar FRPC detenía todas las instancias y reinstalar no las recuperaba: la desinstalación ahora recuerda qué instancias estaban activas y la reinstalación las activa de nuevo, salvo que todo el grupo FRPC esté desactivado.
+
 ### v5.3.0 — 2026-10-07
 
 #### Añadido
