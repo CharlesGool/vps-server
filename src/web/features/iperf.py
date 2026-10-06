@@ -123,9 +123,10 @@ class IperfMixin:
         """
 
         body = f"""
+        <h1>{self.context.html.escape(t['iperf_heading'])}</h1>
         <div class="iperf-panels">
         <div class="card">
-          <h1>{self.context.html.escape(t['iperf_heading'])}</h1>
+          <h2>{self.context.html.escape(t['iperf_server_heading'])}</h2>
           {notice}
           <div class="iperf-facts">
             <div class="iperf-fact"><span>{self.context.html.escape(t['iperf_status'])}</span><strong class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</strong></div>
