@@ -4,8 +4,7 @@
 #
 #   web      the public reachability page on 80/443 plus the private console
 #   iperf3   bundled on amd64, so the console can open a test window
-#   anytls   the sing-box anytls proxy (amd64 only)
-#   proxy    sing-box vmess/vless/trojan/shadowsocks, any subset (amd64 only)
+#   proxy    sing-box anytls/vmess/vless/trojan/shadowsocks (amd64 only)
 #   frps     offline FRP server (amd64 only)
 #   lucky    offline DDNS and reverse-proxy admin (amd64 only)
 #   tailscale  offline-installed Tailscale client (amd64 only)
@@ -15,7 +14,7 @@
 #   sudo VPSSRV_MODULES=web VPSSRV_PUBLIC_ENABLE=0 bash deploy/install.sh   # console only
 #   sudo PREFIX=/srv/vpssrv bash deploy/install.sh
 #
-# Installation uses safe defaults without a browser or terminal questions.
+# Installation uses defaults and selects the language before the background job.
 # VPSSRV_MODULES and other environment values may override those defaults.
 #
 # Re-running a v5.1.1-or-newer installation keeps its persistent state under
@@ -85,10 +84,8 @@ PREV_VARS=""
 PREV_STATE_KNOWN=0
 UPGRADE=0
 
-# The version being installed. Derived, never hand-written: webui.md §1
-# requires the UI to show the real tag, and an untagged build to say so rather
-# than impersonate the last release. A constant in the source is wrong the
-# moment somebody tags and forgets to edit it, and nothing reports that.
+# Use the exact Git tag for a release and the commit for an untagged build.
+# Exports without Git use config/VERSION.
 resolve_version() {
   local v
   if git -C "$SRC_DIR" rev-parse --git-dir >/dev/null 2>&1; then

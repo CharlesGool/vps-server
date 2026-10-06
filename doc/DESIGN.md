@@ -41,6 +41,8 @@ metadata:
 
 | 目录 | 职责 |
 | --- | --- |
+| `.local/` | Git 忽略的维护资料, 历史快照与私有笔记;不参与部署. |
+| `.github/` | 持续集成检查和 Actions 依赖更新配置. |
 | `src/` | Web 源码, 功能处理器与静态资源. |
 | `deploy/` | 安装, 卸载, 模块配置脚本与 systemd 模板. |
 | `config/` | 版本, 固定依赖摘要及导入来源记录. |
@@ -49,7 +51,9 @@ metadata:
 | `tools/` | 样式构建, 依赖校验与离线包构建工具. |
 | `doc/` | 设计, 状态, 历史, 变更, 第三方声明及译文. |
 
-样式源位于 `src/web/static/styles/`, 构建输出为 `src/web/static/style.css`. 离线包由 `tools/build_offline/build_offline.py` 生成到指定输出目录, 包含程序, 安装器, 固定构件和声明;私有状态, `.git` 与本地调试文件不进入包. nftables 的构建机下载由 `tools/build_offline/fetch_assets.py` 校验.
+样式源位于 `src/web/static/styles/`, 构建输出为 `src/web/static/style.css`. 离线包由 `tools/build-offline/build_offline.py` 生成到指定输出目录, 包含程序, 安装器, 固定构件和声明;私有状态, `.git` 与本地调试文件不进入包. nftables 的构建机下载由 `tools/build-offline/fetch_assets.py` 校验.
+
+维护入口为 `python3 tools/check-project/check_project.py`, 需要 Python 3.9+, Git, Bash 和 Node.js. 它检查自有 Python/Bash/JavaScript 语法, JSON 重复键, 三语言键和格式占位符, 本地文档链接, 环境变量覆盖, 样式产物与固定依赖摘要. `.github/` 提供同一检查的 CI, `.editorconfig` 和 `.gitattributes` 约束文本编码与换行;第三方原始字节保持不变. 工具目录使用小写英文和连字符, Python 文件名保留下划线.
 
 ## 设计约束
 
@@ -61,6 +65,10 @@ metadata:
 - 公开监听器与控制台路由边界**必须**分离. 信任代理地址头时**禁止**依赖其地址进行 IP 免密认证.
 - 同布局安装**必须**保留持久状态;旧布局或缺失定位文件**禁止**被当作空白安装自动覆盖.
 - 第三方构件**必须**核验固定摘要并携带原始许可与对应源码获取方式. 文件身份校验不代表系统依赖完全锁定.
+
+## 设计标记
+
+现有 Python 服务继续使用自己的设计系统. 颜色标记位于 `src/web/static/styles/foundation.css`, 主题与深色变体位于 `shell.css`, 字体位于 `components.css`;不迁移到 Vue 起始模板. 样式一致性检查: `python3 tools/build-styles/build_styles.py --check`. 这只检查合并产物与源文件一致, 不代表页面视觉验收.
 
 ## 数据设计
 

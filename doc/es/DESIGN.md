@@ -41,6 +41,8 @@ Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guard
 
 | Directorio | Responsabilidad |
 | --- | --- |
+| `.local/` | Archivos de mantenimiento, instantáneas históricas y notas privadas ignorados por Git; excluidos del despliegue. |
+| `.github/` | Comprobaciones continuas y mantenimiento de dependencias Actions. |
 | `src/` | Código Web, manejadores y recursos estáticos. |
 | `deploy/` | Instalación, desinstalación, configuración de módulos y plantillas systemd. |
 | `config/` | Versión, sumas de artefactos y procedencia. |
@@ -49,7 +51,9 @@ Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guard
 | `tools/` | Construcción de estilos, verificación y empaquetado sin conexión. |
 | `doc/` | Diseño, estado, historia, cambios, avisos y traducciones. |
 
-Los estilos se encuentran en `src/web/static/styles/` y generan `src/web/static/style.css`. `tools/build_offline/build_offline.py` produce el paquete en el directorio elegido con programa, instalador, artefactos y avisos; excluye estado privado, `.git` y archivos locales de depuración. `tools/build_offline/fetch_assets.py` verifica las descargas nftables en la máquina de construcción.
+Los estilos se encuentran en `src/web/static/styles/` y generan `src/web/static/style.css`. `tools/build-offline/build_offline.py` produce el paquete en el directorio elegido con programa, instalador, artefactos y avisos; excluye estado privado, `.git` y archivos locales de depuración. `tools/build-offline/fetch_assets.py` verifica las descargas nftables en la máquina de construcción.
+
+El punto de entrada de mantenimiento es `python3 tools/check-project/check_project.py`, que requiere Python 3.9+, Git, Bash y Node.js. Comprueba la sintaxis Python/Bash/JavaScript propia, claves JSON duplicadas, claves y marcadores de formato de los tres idiomas, enlaces locales, cobertura de variables de entorno, estilos generados y hashes de artefactos fijados. `.github/` ejecuta la misma comprobación en CI, y `.editorconfig` y `.gitattributes` definen la codificación y los saltos de línea; los bytes originales de terceros se conservan. Los directorios de herramientas usan minúsculas y guiones; los archivos Python conservan guiones bajos.
 
 ## Restricciones de diseño
 
@@ -61,6 +65,10 @@ Los estilos se encuentran en `src/web/static/styles/` y generan `src/web/static/
 - Las rutas públicas y de consola **DEBEN** permanecer separadas. Las cabeceras del proxy **NO DEBEN** autorizar acceso por IP sin contraseña.
 - Las instalaciones del mismo esquema **DEBEN** conservar el estado; un esquema antiguo o localizador ausente **NO DEBE** sobrescribirse silenciosamente.
 - Los artefactos **DEBEN** coincidir con sus sumas y conservar licencias y acceso al código correspondiente. Esto no fija todas las dependencias del sistema.
+
+## Tokens de diseño
+
+El servicio Python existente conserva su sistema de diseño. Los colores se definen en `src/web/static/styles/foundation.css`, los temas y variantes oscuras en `shell.css`, y las fuentes en `components.css`; no se migra a la plantilla Vue. La coherencia de los estilos se comprueba con `python3 tools/build-styles/build_styles.py --check`. Esto verifica que el archivo combinado coincide con sus fuentes, no la aceptación visual.
 
 ## Diseño de datos
 

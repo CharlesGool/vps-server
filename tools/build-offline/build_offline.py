@@ -74,7 +74,7 @@ def build(asset, nft_asset, nft_sources, output, version):
         nft_destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(nft_asset, nft_destination)
         shutil.copy2(nft_sources, staged / "third_party" / "nft" / "nft-sources-bullseye.tar.gz")
-        (staged / "config" / "VERSION").write_text(version + "\n")
+        (staged / "config" / "VERSION").write_text(version + "\n", encoding="utf-8")
         output = Path(output).resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(output, "w:gz") as tar:

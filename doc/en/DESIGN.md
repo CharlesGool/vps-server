@@ -41,6 +41,8 @@ After language selection, the installer starts background job `vps-server-instal
 
 | Directory | Responsibility |
 | --- | --- |
+| `.local/` | Git-ignored maintenance files, historical snapshots and private notes; excluded from deployment. |
+| `.github/` | Continuous checks and Actions dependency maintenance. |
 | `src/` | Web source, feature handlers and static resources. |
 | `deploy/` | Install/uninstall scripts, module setup and systemd templates. |
 | `config/` | Version, pinned artifact hashes and import provenance. |
@@ -49,7 +51,9 @@ After language selection, the installer starts background job `vps-server-instal
 | `tools/` | Style build, dependency verification and offline packaging tools. |
 | `doc/` | Design, status, history, changes, notices and translations. |
 
-Style sources live in `src/web/static/styles/`, with output at `src/web/static/style.css`. `tools/build_offline/build_offline.py` writes packages to a selected output directory, containing code, installer, pinned artifacts and notices; private state, `.git` and local debugging files are excluded. `tools/build_offline/fetch_assets.py` verifies nftables downloads on the build host.
+Style sources live in `src/web/static/styles/`, with output at `src/web/static/style.css`. `tools/build-offline/build_offline.py` writes packages to a selected output directory, containing code, installer, pinned artifacts and notices; private state, `.git` and local debugging files are excluded. `tools/build-offline/fetch_assets.py` verifies nftables downloads on the build host.
+
+The maintenance entry point is `python3 tools/check-project/check_project.py`, requiring Python 3.9+, Git, Bash and Node.js. It checks first-party Python/Bash/JavaScript syntax, duplicate JSON keys, three-language keys and format placeholders, local documentation links, environment-variable coverage, stylesheet output and pinned artifact hashes. `.github/` runs the same check in CI, while `.editorconfig` and `.gitattributes` define text encoding and line endings; original third-party bytes remain unchanged. Tool directories use lowercase words and hyphens; Python filenames retain underscores.
 
 ## Design Constraints
 
@@ -61,6 +65,10 @@ Style sources live in `src/web/static/styles/`, with output at `src/web/static/s
 - Public listener and console route boundaries **MUST** remain separate. Trusted proxy headers **MUST NOT** authorize passwordless IP login.
 - Same-layout installs **MUST** retain state. Old layouts or missing locators **MUST NOT** be silently overwritten as fresh installs.
 - Third-party artifacts **MUST** match pinned hashes and retain original licenses and corresponding source access. Artifact verification is not a complete OS dependency lock.
+
+## Design Tokens
+
+The existing Python service retains its design system. Color tokens live in `src/web/static/styles/foundation.css`, themes and dark variants in `shell.css`, and fonts in `components.css`; it does not migrate to the Vue starter. Check stylesheet consistency with `python3 tools/build-styles/build_styles.py --check`. This verifies that the combined asset matches its sources, not visual acceptance.
 
 ## Data Design
 

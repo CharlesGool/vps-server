@@ -69,7 +69,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`. 当前正式版本: [v5.2.2](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.2), 标签提交 `474412c66394e244b511b3368e4ecdcac8308dd8`.
+当前分支: `main`. 当前正式版本: v5.2.3. 下述实机验收结果属于 v5.2.2, 不代表后续源码已在测试机重新部署.
 
 已完成: 操作员确认 UI 与 FRPC 问题修复;正式发布包已上传并在指定 Debian 13 x86-64 测试机升级, Web/FRPS/Tailscale 活动, Web 已启用自启动. 真实 FRPC 隧道已验证保存后重启重连和无效配置保留. 发布包 SHA-256 为 `aeec77340d553c08f86d5cf4cf42eaf3731a4e7ca7aa906a03cb889d3d8324b2`.
 
@@ -78,3 +78,7 @@ metadata:
 剩余步骤: 无阻碍本次文档交付的事项;尚未独立验收的环境和策略见上方缺陷列表. 下一步按实际部署环境选择对应实机验收, 不将这些计划写成已通过.
 
 临时项目规则: 未发现. 本机恢复副本位于仓库忽略的 `.local/doc-rewrite-before/`;历史正式包与源码快照不进入公开文档或运行状态.
+
+2026-10-06 规范化检查: 44 个 Python 文件, 21 个 Shell 文件(含内嵌 Python), 21 个自有 JavaScript 文件, 7 个 JSON 文件及 18 份文档通过统一静态检查;三语言键/占位符, 本地链接, 配置覆盖, 样式和 15 个固定构件摘要通过. 缺失配置, 损坏链接, 错误占位符和过期样式的故障注入均被拒绝. 新增 CI 尚待远程执行;本次未发布版本或部署服务.
+
+本地布局: Git 仓库已提升到项目根, 原 `repo/` 包装目录移除. 历史快照完整保存在被忽略的 `.local/snapshots/`, 私有笔记位于 `.local/notes.md`, 两份浏览器状态分别保存在 `.local/browser-state/` 和 `.local/repository-browser-state/`.

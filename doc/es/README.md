@@ -223,6 +223,8 @@ Plantilla de configuración: [.env.example](../../.env.example). Todas las varia
 
 El instalador también acepta `VPSSRV_MODULES` (lista `web,iperf3,proxy,frps,lucky,tailscale`; valor inicial `web`, conserva módulos al reinstalar) y `SERVICE_NAME` (predeterminado `vps-server-web`). El argumento `KEEP_DATA=1` conserva los datos al desinstalar. No son parámetros de Web.
 
+Para mantener el código, ejecute `python3 tools/check-project/check_project.py`. Requiere Git, Bash, Python 3.9+ y Node.js; Node.js solo comprueba la sintaxis JavaScript y no es necesario para ejecutar el servidor. Use `--node /ruta/absoluta/node` si no está en PATH. Los directorios `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` pasan a llamarse `build-styles`, `build-offline`, `verify-dependencies`, respectivamente; sustituya las rutas en los comandos antiguos de mantenimiento. Los comandos de instalación no cambian. La comprobación no inicia servicios ni sustituye la aceptación del despliegue.
+
 ## Actualización
 
 Las versiones de esquema 1, v5.1.1 de prueba, v5.2.0 y v5.2.1, se actualizan con los pasos anteriores. Copie la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, configuraciones FRPC y Lucky. Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.

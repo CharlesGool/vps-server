@@ -223,6 +223,8 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 
 安装器另外接受环境参数 `VPSSRV_MODULES`(逗号分隔的 `web,iperf3,proxy,frps,lucky,tailscale`, 首装默认 `web`, 重装保留已有模块)和 `SERVICE_NAME`(默认 `vps-server-web`). 卸载参数 `KEEP_DATA=1` 保留数据. 这些参数不是 Web 配置项.
 
+维护源码时执行 `python3 tools/check-project/check_project.py`. 需要 Git, Bash, Python 3.9+ 和 Node.js;Node.js 只用于 JavaScript 语法检查, 服务器运行不需要它. 非 PATH 中的 Node.js 可用 `--node /绝对路径/node` 指定. 工具目录由 `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` 改为对应的 `build-styles`, `build-offline`, `verify-dependencies`;旧维护命令需替换路径, 安装命令不变. 该命令不启动服务, 不替代真实部署验收.
+
 ## 升级
 
 布局 1 的 v5.1.1 测试版, v5.2.0 和 v5.2.1 可按上述安装步骤升级. 先备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与 Lucky 原生配置, 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.

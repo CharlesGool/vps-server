@@ -71,7 +71,7 @@ def fetch(output):
             raise ValueError("assembled nftables runtime checksum mismatch")
     sources = output / "nft-sources-bullseye.tar.gz"
     if not verified(sources, NFT_SOURCES_SHA256):
-        manifest = json.loads((ROOT / "third_party" / "nft" / "source-manifest.json").read_text())
+        manifest = json.loads((ROOT / "third_party" / "nft" / "source-manifest.json").read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory(prefix="vps-nft-source-") as temporary:
             root = Path(temporary) / "root"
             root.mkdir()

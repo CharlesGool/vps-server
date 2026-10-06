@@ -223,6 +223,8 @@ Configuration template: [.env.example](../../.env.example). All variables have d
 
 The installer also accepts environment arguments `VPSSRV_MODULES` (comma-separated `web,iperf3,proxy,frps,lucky,tailscale`; fresh default `web`, existing modules retained on reinstall) and `SERVICE_NAME` (default `vps-server-web`). Uninstall argument `KEEP_DATA=1` preserves data. These are not Web settings.
 
+When maintaining source, run `python3 tools/check-project/check_project.py`. It requires Git, Bash, Python 3.9+ and Node.js; Node.js only checks JavaScript syntax and is not a server runtime dependency. Use `--node /absolute/path/to/node` if it is outside PATH. Tool directories changed from `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` to `build-styles`, `build-offline`, `verify-dependencies` respectively; replace paths in old maintenance commands. Installation commands are unchanged. The check does not start services or replace deployment acceptance.
+
 ## Upgrade
 
 Layout-1 v5.1.1 test builds, v5.2.0 and v5.2.1 can be upgraded using the installation steps above. Back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and native Lucky configuration. Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.

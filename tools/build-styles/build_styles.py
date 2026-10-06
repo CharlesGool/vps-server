@@ -13,7 +13,7 @@ PARTS = (
 
 
 def build():
-    return "".join((ROOT / "src/web/static/styles" / f"{name}.css").read_text()
+    return "".join((ROOT / "src/web/static/styles" / f"{name}.css").read_text(encoding="utf-8")
                    for name in PARTS)
 
 
@@ -24,10 +24,10 @@ def main():
     target = ROOT / "src/web/static/style.css"
     content = build()
     if args.check:
-        if target.read_text() != content:
-            parser.exit(1, "src/web/static/style.css is out of date; run tools/build_styles.py\n")
+        if target.read_text(encoding="utf-8") != content:
+            parser.exit(1, "src/web/static/style.css is out of date; run python3 tools/build-styles/build_styles.py\n")
     else:
-        target.write_text(content)
+        target.write_text(content, encoding="utf-8")
 
 
 if __name__ == "__main__":
