@@ -40,7 +40,7 @@ metadata:
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | 客户端二维码库. | Kazuhiko Arase (2009) | 保留版权及完整许可. | 2026-09-27 |
 | Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | 随附字体, 400/600/700. | The Inter Project Authors (2016) | 保留 OFL 和版权, 遵循保留字体名条件. | 2026-09-27 |
 | Noto Sans SC | Fontsource 5.3.0 | [Noto Sans SC](https://github.com/fontsource/font-files/tree/main/fonts/google/noto-sans-sc) | OFL-1.1 | 随附字体, 400/700. | Google Inc. | 保留 OFL 和版权. | 2026-09-27 |
-| Lucide | main, 2026-09-27 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | 随附 SVG 图标. | Lucide Icons and Contributors; Cole Bemis | 保留版权及完整许可. | 2026-09-27 |
+| Lucide | main, 2026-09-27; 补充图标取自 lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | 随附 SVG 图标. | Lucide Icons and Contributors; Cole Bemis | 保留版权及完整许可. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | 终端渲染与尺寸适配. | The xterm.js authors; SourceLair; Christopher Jeffrey | 保留两份许可和版权原文. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | 原源码静态构建, TCP/UDP 测试. | The Regents of the University of California / Lawrence Berkeley National Laboratory | 保留版权及完整许可. | 2026-10-04 |
 | Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-10-04 |

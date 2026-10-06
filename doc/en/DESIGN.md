@@ -52,7 +52,7 @@ After language selection, the installer starts background job `vps-server-instal
 | `tools/` | Style build, dependency verification and offline packaging tools. |
 | `doc/` | Design, status, history, changes, notices and translations. |
 
-Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and shadcn-vue template components to enhance server pages. Python retains business forms, authentication and authorization. Shared components provide the header, page heading, card grid, section navigation, theme listbox and mode control. Navigation uses full same-origin links.
+Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and shadcn-vue template components to enhance server pages. Python retains business forms, authentication and authorization. Shared components provide the header, footer, page heading, card grid, section navigation, theme listbox and mode control. Navigation uses full same-origin links.
 
 `web/src/styles/tokens.css` is the only visual-value source; `web/src/styles/legacy/` bridges existing forms through semantic tokens. Run `npm ci && npm run check` in `web/` for design/type checks and the production build. Output is `web/dist/ui.js` and `ui.css`, copied into installed static resources and included in offline packages; the VPS needs no Node.js. Original dependency texts and identities accompany the build in `web/dist/licenses/`. Build output and dependencies are Git-ignored.
 

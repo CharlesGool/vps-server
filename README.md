@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.3)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v5.3.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.3.0)
 
 ## 文档
 
@@ -28,7 +28,7 @@
 
 ### 界面预览
 
-以下为测试构建 test-5c7e808 在测试环境的实拍, 使用简体中文界面. 展示已安装模块, 创建表单和 Tailscale 未登录状态;默认安装仍仅包含 Web. 地址与凭据保持隐藏, 日志截图只展示分类和筛选控件.
+以下为 v5.3.0 发布前测试构建在测试环境的实拍, 使用简体中文界面. 展示已安装模块, 创建表单和 Tailscale 未登录状态;默认安装仍仅包含 Web. 地址与凭据保持隐藏, 日志截图只展示分类和筛选控件.
 
 ![主页与功能入口](doc/resources/screenshots/zh-cn/home.jpg)
 
@@ -127,30 +127,31 @@
 一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
 
-源码安装包含 Tailscale 归档, 但私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
+源码安装需先在 `web/` 构建前端(Node.js 24), 并包含 Tailscale 归档, 但私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v5.2.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.3.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
+(cd web && npm ci && npm run check)
 cp .env.example .env
 bash deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机需预先具备上述系统基础依赖.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机需预先具备上述系统基础依赖.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.3
-tar -xzf vps-server-v5.2.3-linux-amd64.tar.gz -C /root/vps-server-v5.2.3 --strip-components=1
-cd /root/vps-server-v5.2.3
+mkdir -p /root/vps-server-v5.3.0
+tar -xzf vps-server-v5.3.0-linux-amd64.tar.gz -C /root/vps-server-v5.3.0 --strip-components=1
+cd /root/vps-server-v5.3.0
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -229,11 +230,11 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 
 ## 升级
 
-布局 1 的 v5.1.1 测试版, v5.2.0 和 v5.2.1 可按上述安装步骤升级. 先备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与 Lucky 原生配置, 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.
+布局 1 的 v5.1.1 测试版和 v5.2.x 可按上述安装步骤升级. 先备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与 Lucky 原生配置, 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.
 
 v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备份旧安装目录及模块配置, 再全新安装并手动恢复所需设置. 缺少状态定位文件或检测到旧布局时安装器会拒绝原地升级;不要先删除旧目录.
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v5.2.3, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v5.3.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 

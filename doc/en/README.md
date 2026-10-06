@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.3)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.3.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.3.0)
 
 ## Documentation
 
@@ -28,7 +28,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
 ### Interface screenshots
 
-Captured from test build test-5c7e808 in the test environment with the Simplified Chinese interface. These views show installed modules, creation forms, and Tailscale before sign-in; the default installation still includes only Web. Addresses and credentials remain hidden, and log screenshots show only categories and filters.
+Captured from the pre-release test build of v5.3.0 in the test environment with the Simplified Chinese interface. These views show installed modules, creation forms, and Tailscale before sign-in; the default installation still includes only Web. Addresses and credentials remain hidden, and log screenshots show only categories and filters.
 
 ![Home and feature shortcuts](../resources/screenshots/zh-cn/home.jpg)
 
@@ -127,30 +127,31 @@ Run as root.
 Install only the Web console with one command. Add other modules as needed from Settings/Modules.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
 
-Source installs include the Tailscale archive; the private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
+Source installs require building the frontend first in `web/` (Node.js 24) and include the Tailscale archive; the private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v5.2.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.3.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
+(cd web && npm ci && npm run check)
 cp .env.example .env
 bash deploy/install.sh
 ```
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.3
-tar -xzf vps-server-v5.2.3-linux-amd64.tar.gz -C /root/vps-server-v5.2.3 --strip-components=1
-cd /root/vps-server-v5.2.3
+mkdir -p /root/vps-server-v5.3.0
+tar -xzf vps-server-v5.3.0-linux-amd64.tar.gz -C /root/vps-server-v5.3.0 --strip-components=1
+cd /root/vps-server-v5.3.0
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -229,11 +230,11 @@ Before installing development source, **MUST** run `npm ci && npm run check` in 
 
 ## Upgrade
 
-Layout-1 v5.1.1 test builds, v5.2.0 and v5.2.1 can be upgraded using the installation steps above. Back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and native Lucky configuration. Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.
+Layout-1 v5.1.1 test builds and v5.2.x can be upgraded using the installation steps above. Back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and native Lucky configuration. Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.
 
 v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.2.3, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.3.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 

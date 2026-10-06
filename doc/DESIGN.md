@@ -52,7 +52,7 @@ metadata:
 | `tools/` | 样式构建, 依赖校验与离线包构建工具. |
 | `doc/` | 设计, 状态, 历史, 变更, 第三方声明及译文. |
 
-前端位于 `web/`, 使用 Vue 3, Vite, TypeScript, Tailwind CSS 和 shadcn-vue 模板组件增强服务器页面. Python 继续生成业务表单, 处理认证和权限;Vue 共享顶栏, 页头, 卡片集合, 设置分区导航, 主题列表框与模式分段控件. 页面跳转仍使用同源完整导航, 不绕过服务器权限.
+前端位于 `web/`, 使用 Vue 3, Vite, TypeScript, Tailwind CSS 和 shadcn-vue 模板组件增强服务器页面. Python 继续生成业务表单, 处理认证和权限;Vue 共享顶栏, 底栏, 页头, 卡片集合, 设置分区导航, 主题列表框与模式分段控件. 页面跳转仍使用同源完整导航, 不绕过服务器权限.
 
 `web/src/styles/tokens.css` 是设计数值的唯一来源;功能样式位于 `web/src/styles/legacy/`, 用语义标记对接现有表单. `npm ci && npm run check` 在 `web/` 检查设计, 类型和生产构建, 输出 `web/dist/ui.js` 与 `ui.css`;安装器复制到静态资源目录, 离线包携带已编译文件, VPS 不需要 Node.js. 构建附带 `web/dist/licenses/` 中的依赖原文和版本清单. Git 忽略构建输出及依赖目录.
 

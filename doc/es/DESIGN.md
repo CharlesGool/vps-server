@@ -52,7 +52,7 @@ Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guard
 | `tools/` | Construcción de estilos, verificación y empaquetado sin conexión. |
 | `doc/` | Diseño, estado, historia, cambios, avisos y traducciones. |
 
-El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y componentes shadcn-vue de la plantilla. Python conserva los formularios, la autenticación y la autorización. Los componentes compartidos proporcionan cabecera, título, tarjetas, navegación de secciones, selector de tema y control de modo. La navegación utiliza enlaces completos del mismo origen.
+El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y componentes shadcn-vue de la plantilla. Python conserva los formularios, la autenticación y la autorización. Los componentes compartidos proporcionan cabecera, pie de página, título, tarjetas, navegación de secciones, selector de tema y control de modo. La navegación utiliza enlaces completos del mismo origen.
 
 `web/src/styles/tokens.css` es la única fuente de valores visuales; `web/src/styles/legacy/` adapta los formularios mediante tokens semánticos. Ejecute `npm ci && npm run check` en `web/` para comprobar diseño, tipos y compilación. La salida `web/dist/ui.js` y `ui.css` se copia a los recursos instalados y se incluye en el paquete sin conexión; el VPS no necesita Node.js. Los textos e identidades de las dependencias se incluyen en `web/dist/licenses/`. Las dependencias y la salida compilada se ignoran en Git.
 

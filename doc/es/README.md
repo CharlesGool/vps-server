@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.2.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.2.3)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.3.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.3.0)
 
 ## Documentación
 
@@ -28,7 +28,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
 ### Capturas de pantalla
 
-Capturas de la compilación de prueba test-5c7e808 en el entorno de prueba con la interfaz en chino simplificado. Muestran módulos instalados, formularios de creación y Tailscale sin iniciar sesión; la instalación predeterminada sigue incluyendo solo Web. Las direcciones y credenciales permanecen ocultas, y las capturas de registros muestran solo categorías y filtros.
+Capturas de la compilación de prueba previa a v5.3.0 en el entorno de prueba con la interfaz en chino simplificado. Muestran módulos instalados, formularios de creación y Tailscale sin iniciar sesión; la instalación predeterminada sigue incluyendo solo Web. Las direcciones y credenciales permanecen ocultas, y las capturas de registros muestran solo categorías y filtros.
 
 ![Inicio y accesos a funciones](../resources/screenshots/zh-cn/home.jpg)
 
@@ -127,30 +127,31 @@ Ejecute como root.
 Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
 
-La instalación desde código incluye el archivo Tailscale; el entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
+La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24) e incluye el archivo Tailscale; el entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v5.2.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.3.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
+(cd web && npm ci && npm run check)
 cp .env.example .env
 bash deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/vps-server-v5.2.3-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.2.3/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/vps-server-v5.3.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.3.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.2.3
-tar -xzf vps-server-v5.2.3-linux-amd64.tar.gz -C /root/vps-server-v5.2.3 --strip-components=1
-cd /root/vps-server-v5.2.3
+mkdir -p /root/vps-server-v5.3.0
+tar -xzf vps-server-v5.3.0-linux-amd64.tar.gz -C /root/vps-server-v5.3.0 --strip-components=1
+cd /root/vps-server-v5.3.0
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -229,11 +230,11 @@ Antes de instalar el código de desarrollo, ejecute `npm ci && npm run check` en
 
 ## Actualización
 
-Las versiones de esquema 1, v5.1.1 de prueba, v5.2.0 y v5.2.1, se actualizan con los pasos anteriores. Copie la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, configuraciones FRPC y Lucky. Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.
+Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pasos anteriores. Copie la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, configuraciones FRPC y Lucky. Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.2.3, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.3.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 
