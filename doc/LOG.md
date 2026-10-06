@@ -71,10 +71,12 @@ metadata:
 
 当前分支: `feat/standardize-cc`(工作树 `vps-server-cc`, 基于 `main` 的 `c17ca6b`, 未推送, 未合并). 当前正式版本: v5.2.3. 本分支与 Codex 在 `main` 上的 Web 对齐工作并行, 合并前需对照 `main` 的新提交.
 
-已完成: 对照 all-in-one 最新模板审查文档结构, `.gitignore`, `.claude/settings.json` 和 Web UI. 修复设置下"详细日志"页的返回控件(原写"返回首页"但指向 `/settings/modules`, 现为"返回设置"并指向 `/settings`); 为详细日志页和 FRPC 页增加各自的页面图标, 不再与更新日志页, FRPS 页共用; `.claude/settings.json` 换成模板 hook(检查失败时以退出码 2 反馈); `.gitignore` 增加 `.claude/settings.local.json`.
+已完成: 对照 all-in-one 最新模板审查文档结构, `.gitignore`, `.claude/settings.json` 和 Web UI. 修复设置下"详细日志"页的返回控件(原写"返回首页"但指向 `/settings/modules`, 现为"返回设置"并指向 `/settings`); 详细日志, FRPC 和"模块已关闭"页使用各自的页面图标; 首页卡片中 HTTP, FRPC, Lucky, 终端, iperf3 不再与其他卡片共用图标; iperf3 页操作行下方补间距; `.claude/settings.json` 换成模板 hook(检查失败时以退出码 2 反馈); `.gitignore` 增加 `.claude/settings.local.json`. README 16 张界面截图由测试构建 `test-d2335e8` 重拍, 日志截图只保留筛选控件.
 
-检查结果: `tools/check-project/check_project.py` 通过(静态检查, 翻译, 本地链接, 配置, 后端启动, 构件摘要); `web/` 的 `npm run check` 通过(设计检查, 类型, 构建). 本地以临时状态目录启动控制台, 在 1440 px 与 375 px, 浅色与深色下遍历 12 个页面, 无控制台错误, 无页面级水平滚动, 顶栏, 版本链接, 返回控件, 页面图标符合 Web UI 约定. 未部署到测试机, 未发布版本.
+检查结果: `tools/check-project/check_project.py` 通过; `web/` 的 `npm run check` 通过. 测试构建 `test-d2335e8` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, 公开页参数 `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台 21382 可从局域网访问, 登录页, Web UI 和变更日志显示的版本均为 `test-d2335e8`. 在 1440 px 与 375 px, 浅色与深色下遍历 12 个页面, 无控制台错误, 无页面级水平滚动. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`.
 
-剩余步骤: README 界面截图仍是 v5.2.2 的界面, 与当前共享顶栏和页头不一致, 需在装有各模块的测试环境重新截图. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. 下一步: 与 `main` 合并并选择是否更新截图.
+未验证: 整机重启后的自启动; Python 3.9 与其他发行版; 真实移动设备; 已登录 Tailscale 与真实持续流量. 测试机上, 安装器输出写"公开页已关闭", 但状态目录中的 `web-http-enabled` 为 1, 80 和 443 仍在监听, 与端口登记表一致, 来源是持久化的操作员设置, 未判断安装器提示是否需要调整.
+
+剩余步骤: `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. 下一步: 与 `main` 合并.
 
 临时项目规则: 未发现.
