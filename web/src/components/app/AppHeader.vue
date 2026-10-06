@@ -9,7 +9,6 @@ const icons = {home: Server, changelog: ScrollText, settings: Settings, logout: 
     <div class="mx-auto flex min-h-18 max-w-content flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 md:px-6">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <a href="/" data-reflow class="flex items-center gap-3 rounded-md text-lg font-semibold">
-          <span class="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Server class="size-6" aria-hidden="true" /></span>
           {{ APP_NAME }}
         </a>
         <a v-if="serverLabel" href="/" data-reflow :title="serverLabel" class="max-w-48 truncate rounded-sm bg-secondary px-2 py-1 text-sm leading-tight font-semibold text-muted-foreground hover:text-foreground">{{ serverLabel }}</a>
