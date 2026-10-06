@@ -156,14 +156,14 @@ def render_theme_menu(context, lang):
             f'{theme_options}</div></details>')
 
 def render_page(context, title, body, lang, active=None, show_nav=True, password_authenticated=False,
-                ip_authenticated=False, bare=False, back_href=None):
+                ip_authenticated=False, bare=False, back_href=None, icon=None):
     t = context.STRINGS[lang]
     server_label = context.server_label()
     label_badge = (f'<span class="server-label" title="{context.html.escape(server_label, quote=True)}">'
                    f'{context.html.escape(server_label)}</span>' if server_label else '')
     page_title = (f"{server_label} — {title} — {t['title']}" if server_label
                   else f"{title} — {t['title']}")
-    favicon = ('login' if bare else 'modules' if title == t['modules_heading'] else
+    favicon = (icon if icon else 'login' if bare else 'modules' if title == t['modules_heading'] else
                'logs' if title == t['module_detailed_logs'] else
                'security' if back_href == '/settings' else
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',

@@ -1013,12 +1013,13 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def is_password_authenticated(self):
         return AUTH_ENABLED and session_valid(self.get_cookie("session"))
 
-    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None):
+    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None,
+                    icon=None):
         return render_page(title, body, lang, active, show_nav,
                            password_authenticated=self.is_password_authenticated(),
                            ip_authenticated=ip_session_valid(self.get_cookie("session"),
                                                              self.client_address[0]), bare=bare,
-                           back_href=back_href)
+                           back_href=back_href, icon=icon)
 
     def client_ip(self):
         if TRUST_PROXY:
