@@ -381,12 +381,13 @@ class ModulesMixin:
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
-        body = (f'<div class="card access-card"><h1>{self.context.html.escape(names[module])}: '
-                f'{self.context.html.escape(t["module_closed_title"])}</h1></div>')
+        closed = self.context.html.escape(t["module_closed_title"])
+        body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
+                f'<div class="card access-card"><p>{closed}</p></div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc", "frp": "frp",
                  "lucky": "lucky", "tailscale": "tailscale", "speedtest": "speedtest",
                  "portfwd": "portfwd", "visitors": "visitors", "changelog": "changelog"}
-        return self.send_html(200, self.render_page(t["module_closed_title"], body, lang,
+        return self.send_html(200, self.render_page(f"{names[module]}: {t['module_closed_title']}", body, lang,
                                                     back_href="/", icon=icons.get(module, "modules")),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
