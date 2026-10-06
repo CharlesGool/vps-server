@@ -896,6 +896,7 @@ STATIC_FILES = {
     "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
+    "/static/confirm-dialog.js": ("application/javascript", STATIC_DIR / "confirm-dialog.js"),
     "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
     "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
     "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),

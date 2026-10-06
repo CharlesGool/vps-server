@@ -256,6 +256,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
 <link rel="stylesheet" href="/static/style.css">
 <script type="module" src="/static/ui.js"></script>
 <script src="/static/password-fields.js" defer></script>
+<script src="/static/confirm-dialog.js" data-cancel="{context.html.escape(t['node_cancel'], quote=True)}" defer></script>
 <script src="/static/reference-select.js" defer></script>
 </head>
 <body{' class="login-page"' if bare else ''}>
