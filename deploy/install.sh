@@ -154,6 +154,15 @@ load_previous() {
     [ -f "$TAILSCALE_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}tailscale"
   fi
   [ -n "$PREV_MODULES" ] || PREV_MODULES="$DEFAULT_MODULES"
+  # An earlier run with a shorter VPSSRV_MODULES may have dropped modules from
+  # the record while their units stayed. What is installed on disk still counts.
+  local unit module
+  for unit in "$PROXY_UNIT:proxy" "$ANYTLS_UNIT:proxy" "$FRPS_UNIT:frps" "$LUCKY_UNIT:lucky" "$TAILSCALE_UNIT:tailscale" "$PREFIX/vendor/iperf3/iperf3:iperf3"; do
+    module="${unit##*:}"
+    if [ -e "${unit%:*}" ]; then
+      case ",$PREV_MODULES," in *",$module,"*) ;; *) PREV_MODULES="$PREV_MODULES,$module" ;; esac
+    fi
+  done
 }
 
 # Carry recorded settings forward. Without this, anything chosen at the first
@@ -514,7 +523,7 @@ PYENV
 fi
 MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
 if has_module web; then
-  test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"
+  { test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"; } || die "$(msg ui_bundle_missing)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -542,7 +551,8 @@ if existing_install; then
   load_previous
   # A routine upgrade keeps the modules already chosen on this host. Fresh
   # installs use the console-only default unless the caller selects modules.
-  if [ -z "${VPSSRV_MODULES:-}" ]; then MODULES="$PREV_MODULES"; fi
+  # An explicit VPSSRV_MODULES adds to them: leaving one out must not stop it.
+  if [ -z "${VPSSRV_MODULES:-}" ]; then MODULES="$PREV_MODULES"; else MODULES="$PREV_MODULES,$MODULES"; fi
   msg found_install "${PREV_VERSION:-?}" "$PREV_MODULES"
   UPGRADE=1
   apply_previous
@@ -1049,8 +1059,13 @@ if has_module web; then
       busy_port="$(first_busy_public_port || true)"
       if [ -n "$busy_port" ]; then
         systemctl start "$SERVICE_NAME" >/dev/null 2>&1 || true
-        die "$(msg port_busy "$busy_port" "$busy_port")"
+        # An existing install keeps working without the public page: the console
+        # reports the occupied port, and other modules must not be blocked by it.
+        if [ "$UPGRADE" = 1 ]; then msg port_busy_public_warn "$busy_port" "$busy_port"
+        else die "$(msg port_busy "$busy_port" "$busy_port")"; fi
       fi
+    elif [ "$UPGRADE" = 1 ]; then
+      msg port_busy_public_warn "$busy_port" "$busy_port"
     else
       die "$(msg port_busy "$busy_port" "$busy_port")"
     fi

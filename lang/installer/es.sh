@@ -43,6 +43,8 @@ case "$key" in
   proxy_none_selected) fmt='  No se seleccionó ningún protocolo; se omite por completo el módulo proxy.\n' ;;
   modules_are) fmt='Módulos: %s\n' ;;
   port_busy) fmt='El puerto %s ya está ocupado por otro proceso.\nLibéralo o elige otros puertos con VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT,\no configura VPSSRV_PUBLIC_ENABLE=0 para omitir la página pública. Compruébalo con:\n  ss -lntp "( sport = :%s )"\n' ;;
+  port_busy_public_warn) fmt='Aviso: el puerto %s está ocupado por otro proceso, por lo que la página pública no puede escucharlo por ahora; la consola y los demás módulos no se ven afectados.\nLibera el puerto y vuelve a activar la página pública desde el inicio, o configura VPSSRV_PUBLIC_ENABLE=0 para desactivarla. Compruébalo con:\n  ss -lntp "( sport = :%s )"\n' ;;
+  ui_bundle_missing) fmt='Faltan los archivos de compilación del frontend web/dist/ui.js y ui.css; la instalación se detuvo antes de cambiar nada.\nUsa el paquete completo o ejecuta antes npm ci && npm run check en web/ (requiere Node.js 24).\n' ;;
   iperf_installing) fmt='Instalando iperf3 desde la distribución ...\n' ;;
   iperf_failed) fmt='No se pudo instalar iperf3 (consulta la salida de apt anterior). La instalación se detuvo; corrige el repositorio y vuelve a ejecutar el script.\n' ;;
   anytls_arch) fmt='El módulo anytls requiere x86-64; este host es %s. Se omite porque el binario sing-box incluido no podría ejecutarse aquí.\n' ;;

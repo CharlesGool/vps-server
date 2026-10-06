@@ -43,6 +43,8 @@ case "$key" in
   proxy_none_selected) fmt='  No protocol selected — skipping the proxy module entirely.\n' ;;
   modules_are) fmt='Modules: %s\n' ;;
   port_busy) fmt='Port %s is already held by another process.\nFree it, or pick different ports with VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT,\nor set VPSSRV_PUBLIC_ENABLE=0 to skip the public page. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
+  port_busy_public_warn) fmt='Warning: port %s is held by another process, so the public page cannot listen on it for now; the console and other modules are unaffected.\nFree the port and turn the public page on again from the home page, or set VPSSRV_PUBLIC_ENABLE=0 to turn it off. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
+  ui_bundle_missing) fmt='The frontend build output web/dist/ui.js and ui.css is missing; the installation stopped before changing anything.\nUse the complete package, or first run npm ci && npm run check in web/ (Node.js 24 required).\n' ;;
   iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
   iperf_failed) fmt='Could not install iperf3 (apt output above). Installation stopped; fix the package source and rerun the script.\n' ;;
   anytls_arch) fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
