@@ -28,7 +28,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
 ### Capturas de pantalla
 
-Capturas de la compilación de prueba test-d2335e8 en el entorno de prueba con la interfaz en chino simplificado. Muestran módulos instalados, formularios de creación y Tailscale sin iniciar sesión; la instalación predeterminada sigue incluyendo solo Web. Las direcciones y credenciales permanecen ocultas, y las capturas de registros muestran solo categorías y filtros.
+Capturas de la compilación de prueba test-1829dca en el entorno de prueba con la interfaz en chino simplificado. Muestran módulos instalados, formularios de creación y Tailscale sin iniciar sesión; la instalación predeterminada sigue incluyendo solo Web. Las direcciones y credenciales permanecen ocultas, y las capturas de registros muestran solo categorías y filtros.
 
 ![Inicio y accesos a funciones](../resources/screenshots/zh-cn/home.jpg)
 
