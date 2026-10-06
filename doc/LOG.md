@@ -69,14 +69,14 @@ metadata:
 
 ## 交接
 
-当前分支: `feat/standardize-cc`(工作树 `vps-server-cc`, 基于 `main` 的 `c17ca6b`, 未推送, 未合并). 当前正式版本: v5.2.3. 本分支与 Codex 在 `main` 上的 Web 对齐工作并行, 合并前需对照 `main` 的新提交.
+当前分支: `main`, 领先 `origin/main` 12 个提交, 未推送. `feat/standardize-cc` 已用 `--no-ff` 合并, 其工作树 `../vps-server-cc` 和本地分支仍保留. 当前正式版本: v5.2.3.
 
-已完成: 对照 all-in-one 最新模板审查文档结构, `.gitignore`, `.claude/settings.json` 和 Web UI. 修复设置下"详细日志"页的返回控件(原写"返回首页"但指向 `/settings/modules`, 现为"返回设置"并指向 `/settings`); 详细日志, FRPC 和"模块已关闭"页使用各自的页面图标; 首页卡片中 HTTP, FRPC, Lucky, 终端, iperf3 不再与其他卡片共用图标; iperf3 页操作行下方补间距; `.claude/settings.json` 换成模板 hook(检查失败时以退出码 2 反馈); `.gitignore` 增加 `.claude/settings.local.json`. README 16 张界面截图由测试构建 `test-d2335e8` 重拍, 日志截图只保留筛选控件.
+已完成: 对照 all-in-one 最新模板审查文档, `.gitignore`, `.claude/settings.json` 和 Web UI, 并修复以下问题. 返回控件, 页面图标和首页卡片图标各自独立; iperf3 页和 Tailscale 概览补上间距; 状态提示条与下方卡片之间补上间距; 终端底部黑条(分层样式输给未分层的 `xterm.css`, 现在覆盖规则放在不分层的 `terminal.css`); 语言选择条不再撑满整行; 卸载, 清空历史, 删除代理, 清除访客的二次确认改用控制台自己的对话框(`confirm-dialog.js`), 不再使用浏览器原生提示; Clash 二维码改为与"复制", "导入"同款的按钮, 点击后在对话框中显示; hook 与 `.gitignore` 对齐模板; README 16 张界面截图按测试构建重拍.
 
-检查结果: `tools/check-project/check_project.py` 通过; `web/` 的 `npm run check` 通过. 测试构建 `test-d2335e8` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, 公开页参数 `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台 21382 可从局域网访问, 登录页, Web UI 和变更日志显示的版本均为 `test-d2335e8`. 在 1440 px 与 375 px, 浅色与深色下遍历 12 个页面, 无控制台错误, 无页面级水平滚动. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`.
+检查结果: `check_project.py` 和 `web/` 的 `npm run check` 通过. 测试构建 `test-3b2932e` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台可从局域网访问. 真机浏览器验证: 终端视口背景为终端色, 语言条宽度 250 px, 确认对话框打开且未触发原生对话框, 二维码渲染并在关闭后清空, 无控制台错误. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`. README 截图取自 `test-d2335e8`, 之后的改动(终端, 语言条, 确认框, 二维码)没有对应的新截图.
 
-未验证: 整机重启后的自启动; Python 3.9 与其他发行版; 真实移动设备; 已登录 Tailscale 与真实持续流量. 测试机上, 安装器输出写"公开页已关闭", 但状态目录中的 `web-http-enabled` 为 1, 80 和 443 仍在监听, 与端口登记表一致, 来源是持久化的操作员设置, 未判断安装器提示是否需要调整.
+未验证: 整机重启后的自启动; Python 3.9 与其他发行版; 真实移动设备; 已登录 Tailscale 与真实持续流量; 375 px 宽度下的新二维码对话框与确认对话框. 测试机上安装器输出写"公开页已关闭", 但状态目录 `web-http-enabled` 为 1, 80 和 443 仍在监听, 与端口登记表一致, 未判断提示是否需要调整.
 
-剩余步骤: `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. 下一步: 与 `main` 合并.
+剩余步骤: `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. 下一步: 推送前按日常推送审查检查待推送范围.
 
 临时项目规则: 未发现.
