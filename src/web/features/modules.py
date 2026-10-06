@@ -187,7 +187,7 @@ class ModulesMixin:
                 f'</div>{log_content}</div>'
                 '<script src="/static/log-controls.js" defer></script>')
         return self.send_html(200, self.render_page(t["module_detailed_logs"], body, lang,
-                                                    active="module_detailed_logs", back_href="/settings/modules"),
+                                                    active="module_detailed_logs", back_href="/settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def page_module_not_installed(self, lang, query_lang, title, module_name, active=None):

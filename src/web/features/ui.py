@@ -164,12 +164,12 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
     page_title = (f"{server_label} — {title} — {t['title']}" if server_label
                   else f"{title} — {t['title']}")
     favicon = ('login' if bare else 'modules' if title == t['modules_heading'] else
-               'changelog' if title == t['module_detailed_logs'] else
+               'logs' if title == t['module_detailed_logs'] else
                'security' if back_href == '/settings' else
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
                                     'visitors', 'changelog', 'settings') else
-               'frp' if title in (t['frp_heading'], t['frps_heading'], t['frp_client_heading'])
-               or back_href in ('/frps', '/frpc') else 'lucky' if title == 'Lucky' else
+               'frpc' if title == t['frp_client_heading'] or back_href == '/frpc' else
+               'frp' if title in (t['frp_heading'], t['frps_heading']) or back_href == '/frps' else 'lucky' if title == 'Lucky' else
                'tailscale' if title == 'Tailscale' else 'home')
     version_tag = f'<a class="version" href="/changelog">{context.html.escape(context.VERSION_LABEL)}</a>'
     nav = ""

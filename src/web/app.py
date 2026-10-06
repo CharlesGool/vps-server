@@ -909,7 +909,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "frp", "lucky", "tailscale", "login")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "lucky", "tailscale", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
