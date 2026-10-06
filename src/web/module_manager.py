@@ -560,6 +560,20 @@ def install_frpc(prefix):
         if created_binary:
             FRPC_BINARY.unlink(missing_ok=True)
         raise
+    remembered = state_data_dir() / "frpc-uninstall-enabled.json"
+    if remembered.is_file():
+        try:
+            saved = json.loads(remembered.read_text())
+        except ValueError:
+            saved = []
+        if frpc_group_enabled(prefix):
+            for name in frpc_names(FRPC_CONFIG_DIR):
+                if name in saved:
+                    result = subprocess.run(["systemctl", "enable", "--now", frpc_unit(name)],
+                                            check=False, timeout=60)
+                    print(f"Instance {name}: {'restored' if result.returncode == 0 else 'could not be started'}.",
+                          flush=True)
+        remembered.unlink(missing_ok=True)
     print("FRPC installed.", flush=True)
 
 
@@ -929,6 +943,14 @@ def uninstall_frpc(prefix):
                 output.add(config, arcname=f"etc/frp/{config.name}")
     os.chmod(archive, 0o600)
     print(f"Configuration backup: {archive}", flush=True)
+    remembered = state_data_dir() / "frpc-uninstall-enabled.json"
+    if frpc_group_enabled(prefix):
+        # Remember the enabled instances, so a reinstall brings their tunnels back.
+        enabled = [name for name in names if subprocess.run(
+            ["systemctl", "is-enabled", "--quiet", frpc_unit(name)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0]
+        remembered.write_text(json.dumps(enabled) + "\n")
+        os.chmod(remembered, 0o600)
     for name in names:
         subprocess.run(["systemctl", "disable", "--now", frpc_unit(name)], check=True, timeout=60)
     FRPC_UNIT.unlink()
