@@ -40,8 +40,7 @@ class PublicMixin:
         path = self.context.urlsplit(self.path).path
         try:
             if path == "/":
-                # Plain text, nothing but the address the server sees.
-                self._send(200, (self.client_ip() + "\n").encode("utf-8"), "text/plain; charset=utf-8", send_body)
+                self._send(200, self._text().encode("utf-8"), "text/plain; charset=utf-8", send_body)
             elif path == "/favicon.ico":
                 self._send(200, (self.context.STATIC_DIR / "favicon.svg").read_bytes(), "image/svg+xml", send_body)
             else:
@@ -69,3 +68,10 @@ class PublicMixin:
         self.end_headers()
         if send_body and body:
             self.wfile.write(body)
+
+    def _text(self):
+        # Plain text, one line: the address the server sees. Accept-Language is
+        # all there is to go on for a stranger who was handed an IP and nothing else.
+        lang = self.context.pick_lang(None, None, self.headers.get("Accept-Language", ""))
+        label = self.context.STRINGS[lang]["probe_your_ip"]
+        return f"{label}{'：' if lang == 'zh_cn' else ': '}{self.client_ip()}\n"

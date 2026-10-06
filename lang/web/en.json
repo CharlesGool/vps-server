@@ -228,6 +228,7 @@
   "portfwd_howto": "Uses this host's own iptables (DNAT + MASQUERADE); traffic passes through here on the way to the target, so the target sees this host as the client, not the original visitor. net.ipv4.ip_forward is turned on automatically the first time a forward is enabled, and is left on afterwards even if every forward is later removed — turning it back off is not automatic, since other software on this host may depend on it too.",
   "copy": "Copy",
   "copied": "Copied",
+  "probe_your_ip": "The server sees your IP address",
   "not_found": "404 not found.",
   "log_admin_password": "Generated initial admin password, see {path}",
   "log_console_port": "Generated random console port {port}, see {path}",

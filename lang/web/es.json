@@ -228,6 +228,7 @@
   "portfwd_howto": "Utiliza el propio iptables de este host (DNAT + MASQUERADE). El tráfico pasa por aquí camino del destino, de modo que el destino ve este host como cliente, no al visitante original. net.ipv4.ip_forward se activa automáticamente la primera vez que se habilita una redirección y permanece activo aunque después se eliminen todas. No se desactiva automáticamente porque otros programas de este host también podrían depender de él.",
   "copy": "Copiar",
   "copied": "Copiado",
+  "probe_your_ip": "El servidor ve tu dirección IP",
   "not_found": "404: no encontrado.",
   "log_admin_password": "Se generó la contraseña inicial de administración; consulta {path}",
   "log_console_port": "Se generó el puerto aleatorio de consola {port}; consulta {path}",

@@ -228,6 +228,7 @@
   "portfwd_howto": "基于本机自身的 iptables 实现（DNAT + MASQUERADE）：流量会经过本机再转发给目标，所以目标看到的客户端地址是本机，而不是原始访问者。首次启用转发规则时会自动开启 net.ipv4.ip_forward，之后即使删光所有转发规则也不会自动关闭——因为本机上可能还有别的东西也依赖这个开关。",
   "copy": "复制",
   "copied": "已复制",
+  "probe_your_ip": "服务器看到你的 IP 地址",
   "not_found": "404 未找到。",
   "log_admin_password": "已生成初始管理员密码,见 {path}",
   "log_console_port": "已生成随机控制台端口 {port},见 {path}",
