@@ -42,7 +42,7 @@ def _tracked_source(destination):
 
 
 def build(asset, nft_asset, nft_sources, output, version):
-    if not re.fullmatch(r"(?:dev-local|test-[0-9a-f]{7,40}|[0-9]+\.[0-9]+\.[0-9]+)", version):
+    if not re.fullmatch(r"(?:dev-local|test-[0-9a-f]{7,40}|[0-9]+\.[0-9]+\.[0-9]+(?:-test\.[0-9]+)?)", version):
         raise ValueError("invalid package version")
     if version.startswith("test-"):
         short = subprocess.check_output(["git", "rev-parse", "--short=7", "HEAD"],
@@ -53,7 +53,7 @@ def build(asset, nft_asset, nft_sources, output, version):
         tag = subprocess.run(["git", "describe", "--tags", "--exact-match", "HEAD"],
                              cwd=ROOT, capture_output=True, text=True, check=False)
         if tag.returncode or tag.stdout.strip() != "v" + version:
-            raise ValueError("formal package version does not match HEAD tag")
+            raise ValueError("tagged package version does not match HEAD tag")
     asset = Path(asset).resolve()
     if hashlib.sha256(asset.read_bytes()).hexdigest() != TAILSCALE_SHA256:
         raise ValueError("Tailscale archive checksum mismatch")
