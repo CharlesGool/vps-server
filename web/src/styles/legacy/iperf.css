@@ -1,4 +1,5 @@
 .iperf-actions,.inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--compat-size-14); }.inline-form { margin: 0; }.inline-form label { display: flex; flex-direction: column; gap: var(--compat-size-22); margin: 0; }.inline-form input { margin: 0; }.inline-form input[type="number"] { width: var(--compat-size-54); }
+.iperf-actions { margin-bottom: var(--compat-size-24); }
 .iperf-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-14); margin-bottom: var(--compat-size-24); }
 .iperf-fact { display: flex; flex-direction: column; gap: var(--compat-size-20); min-width: 0; padding: var(--compat-size-26) var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
 .iperf-fact > span { color: var(--muted-foreground); font-size: var(--text-sm); }
