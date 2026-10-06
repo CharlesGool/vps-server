@@ -69,16 +69,14 @@ metadata:
 
 ## 交接
 
-当前分支: `main`. 当前正式版本: v5.2.3. 下述实机验收结果属于 v5.2.2, 不代表后续源码已在测试机重新部署.
+当前分支: `feat/standardize-cc`(工作树 `vps-server-cc`, 基于 `main` 的 `c17ca6b`, 未推送, 未合并). 当前正式版本: v5.2.3. 本分支与 Codex 在 `main` 上的 Web 对齐工作并行, 合并前需对照 `main` 的新提交.
 
-已完成: 操作员确认 UI 与 FRPC 问题修复;正式发布包已上传并在指定 Debian 13 x86-64 测试机升级, Web/FRPS/Tailscale 活动, Web 已启用自启动. 真实 FRPC 隧道已验证保存后重启重连和无效配置保留. 发布包 SHA-256 为 `aeec77340d553c08f86d5cf4cf42eaf3731a4e7ca7aa906a03cb889d3d8324b2`.
+已完成: 对照 all-in-one 最新模板审查文档结构, `.gitignore`, `.claude/settings.json` 和 Web UI. 修复设置下"详细日志"页的返回控件(原写"返回首页"但指向 `/settings/modules`, 现为"返回设置"并指向 `/settings`); 详细日志, FRPC 和"模块已关闭"页使用各自的页面图标; 首页卡片中 HTTP, FRPC, Lucky, 终端, iperf3 不再与其他卡片共用图标; iperf3 页操作行下方补间距; `.claude/settings.json` 换成模板 hook(检查失败时以退出码 2 反馈); `.gitignore` 增加 `.claude/settings.local.json`. README 16 张界面截图由测试构建 `test-d2335e8` 重拍, 日志截图只保留筛选控件.
 
-检查结果: 源码语法, 样式构建, 三语言界面, 15 项固定构件及 84 份 Tailscale 依赖许可/声明检查通过. 发布前公开内容与提交身份审查通过. 本次重新编写 18 份文档, 导航/本地链接/版本记录及配置覆盖通过检查后提交, 未创建新版本或改变部署.
+检查结果: `tools/check-project/check_project.py` 通过; `web/` 的 `npm run check` 通过. 测试构建 `test-d2335e8` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, 公开页参数 `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台 21382 可从局域网访问, 登录页, Web UI 和变更日志显示的版本均为 `test-d2335e8`. 在 1440 px 与 375 px, 浅色与深色下遍历 12 个页面, 无控制台错误, 无页面级水平滚动. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`.
 
-剩余步骤: 无阻碍本次文档交付的事项;尚未独立验收的环境和策略见上方缺陷列表. 下一步按实际部署环境选择对应实机验收, 不将这些计划写成已通过.
+未验证: 整机重启后的自启动; Python 3.9 与其他发行版; 真实移动设备; 已登录 Tailscale 与真实持续流量. 测试机上, 安装器输出写"公开页已关闭", 但状态目录中的 `web-http-enabled` 为 1, 80 和 443 仍在监听, 与端口登记表一致, 来源是持久化的操作员设置, 未判断安装器提示是否需要调整.
 
-临时项目规则: 未发现. 本机恢复副本位于仓库忽略的 `.local/doc-rewrite-before/`;历史正式包与源码快照不进入公开文档或运行状态.
+剩余步骤: `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. 下一步: 与 `main` 合并.
 
-2026-10-06 规范化检查: 44 个 Python 文件, 21 个 Shell 文件(含内嵌 Python), 21 个自有 JavaScript 文件, 7 个 JSON 文件及 18 份文档通过统一静态检查;三语言键/占位符, 本地链接, 配置覆盖, 样式和 15 个固定构件摘要通过. 缺失配置, 损坏链接, 错误占位符和过期样式的故障注入均被拒绝. 提交 `128d332` 的 GitHub CI 已通过;本次未发布版本或部署服务.
-
-本地布局: Git 仓库已提升到项目根, 原 `repo/` 包装目录移除. 历史快照完整保存在被忽略的 `.local/snapshots/`, 私有笔记位于 `.local/notes.md`, 两份浏览器状态分别保存在 `.local/browser-state/` 和 `.local/repository-browser-state/`.
+临时项目规则: 未发现.

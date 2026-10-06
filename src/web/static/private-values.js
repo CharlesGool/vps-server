@@ -71,13 +71,18 @@
     }
   });
 
-  document.querySelectorAll('[data-share-id] .qr-details').forEach((details) => {
-    details.addEventListener('toggle', async () => {
-      const target = details.querySelector('[data-private-qr]');
-      if (!details.open) { target.replaceChildren(); return; }
+  document.querySelectorAll('[data-share-id] .private-share-qr').forEach((button) => {
+    const share = button.closest('[data-share-id]');
+    const dialog = share.querySelector('.node-qr-dialog');
+    const target = dialog.querySelector('[data-private-qr]');
+    dialog.addEventListener('close', () => target.replaceChildren());
+    dialog.querySelector('[data-qr-close]').addEventListener('click', () => dialog.close());
+    button.addEventListener('click', async () => {
+      target.replaceChildren();
+      dialog.showModal();
       try {
-        const url = await fetchValue(details.closest('[data-share-id]').dataset.shareId, 'share');
-        if (details.open) window.renderPrivateQr(target, `clash://install-config?url=${encodeURIComponent(url)}`);
+        const url = await fetchValue(share.dataset.shareId, 'share');
+        if (dialog.open) window.renderPrivateQr(target, `clash://install-config?url=${encodeURIComponent(url)}`);
       } catch (_) { target.textContent = target.dataset.error; }
     });
   });

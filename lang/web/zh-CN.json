@@ -272,6 +272,7 @@
   "appearance_dark": "深色",
   "theme_color": "主题色",
   "node_cancel": "取消",
+  "dialog_close": "关闭",
   "node_limit_manage": "访问管理",
   "node_save_limits": "保存限制",
   "node_create": "新建节点",

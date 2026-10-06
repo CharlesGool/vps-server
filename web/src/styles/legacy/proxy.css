@@ -89,9 +89,10 @@
 .node-share .copybtn { min-height: var(--compat-size-47); }
 .node-import { display: inline-block; padding: var(--compat-size-139) var(--compat-size-118); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--primary); font-weight: var(--font-weight-semibold); font-size: var(--text-sm); text-decoration: none; }
 .node-import:hover { background: var(--secondary); }
-.node-import:focus-visible, .qr-details summary:focus-visible { outline: var(--compat-size-39) solid var(--primary); outline-offset: var(--compat-size-39); }
-.node-share .qr-details { margin: 0; }
-.node-share .qr-details summary { padding: var(--compat-size-140) 0; }
+.node-import:focus-visible { outline: var(--compat-size-39) solid var(--primary); outline-offset: var(--compat-size-39); }
+.node-qr-dialog { width: min(var(--compat-size-104), calc(100vw - var(--compat-size-30))); }
+.node-qr-dialog .qr { width: min(100%, var(--compat-size-32)); margin: 0 auto var(--compat-size-34); }
+.node-qr-dialog .qr:empty { min-height: var(--compat-size-150); }
 
 @media (max-width: 47rem) {
   .proxy-overview { align-items: stretch; flex-direction: column; }

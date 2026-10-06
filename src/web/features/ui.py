@@ -156,20 +156,20 @@ def render_theme_menu(context, lang):
             f'{theme_options}</div></details>')
 
 def render_page(context, title, body, lang, active=None, show_nav=True, password_authenticated=False,
-                ip_authenticated=False, bare=False, back_href=None):
+                ip_authenticated=False, bare=False, back_href=None, icon=None):
     t = context.STRINGS[lang]
     server_label = context.server_label()
     label_badge = (f'<span class="server-label" title="{context.html.escape(server_label, quote=True)}">'
                    f'{context.html.escape(server_label)}</span>' if server_label else '')
     page_title = (f"{server_label} — {title} — {t['title']}" if server_label
                   else f"{title} — {t['title']}")
-    favicon = ('login' if bare else 'modules' if title == t['modules_heading'] else
-               'changelog' if title == t['module_detailed_logs'] else
+    favicon = (icon if icon else 'login' if bare else 'modules' if title == t['modules_heading'] else
+               'logs' if title == t['module_detailed_logs'] else
                'security' if back_href == '/settings' else
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
                                     'visitors', 'changelog', 'settings') else
-               'frp' if title in (t['frp_heading'], t['frps_heading'], t['frp_client_heading'])
-               or back_href in ('/frps', '/frpc') else 'lucky' if title == 'Lucky' else
+               'frpc' if title == t['frp_client_heading'] or back_href == '/frpc' else
+               'frp' if title in (t['frp_heading'], t['frps_heading']) or back_href == '/frps' else 'lucky' if title == 'Lucky' else
                'tailscale' if title == 'Tailscale' else 'home')
     version_tag = f'<a class="version" href="/changelog">{context.html.escape(context.VERSION_LABEL)}</a>'
     nav = ""
@@ -256,6 +256,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
 <link rel="stylesheet" href="/static/style.css">
 <script type="module" src="/static/ui.js"></script>
 <script src="/static/password-fields.js" defer></script>
+<script src="/static/confirm-dialog.js" data-cancel="{context.html.escape(t['node_cancel'], quote=True)}" defer></script>
 <script src="/static/reference-select.js" defer></script>
 </head>
 <body{' class="login-page"' if bare else ''}>

@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .local/
+.claude/settings.local.json
 .playwright-cli/
 admin_password.txt
 console_port.txt

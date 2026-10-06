@@ -26,8 +26,8 @@
   const clearForm = document.getElementById("visitors-clear");
   clearForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!window.confirm(clearForm.dataset.confirm)) return;
     const button = clearForm.querySelector('button[type="submit"]');
+    if (!(await window.vpsConfirm(clearForm.dataset.confirm, button.textContent.trim()))) return;
     const status = document.getElementById("visitors-clear-status");
     button.disabled = true;
     status.textContent = clearForm.dataset.working;

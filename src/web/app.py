@@ -859,7 +859,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "clover", "terminal"})
 _UI_ICON_CACHE = {}
 
 
@@ -896,6 +896,7 @@ STATIC_FILES = {
     "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
+    "/static/confirm-dialog.js": ("application/javascript", STATIC_DIR / "confirm-dialog.js"),
     "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
     "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
     "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),
@@ -909,7 +910,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "frp", "lucky", "tailscale", "login")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "lucky", "tailscale", "login")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -1013,12 +1014,13 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def is_password_authenticated(self):
         return AUTH_ENABLED and session_valid(self.get_cookie("session"))
 
-    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None):
+    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None,
+                    icon=None):
         return render_page(title, body, lang, active, show_nav,
                            password_authenticated=self.is_password_authenticated(),
                            ip_authenticated=ip_session_valid(self.get_cookie("session"),
                                                              self.client_address[0]), bare=bare,
-                           back_href=back_href)
+                           back_href=back_href, icon=icon)
 
     def client_ip(self):
         if TRUST_PROXY:
