@@ -12,7 +12,7 @@ const icons = {home: Server, changelog: ScrollText, settings: Settings, logout: 
           <span class="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Server class="size-6" aria-hidden="true" /></span>
           {{ APP_NAME }}
         </a>
-        <span v-if="serverLabel" :title="serverLabel" class="max-w-48 truncate rounded-sm bg-secondary px-2 py-1 text-sm font-semibold text-muted-foreground">{{ serverLabel }}</span>
+        <span v-if="serverLabel" :title="serverLabel" class="max-w-48 truncate rounded-sm bg-secondary px-2 py-1 text-sm leading-tight font-semibold text-muted-foreground">{{ serverLabel }}</span>
         <a v-if="!login" href="/changelog" class="version rounded-sm text-sm text-muted-foreground hover:text-foreground">{{ version }}</a>
       </div>
       <nav v-if="!login && items.length" :aria-label="label">
