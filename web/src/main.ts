@@ -66,3 +66,4 @@ if (tiles) {
 }
 for (const el of main.children) if (!el.querySelector('[data-reflow]')) el.setAttribute('data-reflow', '')
 initResizeReflow()
+document.documentElement.classList.remove('ui-pending')

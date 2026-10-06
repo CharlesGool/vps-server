@@ -1,0 +1,6 @@
+/* Kept outside @layer. The vendored xterm.css is unlayered, and layered rules lose to it; the pending-state rule must also win over layout rules. */
+.terminal-screen .xterm .xterm-viewport { background-color: var(--terminal-bg); overflow-x: hidden; scrollbar-width: none; }
+.terminal-screen .xterm-viewport::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Until the shared header and page heading are mounted, hide the server-rendered fallback so it never flashes. */
+html.ui-pending #ui-header, html.ui-pending main { visibility: hidden; }

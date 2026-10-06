@@ -20,7 +20,7 @@
 @import "./legacy/responsive.css" layer(legacy);
 @import "./legacy/nodes.css" layer(legacy);
 @import "./alignment.css" layer(legacy);
-@import "./terminal.css";
+@import "./unlayered.css";
 
 @custom-variant dark (&:is(.dark *));
 
