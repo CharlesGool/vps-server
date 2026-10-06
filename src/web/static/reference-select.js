@@ -82,4 +82,5 @@
   document.addEventListener('pointerdown', (event) => {
     pickers.forEach((picker) => { if (!picker.wrapper.contains(event.target)) close(picker); });
   });
+  window.vpsReady?.('sel');
 })();
