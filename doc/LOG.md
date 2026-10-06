@@ -69,15 +69,15 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 领先 `origin/main` 20 个提交, 未推送. `feat/standardize-cc` 已用 `--no-ff` 合并, 其工作树和本地分支已删除. 当前正式版本: v5.2.3.
+当前分支: `main`, 领先 `origin/main` 22 个提交, 未推送. `feat/standardize-cc` 已用 `--no-ff` 合并, 其工作树和本地分支已删除. 当前正式版本: v5.2.3.
 
 已完成: 对照 all-in-one 最新模板审查文档, `.gitignore`, `.claude/settings.json` 和 Web UI, 并修复以下问题. 返回控件, 页面图标和首页卡片图标各自独立; iperf3 页和 Tailscale 概览补上间距; 状态提示条与下方卡片之间补上间距; 终端底部黑条(分层样式输给未分层的 `xterm.css`, 现在覆盖规则放在不分层的 `terminal.css`); 语言选择条不再撑满整行; 卸载, 清空历史, 删除代理, 清除访客的二次确认改用控制台自己的对话框(`confirm-dialog.js`), 不再使用浏览器原生提示; Clash 二维码改为与"复制", "导入"同款的按钮, 点击后在对话框中显示; hook 与 `.gitignore` 对齐模板; README 16 张界面截图按测试构建重拍.
 
-检查结果: `check_project.py` 和 `web/` 的 `npm run check` 通过. 测试构建 `test-d529d37` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台可从局域网访问. 真机浏览器验证: 终端视口背景为终端色, 语言条宽度 250 px, 确认对话框打开且未触发原生对话框, 二维码渲染并在关闭后清空, 无控制台错误. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`. README 截图取自 `test-d2335e8`, 之后的改动(终端, 语言条, 确认框, 二维码)没有对应的新截图.
+检查结果: `check_project.py` 和 `web/` 的 `npm run check` 通过. 测试构建 `test-fc54089` 已升级到 Debian 13 测试机(模块 web, proxy, frps, lucky, tailscale, iperf3 保留, `VPSSRV_PUBLIC_ENABLE=0`): 6 个服务 active 且 enabled, 控制台可从局域网访问. 真机浏览器验证: 终端视口背景为终端色, 语言条宽度 250 px, 确认对话框打开且未触发原生对话框, 二维码渲染并在关闭后清空, 无控制台错误. 升级前备份位于测试机 `/root/apps/vps-server/.local/backups/pre-test-bc53ba3.tar.gz`. README 截图取自 `test-d2335e8`, 之后的改动(终端, 语言条, 确认框, 二维码)没有对应的新截图.
 
 iperf3 安装/停用会重启 Web, 此前与浏览器的状态页请求竞争, 页面可能停在旧状态; 现在任务先等待 2 秒, 状态页轮询在连接中断恢复后自动刷新, 在人为延迟 1.5 秒和 3 秒的状态页请求下两轮卸载/安装都自动更新. 没有复现"超级慢": 干净状态下开启窗口和停用只要 1~2 秒; 21:56 的日志里端口登记助手曾排队 90 多秒, 原因未查明.
 
-公开页(80/443)改为一行纯文本"服务器看到你的 IP 地址：<地址>", 按 Accept-Language 显示简体中文, 英语或西班牙语, 不再有标题, 到达方式, 服务器时间和 iperf3 窗口提示; 访客记录不变. 升级时安装器探测 80/443 会被 TIME_WAIT 套接字误判为"端口被其他进程占用", 已改为与服务器一致的 `SO_REUSEADDR` 探测, 端口登记助手同改. 真机验证: HTTP 与 HTTPS 均返回 `text/plain` 的单行文本(三种语言各验证一次), `HEAD` 与 404 行为不变.
+服务器标识徽章在改用共享顶栏时丢失, 已补回到项目名称之后, 登录页同样显示(1280 px 与 375 px, 浅色与深色已看过). 公开页(80/443)改为一行纯文本"服务器看到你的 IP 地址：<地址>", 按 Accept-Language 显示简体中文, 英语或西班牙语, 不再有标题, 到达方式, 服务器时间和 iperf3 窗口提示; 访客记录不变. 升级时安装器探测 80/443 会被 TIME_WAIT 套接字误判为"端口被其他进程占用", 已改为与服务器一致的 `SO_REUSEADDR` 探测, 端口登记助手同改. 真机验证: HTTP 与 HTTPS 均返回 `text/plain` 的单行文本(三种语言各验证一次), `HEAD` 与 404 行为不变.
 
 未验证: 整机重启后的自启动; Python 3.9 与其他发行版; 真实移动设备; 已登录 Tailscale 与真实持续流量; 375 px 宽度下的新二维码对话框与确认对话框. 测试机上安装器输出写"公开页已关闭", 但状态目录 `web-http-enabled` 为 1, 80 和 443 仍在监听, 与端口登记表一致, 未判断提示是否需要调整.
 
