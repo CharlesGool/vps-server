@@ -244,7 +244,9 @@ if [ "$old_backend $old_port" != "$backend $PORT" ]; then
     fi
   fi
   removed=1
-  if [ -n "$old_backend" ]; then
+  # A rule already removed by hand needs no removal; failing on it would roll
+  # back the new rule and leave the new port closed.
+  if [ "$old_rule_present" = 1 ]; then
     if ! rule_change "$old_backend" "$old_port" remove; then
       removed=0
       msg firewall_remove >&2

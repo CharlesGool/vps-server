@@ -452,8 +452,14 @@ class PortForwardManager:
             for rule in self._rules:
                 if rule["enabled"]:
                     self.context.portfwd_rule_apply(rule, opening=False)
-                    self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"],
-                                                    "vps-server portfwd " + rule["id"])
+                    # One failed registry release must not leave the remaining
+                    # rules' kernel state behind.
+                    try:
+                        self.context.release_owned_port(self.context.BASE_DIR, rule["public_port"],
+                                                        "vps-server portfwd " + rule["id"])
+                    except Exception as exc:
+                        print(self.context._log_text('log_portfwd_release_failed', error=type(exc).__name__),
+                              file=self.context.sys.stderr)
             self._applied.clear()
 
 def portfwd_switch_revision(context, ):

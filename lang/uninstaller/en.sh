@@ -14,6 +14,7 @@ case "$key" in
   frpc_unowned) fmt='FRPC ownership could not be verified; existing FRPC files and their port registrations were kept.\n' ;;
   ports_released) fmt='Released %s vps-server port registrations.\n' ;;
   cleanup_failed) fmt='Could not complete FRPC or port-registry cleanup.\n' ;;
+  tailscale_stop_failed) fmt='Could not stop the Tailscale service' ;;
   done) fmt='\nvps-server has been uninstalled.\n' ;;
   lucky_fw_retained) fmt='Warning: Lucky firewall ownership record retained; manual cleanup needed\n' ;;
   lucky_config_retained) fmt='Lucky DDNS/reverse proxy configuration retained in /etc/vps-server-lucky/config.json\n' ;;

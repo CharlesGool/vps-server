@@ -237,6 +237,7 @@
   "log_firewall_close": "Could not close port {port} via {backend}; adjust the firewall by hand if the test cannot connect.",
   "log_iperf_stuck": "iperf3 (pid {pid}) did not exit after SIGKILL; closing the window anyway",
   "log_iperf_release_failed": "Could not release the iperf3 port registration ({error}); continuing",
+  "log_portfwd_release_failed": "Could not release a port forwarding registration ({error}); continuing",
   "log_iptables_missing": "iptables not found; the port-forward rule was not applied.",
   "log_portfwd_apply": "Could not fully apply port forward {rule_id}; check iptables by hand.",
   "log_connection_poller": "connection poller error: {error}",

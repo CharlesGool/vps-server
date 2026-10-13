@@ -78,7 +78,7 @@ esac
 
 # Stop the project Tailscale daemon before removing its state.
 if [ -f "/etc/systemd/system/$TAILSCALE_SERVICE" ]; then
-  systemctl disable --now "$TAILSCALE_SERVICE" || die "Tailscale service could not stop"
+  systemctl disable --now "$TAILSCALE_SERVICE" || die "$(msg tailscale_stop_failed)"
   rm -f "/etc/systemd/system/$TAILSCALE_SERVICE" \
         /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server
   systemctl daemon-reload
@@ -225,6 +225,8 @@ if [ "${KEEP_DATA:-0}" != 1 ]; then
   for module_config in /etc/vps-server-lucky /etc/vps-server-frps /etc/vps-server-proxy; do
     rm -rf -- "$module_config"
   done
+  # Written by proxy/setup-proxy.sh; the running kernel setting is left as is.
+  rm -f /etc/sysctl.d/99-vps-server-bbr.conf
 fi
 
 # All vps-server listeners have stopped. Keep other projects' PORTS.md rows.

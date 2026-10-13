@@ -30,8 +30,9 @@ case "$key" in
   line_pw_seefile) fmt='  contraseña: consulta %s\n' ;;
   line_lang) fmt='  idioma: %s (predeterminado si no coinciden cookie, consulta ni navegador)\n' ;;
   cert_note) fmt='\nAviso: se usa un certificado autofirmado, por lo que los navegadores mostrarán una advertencia\nque tendrás que aceptar. Para usar un certificado real, configura VPSSRV_TLS_CERT\ny VPSSRV_TLS_KEY y vuelve a ejecutar este instalador.\n' ;;
-  to_remove) fmt='\nDesinstalar y conservar los datos:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash deploy/uninstall.sh\nDesinstalar y borrar los datos del proyecto:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  to_remove) fmt='\nDesinstalar y conservar los datos:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\nDesinstalar y borrar los datos del proyecto:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
   port_registration_failed) fmt='No se pudo registrar el puerto de %s en PORTS.md; se detuvo el servicio.\n' ;;
+  public_registration_failed) fmt='No se pudieron registrar los puertos de la página pública en PORTS.md' ;;
   nft_runtime_failed) fmt='Falta el entorno nftables incluido o no supera la verificación.\n' ;;
   tailscale_install_failed) fmt='Falló la instalación de Tailscale; consulte el registro del módulo.\n' ;;
   web_start_failed) fmt='El servicio Web no arrancó; se liberaron los nuevos puertos públicos reservados.\n' ;;
@@ -54,8 +55,10 @@ case "$key" in
   proxy_start) fmt='\nInstalando el módulo proxy (%s) ...\n' ;;
   line_modules) fmt='  módulos:   %s\n' ;;
   line_public) fmt='  pública:   http://%s:%s/ y https://%s:%s/ (sin iniciar sesión)\n' ;;
+  line_public_http) fmt='  pública:   http://%s:%s/ (sin iniciar sesión; HTTPS desactivado)\n' ;;
+  line_public_https) fmt='  pública:   https://%s:%s/ (sin iniciar sesión; HTTP desactivado)\n' ;;
   line_also) fmt='  también en: %s\n' ;;
-  line_public_off) fmt='  pública:   desactivada (VPSSRV_PUBLIC_ENABLE=0)\n' ;;
+  line_public_off) fmt='  pública:   desactivada (actívela desde la página de inicio de la consola)\n' ;;
   line_iperf) fmt='  iperf3:    listo, ventana cerrada; abre una desde la consola (puerto %s)\n' ;;
   line_iperf_off) fmt='  iperf3:    no instalado\n' ;;
   found_install) fmt='\nSe encontró una instalación existente: vps-server %s, módulos %s.\n' ;;

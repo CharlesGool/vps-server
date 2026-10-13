@@ -601,8 +601,6 @@ fi
 PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
-# Check final configuration after upgrade preservation.
-
 # ---------------------------------------------------------------------------
 # 1b. Modules.
 # ---------------------------------------------------------------------------
@@ -825,7 +823,7 @@ stage_nft_runtime() {
 }
 
 # Copy only program files; state (data, credentials, certs, install state)
-# stays in PREFIX. This function is also used by the module-only path.
+# stays in STATE_DIR. This function is also used by the module-only path.
 copy_selected_files() {
   mkdir -p "$PREFIX"
   local prefix_abs
@@ -981,7 +979,9 @@ if ! has_module web; then
   if has_module frps; then
     PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || FRPS_FAILED=1
   fi
-  msg to_remove "$PREFIX" "$SERVICE_NAME" "$PREFIX" "$SERVICE_NAME"
+  UNINSTALLER="$PREFIX/installer-source/deploy/uninstall.sh"
+[ -f "$UNINSTALLER" ] || UNINSTALLER="$SRC_DIR/deploy/uninstall.sh"
+msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER"
   [ "$PROXY_FAILED" = "0" ] || { msg proxy_failed >&2; exit 1; }
   install_node_meter || {
     journalctl -u vps-server-node-meter.service -n 40 --no-pager >&2 || true
@@ -1161,7 +1161,7 @@ except BaseException:
 for name, _, _ in new:
     print(name)
 PY
-)" || die "Public listener port registration failed"
+)" || die "$(msg public_registration_failed)"
 release_new_public_ports() {
   python3 - "$PREFIX" "$PUBLIC_HTTP_PORT" "$PUBLIC_HTTPS_PORT" "$NEW_PUBLIC_PORTS" <<'PY'
 import sys
@@ -1269,9 +1269,8 @@ primary_ip() {
     awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit }}'
 }
 
-# Same interface filter as anytls/setup-anytls.sh: container and bridge
-# interfaces are not addresses anyone wants pasted into a browser. Unlike that
-# script, VPN interfaces are kept — a Tailscale or ZeroTier address is often
+# Container and bridge interfaces are not addresses anyone wants pasted into
+# a browser. Unlike proxy/setup-proxy.sh, VPN interfaces are kept — a Tailscale or ZeroTier address is often
 # exactly how the console gets reached, and each line is labelled with its
 # interface so it is clear which network it belongs to.
 other_ips() {
@@ -1299,11 +1298,23 @@ fi
 msg running
 msg line_modules "$MODULES"
 msg line_service "$SERVICE_NAME"
-if [ "${VPSSRV_PUBLIC_ENABLE:-1}" = "1" ]; then
-  msg line_public "$HOST" "$PUBLIC_HTTP_PORT" "$HOST" "$PUBLIC_HTTPS_PORT"
-else
-  msg line_public_off
-fi
+# Report what Web will actually serve: the console's per-listener switches
+# override VPSSRV_PUBLIC_ENABLE, exactly as in the registration above.
+PUBLIC_STATE="$(python3 - "$PREFIX" "${VPSSRV_PUBLIC_ENABLE:-1}" <<'PY' || true
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from module_manager import public_listener_enabled
+print(' '.join(name for name in ('web_http', 'web_https')
+               if public_listener_enabled(Path(sys.argv[1]), name, sys.argv[2] == '1')))
+PY
+)"
+case " $PUBLIC_STATE " in
+  *" web_http "*" web_https "*) msg line_public "$HOST" "$PUBLIC_HTTP_PORT" "$HOST" "$PUBLIC_HTTPS_PORT" ;;
+  *" web_http "*) msg line_public_http "$HOST" "$PUBLIC_HTTP_PORT" ;;
+  *" web_https "*) msg line_public_https "$HOST" "$PUBLIC_HTTPS_PORT" ;;
+  *) msg line_public_off ;;
+esac
 if [ -n "$PORT" ]; then
   msg line_url "$SCHEME" "$HOST" "$PORT"
 else
@@ -1339,7 +1350,9 @@ if has_module proxy; then
   install_proxy || PROXY_FAILED=1
 fi
 
-msg to_remove "$PREFIX" "$SERVICE_NAME" "$PREFIX" "$SERVICE_NAME"
+UNINSTALLER="$PREFIX/installer-source/deploy/uninstall.sh"
+[ -f "$UNINSTALLER" ] || UNINSTALLER="$SRC_DIR/deploy/uninstall.sh"
+msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER"
 
 if [ "$PROXY_FAILED" = "1" ]; then
   msg proxy_failed >&2

@@ -30,8 +30,9 @@ case "$key" in
   line_pw_seefile) fmt='  密码：    见 %s\n' ;;
   line_lang) fmt='  语言：    %s （没有 cookie/查询参数/浏览器语言匹配时的默认值）\n' ;;
   cert_note) fmt='\n注意：使用的是自签证书，浏览器会弹出警告，需要手动点继续。\n想用真实证书的话，设置 VPSSRV_TLS_CERT 和 VPSSRV_TLS_KEY 后\n重新运行本安装脚本。\n' ;;
-  to_remove) fmt='\n保留数据卸载：\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash deploy/uninstall.sh\n完全卸载项目数据：\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  to_remove) fmt='\n保留数据卸载：\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\n完全卸载项目数据：\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
   port_registration_failed) fmt='无法将 %s 监听端口登记到 PORTS.md；该服务已停止。\n' ;;
+  public_registration_failed) fmt='无法在 PORTS.md 中登记公开页端口' ;;
   nft_runtime_failed) fmt='随附的 nftables 运行时缺失或校验失败。\n' ;;
   tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
   web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
@@ -54,8 +55,10 @@ case "$key" in
   proxy_start) fmt='\n正在安装 proxy 模块（%s）...\n' ;;
   line_modules) fmt='  模块：    %s\n' ;;
   line_public) fmt='  公开页：  http://%s:%s/ 和 https://%s:%s/ （无需登录）\n' ;;
+  line_public_http) fmt='  公开页：  http://%s:%s/ （无需登录；HTTPS 已关闭）\n' ;;
+  line_public_https) fmt='  公开页：  https://%s:%s/ （无需登录；HTTP 已关闭）\n' ;;
   line_also) fmt='  其他地址：%s\n' ;;
-  line_public_off) fmt='  公开页：  已关闭（VPSSRV_PUBLIC_ENABLE=0）\n' ;;
+  line_public_off) fmt='  公开页：  已关闭（可在控制台首页开启）\n' ;;
   line_iperf) fmt='  iperf3：  就绪，窗口关闭中 —— 到控制台开启（端口 %s）\n' ;;
   line_iperf_off) fmt='  iperf3：  未安装\n' ;;
   found_install) fmt='\n检测到已安装：vps-server %s，模块 %s。\n' ;;

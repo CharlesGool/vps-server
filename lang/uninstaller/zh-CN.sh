@@ -14,6 +14,7 @@ case "$key" in
   frpc_unowned) fmt='无法确认 FRPC 文件归属本项目,已保留现有 FRPC 文件及其端口登记.\n' ;;
   ports_released) fmt='已释放 %s 条 vps-server 端口登记.\n' ;;
   cleanup_failed) fmt='无法完成 FRPC 或端口登记清理.\n' ;;
+  tailscale_stop_failed) fmt='无法停止 Tailscale 服务' ;;
   done) fmt='\nvps-server 已卸载完成。\n' ;;
   lucky_fw_retained) fmt='警告：Lucky 防火墙归属记录已保留；需要手动清理\n' ;;
   lucky_config_retained) fmt='Lucky DDNS/反向代理配置已保留在 /etc/vps-server-lucky/config.json\n' ;;

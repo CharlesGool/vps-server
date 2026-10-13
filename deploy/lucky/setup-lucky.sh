@@ -254,7 +254,9 @@ if [ -n "$wanted" ] && [ "$old_backend $old_port" != "$wanted $PORT" ] && ! rule
   ADDED_BACKEND="$wanted" ADDED_PORT="$PORT"
   change_rule "$wanted" "$PORT" add
 fi
-if [ -n "$old_backend" ] && [ "$old_backend $old_port" != "$wanted $PORT" ]; then
+# Skip a recorded rule that was already removed by hand; deleting it again
+# fails and would roll back the whole installation.
+if [ -n "$old_backend" ] && [ "$old_backend $old_port" != "$wanted $PORT" ] && rule_exists "$old_backend" "$old_port"; then
   if [ "$old_backend" = firewalld ]; then snapshot_firewalld "$old_port"; FIREWALL_DIRTY=1; fi
   REMOVED_BACKEND="$old_backend" REMOVED_PORT="$old_port"
   change_rule "$old_backend" "$old_port" remove

@@ -51,7 +51,7 @@ err(){ echo -e "${C_R}[ERR]${C_0} $*" >&2; }
 [[ $EUID -eq 0 ]] || { err "$(msg need_root "$0")"; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Shared helpers (deliberately duplicated from setup-anytls.sh — see header)
+# Shared helpers
 # ---------------------------------------------------------------------------
 
 install_deps(){
@@ -87,7 +87,9 @@ enable_bbr(){
   fi
   log "$(msg enabling_bbr)"
   mkdir -p /etc/sysctl.d
-  cat > /etc/sysctl.d/99-bbr.conf <<EOF
+  # A project-named file: never overwrite an operator's own sysctl file, and
+  # let a full uninstall remove exactly what this script wrote.
+  cat > /etc/sysctl.d/99-vps-server-bbr.conf <<EOF
 net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
 EOF
@@ -312,6 +314,8 @@ setup_config(){
   done
 
   mkdir -p "$INSTALL_DIR"
+  # The file holds credentials: create it private before writing them.
+  install -m 0600 /dev/null "${INSTALL_DIR}/config.json"
   {
     echo '{'
     echo '  "log": { "level": "info", "timestamp": true },'
@@ -368,9 +372,8 @@ current_ports_json(){
   python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" ports "${INSTALL_DIR}/config.json" 2>/dev/null || echo '{}'
 }
 
-# Same ordering rationale as setup-anytls.sh's apply_node(): write the new
-# state fully before touching the firewall, and read the old ports before
-# overwriting config.json — after that they are gone.
+# Write the new state fully before touching the firewall, and read the old
+# ports before overwriting config.json — after that they are gone.
 apply_node(){
   local prev prev_ports=() new_ports=() proto
   prev="$(current_ports_json)"

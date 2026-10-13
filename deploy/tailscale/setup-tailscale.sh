@@ -8,16 +8,37 @@ ROOT="tailscale_1.102.4_amd64"
 UNIT=/etc/systemd/system/vps-server-tailscale.service
 STATE="${VPSSRV_STATE_DIR:-/var/lib/vps-server}/tailscale"
 PORT=41641
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+case "${VPSSRV_DEFAULT_LANG:-en}" in
+  zh_cn) CATALOG_LANG=zh-CN ;;
+  es) CATALOG_LANG=es ;;
+  *) CATALOG_LANG=en ;;
+esac
+CATALOG_ROOT="${VPSSRV_CATALOG_ROOT:-}"
+if [ -z "$CATALOG_ROOT" ]; then
+  if [ -d "$SCRIPT_DIR/../../lang/tailscale" ]; then CATALOG_ROOT="$SCRIPT_DIR/../../lang"
+  else CATALOG_ROOT="$PREFIX/lang"; fi
+fi
+msg() {
+  local key="$1"; shift
+  local fmt
+  # shellcheck disable=SC1090
+  source "$CATALOG_ROOT/tailscale/$CATALOG_LANG.sh"
+  # shellcheck disable=SC2059  # fmt comes from the trusted catalog.
+  printf "$fmt\n" "$@"
+}
 
-[ "$(id -u)" -eq 0 ] || { echo 'Root required' >&2; exit 1; }
-[ -f "$ARCHIVE" ] || { echo 'Bundled Tailscale asset missing' >&2; exit 1; }
-printf '%s  %s\n' "$SHA256" "$ARCHIVE" | sha256sum -c - >/dev/null
+[ "$(id -u)" -eq 0 ] || { msg root_required >&2; exit 1; }
+[ -f "$ARCHIVE" ] || { msg asset_missing >&2; exit 1; }
+printf '%s  %s\n' "$SHA256" "$ARCHIVE" | sha256sum -c - >/dev/null || { msg integrity_failure >&2; exit 1; }
 if systemctl is-active --quiet tailscaled.service; then
-  echo 'An existing Tailscale daemon is active; refusing a second instance' >&2
+  msg daemon_active >&2
   exit 1
 fi
 
+export TAILSCALE_MSG_PORT_REGISTERED="$(msg port_registered)"
 PORT_ADDED="$(python3 - "$PREFIX" "$PORT" <<'PY'
+import os
 import fcntl
 import sys
 from datetime import date
@@ -34,7 +55,7 @@ with (root / '.ports.lock').open('a+') as lock:
     rows, _ = read_rows(root / 'PORTS.md')
     current = [row for row in rows if row[0] == port]
     if current and current[0][1] != 'vps-server / Tailscale':
-        raise SystemExit('Tailscale port already registered')
+        raise SystemExit(os.environ['TAILSCALE_MSG_PORT_REGISTERED'])
     if not current:
         available(port)
         rows.append((port, 'vps-server / Tailscale', '0.0.0.0', date.today().isoformat()))
@@ -43,8 +64,10 @@ with (root / '.ports.lock').open('a+') as lock:
 PY
 )"
 OPTIONAL_ADDED='[]'
+tmp=""
 rollback_port() {
   local status=$?
+  [ -z "$tmp" ] || rm -rf -- "$tmp"
   if [ "$status" -ne 0 ]; then
     python3 - "$PREFIX" "$OPTIONAL_ADDED" <<'PY'
 import json, sys
@@ -76,7 +99,6 @@ PY
 )"
 
 tmp="$(mktemp -d)"
-trap 'rm -rf -- "$tmp"' EXIT
 tar -xzf "$ARCHIVE" -C "$tmp" "$ROOT/tailscale" "$ROOT/tailscaled"
 install -m 0755 "$tmp/$ROOT/tailscale" /usr/local/bin/tailscale-vps-server
 install -m 0755 "$tmp/$ROOT/tailscaled" /usr/local/bin/tailscaled-vps-server

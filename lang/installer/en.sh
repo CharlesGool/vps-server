@@ -30,8 +30,9 @@ case "$key" in
   line_pw_seefile) fmt='  password: see %s\n' ;;
   line_lang) fmt='  language: %s (default when no cookie/query/browser match)\n' ;;
   cert_note) fmt='\nNote: using a self-signed certificate, so browsers will show a warning\nyou must click through. To use a real certificate, set VPSSRV_TLS_CERT\nand VPSSRV_TLS_KEY and re-run this installer.\n' ;;
-  to_remove) fmt='\nTo remove and keep data:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash deploy/uninstall.sh\nTo remove all project data:\n  sudo PREFIX=%s SERVICE_NAME=%s bash deploy/uninstall.sh\n' ;;
+  to_remove) fmt='\nTo remove and keep data:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\nTo remove all project data:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
   port_registration_failed) fmt='Could not register the %s listener in PORTS.md; its service was stopped.\n' ;;
+  public_registration_failed) fmt='Could not register the public page ports in PORTS.md' ;;
   nft_runtime_failed) fmt='The bundled nftables runtime is missing or invalid.\n' ;;
   tailscale_install_failed) fmt='Tailscale installation failed; check the module log.\n' ;;
   web_start_failed) fmt='The Web service did not start; new public port reservations were released.\n' ;;
@@ -54,8 +55,10 @@ case "$key" in
   proxy_start) fmt='\nInstalling the proxy module (%s) ...\n' ;;
   line_modules) fmt='  modules:  %s\n' ;;
   line_public) fmt='  public:   http://%s:%s/ and https://%s:%s/ (no login)\n' ;;
+  line_public_http) fmt='  public:   http://%s:%s/ (no login; HTTPS off)\n' ;;
+  line_public_https) fmt='  public:   https://%s:%s/ (no login; HTTP off)\n' ;;
   line_also) fmt='  also at:  %s\n' ;;
-  line_public_off) fmt='  public:   disabled (VPSSRV_PUBLIC_ENABLE=0)\n' ;;
+  line_public_off) fmt='  public:   disabled (turn it on from the console home page)\n' ;;
   line_iperf) fmt='  iperf3:   ready, window closed — open one from the console (port %s)\n' ;;
   line_iperf_off) fmt='  iperf3:   not installed\n' ;;
   found_install) fmt='\nFound an existing install: vps-server %s, modules %s.\n' ;;
