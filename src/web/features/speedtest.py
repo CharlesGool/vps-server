@@ -76,6 +76,11 @@ class SpeedtestMixin:
         self.send_html(200, self.render_page(t['speedtest'], body, lang, active="speedtest"),
                        self.maybe_lang_cookie(query_lang))
 
+    # These handlers implement LibreSpeed's own client/server contract exactly
+    # (garbage.php / empty.php / getIP.php equivalents) rather than a
+    # hand-rolled protocol; see vps-webserver DECISIONS.md (2026-08-25). Header
+    # set and ckSize clamping match the reference PHP backend byte-for-byte so
+    # the vendored speedtest.js/speedtest_worker.js need no server-side quirks.
     def handle_speedtest_garbage(self, parsed):
         q = self.context.parse_qs(parsed.query)
         try:
