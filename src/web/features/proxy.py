@@ -35,7 +35,7 @@ class ProxyMixin:
         host = (self.headers.get("Host") or "").split(":")[0]
         lan_host = self.context.clash_lan_host(host) if self.context.AUTH_ENABLED else None
         key = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
-        notice = (f'<p class="{"error" if key == "node_settings_failed" else "notice"}">'
+        notice = (f'<p class="{"error" if key == "node_settings_failed" else "notice"}" role="status">'
                   f'{esc(t[key])}</p>') if key in self.context.NODE_APPLY_MESSAGE_KEYS else ""
         cards = []
         running = {"proxy": self.context.proxy_running()}

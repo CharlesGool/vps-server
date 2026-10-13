@@ -236,6 +236,7 @@
   "log_firewall_open": "No se pudo abrir el puerto {port} mediante {backend}; ajusta el firewall manualmente si la prueba no puede conectarse.",
   "log_firewall_close": "No se pudo cerrar el puerto {port} mediante {backend}; ajusta el firewall manualmente si la prueba no puede conectarse.",
   "log_iperf_stuck": "iperf3 (pid {pid}) no terminó tras SIGKILL; se cierra la ventana de todos modos",
+  "log_iperf_release_failed": "No se pudo liberar el registro del puerto de iperf3 ({error}); se continúa",
   "log_iptables_missing": "No se encontró iptables; no se aplicó la regla de redirección de puertos.",
   "log_portfwd_apply": "No se pudo aplicar completamente la redirección {rule_id}; comprueba iptables manualmente.",
   "log_connection_poller": "Error del sondeo de conexiones: {error}",

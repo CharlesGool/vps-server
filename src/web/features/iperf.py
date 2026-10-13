@@ -23,8 +23,8 @@ class IperfMixin:
         notice = ""
         key = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
         if key in self.context.IPERF_MESSAGE_KEYS:
-            cls = "error" if key == "iperf_port_invalid" else "notice"
-            notice = f'<p class="{cls}">{self.context.html.escape(t[key].format(port="••••••"))}</p>'
+            cls = "notice" if key in ("iperf_opened", "iperf_extended", "iperf_shut", "iperf_port_saved") else "error"
+            notice = f'<p class="{cls}" role="status">{self.context.html.escape(t[key].format(port="••••••"))}</p>'
 
         countdown_script = ""
         if is_open:
@@ -53,6 +53,7 @@ class IperfMixin:
             open_label = t["iperf_extend"]
             close_form = f"""
             <form method="post" action="/iperf/close">
+              <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
               <button type="submit" class="danger">{self.context.html.escape(t['iperf_close'])}</button>
             </form>
             """
@@ -133,11 +134,13 @@ class IperfMixin:
             <div class="iperf-fact"><span>{self.context.html.escape(t['iperf_port'])}</span><strong>{self.private_value_control('iperf', 'port', t)}</strong></div>
           </div>
           <form method="post" action="/iperf/port" class="iperf-port-form">
+            <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
             <label>{self.context.html.escape(t['iperf_change_port'])}<input type="number" name="port" min="1024" max="65535" placeholder="••••••" required {'disabled' if is_open else ''}></label>
             <button type="submit" {'disabled' if is_open else ''}>{self.context.html.escape(t['iperf_save_port'])}</button>
           </form>
           <div class="iperf-actions">
             <form method="post" action="/iperf/open" class="inline-form">
+              <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
               <label>{self.context.html.escape(t['iperf_minutes'])}
                 <input type="number" name="minutes" min="1" max="{self.context.IPERF_MAX_MINUTES}"
                        value="{self.context.IPERF_DEFAULT_MINUTES}" required>
@@ -180,15 +183,26 @@ class IperfMixin:
         self.context.IPERF_CLIENT.remember_result(self.iperf_client_result_key(), result, values)
         self.redirect('/iperf?client=done', {'Cache-Control': 'no-store'})
 
+    def iperf_csrf(self):
+        return self.context.access_csrf_token(self.get_cookie("session"), "iperf")
+
+    def iperf_csrf_valid(self, form):
+        values = form.get("csrf", [])
+        return len(values) == 1 and self.context.hmac.compare_digest(values[0], self.iperf_csrf())
+
     def handle_iperf_open(self):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
+        if not self.iperf_csrf_valid(form):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         minutes = form.get("minutes", [str(self.context.IPERF_DEFAULT_MINUTES)])[0]
         _, key = self.context.IPERF_WINDOW.open(minutes)
         self.redirect(f"/iperf?msg={key}")
 
     def handle_iperf_close(self):
-        self.read_body(self.context.LOGIN_BODY_LIMIT)  # drain: keep-alive needs the body gone
+        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
+        if not self.iperf_csrf_valid(self.context.parse_qs(raw.decode("utf-8", errors="replace"))):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         self.context.IPERF_WINDOW.close()
         self.redirect("/iperf?msg=iperf_shut")
 
@@ -196,7 +210,9 @@ class IperfMixin:
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         try:
             form = self.context.parse_qs(raw.decode("utf-8"), strict_parsing=True)
-            if set(form) != {"port"} or len(form["port"]) != 1:
+            if not self.iperf_csrf_valid(form):
+                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+            if set(form) != {"port", "csrf"} or len(form["port"]) != 1:
                 raise ValueError("invalid form")
             port = int(form["port"][0])
             if not 1024 <= port <= 65535:

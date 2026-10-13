@@ -236,6 +236,7 @@
   "log_firewall_open": "无法通过 {backend} 放行端口 {port};若测试无法连接,请手动调整防火墙.",
   "log_firewall_close": "无法通过 {backend} 关闭端口 {port};若测试仍能连接,请手动调整防火墙.",
   "log_iperf_stuck": "iperf3 (pid {pid}) 在收到 SIGKILL 后仍未退出;仍将关闭测试窗口",
+  "log_iperf_release_failed": "无法释放 iperf3 端口登记({error});继续运行",
   "log_iptables_missing": "找不到 iptables;端口转发规则未应用.",
   "log_portfwd_apply": "无法完整应用端口转发规则 {rule_id};请手动检查 iptables.",
   "log_connection_poller": "连接轮询器出错:{error}",

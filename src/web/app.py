@@ -1344,6 +1344,16 @@ def start_public_listeners(servers):
     return result
 
 
+def close_iperf_window():
+    # Releasing the PORTS.md row goes through a privileged helper. If that
+    # helper fails, the console must still start, and shutdown must still
+    # withdraw port forwards and close the listeners.
+    try:
+        IPERF_WINDOW.close()
+    except Exception as exc:
+        print(_log_text('log_iperf_release_failed', error=type(exc).__name__), file=sys.stderr)
+
+
 def main():
     servers = []
     stop_event = threading.Event()
@@ -1367,7 +1377,7 @@ def main():
     try:
         # A prior Web process might have died while its temporary iperf3
         # listener was registered. A fresh process has no live window.
-        IPERF_WINDOW.close()
+        close_iperf_window()
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
@@ -1415,7 +1425,7 @@ def main():
             except ValueError:
                 pass
         stop_event.set()
-        IPERF_WINDOW.close()
+        close_iperf_window()
         if portfwd_enabled():
             PORTFWD.shutdown()
         for s in servers:

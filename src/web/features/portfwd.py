@@ -14,7 +14,7 @@ class PortfwdMixin:
             cls = "notice" if key in (
                 "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
             ) else "error"
-            notice = f'<p class="{cls}">{self.context.html.escape(t[key].format(max=self.context.PORTFWD_MAX_RULES))}</p>'
+            notice = f'<p class="{cls}" role="status">{self.context.html.escape(t[key].format(max=self.context.PORTFWD_MAX_RULES))}</p>'
 
         rows = []
         for rule in self.context.PORTFWD.list_rules():
@@ -34,10 +34,12 @@ class PortfwdMixin:
               <div class="iperf-actions">
                 <form method="post" action="{toggle_action}" class="inline-form">
                   <input type="hidden" name="id" value="{self.context.html.escape(rule['id'])}">
+                  <input type="hidden" name="csrf" value="{self.portfwd_csrf()}">
                   <button type="submit">{self.context.html.escape(toggle_label)}</button>
                 </form>
                 <form method="post" action="/portfwd/delete" class="inline-form">
                   <input type="hidden" name="id" value="{self.context.html.escape(rule['id'])}">
+                  <input type="hidden" name="csrf" value="{self.portfwd_csrf()}">
                   <button type="submit" class="danger">{self.context.html.escape(t['portfwd_delete'])}</button>
                 </form>
               </div>
@@ -51,6 +53,7 @@ class PortfwdMixin:
             <div class="node-addr">
               <h2>{self.context.html.escape(t['portfwd_add'])}</h2>
               <form method="post" action="/portfwd/add" class="portfwd-add-form">
+                <input type="hidden" name="csrf" value="{self.portfwd_csrf()}">
                 <label>{self.context.html.escape(t['portfwd_label'])}
                   <input type="text" name="label" maxlength="80">
                 </label>
@@ -87,9 +90,18 @@ class PortfwdMixin:
         self.send_html(200, self.render_page(t['portfwd_heading'], body, lang, active="portfwd"),
                        self.maybe_lang_cookie(query_lang))
 
+    def portfwd_csrf(self):
+        return self.context.access_csrf_token(self.get_cookie("session"), "portfwd")
+
+    def portfwd_csrf_valid(self, form):
+        values = form.get("csrf", [])
+        return len(values) == 1 and self.context.hmac.compare_digest(values[0], self.portfwd_csrf())
+
     def handle_portfwd_add(self):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
+        if not self.portfwd_csrf_valid(form):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         protocol = form.get("protocol", ["tcp"])[0]
         if protocol not in ("tcp", "udp", "both"):
             protocol = "tcp"
@@ -105,18 +117,24 @@ class PortfwdMixin:
     def handle_portfwd_enable(self):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
+        if not self.portfwd_csrf_valid(form):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         key = self.context.PORTFWD.set_enabled(form.get("id", [""])[0], True)
         self.redirect(f"/portfwd?msg={key}")
 
     def handle_portfwd_disable(self):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
+        if not self.portfwd_csrf_valid(form):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         key = self.context.PORTFWD.set_enabled(form.get("id", [""])[0], False)
         self.redirect(f"/portfwd?msg={key}")
 
     def handle_portfwd_delete(self):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
+        if not self.portfwd_csrf_valid(form):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         key = self.context.PORTFWD.remove(form.get("id", [""])[0])
         self.redirect(f"/portfwd?msg={key}")
 
