@@ -43,8 +43,8 @@ case "$key" in
   stopping_service) fmt='停止并禁用服务 ...' ;;
   service_removed) fmt='服务已移除' ;;
   deleting_config) fmt='删除配置 ...' ;;
-  binary_deleted) fmt='已删除 %s（anytls 模块未安装，二进制无人使用）' ;;
-  binary_kept) fmt='保留 %s：anytls 模块仍在使用它' ;;
+  binary_deleted) fmt='已删除 %s（没有其他组件使用它）' ;;
+  binary_kept) fmt='保留 %s：控制台、保留的配置或旧 anytls 模块仍需要它' ;;
   uninstall_complete) fmt='卸载完成' ;;
   install_dir_readonly) fmt='%s 不可写，重置中止 —— 没有改动任何东西。' ;;
   sandbox_hint) fmt='常见原因：调用方跑在 systemd 沙箱里（ProtectSystem=strict 会让 /etc 只读）。' ;;

@@ -43,8 +43,8 @@ case "$key" in
   stopping_service) fmt='Deteniendo y desactivando el servicio ...' ;;
   service_removed) fmt='Servicio eliminado' ;;
   deleting_config) fmt='Eliminando la configuración ...' ;;
-  binary_deleted) fmt='Se eliminó %s (no está instalado el módulo anytls; nadie usa el binario)' ;;
-  binary_kept) fmt='Se conserva %s: el módulo anytls aún lo utiliza' ;;
+  binary_deleted) fmt='Se eliminó %s (ningún otro componente lo usa)' ;;
+  binary_kept) fmt='Se conserva %s: la consola, la configuración conservada o un módulo anytls antiguo aún lo necesita' ;;
   uninstall_complete) fmt='Desinstalación terminada' ;;
   install_dir_readonly) fmt='No se puede escribir en %s; se canceló el restablecimiento sin cambios.' ;;
   sandbox_hint) fmt='Causa habitual: el proceso se ejecuta en un entorno aislado de systemd (ProtectSystem=strict deja /etc en modo de solo lectura).' ;;

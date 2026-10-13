@@ -65,9 +65,18 @@ PY
 )"
 OPTIONAL_ADDED='[]'
 tmp=""
+UNIT_EXISTED=0
+[ ! -e "$UNIT" ] || UNIT_EXISTED=1
 rollback_port() {
   local status=$?
   [ -z "$tmp" ] || rm -rf -- "$tmp"
+  # A failed first installation leaves no unit or binaries behind. An
+  # existing installation keeps them, as before.
+  if [ "$status" -ne 0 ] && [ "$UNIT_EXISTED" = 0 ]; then
+    systemctl disable --now vps-server-tailscale.service >/dev/null 2>&1 || true
+    rm -f -- "$UNIT" /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server
+    systemctl daemon-reload || true
+  fi
   if [ "$status" -ne 0 ]; then
     python3 - "$PREFIX" "$OPTIONAL_ADDED" <<'PY'
 import json, sys

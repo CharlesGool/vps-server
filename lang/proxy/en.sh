@@ -43,8 +43,8 @@ case "$key" in
   stopping_service) fmt='Stopping and disabling service ...' ;;
   service_removed) fmt='Service removed' ;;
   deleting_config) fmt='Deleting configuration ...' ;;
-  binary_deleted) fmt='Deleted %s (anytls module absent; binary unused)' ;;
-  binary_kept) fmt='Keeping %s: anytls module still uses it' ;;
+  binary_deleted) fmt='Deleted %s (no other component uses it)' ;;
+  binary_kept) fmt='Keeping %s: the console, retained configuration or a legacy anytls module still needs it' ;;
   uninstall_complete) fmt='Uninstallation complete' ;;
   install_dir_readonly) fmt='%s is not writable; reset aborted with no changes.' ;;
   sandbox_hint) fmt='Common cause: caller runs in a systemd sandbox (ProtectSystem=strict makes /etc read-only).' ;;
