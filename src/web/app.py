@@ -1229,15 +1229,50 @@ def serve_forever_in_thread(server):
     return thread
 
 
+TLS_HANDSHAKE_SECONDS = 10
+
+
+class TLSThreadingHTTPServer(ThreadingHTTPServer):
+    """Run each TLS handshake in its connection's worker thread.
+
+    Wrapping the listening socket made accept() perform the handshake on the
+    serving thread. A browser's idle pre-opened connection then blocked every
+    later request until the listen backlog filled and the console stopped
+    answering. Here a slow or silent client only holds its own thread, and
+    gives up after TLS_HANDSHAKE_SECONDS.
+    """
+
+    def __init__(self, address, handler, ssl_context):
+        super().__init__(address, handler)
+        self.ssl_context = ssl_context
+
+    def finish_request(self, request, client_address):
+        request.settimeout(TLS_HANDSHAKE_SECONDS)
+        try:
+            secure = self.ssl_context.wrap_socket(request, server_side=True)
+        except (OSError, ValueError):
+            return  # failed, timed out or plain-HTTP handshake: drop it
+        try:
+            secure.settimeout(None)
+            super().finish_request(secure, client_address)
+        finally:
+            try:
+                secure.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            secure.close()
+
+
 def make_server(port, handler, tls):
-    server = ThreadingHTTPServer((HOST, port), handler)
-    server.daemon_threads = True
-    server.is_tls = tls
     if tls:
         cert, key = ensure_tls_files()
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certfile=str(cert), keyfile=str(key))
-        server.socket = context.wrap_socket(server.socket, server_side=True)
+        server = TLSThreadingHTTPServer((HOST, port), handler, context)
+    else:
+        server = ThreadingHTTPServer((HOST, port), handler)
+    server.daemon_threads = True
+    server.is_tls = tls
     return server
 
 
