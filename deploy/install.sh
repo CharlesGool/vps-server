@@ -710,6 +710,9 @@ install_proxy() {
 
 install_node_meter() {
   if ! has_module proxy; then
+    # A module-only job leaves an installed proxy and its meter running;
+    # stopping the meter would stop the proxy that requires it.
+    [ "${VPSSRV_MODULE_ONLY:-0}" = 1 ] && return 0
     systemctl disable --now vps-server-node-meter.service >/dev/null 2>&1 || true
     return 0
   fi
