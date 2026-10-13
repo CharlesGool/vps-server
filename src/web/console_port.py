@@ -209,13 +209,18 @@ def change_port(prefix, old, new, port_file, *, restart=None, wait=None, probe=N
     restart = restart or (lambda: subprocess.run(["systemctl", "restart", UNIT], check=True, timeout=60))
     wait = wait or wait_healthy
     probe = probe or available
-    with (prefix.parent / ".ports.lock").open("a+") as lock:
+    lock_path = prefix.parent / ".ports.lock"
+    # The lock is held only while the registry and port files change. The new
+    # Web process releases its stale iPerf3 reservation at startup through
+    # the same lock, so holding it across restart() and wait() would block
+    # that release, crash Web and make the port change time out.
+    with lock_path.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         current = (int(override.read_text().strip()) if override.exists() else
                    int(port_file.read_text().strip()) if port_file.exists() else old)
         if current != old:
             raise ValueError("console port changed before request was applied")
-        rows, original_registry = read_rows(registry)
+        rows, _ = read_rows(registry)
         old_rows = [row for row in rows if row[0] == old]
         if old_rows and old_rows[0][1] != OWNER:
             raise ValueError("current console port belongs to another service")
@@ -226,29 +231,38 @@ def change_port(prefix, old, new, port_file, *, restart=None, wait=None, probe=N
         original_override = override.read_bytes() if override.exists() else None
         replacement = [row for row in rows if row[0] != old]
         replacement.append((new, OWNER, "0.0.0.0", date.today().isoformat()))
-        changed = False
         try:
-            changed = True
             write_rows(registry, replacement)
             atomic_bytes(port_file, f"{new}\n".encode())
             atomic_bytes(override, f"{new}\n".encode())
-            restart()
-            wait(new)
         except BaseException:
-            if changed:
-                if original_registry is None:
-                    registry.unlink(missing_ok=True)
-                else:
-                    atomic_bytes(registry, original_registry,
-                                 registry.stat().st_mode & 0o777)
-                for path, original in ((port_file, original_port), (override, original_override)):
-                    if original is None:
-                        path.unlink(missing_ok=True)
-                    else:
-                        atomic_bytes(path, original)
-                restart()
-                wait(old)
+            _restore_console_port(registry, rows, port_file, override, original_port, original_override)
             raise
+    try:
+        restart()
+        wait(new)
+    except BaseException:
+        with lock_path.open("a+") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            # Undo only this change; other services may have edited the registry since.
+            current_rows, _ = read_rows(registry)
+            undone = [row for row in current_rows if row[0] != new]
+            if old_rows and not any(row[0] == old for row in undone):
+                undone.append(old_rows[0])
+            _restore_console_port(registry, undone, port_file, override, original_port, original_override)
+        restart()
+        wait(old)
+        raise
+    return True
+
+
+def _restore_console_port(registry, rows, port_file, override, original_port, original_override):
+    write_rows(registry, rows)
+    for path, original in ((port_file, original_port), (override, original_override)):
+        if original is None:
+            path.unlink(missing_ok=True)
+        else:
+            atomic_bytes(path, original)
 
 
 def register_current(prefix, port, unit=UNIT):
