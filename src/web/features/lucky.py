@@ -9,7 +9,10 @@ class LuckyMixin:
     def page_lucky(self, lang, query_lang):
         t = self.context.STRINGS[lang]
         data = self.context.lucky_admin()
-        if data is None:
+        # An uninstall keeps Lucky's configuration, so the file alone does not
+        # mean the module is installed; offer the install button instead.
+        if data is None or (self.context.STATE_FILE.is_file() and
+                            "lucky" not in self.context.installed_modules(self.context.BASE_DIR)):
             return self.page_module_not_installed(lang, query_lang, "Lucky", "Lucky", module="lucky")
         running = (self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
                    and self.context.lucky_listener_active(data['AdminWebListenPort']))
