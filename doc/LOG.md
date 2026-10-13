@@ -72,7 +72,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.3.1(标签 `v5.3.1`). v5.3.1 之后的改动尚未发布, 最新测试构建为 `test-a7d0746`, 已部署到测试机(Debian 13 x86-64, 无 iptables), 控制台为 HTTPS 1223 端口, 已装 web, iperf3, Singbox, Tailscale, Lucky.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.3.1(标签 `v5.3.1`). v5.3.1 之后的改动尚未发布, 最新测试构建为 `test-e3952e1`, 已部署到测试机(Debian 13 x86-64, 无 iptables), 控制台为 HTTPS 1223 端口, 已装 web, iperf3, Singbox, Tailscale, Lucky.
 
 已完成(v5.3.1 之后, 未发布): 终端页独立标签页图标; 保存失败改用 Toast; 修复改控制台端口时持锁重启导致 Web 崩溃; 端口转发和 iperf3 表单加 CSRF 令牌; iperf3 残留登记释放失败不再阻止 Web 启动; 安装器公开页摘要, Tailscale 失败回滚, FRPS/Lucky 防火墙记录, 代理配置权限和 BBR 文件修复; 全新安装控制台默认 HTTPS, 会话 Cookie 带 `Secure`; TLS 握手移到工作线程; 安装前依赖预检; 功能页直接安装模块; 控制台只安装所选模块; 卸载后 Lucky 页可重新安装.
 
