@@ -114,7 +114,7 @@
 
 ## 要求
 
-最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables; Singbox 节点的流量统计和限速需要可运行的 nft, 系统没有时使用完整安装包随附的运行库. 安装器在改动任何服务前检查这些条件: 缺少 iptables 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
+最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables; Singbox 节点的流量统计和限速需要可运行的 nft, 系统没有时使用完整安装包随附的运行库. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 安装器在改动任何服务前检查这些条件: Python 低于 3.9 时停止安装, 缺少 iptables, `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
 推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. 完整 Release 包包含离线构件, 但缺少系统基础包时仍需可用的软件包仓库. 源码构建完整离线包需要联网.
 

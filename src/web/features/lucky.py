@@ -10,7 +10,7 @@ class LuckyMixin:
         t = self.context.STRINGS[lang]
         data = self.context.lucky_admin()
         if data is None:
-            return self.page_module_not_installed(lang, query_lang, "Lucky", "Lucky")
+            return self.page_module_not_installed(lang, query_lang, "Lucky", "Lucky", module="lucky")
         running = (self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
                    and self.context.lucky_listener_active(data['AdminWebListenPort']))
         status = t['node_active'] if running else t['node_stopped']

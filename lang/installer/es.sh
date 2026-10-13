@@ -34,7 +34,10 @@ case "$key" in
   port_registration_failed) fmt='No se pudo registrar el puerto de %s en PORTS.md; se detuvo el servicio.\n' ;;
   public_registration_failed) fmt='No se pudieron registrar los puertos de la página pública en PORTS.md' ;;
   nft_runtime_failed) fmt='Falta el entorno nftables incluido o no supera la verificación.\n' ;;
+  python_too_old) fmt='Se requiere Python 3.9 o posterior; este equipo tiene %s.' ;;
   deps_iptables_missing) fmt='Aviso: iptables no está instalado, por lo que las reglas de reenvío de puertos no pueden aplicarse. Instálalo (Debian/Ubuntu: apt install iptables) y reinicia la consola para usar el reenvío de puertos.\n' ;;
+  deps_ss_missing) fmt='Aviso: ss (iproute2) no está instalado, por lo que fallarán el cambio del puerto de la consola y la detección del puerto de administración de Lucky. Instálalo con apt install iproute2.\n' ;;
+  deps_ip_missing) fmt='Aviso: ip (iproute2) no está instalado, por lo que el resumen no puede listar direcciones y Tailscale no puede mostrar las rutas locales. Instálalo con apt install iproute2.\n' ;;
   deps_nft_missing) fmt='El módulo proxy necesita nftables, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
   deps_nft_unusable) fmt='El módulo proxy necesita nftables, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
   deps_tailscale_conflict) fmt='Ya hay un demonio de Tailscale del sistema en ejecución (tailscaled.service). Detenlo o quita tailscale de VPSSRV_MODULES.' ;;

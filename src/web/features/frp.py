@@ -9,13 +9,12 @@ class FrpMixin:
     def page_frps(self, lang, query_lang):
         t = self.context.STRINGS[lang]
         if self.context.STATE_FILE.is_file() and "frps" not in self.context.installed_modules(self.context.BASE_DIR):
-            return self.page_module_not_installed(lang, query_lang, "FRPS", "FRPS")
+            return self.page_module_not_installed(lang, query_lang, "FRPS", "FRPS", module="frps")
         node = self.context.frps_node()
         esc = self.context.html.escape
         if node is None:
             server = (f'<p class="muted">{esc(t["frps_not_installed"])}</p>'
-                      f'<a class="button-link frp-install-link" href="/settings/modules">'
-                      f'{esc(t["module_install"] + " FRPS")}</a>')
+                      f'{self.module_install_control(lang, "frps", "FRPS", "frp-install-link")}')
         else:
             running = self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.FRPS_SERVICE])
             status = t['node_active'] if running else t['frp_not_running']
@@ -60,7 +59,7 @@ class FrpMixin:
     def page_frpc(self, lang, query_lang):
         t = self.context.STRINGS[lang]
         if self.context.STATE_FILE.is_file() and "frpc" not in self.context.installed_modules(self.context.BASE_DIR):
-            return self.page_module_not_installed(lang, query_lang, "FRPC", "FRPC")
+            return self.page_module_not_installed(lang, query_lang, "FRPC", "FRPC", module="frpc")
         esc = self.context.html.escape
         clients = []
         for name in self.context.frpc_names():
@@ -118,8 +117,8 @@ class FrpMixin:
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get('msg', [''])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ('done', 'failed') else ''
-        install_link = (f'<a class="button-link frp-install-link" href="{"/frp/client/edit" if client_installed else "/settings/modules"}">'
-                        f'{esc(t["frp_new_client"] if client_installed else t["module_install"] + " FRPC")}</a>')
+        install_link = (f'<a class="button-link frp-install-link" href="/frp/client/edit">{esc(t["frp_new_client"])}</a>'
+                        if client_installed else self.module_install_control(lang, "frpc", "FRPC", "frp-install-link"))
         body = (f'<h1>{esc(t["frp_client_heading"])}</h1><div class="frp-workspace">{feedback}'
                 f'<section class="card frp-card">{availability}'
                 f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["frp_instances"])}</h2>{install_link}</div>'

@@ -77,6 +77,11 @@ def module_job_text(t, job, names):
     return t.get(key, t.get("module_job_" + str(job.get("state", "")), "")).format(name=name)
 
 
+# Feature pages that offer their own install button, and where the job reports.
+INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
+                 "lucky": "/lucky", "tailscale": "/tailscale"}
+
+
 def module_job_recent(job, now, seconds):
     at = job.get("at")
     return type(at) in (int, float) and 0 <= now - at < seconds
@@ -190,12 +195,42 @@ class ModulesMixin:
                                                     active="module_detailed_logs", back_href="/settings"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
-    def page_module_not_installed(self, lang, query_lang, title, module_name, active=None):
+    def module_install_control(self, lang, module, module_name, css_class=""):
+        """Install the module from its own page and report progress there.
+
+        While the job runs the page polls itself; once the module is installed
+        the feature page replaces this control.
+        """
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
+        try:
+            job = self.context.json.loads(self.context.module_status_path(self.context.BASE_DIR).read_text())
+        except (OSError, ValueError):
+            job = {}
+        now = self.context.time.time()
+        busy = job.get("state") in ("queued", "running") and module_job_recent(job, now, 900)
+        own = job.get("module") == module and job.get("action") == "install"
+        notice = ""
+        if own and (busy or job.get("state") == "failed" and module_job_recent(job, now, 30)):
+            notice = (f'<p class="module-notice" role="status">'
+                      f'{esc(module_job_text(t, job, {module: module_name}))}</p>')
+        token = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":install")
+        form = (f'<form method="post" action="/settings/modules/action" class="module-install-form">'
+                f'<input type="hidden" name="module" value="{module}">'
+                f'<input type="hidden" name="action" value="install">'
+                f'<input type="hidden" name="return" value="page">'
+                f'<input type="hidden" name="csrf" value="{token}">'
+                f'<button type="submit" class="{esc(css_class, quote=True)}" {"disabled" if busy else ""}>'
+                f'{esc(t["module_install"] + " " + module_name)}</button></form>')
+        scripts = '<script src="/static/module-controls.js" defer></script>'
+        if own and busy:
+            scripts += '<script src="/static/module-status.js" defer></script>'
+        return notice + form + scripts
+
+    def page_module_not_installed(self, lang, query_lang, title, module_name, active=None, module=None):
+        esc = self.context.html.escape
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
-                f'<a class="button-link" href="/settings/modules">'
-                f'{esc(t["module_install"] + " " + module_name)}</a></div>')
+                f'{self.module_install_control(lang, module, module_name)}</div>')
         return self.send_html(200, self.render_page(title, body, lang, active=active),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -318,7 +353,10 @@ class ModulesMixin:
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
         if not self.context.hmac.compare_digest(form["csrf"][0], expected):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        destination = "/" if form.get("return", [""])[0] == "home" else "/settings#settings-modules"
+        back = form.get("return", [""])[0]
+        destination = ("/" if back == "home" else
+                       INSTALL_PAGES[module] if back == "page" and action == "install" and module in INSTALL_PAGES else
+                       "/settings#settings-modules")
         installed = self.context.installed_modules(self.context.BASE_DIR)
         present = ("proxy" in installed if module == "proxy_nodes" else module in installed)
         if action in ("install", "uninstall") and (action == "install") == present:
@@ -361,6 +399,7 @@ class ModulesMixin:
                 return self.send_html(503, esc(self.context.STRINGS[lang]["module_job_failed"]),
                                       {"Cache-Control": "no-store"})
         operation_url = (f'/?operation={module}-{action}' if destination == "/" else
+                         f'{destination}?operation={module}-{action}' if destination.startswith("/") and "#" not in destination else
                          f'/settings?operation={module}-{action}#settings-modules')
         return self.redirect(operation_url,
                              {"Cache-Control": "no-store"})
@@ -456,7 +495,9 @@ class ModulesMixin:
             target = ("/closed?module=" + module
                       if closed or module in ("web_http", "web_https") and not enabled else href)
             # The public pages are meant to be seen from outside, so they open in a tab of their own.
-            blank = ' target="_blank" rel="noopener noreferrer"' if module in ("web_http", "web_https") else ""
+            # A closed page only shows the console's "closed" notice, which belongs in this tab.
+            blank = (' target="_blank" rel="noopener noreferrer"'
+                     if module in ("web_http", "web_https") and enabled else "")
             tiles.append(f'<article class="tile{" tile-public" if module in ("web_http", "web_https") else ""}" data-module="{module}"><div class="tile-top">'
                          f'<span class="tile-icon">{self.context.ui_icon(icon)}</span>{switch}</div>'
                          f'<a class="tile-label" href="{target}"{blank}>{esc(title)}</a>{detail}</article>')

@@ -11,7 +11,7 @@ class ProxyMixin:
         t = self.context.STRINGS[lang]
         installed = self.context.installed_modules(self.context.BASE_DIR)
         if "proxy" not in installed:
-            return self.page_module_not_installed(lang, query_lang, t["proxy_heading"], t["proxy"], active="proxy")
+            return self.page_module_not_installed(lang, query_lang, t["proxy_heading"], t["proxy"], active="proxy", module="proxy_nodes")
         try:
             inventory = self.context.read_inventory(
                 state_path=self.context.NODE_STATE_PATH,

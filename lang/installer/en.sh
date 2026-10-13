@@ -34,7 +34,10 @@ case "$key" in
   port_registration_failed) fmt='Could not register the %s listener in PORTS.md; its service was stopped.\n' ;;
   public_registration_failed) fmt='Could not register the public page ports in PORTS.md' ;;
   nft_runtime_failed) fmt='The bundled nftables runtime is missing or invalid.\n' ;;
+  python_too_old) fmt='Python 3.9 or newer is required; this host has %s.' ;;
   deps_iptables_missing) fmt='Warning: iptables is not installed, so port forwarding rules cannot be applied. Install it (Debian/Ubuntu: apt install iptables) and restart the console to use port forwarding.\n' ;;
+  deps_ss_missing) fmt='Warning: ss (iproute2) is not installed, so changing the console port and detecting the Lucky admin port will fail. Install it with apt install iproute2.\n' ;;
+  deps_ip_missing) fmt='Warning: ip (iproute2) is not installed, so the install summary cannot list addresses and Tailscale cannot show local routes. Install it with apt install iproute2.\n' ;;
   deps_nft_missing) fmt='The proxy module needs nftables, but this host has no usable nft and the bundled runtime is missing. Install nftables (apt install nftables) or use the full release package.' ;;
   deps_nft_unusable) fmt='The proxy module needs nftables, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
   deps_tailscale_conflict) fmt='A system Tailscale daemon (tailscaled.service) is already running. Stop it or leave tailscale out of VPSSRV_MODULES.' ;;

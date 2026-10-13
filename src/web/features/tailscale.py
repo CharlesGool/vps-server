@@ -95,7 +95,7 @@ class TailscaleMixin:
             tab = "overview"
         installed = "tailscale" in self.context.installed_modules(self.context.BASE_DIR)
         if not installed:
-            return self.page_module_not_installed(lang, query_lang, "Tailscale", "Tailscale")
+            return self.page_module_not_installed(lang, query_lang, "Tailscale", "Tailscale", module="tailscale")
         try:
             snapshot = control.status()
             error = ""

@@ -34,7 +34,10 @@ case "$key" in
   port_registration_failed) fmt='无法将 %s 监听端口登记到 PORTS.md；该服务已停止。\n' ;;
   public_registration_failed) fmt='无法在 PORTS.md 中登记公开页端口' ;;
   nft_runtime_failed) fmt='随附的 nftables 运行时缺失或校验失败。\n' ;;
+  python_too_old) fmt='需要 Python 3.9 或更高版本；本机为 %s。' ;;
   deps_iptables_missing) fmt='警告：未安装 iptables，端口转发规则无法生效。需要端口转发时请安装（Debian/Ubuntu：apt install iptables）后重启控制台。\n' ;;
+  deps_ss_missing) fmt='警告：未安装 ss（iproute2），修改控制台端口和检测 Lucky 管理端口会失败。请用 apt install iproute2 安装。\n' ;;
+  deps_ip_missing) fmt='警告：未安装 ip（iproute2），安装摘要无法列出地址，Tailscale 也无法显示本机路由。请用 apt install iproute2 安装。\n' ;;
   deps_nft_missing) fmt='代理模块需要 nftables，但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
   deps_nft_unusable) fmt='代理模块需要 nftables，但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
   deps_tailscale_conflict) fmt='系统中已有运行中的 Tailscale 守护进程（tailscaled.service）。请先停止它，或从 VPSSRV_MODULES 中去掉 tailscale。' ;;

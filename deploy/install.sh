@@ -441,6 +441,7 @@ PY
 [ "$(id -u)" -eq 0 ] || die "$(msg need_root)"
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' || die "$(msg python_too_old "$(python3 -V 2>&1)")"
 [ "$(uname -s)" = Linux ] && { [ "$(uname -m)" = x86_64 ] || [ "$(uname -m)" = amd64 ]; } || die "$(msg platform_unsupported)"
 
 # Reuse the installed language unless this run explicitly selects another.
@@ -621,6 +622,12 @@ fi
 check_host_prerequisites() {
   if has_module web && ! command -v iptables >/dev/null 2>&1; then
     msg deps_iptables_missing >&2
+  fi
+  if has_module web && ! command -v ss >/dev/null 2>&1; then
+    msg deps_ss_missing >&2
+  fi
+  if has_module web && ! command -v ip >/dev/null 2>&1; then
+    msg deps_ip_missing >&2
   fi
   if has_module proxy; then
     if ! { command -v nft >/dev/null 2>&1 && nft -j list tables >/dev/null 2>&1; }; then
