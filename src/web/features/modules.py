@@ -231,7 +231,9 @@ class ModulesMixin:
         esc = self.context.html.escape
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
                 f'{self.module_install_control(lang, module, module_name)}</div>')
-        return self.send_html(200, self.render_page(title, body, lang, active=active),
+        icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc",
+                 "lucky": "lucky", "tailscale": "tailscale"}
+        return self.send_html(200, self.render_page(title, body, lang, active=active, icon=icons.get(module)),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def public_page_url(self, module):
