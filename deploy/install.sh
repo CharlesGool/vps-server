@@ -256,9 +256,20 @@ report_new_settings() {
 }
 
 write_state() {
+  local recorded="${RECORD_MODULES:-$MODULES}"
+  recorded="$(python3 - "$recorded" <<'PY'
+import sys
+modules = []
+for module in sys.argv[1].split(','):
+    module = 'proxy' if module == 'anytls' else module
+    if module and module not in modules:
+        modules.append(module)
+print(','.join(modules))
+PY
+)"
   {
     printf 'version=%s\n' "$NEW_VERSION"
-    printf 'modules=%s\n' "$MODULES"
+    printf 'modules=%s\n' "$recorded"
     printf 'vars=%s\n' "$(echo $KNOWN_VARS)"
   } > "$STATE_FILE"
   chmod 0644 "$STATE_FILE"
@@ -548,12 +559,21 @@ if [ "$need_node_lock" = 1 ]; then
   exec {node_lock}>/etc/vps-server-node.lock
   flock -x "$node_lock"
 fi
+if [ "${VPSSRV_MODULE_ONLY:-0}" = 1 ] && ! existing_install; then
+  die "$(msg module_only_invalid)"
+fi
 if existing_install; then
   load_previous
   # A routine upgrade keeps the modules already chosen on this host. Fresh
   # installs use the console-only default unless the caller selects modules.
   # An explicit VPSSRV_MODULES adds to them: leaving one out must not stop it.
-  if [ -z "${VPSSRV_MODULES:-}" ]; then MODULES="$PREV_MODULES"; else MODULES="$PREV_MODULES,$MODULES"; fi
+  # A console module job (VPSSRV_MODULE_ONLY=1) installs only the requested
+  # module and leaves Web and every other module running untouched; the
+  # record still lists all of them.
+  if [ "${VPSSRV_MODULE_ONLY:-0}" = 1 ]; then
+    [ -n "${VPSSRV_MODULES:-}" ] && ! has_module web || die "$(msg module_only_invalid)"
+    RECORD_MODULES="$PREV_MODULES,$MODULES"
+  elif [ -z "${VPSSRV_MODULES:-}" ]; then MODULES="$PREV_MODULES"; else MODULES="$PREV_MODULES,$MODULES"; fi
   msg found_install "${PREV_VERSION:-?}" "$PREV_MODULES"
   UPGRADE=1
   apply_previous

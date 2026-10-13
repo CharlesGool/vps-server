@@ -367,11 +367,12 @@ def run_install(prefix, module):
             subprocess.run(["systemctl", "stop", "vps-server-node-meter.service"],
                            check=False, timeout=60)
         reconcile_removed_nodes(prefix, installed)
-    selected = [item for item in MODULES if item in installed or item in requested]
+    # Only the requested module: Web and the other modules keep running as they are.
+    selected = [item for item in MODULES if item in requested]
     disabled = [item for item in installed if item in UNITS and
                 subprocess.run(["systemctl", "is-enabled", "--quiet", UNITS[item]],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0]
-    env = dict(os.environ, PREFIX=str(prefix), VPSSRV_MODULES=','.join(selected),
+    env = dict(os.environ, PREFIX=str(prefix), VPSSRV_MODULES=','.join(selected), VPSSRV_MODULE_ONLY="1",
                TERM="dumb", NO_COLOR="1", DEBIAN_FRONTEND="noninteractive", VPSSRV_INSTALL_WORKER="1")
     env.pop("VPSSRV_INSTALL_JOB_DIR", None)
     env.pop("VPSSRV_SETUP_PUBLIC", None)

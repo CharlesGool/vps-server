@@ -34,6 +34,7 @@ case "$key" in
   port_registration_failed) fmt='No se pudo registrar el puerto de %s en PORTS.md; se detuvo el servicio.\n' ;;
   public_registration_failed) fmt='No se pudieron registrar los puertos de la página pública en PORTS.md' ;;
   nft_runtime_failed) fmt='Falta el entorno nftables incluido o no supera la verificación.\n' ;;
+  module_only_invalid) fmt='Una instalación de un solo módulo requiere una instalación existente y no puede incluir web' ;;
   python_too_old) fmt='Se requiere Python 3.9 o posterior; este equipo tiene %s.' ;;
   deps_iptables_missing) fmt='Aviso: iptables no está instalado, por lo que las reglas de reenvío de puertos no pueden aplicarse. Instálalo (Debian/Ubuntu: apt install iptables) y reinicia la consola para usar el reenvío de puertos.\n' ;;
   deps_ss_missing) fmt='Aviso: ss (iproute2) no está instalado, por lo que fallarán el cambio del puerto de la consola y la detección del puerto de administración de Lucky. Instálalo con apt install iproute2.\n' ;;

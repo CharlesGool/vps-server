@@ -34,6 +34,7 @@ case "$key" in
   port_registration_failed) fmt='Could not register the %s listener in PORTS.md; its service was stopped.\n' ;;
   public_registration_failed) fmt='Could not register the public page ports in PORTS.md' ;;
   nft_runtime_failed) fmt='The bundled nftables runtime is missing or invalid.\n' ;;
+  module_only_invalid) fmt='A module-only install needs an existing installation and must not include web' ;;
   python_too_old) fmt='Python 3.9 or newer is required; this host has %s.' ;;
   deps_iptables_missing) fmt='Warning: iptables is not installed, so port forwarding rules cannot be applied. Install it (Debian/Ubuntu: apt install iptables) and restart the console to use port forwarding.\n' ;;
   deps_ss_missing) fmt='Warning: ss (iproute2) is not installed, so changing the console port and detecting the Lucky admin port will fail. Install it with apt install iproute2.\n' ;;
