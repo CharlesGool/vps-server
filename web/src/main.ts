@@ -71,10 +71,12 @@ if (tiles) {
   tiles.classList.remove('tiles')
   mount(defineComponent({setup: () => () => h(CardGrid, {}, {default: () => nodes.map(node => h(NativeCard(node)))})}), {}, tiles)
 }
-// 保存失败: 服务器重定向回页面并带 msg 参数时, 把页面内的错误提示同时用 Toast 弹出; 页面内提示保留.
+// 保存失败: 服务器重定向回页面并带 msg 参数时, 用 Toast 显示页面内的错误提示, 并移除页面内的副本避免重复.
 if (!config.login && new URLSearchParams(location.search).has('msg')) {
-  const failure = main.querySelector<HTMLElement>('p.error[role]')?.textContent?.trim()
-  if (failure) {
+  const inline = main.querySelector<HTMLElement>('p.error[role]')
+  const failure = inline?.textContent?.trim()
+  if (inline && failure) {
+    inline.remove()
     const holder = document.createElement('div')
     document.body.append(holder)
     mount(AppToast, {}, holder)
