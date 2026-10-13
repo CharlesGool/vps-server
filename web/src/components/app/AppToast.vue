@@ -24,7 +24,7 @@ const icon = computed(() => {
         >
           <component :is="icon.is" class="size-5 shrink-0" :class="icon.class" aria-hidden="true" />
           <p class="flex-1 text-sm">{{ toast.text }}</p>
-          <Button variant="ghost" size="icon" :aria-label="t('action.close')" @click="closeToast">
+          <Button variant="ghost" size="icon" :aria-label="t('toast.close')" @click="closeToast">
             <X aria-hidden="true" />
           </Button>
         </div>

@@ -123,6 +123,7 @@
   --duration-slider: 720ms;
   --resize-settle: 180ms;
   --toast-lifetime: 3000ms;
+  --toast-lifetime-error: 8000ms;
   --tab-indicator-height: 2px;
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;

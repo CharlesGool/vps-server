@@ -524,6 +524,7 @@
   "nav.logout": "Cerrar sesión",
   "action.settings": "Configuración",
   "action.close": "Cerrar sesión",
+  "toast.close": "Cerrar",
   "theme.slate-blue": "Azul pizarra",
   "theme.sage": "Verde salvia",
   "theme.teal": "Verde azulado",

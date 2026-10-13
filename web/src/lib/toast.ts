@@ -15,7 +15,7 @@ let nextId = 1
 export function showToast(text: string, tone: ToastMessage['tone'] = 'default') {
   toast.value = { id: nextId++, text, tone }
   clearTimeout(timer)
-  timer = setTimeout(closeToast, cssDuration('--toast-lifetime'))
+  timer = setTimeout(closeToast, cssDuration(tone === 'destructive' ? '--toast-lifetime-error' : '--toast-lifetime'))
 }
 
 export function closeToast() {

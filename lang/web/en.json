@@ -524,6 +524,7 @@
   "nav.logout": "Log out",
   "action.settings": "Settings",
   "action.close": "Log out",
+  "toast.close": "Close",
   "theme.slate-blue": "Slate blue",
   "theme.sage": "Sage",
   "theme.teal": "Teal",

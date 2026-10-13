@@ -1,6 +1,7 @@
 import { createApp, defineComponent, h, onMounted, ref } from 'vue'
 import AppHeader from '@/components/app/AppHeader.vue'
 import AppFooter from '@/components/app/AppFooter.vue'
+import AppToast from '@/components/app/AppToast.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import CardGrid from '@/components/app/CardGrid.vue'
 import SectionNav from '@/components/app/SectionNav.vue'
@@ -10,6 +11,7 @@ import { initAppearance, mode } from '@/lib/appearance'
 import { initResizeReflow } from '@/lib/resize-reflow'
 import { syncFavicon } from '@/lib/favicon-theme'
 import { i18n } from '@/lib/i18n'
+import { showToast } from '@/lib/toast'
 import '@/styles/main.css'
 
 type Config = {footer?: {href: string; label: string; key: string}[]; version: string; title: string; serverLabel?: string; label: string; login: boolean; back?: {to: string; label: string}; items: {href: string; label: string; key: string; current?: 'page' | 'location'}[]}
@@ -68,6 +70,16 @@ if (tiles) {
   nodes.forEach((node, index) => {node.id = `ui-card-${index}`})
   tiles.classList.remove('tiles')
   mount(defineComponent({setup: () => () => h(CardGrid, {}, {default: () => nodes.map(node => h(NativeCard(node)))})}), {}, tiles)
+}
+// 保存失败: 服务器重定向回页面并带 msg 参数时, 把页面内的错误提示同时用 Toast 弹出; 页面内提示保留.
+if (!config.login && new URLSearchParams(location.search).has('msg')) {
+  const failure = main.querySelector<HTMLElement>('p.error[role]')?.textContent?.trim()
+  if (failure) {
+    const holder = document.createElement('div')
+    document.body.append(holder)
+    mount(AppToast, {}, holder)
+    showToast(failure, 'destructive')
+  }
 }
 for (const el of main.children) if (!el.querySelector('[data-reflow]')) el.setAttribute('data-reflow', '')
 initResizeReflow()
