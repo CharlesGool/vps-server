@@ -52,6 +52,7 @@ metadata:
 
 | 日期 | 决策 | 状态 | 原因 |
 | --- | --- | --- | --- |
+| 2026-10-13 | 对 10 个未合并的旧本地分支(`archive/*` 3 个, `feat/two-stage-setup`, `fix/frpc-unicode-name`, `refactor/feature-modules`, `refactor/feature-modules-repo`, `release/v4.0.0`, `release/v4.1.0-test.1`, `test/host-validation-wip`)使用 `git branch -D`. 豁免 all-in-one Git 规范 `分支和历史` 规则 2 的"禁止 `git branch -D`", 范围仅限这些分支, 一次性. | 接受 | 用户确认这些分支已废弃, 末端 SHA 已记录在本地私有笔记. |
 | 2026-10-07 | 顶栏左上角只显示项目名称, 不显示项目标志. 豁免 all-in-one Web UI 用户约定 `页面框架和导航` 规则 2 的"左上角必须显示项目标志和名称", 范围仅限共享顶栏, 浏览器标签页图标不变. | 接受 | 用户在当前对话中明确要求, 认为标志显示效果不好. |
 | 2026-10-05 | 按最新模板重写 18 份文档, 保留原始第三方许可. | 接受 | 用户要求整体重写, 原始许可仍承担分发声明义务. |
 | 2026-10-05 | 安装和 FRPC 更新使用后台任务. | 接受 | 服务重启可能中断承载安装或保存响应的连接. |
