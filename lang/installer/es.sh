@@ -34,6 +34,10 @@ case "$key" in
   port_registration_failed) fmt='No se pudo registrar el puerto de %s en PORTS.md; se detuvo el servicio.\n' ;;
   public_registration_failed) fmt='No se pudieron registrar los puertos de la página pública en PORTS.md' ;;
   nft_runtime_failed) fmt='Falta el entorno nftables incluido o no supera la verificación.\n' ;;
+  deps_iptables_missing) fmt='Aviso: iptables no está instalado, por lo que las reglas de reenvío de puertos no pueden aplicarse. Instálalo (Debian/Ubuntu: apt install iptables) y reinicia la consola para usar el reenvío de puertos.\n' ;;
+  deps_nft_missing) fmt='El módulo proxy necesita nftables, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
+  deps_nft_unusable) fmt='El módulo proxy necesita nftables, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
+  deps_tailscale_conflict) fmt='Ya hay un demonio de Tailscale del sistema en ejecución (tailscaled.service). Detenlo o quita tailscale de VPSSRV_MODULES.' ;;
   tailscale_install_failed) fmt='Falló la instalación de Tailscale; consulte el registro del módulo.\n' ;;
   web_start_failed) fmt='El servicio Web no arrancó; se liberaron los nuevos puertos públicos reservados.\n' ;;
   proxy_protocols_head) fmt='  ¿Qué protocolos? Responde a cada uno por separado.\n' ;;

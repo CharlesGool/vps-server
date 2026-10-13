@@ -114,7 +114,7 @@
 
 ## 要求
 
-最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持.
+最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables; Singbox 节点的流量统计和限速需要可运行的 nft, 系统没有时使用完整安装包随附的运行库. 安装器在改动任何服务前检查这些条件: 缺少 iptables 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
 推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. 完整 Release 包包含离线构件, 但缺少系统基础包时仍需可用的软件包仓库. 源码构建完整离线包需要联网.
 
@@ -182,7 +182,7 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 | `VPSSRV_HOST` | `0.0.0.0` | Web 监听地址. |
 | `VPSSRV_CONSOLE_PORT` | `0` | 控制台端口;0 自动选择 20000-59999 并保存. |
 | `VPSSRV_CONSOLE_PORT_FILE` | 空 | 端口文件;空值使用状态根下 `console_port.txt`. |
-| `VPSSRV_CONSOLE_TLS` | `0` | 控制台 TLS 开关. |
+| `VPSSRV_CONSOLE_TLS` | `1` | 控制台 HTTPS 开关; 全新安装默认开启并使用自签名证书, 升级保留原值. 自签名证书可防窃听, 不能证明服务器身份. |
 | `VPSSRV_AUTH` | `1` | 控制台认证开关;0 允许无认证访问管理功能. |
 | `VPSSRV_PASSWORD_FILE` | 空 | 管理员密码文件;空值使用状态根下 `admin_password.txt`. |
 | `VPSSRV_IP_ALLOWLIST_FILE` | 空 | 免密 IP 清单文件;空值使用状态根下默认清单. |

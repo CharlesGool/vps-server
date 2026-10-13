@@ -218,12 +218,13 @@ STATE_FILE = install_state_file()
 TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
 MAX_TEST_MB = int(os.environ.get("VPSSRV_MAX_TEST_MB", "200"))
 
-# TLS for the console. Off by default: the only certificate this app can
-# produce on its own is self-signed, and that means a browser warning to click
-# through on every fresh browser for no authentication benefit. Set
-# VPSSRV_CONSOLE_TLS=1 to serve the console over HTTPS too (self-signed unless
-# VPSSRV_TLS_CERT/VPSSRV_TLS_KEY point at a real certificate).
+# TLS for the console. Fresh installs turn it on: a self-signed certificate
+# cannot prove the server's identity, but it keeps the password and session off
+# the wire in plaintext. Existing installs keep their recorded choice. A real
+# certificate can be supplied through VPSSRV_TLS_CERT/VPSSRV_TLS_KEY.
 CONSOLE_TLS = os.environ.get("VPSSRV_CONSOLE_TLS", "0") == "1"
+# Over HTTPS the browser must never send the session cookie in plaintext.
+SESSION_COOKIE_ATTRS = "Path=/; HttpOnly; SameSite=Strict" + ("; Secure" if CONSOLE_TLS else "")
 # The console port is resolved by ensure_console_port() further down (it needs
 # _write_secret_file, defined below) — with no VPSSRV_CONSOLE_PORT set it
 # generates and persists a random port rather than defaulting to 80 or 443,

@@ -183,7 +183,7 @@ class SettingsMixin:
                 except (OSError, ValueError):
                     key = "access_password_invalid"
             if not key:
-                cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
+                cookie = f"session=; {self.context.SESSION_COOKIE_ATTRS}; Max-Age=0"
                 return self.redirect("/login?changed=1", {"Set-Cookie": cookie})
         elif action == "ip-toggle":
             if form["enabled"][0] not in ("0", "1"):

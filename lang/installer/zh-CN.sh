@@ -34,6 +34,10 @@ case "$key" in
   port_registration_failed) fmt='无法将 %s 监听端口登记到 PORTS.md；该服务已停止。\n' ;;
   public_registration_failed) fmt='无法在 PORTS.md 中登记公开页端口' ;;
   nft_runtime_failed) fmt='随附的 nftables 运行时缺失或校验失败。\n' ;;
+  deps_iptables_missing) fmt='警告：未安装 iptables，端口转发规则无法生效。需要端口转发时请安装（Debian/Ubuntu：apt install iptables）后重启控制台。\n' ;;
+  deps_nft_missing) fmt='代理模块需要 nftables，但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
+  deps_nft_unusable) fmt='代理模块需要 nftables，但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
+  deps_tailscale_conflict) fmt='系统中已有运行中的 Tailscale 守护进程（tailscaled.service）。请先停止它，或从 VPSSRV_MODULES 中去掉 tailscale。' ;;
   tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
   web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
   proxy_protocols_head) fmt='  哪些协议？下面每一项独立回答。\n' ;;

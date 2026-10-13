@@ -67,7 +67,7 @@ class AuthMixin:
                 self.context.destroy_session(previous)
             token = self.context.create_session(security_verified=True)
             cookie = (
-                f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
+                f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
                 f"Max-Age={self.context.SESSION_TTL_SECONDS}"
             )
             destination = ("/settings/security" if next_page == "settings" else
@@ -85,7 +85,7 @@ class AuthMixin:
             return self.redirect("/login?ip=unavailable&next=settings",
                                  {"Cache-Control": "no-store"})
         token = self.context.create_ip_session(self.client_address[0])
-        cookie = (f"session={token}; Path=/; HttpOnly; SameSite=Strict; "
+        cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
         return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
@@ -144,7 +144,7 @@ class AuthMixin:
         self.context.LOGIN_LIMITER.record_success(ip)
         self.context.destroy_session(token)
         new_token = self.context.create_session(security_verified=True)
-        cookie = (f"session={new_token}; Path=/; HttpOnly; SameSite=Strict; "
+        cookie = (f"session={new_token}; {self.context.SESSION_COOKIE_ATTRS}; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
         return self.redirect("/frpc" if next_page == "frp" else "/terminal" if next_page == "terminal" else "/settings/security",
                              {"Set-Cookie": cookie, "Cache-Control": "no-store"})
@@ -153,7 +153,7 @@ class AuthMixin:
         token = self.get_cookie("session")
         if token:
             self.context.destroy_session(token)
-        cookie = "session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
+        cookie = f"session=; {self.context.SESSION_COOKIE_ATTRS}; Max-Age=0"
         self.redirect("/login", {"Set-Cookie": cookie})
 
 

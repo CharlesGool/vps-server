@@ -591,6 +591,9 @@ if [ "$UPGRADE" = "0" ]; then
   # The public reachability page is optional; only the random-port console
   # answers on a fresh install until the operator enables other features.
   export VPSSRV_PUBLIC_ENABLE="${VPSSRV_PUBLIC_ENABLE:-0}"
+  # A self-signed certificate does not prove identity, but it keeps the
+  # password and session cookie out of plaintext. Upgrades keep their choice.
+  export VPSSRV_CONSOLE_TLS="${VPSSRV_CONSOLE_TLS:-1}"
 fi
 
 # Re-derived here, because apply_previous may have just supplied the values
@@ -612,6 +615,32 @@ msg modules_are "$MODULES"
 if has_module iperf3 && ! has_module web; then
   die "$(msg iperf_web_required)"
 fi
+
+# Check host prerequisites before any service is stopped or file replaced, so
+# a missing tool fails here instead of halfway through and leaves Web down.
+check_host_prerequisites() {
+  if has_module web && ! command -v iptables >/dev/null 2>&1; then
+    msg deps_iptables_missing >&2
+  fi
+  if has_module proxy; then
+    if ! { command -v nft >/dev/null 2>&1 && nft -j list tables >/dev/null 2>&1; }; then
+      local asset="$SRC_DIR/third_party/nft/nft-runtime-bullseye.tar.gz" probe
+      [ -f "$asset" ] || die "$(msg deps_nft_missing)"
+      probe="$(mktemp -d)"
+      if ! tar -xzf "$asset" -C "$probe" ||
+         ! VPSSRV_NFT_ROOT="$probe" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1; then
+        rm -rf -- "$probe"
+        die "$(msg deps_nft_unusable)"
+      fi
+      rm -rf -- "$probe"
+    fi
+  fi
+  if has_module tailscale && [ ! -f "$TAILSCALE_UNIT" ] &&
+     systemctl is-active --quiet tailscaled.service; then
+    die "$(msg deps_tailscale_conflict)"
+  fi
+}
+check_host_prerequisites
 
 if [ "$UPGRADE" = "1" ]; then
   report_new_settings
