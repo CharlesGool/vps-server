@@ -114,7 +114,7 @@ Capturas de la compilación de prueba previa a v5.3.0 en el entorno de prueba co
 
 ## Requisitos
 
-Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas.
+Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas. Si el equipo no tiene nft o iptables funcionales, el paquete completo incluye versiones de Debian 13 con cargador y glibc propios, que funcionan sin conexión.
 
 Se recomienda una versión mantenida de Debian/Ubuntu, espacio para copias de seguridad y puertos abiertos para las funciones activadas. Debian 13 x86-64 se verificó en una máquina; Python 3.9 y otras distribuciones no tienen aceptación independiente. El paquete Release incluye artefactos sin conexión, pero los paquetes básicos ausentes requieren un repositorio del sistema. Crear el paquete completo desde el código fuente requiere red.
 
@@ -155,14 +155,14 @@ cd /root/vps-server-v5.3.1
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
-Después de elegir el idioma, systemd ejecuta la instalación en segundo plano. **DEBE** conservar el directorio fuente hasta que finalice. Para la ruta predeterminada, consulte:
+Después de elegir el idioma, systemd ejecuta la instalación en segundo plano y el terminal actual muestra solo los pasos clave y, al final, la dirección de la consola y la contraseña inicial; si falla, muestra el motivo y algunas líneas relacionadas del registro. Ctrl-C o una desconexión del terminal solo detienen la vista; la instalación continúa. **DEBE** conservar el directorio fuente hasta que finalice. Tras salir de la vista, consulte el registro completo y el resultado en la ruta predeterminada:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log
 cat /root/apps/vps-server/.local/install-job/exit-code
 ```
 
-La ausencia de `exit-code` indica que la tarea no terminó; `0` indica éxito y otros valores, fallo. Ajuste la ruta para un `PREFIX` personalizado. El registro final incluye las direcciones de la consola, la contraseña inicial y los resultados de módulos. Una desconexión del terminal no significa que falló.
+La ausencia de `exit-code` indica que la tarea no terminó; `0` indica éxito y otros valores, fallo. Ajuste la ruta para un `PREFIX` personalizado. Cada módulo comprueba los requisitos del equipo antes de cambiar nada (por ejemplo, Singbox necesita nftables funcional y Tailscale necesita `/dev/net/tun`) e indica el motivo y la solución si falta alguno; los módulos no instalados de la consola lo muestran por adelantado.
 
 ## Uso
 

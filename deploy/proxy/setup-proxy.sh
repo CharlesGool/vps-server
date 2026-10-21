@@ -121,17 +121,22 @@ get_tailscale_ip(){
   fi
 }
 
+# A working host iptables first, else the bundled iptables-nft.
+iptables_path(){
+  /usr/bin/python3 "${PREFIX:-/root/apps/vps-server}/src/web/nft_runtime.py" iptables-path 2>/dev/null
+}
+
 open_firewall(){
-  local port="$1"
+  local port="$1" iptables
   log "$(msg opening_port "$port")"
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     ufw allow "${port}/tcp" >/dev/null 2>&1 || true
   elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
     firewall-cmd --permanent --add-port="${port}/tcp" >/dev/null 2>&1 || true
     firewall-cmd --reload >/dev/null 2>&1 || true
-  elif command -v iptables >/dev/null 2>&1; then
-    if ! iptables -C INPUT -p tcp --dport "${port}" -j ACCEPT >/dev/null 2>&1; then
-      if ! iptables -I INPUT -p tcp --dport "${port}" -j ACCEPT; then
+  elif iptables="$(iptables_path)"; then
+    if ! "$iptables" -C INPUT -p tcp --dport "${port}" -j ACCEPT >/dev/null 2>&1; then
+      if ! "$iptables" -I INPUT -p tcp --dport "${port}" -j ACCEPT; then
         err "$(msg iptables_failed "$port")"
         return 0
       fi
@@ -144,7 +149,7 @@ open_firewall(){
 }
 
 close_firewall(){
-  local port="$1"
+  local port="$1" iptables
   [[ -n "$port" ]] || return 0
   log "$(msg closing_port "$port")"
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
@@ -152,8 +157,8 @@ close_firewall(){
   elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
     firewall-cmd --permanent --remove-port="${port}/tcp" >/dev/null 2>&1 || true
     firewall-cmd --reload >/dev/null 2>&1 || true
-  elif command -v iptables >/dev/null 2>&1; then
-    iptables -D INPUT -p tcp --dport "${port}" -j ACCEPT 2>/dev/null || true
+  elif iptables="$(iptables_path)"; then
+    "$iptables" -D INPUT -p tcp --dport "${port}" -j ACCEPT 2>/dev/null || true
     command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
   fi
 }

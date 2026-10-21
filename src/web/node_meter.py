@@ -153,10 +153,16 @@ class NftBackend:
         return subprocess.run([binary, *args], input=input, text=True,
                               capture_output=True, timeout=20, env=env)
 
+    @staticmethod
+    def _failure(message, result):
+        # nft's own last error line is the only clue to why the host refuses.
+        lines = [line.strip() for line in (result.stderr or "").splitlines() if line.strip()]
+        return RuntimeError(f"{message}: {lines[-1][:200]}" if lines else message)
+
     def exists(self):
         result = self._run(["-j", "list", "tables"])
         if result.returncode:
-            raise RuntimeError("cannot list nftables tables")
+            raise self._failure("cannot list nftables tables", result)
         document = json.loads(result.stdout)
         return any(item.get("table", {}).get("family") == "inet" and
                    item.get("table", {}).get("name") == TABLE
@@ -165,13 +171,13 @@ class NftBackend:
     def counters(self):
         result = self._run(["-j", "list", "counters", "table", "inet", TABLE])
         if result.returncode:
-            raise RuntimeError("cannot read node counters")
+            raise self._failure("cannot read node counters", result)
         return json.loads(result.stdout)
 
     def apply(self, batch):
         result = self._run(["-f", "-"], input=batch)
         if result.returncode:
-            raise RuntimeError("cannot install node counter and rate rules")
+            raise self._failure("cannot install node counter and rate rules", result)
 
 
 def _ledger(inventory, epoch, *, suspect):

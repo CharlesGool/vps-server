@@ -37,7 +37,7 @@ Fuera del alcance: plataforma general de contenedores, edición arbitraria de FR
 
 El navegador accede a páginas y endpoints autenticados de un servicio HTTP de la biblioteca estándar de Python. Los manejadores se separan en `src/web/features/`. Servicios systemd independientes ejecutan Singbox, FRPS, FRPC, Lucky y Tailscale. Web usa protecciones del sistema y delega acciones privilegiadas limitadas; el terminal del navegador inicia un PTY root tras verificar la contraseña.
 
-Tras elegir el idioma, el instalador inicia la tarea `vps-server-install`. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
+Tras elegir el idioma, el instalador inicia la tarea `vps-server-install` y sigue su `summary.log` en primer plano, mostrando solo los pasos clave, la dirección y la contraseña o el motivo del fallo. Los requisitos del equipo por módulo (nft capaz de listar tablas, `/dev/net/tun`, un tailscaled existente, iptables y `ss`/`ip`) provienen de `src/web/host_checks.py`; el instalador, las tareas de módulos de la consola y las tarjetas de módulos no instalados comparten sus códigos. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
 
 | Directorio | Responsabilidad |
 | --- | --- |

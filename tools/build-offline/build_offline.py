@@ -13,8 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TAILSCALE_SHA256 = "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
-NFT_SHA256 = "42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb"
-NFT_SOURCES_SHA256 = "fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83"
+NFT_SHA256 = "7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033"
+NFT_SOURCES_SHA256 = "99b4ef60318a9fc5d68168fee5259ae91576779bd759c103a2f5c8ac5c0fc30a"
 
 
 def _tracked_source(destination):
@@ -74,10 +74,10 @@ def build(asset, nft_asset, nft_sources, output, version):
         destination = staged / "third_party" / "tailscale" / "tailscale_1.102.4_amd64.tgz"
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(asset, destination)
-        nft_destination = staged / "third_party" / "nft" / "nft-runtime-bullseye.tar.gz"
+        nft_destination = staged / "third_party" / "nft" / "nft-runtime-trixie.tar.gz"
         nft_destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(nft_asset, nft_destination)
-        shutil.copy2(nft_sources, staged / "third_party" / "nft" / "nft-sources-bullseye.tar.gz")
+        shutil.copy2(nft_sources, staged / "third_party" / "nft" / "nft-sources-trixie.tar.gz")
         (staged / "config" / "VERSION").write_text(version + "\n", encoding="utf-8")
         output = Path(output).resolve()
         output.parent.mkdir(parents=True, exist_ok=True)

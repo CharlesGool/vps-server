@@ -1,6 +1,10 @@
 # Native shell catalog for deploy/install.sh. Sourced only by the installer.
 case "$key" in
   install_detached) fmt='安装已交给后台任务执行。日志：%s\n完成后退出码（0 表示成功）：%s\n' ;;
+  install_following) fmt='安装已在后台开始，下面只显示关键步骤。按 Ctrl-C 只停止显示，安装会继续。\n' ;;
+  install_failed_tail) fmt='\n安装失败（退出码 %s）。相关日志：\n' ;;
+  install_full_log) fmt='完整日志：%s\n' ;;
+  install_result_unknown) fmt='后台安装任务已结束，但没有留下结果。完整日志：%s\n' ;;
   install_detach_failed) fmt='无法启动后台安装任务，未更改服务。\n' ;;
   install_already_running) fmt='已有安装任务正在执行。\n' ;;
 
@@ -42,6 +46,7 @@ case "$key" in
   deps_nft_missing) fmt='代理模块需要 nftables，但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
   deps_nft_unusable) fmt='代理模块需要 nftables，但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
   deps_tailscale_conflict) fmt='系统中已有运行中的 Tailscale 守护进程（tailscaled.service）。请先停止它，或从 VPSSRV_MODULES 中去掉 tailscale。' ;;
+  deps_tun_missing) fmt='Tailscale 需要 /dev/net/tun，但本机没有这个设备。请在 VPS 控制面板中开启 TUN/TAP 后重试。' ;;
   tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
   web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
   proxy_protocols_head) fmt='  哪些协议？下面每一项独立回答。\n' ;;

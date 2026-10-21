@@ -1,4 +1,9 @@
-"""Locate the checked, private nftables runtime bundled for offline hosts."""
+"""Locate nft and iptables: a working host command first, else the bundle.
+
+The offline package carries Debian 13 nft and iptables-nft with their own
+loader and glibc, so `bin/nft` and `bin/iptables` run on older and newer
+hosts alike and on hosts where neither tool is installed.
+"""
 
 import os
 import shutil
@@ -10,6 +15,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BUNDLE = Path(os.environ.get("VPSSRV_NFT_ROOT") or ROOT / "vendor" / "nft")
 _SELECTED = None
+_IPTABLES = None
+
+
+def _works(args, env=None):
+    try:
+        return subprocess.run(args, capture_output=True, timeout=10, check=False,
+                              env=env).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def lists_tables(binary, env=None):
+    """`--version` succeeds even when nft cannot read the host ruleset, e.g.
+    an old nft on a host with newer iptables-nft rules."""
+    return _works([binary, "-j", "list", "tables"], env)
+
+
+def bundle_command(root, program="nft"):
+    wrapper = Path(root) / "bin" / program
+    if not wrapper.is_file():
+        return None
+    return str(wrapper), dict(os.environ)
 
 
 def command():
@@ -17,33 +44,48 @@ def command():
     if _SELECTED is not None:
         return _SELECTED
     system = shutil.which("nft")
-    if system:
-        try:
-            probe = subprocess.run([system, "-j", "list", "tables"], capture_output=True,
-                                   timeout=10, check=False)
-            if probe.returncode == 0:
-                _SELECTED = (system, dict(os.environ))
-                return _SELECTED
-        except (OSError, subprocess.SubprocessError):
-            pass
-    binary = BUNDLE / "usr" / "sbin" / "nft"
-    if binary.is_file():
-        env = dict(os.environ)
-        paths = (BUNDLE / "lib" / "x86_64-linux-gnu",
-                 BUNDLE / "usr" / "lib" / "x86_64-linux-gnu")
-        env["LD_LIBRARY_PATH"] = ":".join(str(path) for path in paths) + ":" + env.get("LD_LIBRARY_PATH", "")
-        _SELECTED = (str(binary), env)
+    if system and lists_tables(system):
+        _SELECTED = (system, dict(os.environ))
+        return _SELECTED
+    bundled = bundle_command(BUNDLE)
+    if bundled:
+        _SELECTED = bundled
         return _SELECTED
     raise FileNotFoundError("nftables runtime unavailable")
 
 
+def iptables_command():
+    """Return the iptables to run, or None when no copy can read the rules.
+
+    Only a working result is kept, so a host that gains iptables later is
+    picked up without restarting the console.
+    """
+    global _IPTABLES
+    if _IPTABLES is not None:
+        return _IPTABLES
+    candidates = [shutil.which("iptables")]
+    bundled = bundle_command(BUNDLE, "iptables")
+    candidates.append(bundled[0] if bundled else None)
+    for candidate in candidates:
+        if candidate and _works([candidate, "-w", "5", "-S", "INPUT"]):
+            _IPTABLES = candidate
+            return candidate
+    return None
+
+
 def main(args):
+    if args == ["iptables-path"]:
+        path = iptables_command()
+        if path:
+            print(path)
+        return 0 if path else 1
     if args not in (["check"], ["delete-table"]):
         return 2
     binary, env = command()
-    command_args = (["--version"] if args == ["check"] else
-                    ["delete", "table", "inet", "vps_server_nodes"])
-    return subprocess.run([binary, *command_args], env=env, timeout=20, check=False).returncode
+    if args == ["check"]:
+        return 0 if lists_tables(binary, env) else 1
+    return subprocess.run([binary, "delete", "table", "inet", "vps_server_nodes"],
+                          env=env, timeout=20, check=False).returncode
 
 
 if __name__ == "__main__":

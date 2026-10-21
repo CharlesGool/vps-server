@@ -39,6 +39,9 @@ metadata:
 - [ ] 已登录 Tailscale 退出及真实 Tailnet 路由策略未在本次测试机验证. v5.3.0 发布前操作员在真机确认 Tailscale 工作正常, 退出及路由策略的专项验证仍待.
 - [ ] 月度配额与真实持续流量/限速策略没有在 v5.2.2 发布时重新全面验证;此前操作员确认不等于本次独立复测.
 - [ ] 英语/西班牙语文档尚无独立母语审阅.
+- [ ] 2026-10-21 vmshell Debian 13 (KVM) 主机上节点计量服务反复重启, 日志只有 `cannot list nftables tables`, Singbox 因依赖计量被停止. 原因: 该主机镜像未装 nftables, 计量回退到随包 nft v0.9.8, 它读不了 Debian 13 iptables-nft 规则; 运行时检查只执行 `nft --version`, 安装预检因此放行. 操作员经 SSH 安装 nftables 1.1.3 后计量与代理均为 active. 本地已改为检查 `-j list tables`, 计量错误附带 nft 的最后一行 stderr; 新预检尚未在目标机复测. 另见: 控制台 root 终端继承 Web 单元 `ProtectSystem=strict`, 不能用 apt 安装软件包;改为 systemd-run 独立单元的修改被 Claude Code 权限检查拦下, 未实施, 待操作员决定.
+- [ ] 2026-10-21 新增 `host_checks.py` 按模块检查主机条件, 安装器预检, 控制台模块任务和未安装模块卡片共用;首次安装前台跟随后台任务, 只显示关键行, 失败时附原因与相关日志. 本地检查与模拟任务通过, 目标机尚未复测.
+- [ ] 2026-10-21 随附运行库由 Debian 11 nft 0.9.8 换成 Debian 13 nft 1.1.3 与 iptables-nft 1.8.11, 连同 glibc 2.41 一起打包, 经自带加载器运行, 不依赖主机 glibc;包固定在 snapshot.debian.org 20261020T000000Z, 运行包 4.8 MB, 可重复构建. 运行时优先使用能读取规则的系统 nft/iptables, 否则用随附版本;Web 安装也会放入运行库, 供端口转发使用. devbox(内核 5.15)容器中 Debian 11/12/13, Ubuntu 20.04/22.04/24.04 均通过: 读取规则表, 应用计量规则批次, 读取计数器, iptables 开端口和端口转发规则. 真实 VPS 与其他内核尚未验收.
 
 以上未勾选项为验收缺口, 不代表已复现的运行故障.
 

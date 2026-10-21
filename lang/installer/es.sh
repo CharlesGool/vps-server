@@ -1,6 +1,10 @@
 # Catálogo nativo de shell para deploy/install.sh. Solo lo carga el instalador.
 case "$key" in
   install_detached) fmt='La instalación continúa en segundo plano. Registro: %s\nCódigo de salida al finalizar (0 = éxito): %s\n' ;;
+  install_following) fmt='La instalación se inició en segundo plano; abajo solo se muestran los pasos clave. Ctrl-C detiene esta vista, no la instalación.\n' ;;
+  install_failed_tail) fmt='\nLa instalación falló (código de salida %s). Líneas relevantes del registro:\n' ;;
+  install_full_log) fmt='Registro completo: %s\n' ;;
+  install_result_unknown) fmt='La instalación en segundo plano terminó sin registrar un resultado. Registro completo: %s\n' ;;
   install_detach_failed) fmt='No se pudo iniciar la instalación en segundo plano; no se cambiaron los servicios.\n' ;;
   install_already_running) fmt='Ya hay una instalación en curso.\n' ;;
 
@@ -42,6 +46,7 @@ case "$key" in
   deps_nft_missing) fmt='El módulo proxy necesita nftables, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
   deps_nft_unusable) fmt='El módulo proxy necesita nftables, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
   deps_tailscale_conflict) fmt='Ya hay un demonio de Tailscale del sistema en ejecución (tailscaled.service). Detenlo o quita tailscale de VPSSRV_MODULES.' ;;
+  deps_tun_missing) fmt='Tailscale necesita /dev/net/tun, pero este equipo no tiene ese dispositivo. Activa TUN/TAP en el panel de control del VPS e inténtalo de nuevo.' ;;
   tailscale_install_failed) fmt='Falló la instalación de Tailscale; consulte el registro del módulo.\n' ;;
   web_start_failed) fmt='El servicio Web no arrancó; se liberaron los nuevos puertos públicos reservados.\n' ;;
   proxy_protocols_head) fmt='  ¿Qué protocolos? Responde a cada uno por separado.\n' ;;

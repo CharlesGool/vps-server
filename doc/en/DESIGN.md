@@ -37,7 +37,7 @@ Non-goals: a general container platform, arbitrary FRP configuration editing, au
 
 The browser uses pages and authenticated endpoints served by a Python standard-library HTTP service. Handlers are divided by feature in `src/web/features/`. Independent systemd services run Singbox, FRPS, FRPC, Lucky and Tailscale. Web uses system protection options and delegates limited privileged actions to root helpers; a separately password-verified browser terminal runs a root PTY.
 
-After language selection, the installer starts background job `vps-server-install`. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
+After language selection, the installer starts background job `vps-server-install` and follows its `summary.log` in the foreground, showing only key steps, the address and password, or the failure reason. Module host requirements (nft able to list tables, `/dev/net/tun`, an existing tailscaled, iptables and `ss`/`ip`) come from `src/web/host_checks.py`; the installer, console module jobs and uninstalled module cards share its result codes. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
 
 | Directory | Responsibility |
 | --- | --- |

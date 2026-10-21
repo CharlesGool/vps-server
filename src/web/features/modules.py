@@ -71,6 +71,10 @@ def module_job_text(t, job, names):
     """Describe the current module action using a localized display name."""
     if job.get("reason") == "port_occupied" and job.get("state") == "failed":
         return t["module_port_occupied"].format(port=job.get("port", ""))
+    if job.get("reason") == "host_check" and job.get("state") == "failed" and isinstance(job.get("codes"), list):
+        texts = [t.get("host_check_" + str(code), "") for code in job["codes"]]
+        if all(texts):
+            return " ".join(texts)
     name = names.get(job.get("module"), t.get("module_" + str(job.get("module", "")),
                                                str(job.get("module", ""))))
     key = "module_action_" + str(job.get("action", "")) + "_" + str(job.get("state", ""))
@@ -80,6 +84,26 @@ def module_job_text(t, job, names):
 # Feature pages that offer their own install button, and where the job reports.
 INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
                  "lucky": "/lucky", "tailscale": "/tailscale"}
+
+
+_HOST_FINDINGS = {}
+
+
+def host_findings(context, t, module):
+    """Unmet host needs for a module that is not installed yet, in one line.
+
+    Probing nft can unpack the bundled runtime, so results are kept briefly.
+    """
+    now = time.monotonic()
+    cached = _HOST_FINDINGS.get(module)
+    if cached is None or now - cached[0] > 60:
+        from host_checks import check
+        try:
+            findings = check(module, source=context.BASE_DIR / "installer-source", prefix=context.BASE_DIR)
+        except (OSError, ValueError):
+            findings = []
+        cached = _HOST_FINDINGS[module] = (now, findings)
+    return " ".join(t["host_check_" + code] for _level, code in cached[1] if "host_check_" + code in t)
 
 
 def module_job_recent(job, now, seconds):
@@ -222,6 +246,9 @@ class ModulesMixin:
                 f'<input type="hidden" name="csrf" value="{token}">'
                 f'<button type="submit" class="{esc(css_class, quote=True)}" {"disabled" if busy else ""}>'
                 f'{esc(t["module_install"] + " " + module_name)}</button></form>')
+        needs = host_findings(self.context, t, module)
+        if needs and not notice:
+            notice = f'<p class="tile-error" role="status">{esc(needs)}</p>'
         scripts = '<script src="/static/module-controls.js" defer></script>'
         if own and busy:
             scripts += '<script src="/static/module-status.js" defer></script>'
@@ -300,8 +327,10 @@ class ModulesMixin:
                            f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, "module:" + module + ":" + action)}">'
                            f'<button type="submit" class="{"danger" if present else ""}"{confirm} '
                            f'{"disabled" if busy else ""}>{esc(label)}</button></form>')
+            needs = "" if present else host_findings(self.context, t, module)
+            needs_html = f'<span class="tile-error" role="status">{esc(needs)}</span>' if needs else ""
             cards.append(f'<section class="module-card"><div><h2>{esc(title)}</h2>'
-                         f'<p>{esc(status)}</p></div>{control}</section>')
+                         f'<p>{esc(status)}</p>{needs_html}</div>{control}</section>')
         notice_text = module_job_text(t, job, {key: title for key, title, _ in catalogue})
         notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(notice_text)}</p>'
                   if notice_visible else "")

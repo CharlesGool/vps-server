@@ -35,6 +35,11 @@ try:
 except ImportError:  # Installed helpers are copied into one flat directory.
     from frp_control import client_names as frpc_names, client_unit as frpc_unit
 
+try:
+    from .host_checks import check as host_check
+except ImportError:
+    from host_checks import check as host_check
+
 
 MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale")
 STANDALONE_MODULES = ("frpc",)
@@ -228,6 +233,12 @@ class PublicPortOccupied(RuntimeError):
         super().__init__(f"Port {port} is already in use")
 
 
+class HostCheckFailed(RuntimeError):
+    def __init__(self, codes):
+        self.codes = codes
+        super().__init__("host check failed: " + ", ".join(codes))
+
+
 def wait_public_listener_applied(prefix, listener, enabled, old_pid):
     status_file = state_data_dir() / "public-listeners.json"
     name = "http" if listener == "web_http" else "https"
@@ -345,6 +356,11 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
 
 
 def run_install(prefix, module):
+    # Stop before anything is changed; the console names each unmet need.
+    errors = [code for level, code in host_check(module, source=Path(prefix) / "installer-source",
+                                                 prefix=prefix) if level == "error"]
+    if errors:
+        raise HostCheckFailed(errors)
     if module == "frpc":
         return install_frpc(prefix)
     if module == "iperf3":
@@ -1005,6 +1021,11 @@ def main(argv=None):
                     print(f"Error: {exc}", flush=True)
                     save_status(prefix, module, "failed", action=action,
                                 reason="port_occupied", port=exc.port)
+                    raise SystemExit(1)
+                except HostCheckFailed as exc:
+                    print(f"Error: {exc}", flush=True)
+                    save_status(prefix, module, "failed", action=action,
+                                reason="host_check", codes=exc.codes)
                     raise SystemExit(1)
                 except Exception as exc:
                     print(f"Error: {type(exc).__name__}", flush=True)

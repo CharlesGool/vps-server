@@ -114,7 +114,7 @@
 
 ## 要求
 
-最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables; Singbox 节点的流量统计和限速需要可运行的 nft, 系统没有时使用完整安装包随附的运行库. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 安装器在改动任何服务前检查这些条件: Python 低于 3.9 时停止安装, 缺少 iptables, `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
+最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 安装器在改动任何服务前检查这些条件: Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
 推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. 完整 Release 包包含离线构件, 但缺少系统基础包时仍需可用的软件包仓库. 源码构建完整离线包需要联网.
 
@@ -155,14 +155,14 @@ cd /root/vps-server-v5.3.1
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
-完成语言选择后, 安装交给 systemd 后台任务执行. 源码目录在任务完成前**必须**保留. 默认路径下查看日志和结果:
+完成语言选择后, 安装交给 systemd 后台任务执行, 当前终端只显示关键步骤, 完成后给出控制台地址和初始密码;失败时给出原因和几行相关日志. 按 Ctrl-C 或终端断开只停止显示, 安装继续. 源码目录在任务完成前**必须**保留. 停止显示后, 默认路径下查看完整日志和结果:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log
 cat /root/apps/vps-server/.local/install-job/exit-code
 ```
 
-`exit-code` 不存在表示未完成, `0` 表示成功, 其他值表示失败. 自定义 `PREFIX` 时替换日志路径. 完成后日志给出控制台地址, 初始密码和模块结果;终端断开不代表安装失败.
+`exit-code` 不存在表示未完成, `0` 表示成功, 其他值表示失败. 自定义 `PREFIX` 时替换日志路径. 每个模块在改动前检查主机条件(如 Singbox 需要可用的 nftables, Tailscale 需要 `/dev/net/tun`), 不满足时直接说明原因和处理办法;控制台的未安装模块也会提前显示.
 
 ## 指南
 

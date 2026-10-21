@@ -44,7 +44,7 @@ metadata:
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | 终端渲染与尺寸适配. | The xterm.js authors; SourceLair; Christopher Jeffrey | 保留两份许可和版权原文. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | 原源码静态构建, TCP/UDP 测试. | The Regents of the University of California / Lawrence Berkeley National Laboratory | 保留版权及完整许可. | 2026-10-04 |
 | Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-10-04 |
-| nftables + 10 libraries | Debian 11 amd64, nftables 0.9.8-3.1+deb11u2 | [nftables + 10 libraries](https://deb.debian.org/debian/) | 各包 copyright: GPL/LGPL/BSD 等. | 私有运行库, 只进入完整离线包. | 各包上游作者, 见归档原文. | 同时分发完整对应源码, 补丁和包版权原文. | 2026-10-04 |
+| nftables, iptables + 15 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, glibc 2.41-12+deb13u4 | [nftables, iptables + 15 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | 各包 copyright: GPL/LGPL/BSD 等. | 私有运行库, 只进入完整离线包;自带加载器与 glibc. | 各包上游作者, 见归档原文. | 同时分发完整对应源码, 补丁和包版权原文. | 2026-10-04 |
 
 核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Lucky, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, OpenSSL, iptables 等由系统提供, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
 
@@ -78,7 +78,7 @@ Tailscale 的 80 份依赖许可, freetype 许可和 3 份 NOTICE 共 84 个正�
 - iperf3: [3.22 源码归档](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
 - Tailscale: [v1.102.4 源码](https://github.com/tailscale/tailscale/tree/v1.102.4).
 
-完整 Release 包同时提供 `third_party/nft/nft-runtime-bullseye.tar.gz` 和 `third_party/nft/nft-sources-bullseye.tar.gz`, 分别固定为 SHA-256 `42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb` 与 `fce6ca6c5050ff7715c5bd9fedb0160c942e3e5ede7d2702c02f01d920ac6e83`. 源码归档含 11 个二进制包对应的 10 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机仅调用私有运行库, 不替换系统 nft.
+完整 Release 包同时提供 `third_party/nft/nft-runtime-trixie.tar.gz` 和 `third_party/nft/nft-sources-trixie.tar.gz`, 分别固定为 SHA-256 `7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033` 与 `99b4ef60318a9fc5d68168fee5259ae91576779bd759c103a2f5c8ac5c0fc30a`. 源码归档含 17 个二进制包对应的 13 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机优先使用可用的系统 nft/iptables, 不可用时才调用私有运行库, 不替换系统命令.
 
 iperf3 源码未修改, 在 Ubuntu 22.04 x86-64 以 `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` 构建并 strip, 不含 SCTP/OpenSSL 认证;旧系统静态解析兼容性仍需验收.
 

@@ -27,6 +27,7 @@ from node_inventory import InvalidInventory, validate_inventory
 from console_port import read_rows, write_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
+from nft_runtime import iptables_command
 try:
     from .state_paths import data_dir as state_data_dir, console_port_file as state_console_port_file
 except ImportError:
@@ -237,7 +238,7 @@ class HostBackend:
         if shutil.which("firewall-cmd") and subprocess.run(
                 ["firewall-cmd", "--state"], capture_output=True, timeout=10).returncode == 0:
             return "firewalld"
-        if shutil.which("iptables"):
+        if iptables_command():
             return "iptables"
         return None
 
@@ -273,13 +274,14 @@ class HostBackend:
             flag = "--add-port" if opening else "--remove-port"
             cmd = ["firewall-cmd", "--permanent", f"{flag}={port}/{transport}"]
         else:
-            exists = subprocess.run(["iptables", "-C", "INPUT", "-p", transport,
+            iptables = iptables_command()
+            exists = subprocess.run([iptables, "-C", "INPUT", "-p", transport,
                                      "--dport", str(port), "-j", "ACCEPT"],
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                     timeout=10).returncode == 0
             if (opening and exists) or (not opening and not exists):
                 return
-            cmd = ["iptables", "-I" if opening else "-D", "INPUT", "-p", transport,
+            cmd = [iptables, "-I" if opening else "-D", "INPUT", "-p", transport,
                    "--dport", str(port), "-j", "ACCEPT"]
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, timeout=20)

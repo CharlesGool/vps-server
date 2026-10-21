@@ -222,21 +222,23 @@ def portfwd_rule_apply(context, rule, opening):
     Return whether every requested rule was applied or withdrawn. An absent
     rule is already withdrawn; partial additions are removed before failure.
     """
-    if not context.shutil.which("iptables"):
+    from nft_runtime import iptables_command
+    iptables = iptables_command()
+    if not iptables:
         print(context._log_text('log_iptables_missing'), file=context.sys.stderr)
         return False
     ok = True
     for table, chain, match, action in context._portfwd_specs(rule):
         verb = "-A" if opening else "-D"
-        cmd = ["iptables", "-t", table, verb, chain, *match, *action]
+        cmd = [iptables, "-t", table, verb, chain, *match, *action]
         if not context._run_quiet(cmd):
-            if opening or context._run_quiet(["iptables", "-t", table, "-C", chain, *match, *action]):
+            if opening or context._run_quiet([iptables, "-t", table, "-C", chain, *match, *action]):
                 ok = False
     if opening and not ok:
         # A partially applied rule must not be left in the kernel after the
         # caller reports a failure. Every spec carries this rule's own tag.
         for table, chain, match, action in context._portfwd_specs(rule):
-            context._run_quiet(["iptables", "-t", table, "-D", chain, *match, *action])
+            context._run_quiet([iptables, "-t", table, "-D", chain, *match, *action])
         print(context._log_text('log_portfwd_apply', rule_id=rule['id']), file=context.sys.stderr)
     return ok
 

@@ -1,6 +1,10 @@
 # Native shell catalog for deploy/install.sh. Sourced only by the installer.
 case "$key" in
   install_detached) fmt='Installation continues in the background. Log: %s\nCompletion exit code (0 = success): %s\n' ;;
+  install_following) fmt='Installation started in the background; only the key steps are shown below. Ctrl-C stops this view, not the installation.\n' ;;
+  install_failed_tail) fmt='\nInstallation failed (exit code %s). Relevant log lines:\n' ;;
+  install_full_log) fmt='Full log: %s\n' ;;
+  install_result_unknown) fmt='The background installation ended without recording a result. Full log: %s\n' ;;
   install_detach_failed) fmt='Could not start the background installer; services were not changed.\n' ;;
   install_already_running) fmt='An installation is already running.\n' ;;
 
@@ -42,6 +46,7 @@ case "$key" in
   deps_nft_missing) fmt='The proxy module needs nftables, but this host has no usable nft and the bundled runtime is missing. Install nftables (apt install nftables) or use the full release package.' ;;
   deps_nft_unusable) fmt='The proxy module needs nftables, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
   deps_tailscale_conflict) fmt='A system Tailscale daemon (tailscaled.service) is already running. Stop it or leave tailscale out of VPSSRV_MODULES.' ;;
+  deps_tun_missing) fmt='Tailscale needs /dev/net/tun, but this host has no such device. Enable TUN/TAP in the VPS control panel and try again.' ;;
   tailscale_install_failed) fmt='Tailscale installation failed; check the module log.\n' ;;
   web_start_failed) fmt='The Web service did not start; new public port reservations were released.\n' ;;
   proxy_protocols_head) fmt='  Which protocols? Answer each one independently.\n' ;;

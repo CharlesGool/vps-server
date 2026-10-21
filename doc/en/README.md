@@ -114,7 +114,7 @@ Captured from the pre-release test build of v5.3.0 in the test environment with 
 
 ## Requirements
 
-Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported.
+Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported. When the host has no working nft or iptables, the complete package supplies Debian 13 builds with their own loader and glibc, which work offline.
 
 Use a maintained Debian/Ubuntu release, reserve backup space and allow ports for enabled features. Debian 13 x86-64 was tested on a host; Python 3.9 and other distributions have not been independently accepted. Complete Release packages contain offline artifacts, but missing base OS packages still require a working package repository. Building the complete offline package from source requires network access.
 
@@ -155,14 +155,14 @@ cd /root/vps-server-v5.3.1
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
-After language selection, systemd runs the installation in the background. You **MUST** keep the source directory until completion. For the default prefix, inspect the log and result:
+After language selection, systemd runs the installation in the background while the current terminal shows only the key steps, then the console address and initial password; on failure it shows the reason and a few related log lines. Ctrl-C or a terminal disconnection stops only the display; the installation continues. You **MUST** keep the source directory until completion. After leaving the display, inspect the full log and result for the default prefix:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log
 cat /root/apps/vps-server/.local/install-job/exit-code
 ```
 
-A missing `exit-code` means the job has not finished; `0` means success and any other value failure. Adjust the path for a custom `PREFIX`. On completion, the log contains console addresses, initial password and module results. Terminal disconnection does not mean installation failure.
+A missing `exit-code` means the job has not finished; `0` means success and any other value failure. Adjust the path for a custom `PREFIX`. Each module checks host requirements before changing anything (for example, Singbox needs a working nftables and Tailscale needs `/dev/net/tun`) and states the reason and fix when one is unmet; uninstalled modules in the console show this in advance.
 
 ## Usage
 

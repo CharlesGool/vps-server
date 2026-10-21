@@ -31,7 +31,8 @@ def firewall_backend(context, ):
         return "ufw"
     if context.shutil.which("firewall-cmd") and context._cmd_output(["firewall-cmd", "--state"]).strip() == "running":
         return "firewalld"
-    if context.shutil.which("iptables"):
+    from nft_runtime import iptables_command
+    if iptables_command():
         return "iptables"
     return None
 
@@ -51,7 +52,8 @@ def firewall_port(context, port, opening):
         cmd = ["firewall-cmd", f"{flag}={port}/tcp"]
     elif backend == "iptables":
         flag = "-I" if opening else "-D"
-        cmd = ["iptables", flag, "INPUT", "-p", "tcp", "--dport", str(port),
+        from nft_runtime import iptables_command
+        cmd = [iptables_command() or "iptables", flag, "INPUT", "-p", "tcp", "--dport", str(port),
                "-j", "ACCEPT"]
     else:
         return False

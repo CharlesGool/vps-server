@@ -301,7 +301,20 @@ msg() {
 
 # Callers pass already-translated text, e.g. die "$(msg need_root)". Command
 # substitution strips msg's trailing newline, so put it back here.
-die() { printf '%s%s\n' "$(msg error_prefix)" "$*" >&2; exit 1; }
+die() { printf '%s%s\n' "$(msg error_prefix)" "$*" >&2; record_core "$(msg error_prefix)$*"; exit 1; }
+
+# The interactive installer shows only these lines while it follows a
+# background job; install.log keeps everything else.
+record_core() {
+  [ "${VPSSRV_INSTALL_WORKER:-0}" = 1 ] && [ -n "${VPSSRV_INSTALL_JOB_DIR:-}" ] || return 0
+  printf '%s\n' "$1" >> "$VPSSRV_INSTALL_JOB_DIR/summary.log" || true
+}
+core() {
+  local text
+  text="$(msg "$@")"
+  printf '%s\n' "$text"
+  record_core "$text"
+}
 
 # The first external-state layout is a versioned baseline. Do not guess how
 # to migrate an older installation whose files may already be missing.
@@ -487,6 +500,38 @@ if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
 fi
 # Pass the selected locale to every module setup script.
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
+# Show the background job's core lines until it records an exit code. Ctrl-C
+# or a dropped SSH session only stops this view; systemd keeps the job.
+follow_install_job() {
+  local summary="$INSTALL_JOB_DIR/summary.log" log="$INSTALL_JOB_DIR/install.log"
+  local result="$INSTALL_JOB_DIR/exit-code" shown=0 total code="" finished=0
+  trap 'printf "\n"; msg install_detached "$log" "$result"; exit 0' INT
+  msg install_following
+  while :; do
+    [ -s "$result" ] && finished=1
+    total="$(wc -l < "$summary" 2>/dev/null || echo 0)"
+    if [ "$total" -gt "$shown" ]; then
+      sed -n "$((shown + 1)),${total}p" "$summary"
+      shown="$total"
+    fi
+    [ "$finished" = 1 ] && break
+    case "$(systemctl show -p ActiveState --value vps-server-install.service 2>/dev/null || true)" in
+      active|activating|reloading|deactivating) ;;
+      *) sleep 1; [ -s "$result" ] && continue
+         msg install_result_unknown "$log"; exit 1 ;;
+    esac
+    sleep 1
+  done
+  trap - INT
+  code="$(tr -dc '0-9' < "$result")"
+  [ "${code:-1}" = 0 ] && exit 0
+  # The step that failed often prints its reason just before the error line.
+  msg install_failed_tail "${code:-?}"
+  grep -v '^[[:space:]]*$' "$log" | grep -vxFf "$summary" | tail -n 5 || true
+  msg install_full_log "$log"
+  exit "${code:-1}"
+}
+
 # Interactive selection finishes before handing the installer to systemd.
 # Module jobs already run outside the login session and explicitly use worker mode.
 if [ "${VPSSRV_INSTALL_WORKER:-0}" != 1 ]; then
@@ -503,7 +548,7 @@ if [ "${VPSSRV_INSTALL_WORKER:-0}" != 1 ]; then
   python3 - "$INSTALL_JOB_DIR" <<'PYENV'
 import os, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
-for name in ('environment', 'install.log'):
+for name in ('environment', 'install.log', 'summary.log'):
     path = root / name
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
     os.fchmod(fd, 0o600)
@@ -521,8 +566,8 @@ PYENV
     --property="StandardOutput=append:$INSTALL_JOB_DIR/install.log" \
     --property="StandardError=append:$INSTALL_JOB_DIR/install.log" \
     /usr/bin/bash "$SRC_DIR/deploy/install.sh" || die "$(msg install_detach_failed)"
-  msg install_detached "$INSTALL_JOB_DIR/install.log" "$INSTALL_JOB_DIR/exit-code"
-  exit 0
+  exec 8>&-
+  follow_install_job
 fi
 if [ -n "${VPSSRV_INSTALL_JOB_DIR:-}" ]; then
   python3 - "$VPSSRV_INSTALL_JOB_DIR/environment" <<'PYENV'
@@ -639,33 +684,22 @@ fi
 
 # Check host prerequisites before any service is stopped or file replaced, so
 # a missing tool fails here instead of halfway through and leaves Web down.
+# The console runs the same checks before a module job and on the module cards.
 check_host_prerequisites() {
-  if has_module web && ! command -v iptables >/dev/null 2>&1; then
-    msg deps_iptables_missing >&2
-  fi
-  if has_module web && ! command -v ss >/dev/null 2>&1; then
-    msg deps_ss_missing >&2
-  fi
-  if has_module web && ! command -v ip >/dev/null 2>&1; then
-    msg deps_ip_missing >&2
-  fi
-  if has_module proxy; then
-    if ! { command -v nft >/dev/null 2>&1 && nft -j list tables >/dev/null 2>&1; }; then
-      local asset="$SRC_DIR/third_party/nft/nft-runtime-bullseye.tar.gz" probe
-      [ -f "$asset" ] || die "$(msg deps_nft_missing)"
-      probe="$(mktemp -d)"
-      if ! tar -xzf "$asset" -C "$probe" ||
-         ! VPSSRV_NFT_ROOT="$probe" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1; then
-        rm -rf -- "$probe"
-        die "$(msg deps_nft_unusable)"
-      fi
-      rm -rf -- "$probe"
+  local findings level code failed=0
+  findings="$(/usr/bin/python3 "$SRC_DIR/src/web/host_checks.py" --source "$SRC_DIR" --prefix "$PREFIX" \
+    ${MODULES//,/ })" || true
+  while read -r level code; do
+    [ -n "$code" ] || continue
+    if [ "$level" = error ]; then
+      printf '%s%s\n' "$(msg error_prefix)" "$(msg "deps_$code")" >&2
+      record_core "$(msg error_prefix)$(msg "deps_$code")"
+      failed=1
+    else
+      core "deps_$code" >&2
     fi
-  fi
-  if has_module tailscale && [ ! -f "$TAILSCALE_UNIT" ] &&
-     systemctl is-active --quiet tailscaled.service; then
-    die "$(msg deps_tailscale_conflict)"
-  fi
+  done <<<"$findings"
+  [ "$failed" = 0 ] || exit 1
 }
 check_host_prerequisites
 
@@ -689,7 +723,7 @@ install_iperf3() {
 }
 
 install_proxy() {
-  msg proxy_start "${PROXY_PROTOCOLS:-anytls,vmess,vless,trojan,shadowsocks}"
+  core proxy_start "${PROXY_PROTOCOLS:-anytls,vmess,vless,trojan,shadowsocks}"
   if [ -f /etc/vps-server-nodes/state.json ] && [ -f "$PROXY_CONFIG_PATH" ] &&
      [ -f /etc/systemd/system/vps-server-proxy.service ]; then
     return 0
@@ -857,27 +891,32 @@ copy_singbox_binary() {
   fi
 }
 
+# The bundled Debian 13 nft and iptables run on their own glibc. Web uses the
+# iptables for port forwarding and proxy uses nft for node metering; a working
+# host copy of either is still preferred at run time.
 stage_nft_runtime() {
-  has_module proxy || return 0
-  local asset="$SRC_DIR/third_party/nft/nft-runtime-bullseye.tar.gz"
+  has_module web || has_module proxy || return 0
+  local asset="$SRC_DIR/third_party/nft/nft-runtime-trixie.tar.gz"
   if [ ! -f "$asset" ]; then
-    command -v nft >/dev/null 2>&1 || return 1
+    # A source checkout without the offline asset relies on the host's nft.
+    if has_module proxy && ! command -v nft >/dev/null 2>&1; then return 1; fi
     return 0
   fi
-  printf '%s  %s\n' '42eeb9496a173777df2e46d67b32b631e5eb31bbc1a74d2a0fa335f32a46c9eb' "$asset" |
+  printf '%s  %s\n' '7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033' "$asset" |
     sha256sum -c - >/dev/null || return 1
   mkdir -p "$PREFIX/vendor"
   local staged="$PREFIX/vendor/.nft-staged-$$" previous="$PREFIX/vendor/.nft-previous-$$"
   mkdir -p "$staged"
   tar -xzf "$asset" -C "$staged" || return 1
-  [ -f "$staged/usr/sbin/nft" ] || return 1
+  [ -x "$staged/bin/nft" ] && [ -x "$staged/bin/iptables" ] || return 1
   if [ -d "$PREFIX/vendor/nft" ]; then mv "$PREFIX/vendor/nft" "$previous"; fi
   mv "$staged" "$PREFIX/vendor/nft"
-  VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1 || {
+  if has_module proxy &&
+     ! VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1; then
     rm -r -- "$PREFIX/vendor/nft"
     if [ -d "$previous" ]; then mv "$previous" "$PREFIX/vendor/nft"; fi
     return 1
-  }
+  fi
   if [ -d "$previous" ]; then rm -r -- "$previous"; fi
 }
 
@@ -1133,7 +1172,7 @@ if has_module web; then
   fi
 fi
 
-msg installing "$PREFIX"
+core installing "$PREFIX"
 mkdir -p "$PREFIX"
 if [ "$UPGRADE" = "0" ] && has_module web; then
   mkdir -p "$VPSSRV_DATA_DIR"
@@ -1291,7 +1330,7 @@ systemctl restart "$SERVICE_NAME" || { release_new_public_ports; die "$(msg web_
 sleep 2
 if ! systemctl is-active --quiet "$SERVICE_NAME"; then
   release_new_public_ports
-  msg start_failed >&2
+  core start_failed >&2
   journalctl -u "$SERVICE_NAME" -n 20 --no-pager >&2 || true
   exit 1
 fi
@@ -1354,8 +1393,8 @@ else
   OTHER_IPS="$(other_ips "$HOST" | paste -sd ',' - | sed 's/,/, /g' || true)"
 fi
 
-msg running
-msg line_modules "$MODULES"
+core running
+core line_modules "$MODULES"
 msg line_service "$SERVICE_NAME"
 # Report what Web will actually serve: the console's per-listener switches
 # override VPSSRV_PUBLIC_ENABLE, exactly as in the registration above.
@@ -1375,9 +1414,9 @@ case " $PUBLIC_STATE " in
   *) msg line_public_off ;;
 esac
 if [ -n "$PORT" ]; then
-  msg line_url "$SCHEME" "$HOST" "$PORT"
+  core line_url "$SCHEME" "$HOST" "$PORT"
 else
-  msg line_url_unknown "$SCHEME" "$HOST" "$PORT_FILE" "$SERVICE_NAME"
+  core line_url_unknown "$SCHEME" "$HOST" "$PORT_FILE" "$SERVICE_NAME"
 fi
 [ -n "$OTHER_IPS" ] && msg line_also "$OTHER_IPS"
 if [ -x "$PREFIX/vendor/iperf3/iperf3" ] || command -v iperf3 >/dev/null 2>&1; then
@@ -1386,12 +1425,12 @@ else
   msg line_iperf_off
 fi
 if [ "$VPSSRV_AUTH" = "0" ]; then
-  msg line_pw_none
+  core line_pw_none
 elif [ -f "$PW_FILE" ]; then
-  if [ "$PASSWORD_WAS_PRESENT" = 1 ]; then msg line_pw_preserved "$PW_FILE"
-  else msg line_pw "$(cat "$PW_FILE")" "$PW_FILE"; fi
+  if [ "$PASSWORD_WAS_PRESENT" = 1 ]; then core line_pw_preserved "$PW_FILE"
+  else core line_pw "$(cat "$PW_FILE")" "$PW_FILE"; fi
 else
-  msg line_pw_seefile "$PW_FILE"
+  core line_pw_seefile "$PW_FILE"
 fi
 if [ -n "${VPSSRV_DEFAULT_LANG:-}" ]; then
   msg line_lang "$VPSSRV_DEFAULT_LANG"
@@ -1414,7 +1453,7 @@ UNINSTALLER="$PREFIX/installer-source/deploy/uninstall.sh"
 msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER"
 
 if [ "$PROXY_FAILED" = "1" ]; then
-  msg proxy_failed >&2
+  core proxy_failed >&2
   exit 1
 fi
 install_node_meter || {
