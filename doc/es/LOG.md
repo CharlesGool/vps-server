@@ -39,6 +39,8 @@ metadata:
 - [ ] No se verificaron cierre de sesión autenticado de Tailscale ni políticas reales de rutas Tailnet.
 - [ ] No se repitió la verificación completa de cuotas mensuales, tráfico sostenido y límites para v5.2.2; la confirmación anterior no equivale a una nueva prueba independiente.
 - [ ] Las traducciones no tienen revisión independiente de hablantes nativos.
+- [x] 2026-10-21 En un equipo vmshell con Debian 13 (KVM), el servicio de contabilidad de nodos se reiniciaba en bucle registrando solo `cannot list nftables tables`, y Singbox se detenía porque depende de él. Causa: la imagen no tenía nftables, así que la contabilidad usó el nft 0.9.8 incluido, que no puede leer las reglas iptables-nft de Debian 13; la comprobación solo ejecutaba `nft --version`, por lo que la verificación previa lo aceptó. Corregido en v5.4.0: las comprobaciones leen ahora el conjunto de reglas y el entorno incluido es nft/iptables de Debian 13 con su propia glibc.
+- [ ] 2026-10-21 El terminal root de la consola se crea desde el proceso Web y hereda `ProtectSystem=strict` de su unidad, por lo que no puede instalar paquetes con apt ni modificar `/etc`. El cambio para ejecutarlo como unidad systemd-run independiente fue bloqueado por la comprobación de permisos de Claude Code y no se aplicó; queda pendiente de la decisión del operador.
 
 Los puntos pendientes son carencias de aceptación, no fallos reproducidos.
 
@@ -52,6 +54,10 @@ Los puntos pendientes son carencias de aceptación, no fallos reproducidos.
 
 | Fecha | Decisión | Estado | Motivo |
 | --- | --- | --- | --- |
+| 2026-10-21 | El paquete completo incluye nft e iptables-nft de Debian 13 con su propia glibc, iniciados mediante el cargador incluido; se prefiere un nft/iptables del equipo que pueda leer las reglas. Sustituye el entorno de Debian 11 decidido el 2026-10-04. | Aceptada | El antiguo nft 0.9.8 no puede leer las reglas escritas por iptables-nft de Debian 13 y los binarios nuevos no funcionan directamente con una glibc antigua. |
+| 2026-10-13 | Las instalaciones nuevas sirven la consola por HTTPS con un certificado autofirmado; las actualizaciones conservan el ajuste anterior. Las cookies de sesión llevan `Secure` con HTTPS activo. | Aceptada | Un certificado autofirmado no prueba la identidad del servidor, pero evita que contraseñas y sesiones se lean en texto plano. |
+| 2026-10-13 | Usar `git branch -D` en 10 ramas locales antiguas sin fusionar (`archive/*` ×3, `feat/two-stage-setup`, `fix/frpc-unicode-name`, `refactor/feature-modules`, `refactor/feature-modules-repo`, `release/v4.0.0`, `release/v4.1.0-test.1`, `test/host-validation-wip`). Exime la regla 2 de las normas Git de all-in-one `Ramas e historial` ("NO DEBE usarse `git branch -D`"), solo para estas ramas y una vez. | Aceptada | El usuario confirmó que estas ramas están abandonadas; sus SHA finales se guardan en notas privadas locales. |
+| 2026-10-07 | La esquina superior izquierda de la cabecera muestra solo el nombre del proyecto, sin logotipo. Exime la regla 2 de las convenciones de Web UI de all-in-one `Marco de página y navegación` ("la esquina superior izquierda DEBE mostrar logotipo y nombre"), solo para la cabecera compartida; el icono de la pestaña no cambia. | Aceptada | El usuario lo pidió explícitamente en la conversación porque el logotipo no se veía bien. |
 | 2026-10-05 | Reescribir 18 documentos según plantillas actuales y conservar licencias originales. | Aceptada | El usuario pidió una reescritura completa y las licencias conservan obligaciones de distribución. |
 | 2026-10-05 | Usar tareas independientes para instalación y actualizaciones FRPC. | Aceptada | Un reinicio puede cortar la conexión del instalador o de la respuesta de guardado. |
 | 2026-10-04 | Usar una raíz persistente separada de esquema 1. | Aceptada | Sustituir código no debe borrar credenciales ni ajustes. |

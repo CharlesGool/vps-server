@@ -26,6 +26,48 @@ metadata:
 
 ## Historial de cambios
 
+### v5.4.0 — 2026-10-21
+
+#### Añadido
+
+- El paquete completo incluye nftables 1.1.3 e iptables 1.8.11 de Debian 13 junto con glibc, iniciados por el cargador incluido. En equipos Debian 11+ y Ubuntu 20.04+ sin nftables ni iptables, o sin conexión, la contabilidad de tráfico de nodos, los límites de velocidad y el reenvío de puertos siguen funcionando. Se sigue prefiriendo una versión del equipo que pueda leer las reglas; las instalaciones solo de Web también reciben este entorno.
+
+- Se comprueban los requisitos del equipo antes de instalar un módulo: Singbox necesita nftables funcional y Tailscale necesita `/dev/net/tun` y que no haya otro tailscaled en ejecución. El instalador, las tareas de instalación de la consola y las tarjetas y páginas de instalación de módulos no instalados comparten estas comprobaciones; si falta alguna, la instalación se detiene antes de cambiar nada y muestra el motivo y la solución en lugar de un simple "error".
+
+- En la primera instalación, el comando queda en primer plano siguiendo la tarea en segundo plano y muestra solo los pasos clave y, al final, la dirección de la consola y la contraseña inicial; si falla, muestra el motivo y algunas líneas relacionadas del registro. Ctrl-C o una desconexión SSH solo detienen la vista; la instalación continúa.
+
+- Las páginas de funciones de un módulo ausente permiten instalarlo directamente y muestran el progreso en la misma página.
+
+- Un guardado de ajustes fallido muestra un toast durante 8 segundos y la página ya no repite el mismo error.
+
+#### Cambiado
+
+- Las instalaciones nuevas sirven la consola por HTTPS con un certificado autofirmado y las cookies de sesión llevan `Secure`; las actualizaciones conservan el ajuste anterior.
+
+- Instalar Singbox, Lucky o Tailscale desde la consola instala solo ese módulo; Web y los demás módulos siguen funcionando.
+
+- Antes de detener cualquier servicio, el instalador comprueba la versión de Python (se detiene por debajo de 3.9) e iptables, `ss` e `ip` (avisa si faltan e indica las funciones afectadas).
+
+- Los errores de la contabilidad de nodos incluyen ahora el mensaje de error propio de nft.
+
+#### Corregido
+
+- En equipos Debian 13 sin nftables del sistema, la contabilidad de nodos se reiniciaba en bucle y detenía Singbox: el antiguo nft 0.9.8 incluido no puede leer reglas escritas por iptables-nft reciente, y la verificación previa solo ejecutaba `nft --version`, por lo que no lo detectó. La verificación previa y las comprobaciones en ejecución leen ahora realmente el conjunto de reglas.
+
+- Los formularios de reenvío de puertos e iperf3 no tenían tokens CSRF, por lo que una página en otro puerto del mismo equipo podía enviarlos.
+
+- Las conexiones inactivas que abren los navegadores por adelantado podían hacer que la consola HTTPS y la página pública dejaran de responder: los handshakes TLS se ejecutan ahora en el hilo de trabajo de cada conexión con un límite de 10 segundos.
+
+- Cambiar el puerto de la consola reiniciaba Web manteniendo un bloqueo, por lo que el nuevo proceso agotaba el tiempo al liberar un registro de puerto iperf3 pendiente y fallaba; un fallo al liberar registros pendientes ya no impide que Web se inicie.
+
+- Instalar Lucky desde la consola detenía Singbox; tras desinstalar Lucky su página ya no ofrecía el botón de instalación.
+
+- Una primera instalación fallida de Tailscale dejaba su archivo de unidad y sus binarios, y la reversión podía no liberar registros de puertos.
+
+- El estado de la página pública en el resumen de instalación no coincidía con los interruptores de la consola; las instalaciones de FRPS/Lucky fallaban y se revertían ante una regla de cortafuegos que ya no existía; el archivo de configuración del proxy pasa a 0600 y BBR usa su propio archivo sysctl, que la desinstalación completa elimina.
+
+- La página del terminal y las páginas de FRPS y FRPC no instalados usaban el icono de pestaña de inicio.
+
 ### v5.3.1 — 2026-10-07
 
 #### Corregido

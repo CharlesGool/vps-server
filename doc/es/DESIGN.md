@@ -37,7 +37,7 @@ Fuera del alcance: plataforma general de contenedores, edición arbitraria de FR
 
 El navegador accede a páginas y endpoints autenticados de un servicio HTTP de la biblioteca estándar de Python. Los manejadores se separan en `src/web/features/`. Servicios systemd independientes ejecutan Singbox, FRPS, FRPC, Lucky y Tailscale. Web usa protecciones del sistema y delega acciones privilegiadas limitadas; el terminal del navegador inicia un PTY root tras verificar la contraseña.
 
-Tras elegir el idioma, el instalador inicia la tarea `vps-server-install` y sigue su `summary.log` en primer plano, mostrando solo los pasos clave, la dirección y la contraseña o el motivo del fallo. Los requisitos del equipo por módulo (nft capaz de listar tablas, `/dev/net/tun`, un tailscaled existente, iptables y `ss`/`ip`) provienen de `src/web/host_checks.py`; el instalador, las tareas de módulos de la consola y las tarjetas de módulos no instalados comparten sus códigos. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
+Tras elegir el idioma, el instalador inicia la tarea `vps-server-install` y sigue su `summary.log` en primer plano, mostrando solo los pasos clave, la dirección y la contraseña o el motivo del fallo. Los requisitos del equipo por módulo (nft capaz de listar tablas, `/dev/net/tun`, un tailscaled existente, iptables y `ss`/`ip`) provienen de `src/web/host_checks.py`; el instalador, las tareas de módulos de la consola y las tarjetas de módulos no instalados comparten sus códigos. Al instalar un módulo desde la consola se usa `VPSSRV_MODULE_ONLY=1` para instalar solo el módulo elegido mientras Web y los demás módulos siguen funcionando. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
 
 | Directorio | Responsabilidad |
 | --- | --- |
@@ -65,13 +65,16 @@ El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y
 - Los cambios FRP **DEBEN** validarse y conservar o restaurar la configuración en caso de fallo. El editor **NO DEBE** descartar opciones avanzadas no soportadas.
 - La cuota cuenta `(subida + bajada) × 2`; la ausencia de lecturas **NO DEBE** significar cuota agotada. Los reinicios de ciclo **DEBEN** reconstruir la cuota del núcleo.
 - Los servidores iperf3 **DEBEN** tener duración limitada; detener Web cierra procesos temporales y reglas propias. **NO DEBE** restablecerse `ip_forward` global ni borrarse reglas ajenas.
+- Los handshakes TLS **DEBEN** completarse en el hilo de trabajo de cada conexión con un tiempo límite; un handshake en el hilo que acepta conexiones permite que una conexión inactiva bloquee todo el servicio.
+- Los reinicios de Web **NO DEBEN** mantener `.ports.lock`; el nuevo proceso Web libera registros pendientes mediante el mismo bloqueo al iniciarse.
+- La instalación de un solo módulo **NO DEBE** detener, reinstalar ni desactivar los servicios de otros módulos.
 - Las rutas públicas y de consola **DEBEN** permanecer separadas. Las cabeceras del proxy **NO DEBEN** autorizar acceso por IP sin contraseña.
 - Las instalaciones del mismo esquema **DEBEN** conservar el estado; un esquema antiguo o localizador ausente **NO DEBE** sobrescribirse silenciosamente.
 - Los artefactos **DEBEN** coincidir con sus sumas y conservar licencias y acceso al código correspondiente. Esto no fija todas las dependencias del sistema.
 
 ## Tokens de diseño
 
-Se usan los tokens actuales de la plantilla para tipografía, espaciado, radios, sombras, contenedores, ocho temas y movimiento. Los componentes proceden de la plantilla; los enlaces conservan la navegación Python. Los tokens adicionales `compat-*` mantienen dimensiones de tablas y diálogos y variantes de estado de los módulos. La tipografía, los pesos, radios y temas usan los valores de la plantilla. Los componentes nuevos solo referencian tokens. Compruebe con `cd web && npm run check`.
+Se usan los tokens actuales de la plantilla para tipografía, espaciado, radios, sombras, contenedores, ocho temas y movimiento. Los componentes proceden de la plantilla; los enlaces conservan la navegación Python. Los tokens adicionales `compat-*` mantienen dimensiones de tablas y diálogos y variantes de estado de los módulos. La tipografía, los pesos, radios y temas usan los valores de la plantilla. `--toast-lifetime-error` fija cuánto dura un toast de error (8 segundos). Cuando un guardado fallido redirige de vuelta con el parámetro `msg`, el frontend muestra el error de la página como toast y elimina la copia en la página. Los componentes nuevos solo referencian tokens. Compruebe con `cd web && npm run check`.
 
 ## Diseño de datos
 

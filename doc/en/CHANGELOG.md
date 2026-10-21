@@ -26,6 +26,48 @@ metadata:
 
 ## Changelog
 
+### v5.4.0 — 2026-10-21
+
+#### Added
+
+- The complete package bundles Debian 13 nftables 1.1.3 and iptables 1.8.11 together with glibc, started by the bundled loader. On Debian 11+ and Ubuntu 20.04+ hosts without nftables or iptables, or without network access, node traffic accounting, rate limits and port forwarding still work. A host copy that can read the rules is still preferred; Web-only installs also receive this runtime.
+
+- Host requirements are checked before a module is installed: Singbox needs a working nftables, and Tailscale needs `/dev/net/tun` and no other running tailscaled. The installer, console install jobs and the cards and install pages of uninstalled modules share these checks; when one is unmet, the install stops before changing anything and shows the reason and fix instead of a bare "failed".
+
+- On a first install the command stays in the foreground following the background job, showing only key steps and then the console address and initial password; on failure it shows the reason and a few related log lines. Ctrl-C or an SSH disconnect only stops the display; the install continues.
+
+- Feature pages for a missing module can install it directly and show progress in place.
+
+- A failed settings save shows an 8-second toast, and the page no longer repeats the same error inline.
+
+#### Changed
+
+- Fresh installs serve the console over HTTPS with a self-signed certificate, and session cookies carry `Secure`; upgrades keep the previous setting.
+
+- Installing Singbox, Lucky or Tailscale from the console installs only that module; Web and other modules keep running.
+
+- Before stopping any service, the installer checks the Python version (stopping below 3.9) and iptables, `ss` and `ip` (warning when missing and naming the affected features).
+
+- Node meter errors now include nft's own error message.
+
+#### Fixed
+
+- On Debian 13 hosts without system nftables, the node meter restarted in a loop and stopped Singbox: the old bundled nft 0.9.8 cannot read rules written by newer iptables-nft, and the install preflight only ran `nft --version`, so it did not catch this. The preflight and runtime checks now actually read the ruleset.
+
+- Port forwarding and iperf3 forms lacked CSRF tokens, so a page on another port of the same host could submit them.
+
+- Idle connections pre-opened by browsers could make the HTTPS console and public page stop answering: TLS handshakes now run in each connection's worker thread with a 10-second timeout.
+
+- Changing the console port restarted Web while holding a lock, so the new process timed out releasing a stale iperf3 port registration and crashed; a failed release of stale registrations also no longer stops Web from starting.
+
+- Installing Lucky from the console stopped Singbox; after uninstalling Lucky its page no longer offered an install button.
+
+- A failed first Tailscale install left its unit file and binaries behind, and the rollback could miss releasing port registrations.
+
+- The install summary's public page status disagreed with the console switches; FRPS/Lucky installs failed and rolled back on a firewall rule that was already gone; the proxy configuration file is now 0600, and BBR uses its own sysctl file that a full uninstall removes.
+
+- The terminal page and the FRPS and FRPC not-installed pages used the home tab icon.
+
 ### v5.3.1 — 2026-10-07
 
 #### Fixed

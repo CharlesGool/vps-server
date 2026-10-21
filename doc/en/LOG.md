@@ -39,6 +39,8 @@ metadata:
 - [ ] Authenticated Tailscale logout and real Tailnet routing policies were not verified on this test host.
 - [ ] Monthly quotas and sustained real-traffic/rate-limit policies were not comprehensively retested for v5.2.2; earlier operator confirmation is not an independent rerun.
 - [ ] English/Spanish documentation has not received independent native-language review.
+- [x] 2026-10-21 On a vmshell Debian 13 (KVM) host the node meter restarted in a loop, logging only `cannot list nftables tables`, and Singbox was stopped because it depends on the meter. Cause: the host image had no nftables, so the meter fell back to the bundled nft 0.9.8, which cannot read Debian 13 iptables-nft rules; the runtime check only ran `nft --version`, so the install preflight let it through. Fixed in v5.4.0: the checks now read the ruleset and the bundled runtime is Debian 13 nft/iptables with its own glibc.
+- [ ] 2026-10-21 The console root terminal is forked from the Web process and inherits the Web unit's `ProtectSystem=strict`, so it cannot install packages with apt or modify `/etc`. A change to run it as a separate systemd-run unit was blocked by the Claude Code permission check and was not made; it awaits the operator's decision.
 
 Unchecked items are acceptance gaps, not reproduced runtime failures.
 
@@ -52,6 +54,10 @@ Unchecked items are acceptance gaps, not reproduced runtime failures.
 
 | Date | Decision | Status | Reason |
 | --- | --- | --- | --- |
+| 2026-10-21 | The complete offline package bundles Debian 13 nft and iptables-nft with their own glibc, started through the bundled loader; a host nft/iptables that can read the rules is preferred. Replaces the Debian 11 runtime decided on 2026-10-04. | Accepted | The old nft 0.9.8 cannot read rules written by Debian 13 iptables-nft, and newer binaries cannot run directly on an older glibc. |
+| 2026-10-13 | Fresh installs serve the console over HTTPS with a self-signed certificate; upgrades keep the previous setting. Session cookies carry `Secure` when HTTPS is on. | Accepted | A self-signed certificate does not prove server identity but keeps passwords and sessions from being read in plaintext. |
+| 2026-10-13 | Use `git branch -D` on 10 unmerged old local branches (`archive/*` ×3, `feat/two-stage-setup`, `fix/frpc-unicode-name`, `refactor/feature-modules`, `refactor/feature-modules-repo`, `release/v4.0.0`, `release/v4.1.0-test.1`, `test/host-validation-wip`). Exempts rule 2 of the all-in-one Git rules `Branches and history` ("MUST NOT use `git branch -D`"), limited to these branches, once. | Accepted | The user confirmed these branches are abandoned; their tip SHAs are kept in local private notes. |
+| 2026-10-07 | The top-left of the header shows only the project name, not the logo. Exempts rule 2 of the all-in-one Web UI conventions `Page frame and navigation` ("the top left MUST show the project logo and name"), limited to the shared header; the browser tab icon is unchanged. | Accepted | The user explicitly asked for it in the conversation, finding the logo display poor. |
 | 2026-10-05 | Rewrite 18 documents from current templates; retain original third-party licenses. | Accepted | The user requested a full rewrite while original license notices remain distribution obligations. |
 | 2026-10-05 | Use background tasks for installation and FRPC updates. | Accepted | Service restarts can interrupt the connection carrying installation or save responses. |
 | 2026-10-04 | Use a separate layout-1 persistent state root. | Accepted | Replacing code must not delete credentials and settings. |

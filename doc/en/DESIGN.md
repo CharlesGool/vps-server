@@ -37,7 +37,7 @@ Non-goals: a general container platform, arbitrary FRP configuration editing, au
 
 The browser uses pages and authenticated endpoints served by a Python standard-library HTTP service. Handlers are divided by feature in `src/web/features/`. Independent systemd services run Singbox, FRPS, FRPC, Lucky and Tailscale. Web uses system protection options and delegates limited privileged actions to root helpers; a separately password-verified browser terminal runs a root PTY.
 
-After language selection, the installer starts background job `vps-server-install` and follows its `summary.log` in the foreground, showing only key steps, the address and password, or the failure reason. Module host requirements (nft able to list tables, `/dev/net/tun`, an existing tailscaled, iptables and `ss`/`ip`) come from `src/web/host_checks.py`; the installer, console module jobs and uninstalled module cards share its result codes. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
+After language selection, the installer starts background job `vps-server-install` and follows its `summary.log` in the foreground, showing only key steps, the address and password, or the failure reason. Module host requirements (nft able to list tables, `/dev/net/tun`, an existing tailscaled, iptables and `ss`/`ip`) come from `src/web/host_checks.py`; the installer, console module jobs and uninstalled module cards share its result codes. Console module installs use `VPSSRV_MODULE_ONLY=1` to install only the selected module while Web and other modules keep running. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -65,13 +65,16 @@ Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and sh
 - FRP changes **MUST** validate first and retain or restore old settings on failure. Structured editing **MUST NOT** discard unsupported advanced configuration.
 - Quotas count `(upload + download) × 2`; missing meter readings **MUST NOT** count as quota exhaustion. Cycle resets **MUST** rebuild kernel quota state.
 - iperf3 servers **MUST** be time-limited; Web shutdown closes temporary processes and project forwarding rules. Code **MUST NOT** reset host-wide `ip_forward` or remove unrelated firewall rules.
+- TLS handshakes **MUST** finish in each connection's worker thread with a timeout; a handshake on the accepting thread lets one idle connection block the whole listener.
+- Web restarts **MUST NOT** hold `.ports.lock`; the new Web process releases stale registrations through the same lock at startup.
+- A single-module install **MUST NOT** stop, reinstall or disable another module's services.
 - Public listener and console route boundaries **MUST** remain separate. Trusted proxy headers **MUST NOT** authorize passwordless IP login.
 - Same-layout installs **MUST** retain state. Old layouts or missing locators **MUST NOT** be silently overwritten as fresh installs.
 - Third-party artifacts **MUST** match pinned hashes and retain original licenses and corresponding source access. Artifact verification is not a complete OS dependency lock.
 
 ## Design Tokens
 
-Use the latest starter tokens for typography, spacing, radii, shadows, containers, eight themes and motion. Shared components come directly from the starter; header/page-heading links preserve Python navigation. Additional `compat-*` tokens retain module-specific table/dialog dimensions and status variants. Typography, weights, radii and themes use template values. New components and pages only reference tokens. Check with `cd web && npm run check`.
+Use the latest starter tokens for typography, spacing, radii, shadows, containers, eight themes and motion. Shared components come directly from the starter; header/page-heading links preserve Python navigation. Additional `compat-*` tokens retain module-specific table/dialog dimensions and status variants. Typography, weights, radii and themes use template values. `--toast-lifetime-error` sets how long a failure toast stays (8 seconds). When a failed save redirects back with a `msg` parameter, the frontend shows the page's error as a toast and removes the inline copy. New components and pages only reference tokens. Check with `cd web && npm run check`.
 
 ## Data Design
 

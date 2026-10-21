@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.3.1-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.3.1)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.4.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.4.0)
 
 ## Documentation
 
@@ -114,7 +114,7 @@ Captured from the pre-release test build of v5.3.0 in the test environment with 
 
 ## Requirements
 
-Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported. When the host has no working nft or iptables, the complete package supplies Debian 13 builds with their own loader and glibc, which work offline.
+Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported. Port forwarding needs iptables and Singbox node accounting and rate limits need nft; when the host has no working copy, the complete package supplies Debian 13 nft/iptables with their own loader and glibc, which also work offline. Changing the console port and detecting the Lucky admin port need `ss`; the install summary and Tailscale route display need `ip` (both from iproute2). The installer checks these before changing any service: Python older than 3.9 stops the install, a missing iptables (with no bundled runtime), `ss` or `ip` only warns, and an unusable nft or an existing system Tailscale daemon stops the install.
 
 Use a maintained Debian/Ubuntu release, reserve backup space and allow ports for enabled features. Debian 13 x86-64 was tested on a host; Python 3.9 and other distributions have not been independently accepted. Complete Release packages contain offline artifacts, but missing base OS packages still require a working package repository. Building the complete offline package from source requires network access.
 
@@ -127,7 +127,7 @@ Run as root.
 Install only the Web console with one command. Add other modules as needed from Settings/Modules.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-server-v5.3.1-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -135,7 +135,7 @@ curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-
 Source installs require building the frontend first in `web/` (Node.js 24) and include the Tailscale archive; the private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v5.3.1 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.4.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -144,14 +144,14 @@ bash deploy/install.sh
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-server-v5.3.1-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.3.1
-tar -xzf vps-server-v5.3.1-linux-amd64.tar.gz -C /root/vps-server-v5.3.1 --strip-components=1
-cd /root/vps-server-v5.3.1
+mkdir -p /root/vps-server-v5.4.0
+tar -xzf vps-server-v5.4.0-linux-amd64.tar.gz -C /root/vps-server-v5.4.0 --strip-components=1
+cd /root/vps-server-v5.4.0
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -182,7 +182,7 @@ Configuration template: [.env.example](../../.env.example). All variables have d
 | `VPSSRV_HOST` | `0.0.0.0` | Web bind address. |
 | `VPSSRV_CONSOLE_PORT` | `0` | Console port; 0 selects and persists a port in 20000-59999. |
 | `VPSSRV_CONSOLE_PORT_FILE` | empty | Port file; empty uses `console_port.txt` under the state root. |
-| `VPSSRV_CONSOLE_TLS` | `0` | Console TLS switch. |
+| `VPSSRV_CONSOLE_TLS` | `1` | Console HTTPS switch; fresh installs enable it with a self-signed certificate and upgrades keep the previous value. A self-signed certificate prevents eavesdropping but does not prove server identity. |
 | `VPSSRV_AUTH` | `1` | Console authentication; 0 permits unauthenticated management access. |
 | `VPSSRV_PASSWORD_FILE` | empty | Admin password file; empty uses `admin_password.txt` under the state root. |
 | `VPSSRV_IP_ALLOWLIST_FILE` | empty | Passwordless IP allowlist file; empty uses the default state-root list. |
@@ -234,7 +234,7 @@ Layout-1 v5.1.1 test builds and v5.2.x can be upgraded using the installation st
 
 v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.3.1, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v5.4.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 

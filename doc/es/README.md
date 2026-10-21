@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.3.1-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.3.1)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.4.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.4.0)
 
 ## Documentación
 
@@ -114,7 +114,7 @@ Capturas de la compilación de prueba previa a v5.3.0 en el entorno de prueba co
 
 ## Requisitos
 
-Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas. Si el equipo no tiene nft o iptables funcionales, el paquete completo incluye versiones de Debian 13 con cargador y glibc propios, que funcionan sin conexión.
+Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas. El reenvío de puertos necesita iptables y la contabilidad y los límites de los nodos Singbox necesitan nft; si el equipo no tiene una versión funcional, el paquete completo incluye nft/iptables de Debian 13 con cargador y glibc propios, que también funcionan sin conexión. Cambiar el puerto de la consola y detectar el puerto de administración de Lucky necesitan `ss`; el resumen de instalación y las rutas de Tailscale necesitan `ip` (ambos de iproute2). El instalador comprueba esto antes de cambiar cualquier servicio: Python inferior a 3.9 detiene la instalación, la falta de iptables (sin entorno incluido), `ss` o `ip` solo genera un aviso, y un nft inutilizable o un demonio Tailscale del sistema ya existente detienen la instalación.
 
 Se recomienda una versión mantenida de Debian/Ubuntu, espacio para copias de seguridad y puertos abiertos para las funciones activadas. Debian 13 x86-64 se verificó en una máquina; Python 3.9 y otras distribuciones no tienen aceptación independiente. El paquete Release incluye artefactos sin conexión, pero los paquetes básicos ausentes requieren un repositorio del sistema. Crear el paquete completo desde el código fuente requiere red.
 
@@ -127,7 +127,7 @@ Ejecute como root.
 Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos.
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-server-v5.3.1-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -135,7 +135,7 @@ curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24) e incluye el archivo Tailscale; el entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v5.3.1 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.4.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -144,14 +144,14 @@ bash deploy/install.sh
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/vps-server-v5.3.1-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.3.1/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino debe disponer de las dependencias básicas del sistema indicadas arriba.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.3.1
-tar -xzf vps-server-v5.3.1-linux-amd64.tar.gz -C /root/vps-server-v5.3.1 --strip-components=1
-cd /root/vps-server-v5.3.1
+mkdir -p /root/vps-server-v5.4.0
+tar -xzf vps-server-v5.4.0-linux-amd64.tar.gz -C /root/vps-server-v5.4.0 --strip-components=1
+cd /root/vps-server-v5.4.0
 VPSSRV_MODULES=web bash deploy/install.sh
 ```
 
@@ -182,7 +182,7 @@ Plantilla de configuración: [.env.example](../../.env.example). Todas las varia
 | `VPSSRV_HOST` | `0.0.0.0` | Dirección de escucha Web. |
 | `VPSSRV_CONSOLE_PORT` | `0` | Puerto de consola; 0 elige y guarda uno entre 20000-59999. |
 | `VPSSRV_CONSOLE_PORT_FILE` | vacío | Archivo del puerto; vacío usa `console_port.txt` bajo la raíz del estado. |
-| `VPSSRV_CONSOLE_TLS` | `0` | Activación de TLS para la consola. |
+| `VPSSRV_CONSOLE_TLS` | `1` | Activación de HTTPS para la consola; las instalaciones nuevas la activan con un certificado autofirmado y las actualizaciones conservan el valor anterior. Un certificado autofirmado evita escuchas, pero no prueba la identidad del servidor. |
 | `VPSSRV_AUTH` | `1` | Autenticación de consola; 0 permite administrar sin autenticación. |
 | `VPSSRV_PASSWORD_FILE` | vacío | Archivo de contraseña; vacío usa `admin_password.txt` bajo la raíz del estado. |
 | `VPSSRV_IP_ALLOWLIST_FILE` | vacío | Archivo de IP permitidas sin contraseña; vacío usa la lista predeterminada. |
@@ -234,7 +234,7 @@ Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pas
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.3.1, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.4.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 
