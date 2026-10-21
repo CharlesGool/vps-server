@@ -560,7 +560,7 @@ for name in ('environment', 'install.log', 'summary.log'):
                     output.write(f'{key}="{value}"\n')
 (root / 'exit-code').unlink(missing_ok=True)
 PYENV
-  systemd-run --collect --unit=vps-server-install \
+  systemd-run --quiet --collect --unit=vps-server-install \
     --property="WorkingDirectory=$SRC_DIR" \
     --property="EnvironmentFile=$INSTALL_JOB_DIR/environment" \
     --property="StandardOutput=append:$INSTALL_JOB_DIR/install.log" \
