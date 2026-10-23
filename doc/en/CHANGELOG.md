@@ -26,6 +26,12 @@ metadata:
 
 ## Changelog
 
+### v5.5.1 — 2026-10-23
+
+#### Fixed
+
+- The offline package no longer announces a download during install: nothing is downloaded or announced when the components are already in the package, and the notice appears only when a download is actually needed.
+
 ### v5.5.0 — 2026-10-23
 
 #### Added

@@ -26,6 +26,12 @@ metadata:
 
 ## Historial de cambios
 
+### v5.5.1 — 2026-10-23
+
+#### Corregido
+
+- El paquete sin conexión ya no anuncia una descarga durante la instalación: si los componentes ya están en el paquete no se descarga ni se avisa, y el aviso aparece solo cuando de verdad hay que descargar.
+
 ### v5.5.0 — 2026-10-23
 
 #### Añadido

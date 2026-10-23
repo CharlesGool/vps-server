@@ -76,9 +76,9 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.5.0(标签 `v5.5.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 开发机 `devbox` 运行 v5.5.0(HTTPS 28211 端口, 模块 web; 2026-10-23 从 v5.4.0 用离线包原地升级, 备份在 devbox 的 `/root/backups/`).
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.5.1(标签 `v5.5.1`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 开发机 `devbox` 运行 v5.5.0(HTTPS 28211 端口, 模块 web; 2026-10-23 从 v5.4.0 用离线包原地升级, 备份在 devbox 的 `/root/backups/`).
 
-已完成: v5.5.0 发布, 变更见 `doc/CHANGELOG.md`: 离线版与在线版两个安装包, 离线版随附 iproute2(`ss`, `ip`), 安装不再依赖 curl, tar, gzip, 语言选择 5 秒无回答用默认值, 标签页标题分隔符改为 `-`.
+已完成: v5.5.1 修复离线版安装时的误导下载提示; v5.5.0 发布, 变更见 `doc/CHANGELOG.md`: 离线版与在线版两个安装包, 离线版随附 iproute2(`ss`, `ip`), 安装不再依赖 curl, tar, gzip, 语言选择 5 秒无回答用默认值, 标签页标题分隔符改为 `-`.
 
 检查结果: `check_project.py` 与 `web/` 的 `npm run check` 通过. 本机检查: 离线包解压后随附的 `ip`, `ss`(含进程信息), `iptables` 可运行, `PATH` 里没有这些命令时由 `nft_runtime.tool` 回退到随附版本; 在线包下载的 sing-box, Lucky, FRP, Tailscale 与固定哈希和仓库内文件逐字节一致; 语言选择超时在伪终端中测过无回答, 手动选择和自定义秒数. 操作员安装测试版 `test-9e7f4de` 后确认没有问题(未逐项说明测了哪些模块).
 
