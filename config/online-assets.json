@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "comment": "Pinned upstream downloads for the online package, which ships without these binaries. Every archive and extracted file is verified by SHA-256 before it is used.",
+  "components": {
+    "sing-box": {
+      "url": "https://github.com/SagerNet/sing-box/releases/download/v1.13.14/sing-box-1.13.14-linux-amd64.tar.gz",
+      "archive_sha256": "f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697",
+      "files": [
+        {
+          "member": "sing-box-1.13.14-linux-amd64/sing-box",
+          "path": "third_party/sing-box/sing-box",
+          "sha256": "68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7"
+        }
+      ]
+    },
+    "lucky": {
+      "url": "https://github.com/gdy666/lucky/releases/download/v2.27.2/lucky_2.27.2_Linux_x86_64.tar.gz",
+      "archive_sha256": "78adf3fa5e8869be0b1510cb7bcc755d57dccb13252989c8394a7207a392fe66",
+      "files": [
+        {
+          "member": "lucky",
+          "path": "third_party/lucky/lucky",
+          "sha256": "7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a"
+        }
+      ]
+    },
+    "frp": {
+      "url": "https://github.com/fatedier/frp/releases/download/v0.71.0/frp_0.71.0_linux_amd64.tar.gz",
+      "archive_sha256": "84f27e39f11169f7adcef8e8b70c9329de17747b1f14dad9fb95eef5682ea716",
+      "files": [
+        {
+          "member": "frp_0.71.0_linux_amd64/frps",
+          "path": "third_party/frp/frps",
+          "sha256": "b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654"
+        },
+        {
+          "member": "frp_0.71.0_linux_amd64/frpc",
+          "path": "third_party/frp/frpc",
+          "sha256": "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
+        }
+      ]
+    },
+    "tailscale": {
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
+      "archive_sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9",
+      "files": [
+        {
+          "member": null,
+          "path": "third_party/tailscale/tailscale_1.102.4_amd64.tgz",
+          "sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
+        }
+      ]
+    }
+  }
+}

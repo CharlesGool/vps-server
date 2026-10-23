@@ -21,6 +21,11 @@ import tarfile
 import time
 
 try:
+    from . import online_assets
+except ImportError:  # Installed helpers are copied into one flat directory.
+    import online_assets
+
+try:
     from .state_paths import data_dir as state_data_dir, install_state_file, state_dir
 except ImportError:
     from state_paths import data_dir as state_data_dir, install_state_file, state_dir
@@ -540,6 +545,12 @@ def install_frpc(prefix):
     bundled = Path(prefix) / "installer-source" / "third_party" / "frp" / "frpc"
     if not source.is_file():
         source = bundled
+    if not source.is_file():
+        # The online package ships without the binary; fetch the pinned one.
+        try:
+            online_assets.ensure(Path(prefix) / "installer-source", ["frp"])
+        except (OSError, RuntimeError, tarfile.TarError):
+            pass
     if not source.is_file():
         raise RuntimeError("bundled FRPC binary is unavailable")
     if hashlib.sha256(source.read_bytes()).hexdigest() != FRPC_SHA256:

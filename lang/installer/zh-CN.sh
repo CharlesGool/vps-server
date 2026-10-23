@@ -61,6 +61,10 @@ case "$key" in
   ui_bundle_missing) fmt='缺少前端构建产物 web/dist/ui.js 和 ui.css，安装在修改任何内容前停止。\n请使用完整安装包，或先在 web/ 目录执行 npm ci && npm run check（需要 Node.js 24）。\n' ;;
   iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
   iperf_failed) fmt='iperf3 安装失败（apt 输出见上）。安装已停止；请修复软件源后重新运行脚本。\n' ;;
+  online_fetching) fmt='正在从固定的上游压缩包下载 %s ...\n' ;;
+  online_fetch_failed) fmt='无法下载或校验随附组件。未做任何改动；请检查网络，或改用离线版安装包。\n' ;;
+  apt_installing) fmt='正在从发行版仓库安装系统工具：%s ...\n' ;;
+  apt_tools_failed) fmt='警告：用 apt 安装系统工具失败（输出见上）。依赖它们的功能可能无法使用。\n' ;;
   anytls_arch) fmt='anytls 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   proxy_arch) fmt='proxy 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   iperf_web_required) fmt='iperf3 模块离开 web 模块单独安装没有任何作用 —— 只有控制台能打开/关闭它的窗口。请在 VPSSRV_MODULES 里加上 web，或者去掉 iperf3。\n' ;;

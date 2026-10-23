@@ -109,7 +109,11 @@ PY
 )"
 
 tmp="$(mktemp -d)"
-tar -xzf "$ARCHIVE" -C "$tmp" "$ROOT/tailscale" "$ROOT/tailscaled"
+# tarfile reads gzip itself, so hosts without the tar or gzip binaries work too.
+python3 -c 'import sys, tarfile
+with tarfile.open(sys.argv[1], "r:gz") as archive:
+    for member in sys.argv[3:]:
+        archive.extract(member, sys.argv[2])' "$ARCHIVE" "$tmp" "$ROOT/tailscale" "$ROOT/tailscaled"
 install -m 0755 "$tmp/$ROOT/tailscale" /usr/local/bin/tailscale-vps-server
 install -m 0755 "$tmp/$ROOT/tailscaled" /usr/local/bin/tailscaled-vps-server
 mkdir -p -m 0700 "$STATE"

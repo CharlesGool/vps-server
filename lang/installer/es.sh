@@ -61,6 +61,10 @@ case "$key" in
   ui_bundle_missing) fmt='Faltan los archivos de compilación del frontend web/dist/ui.js y ui.css; la instalación se detuvo antes de cambiar nada.\nUsa el paquete completo o ejecuta antes npm ci && npm run check en web/ (requiere Node.js 24).\n' ;;
   iperf_installing) fmt='Instalando iperf3 desde la distribución ...\n' ;;
   iperf_failed) fmt='No se pudo instalar iperf3 (consulta la salida de apt anterior). La instalación se detuvo; corrige el repositorio y vuelve a ejecutar el script.\n' ;;
+  online_fetching) fmt='Descargando %s desde los archivos originales fijados ...\n' ;;
+  online_fetch_failed) fmt='No se pudo descargar o verificar un componente incluido. No se cambió nada; revisa la red o usa el paquete sin conexión.\n' ;;
+  apt_installing) fmt='Instalando herramientas del sistema desde la distribución: %s ...\n' ;;
+  apt_tools_failed) fmt='Aviso: no se pudieron instalar las herramientas con apt (consulta la salida anterior). Las funciones que las necesitan pueden no funcionar.\n' ;;
   anytls_arch) fmt='El módulo anytls requiere x86-64; este host es %s. Se omite porque el binario sing-box incluido no podría ejecutarse aquí.\n' ;;
   proxy_arch) fmt='El módulo proxy requiere x86-64; este host es %s. Se omite porque el binario sing-box incluido no podría ejecutarse aquí.\n' ;;
   iperf_web_required) fmt='El módulo iperf3 no funciona sin el módulo web: solo la consola puede abrir o cerrar su ventana. Añade "web" a VPSSRV_MODULES o elimina "iperf3".\n' ;;

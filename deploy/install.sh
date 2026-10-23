@@ -701,6 +701,54 @@ check_host_prerequisites() {
   done <<<"$findings"
   [ "$failed" = 0 ] || exit 1
 }
+
+# The online package leaves out the large third-party binaries and the bundled
+# system tools. Fetch the binaries from their pinned upstream archives; this
+# needs only python3, not curl, tar, gzip or Git. The offline package already
+# holds every file, so the fetcher finds nothing to do there.
+fetch_online_assets() {
+  [ -f "$SRC_DIR/config/online-assets.json" ] || return 0
+  local module components=""
+  for module in ${MODULES//,/ }; do
+    case "$module" in
+      web|proxy) components="$components sing-box" ;;
+      lucky) components="$components lucky" ;;
+      tailscale) components="$components tailscale" ;;
+      frps) components="$components frp" ;;
+    esac
+  done
+  [ -n "$components" ] || return 0
+  core online_fetching "${components# }"
+  # shellcheck disable=SC2086  # Component names are fixed words from the case above.
+  /usr/bin/python3 "$SRC_DIR/src/web/online_assets.py" "$SRC_DIR" $components ||
+    die "$(msg online_fetch_failed)"
+}
+
+# Only the online package installs host tools from the distribution's
+# repositories; the offline package carries its own nft and iptables and treats
+# a missing ss or ip as a warning.
+install_system_tools() {
+  [ "$(tr -d '[:space:]' < "$SRC_DIR/config/PACKAGE_VARIANT" 2>/dev/null || true)" = online ] || return 0
+  command -v apt-get >/dev/null 2>&1 || return 0
+  local packages=""
+  if has_module web; then
+    command -v iptables >/dev/null 2>&1 || packages="$packages iptables"
+    { command -v ss >/dev/null 2>&1 && command -v ip >/dev/null 2>&1; } || packages="$packages iproute2"
+  fi
+  if has_module proxy; then
+    command -v nft >/dev/null 2>&1 || packages="$packages nftables"
+  fi
+  [ -n "$packages" ] || return 0
+  core apt_installing "${packages# }"
+  # shellcheck disable=SC2086  # Package names are fixed words from the checks above.
+  if ! { DEBIAN_FRONTEND=noninteractive apt-get update -qq &&
+         DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $packages; }; then
+    core apt_tools_failed >&2
+  fi
+}
+
+fetch_online_assets
+install_system_tools
 check_host_prerequisites
 
 if [ "$UPGRADE" = "1" ]; then
@@ -907,7 +955,10 @@ stage_nft_runtime() {
   mkdir -p "$PREFIX/vendor"
   local staged="$PREFIX/vendor/.nft-staged-$$" previous="$PREFIX/vendor/.nft-previous-$$"
   mkdir -p "$staged"
-  tar -xzf "$asset" -C "$staged" || return 1
+  # python3 is already required, and its tarfile module reads gzip itself, so
+  # minimal hosts without the tar or gzip binaries can still unpack the asset.
+  python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1], "r:gz").extractall(sys.argv[2])' \
+    "$asset" "$staged" || return 1
   [ -x "$staged/bin/nft" ] && [ -x "$staged/bin/iptables" ] || return 1
   if [ -d "$PREFIX/vendor/nft" ]; then mv "$PREFIX/vendor/nft" "$previous"; fi
   mv "$staged" "$PREFIX/vendor/nft"

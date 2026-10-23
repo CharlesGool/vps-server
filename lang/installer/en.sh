@@ -61,6 +61,10 @@ case "$key" in
   ui_bundle_missing) fmt='The frontend build output web/dist/ui.js and ui.css is missing; the installation stopped before changing anything.\nUse the complete package, or first run npm ci && npm run check in web/ (Node.js 24 required).\n' ;;
   iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
   iperf_failed) fmt='Could not install iperf3 (apt output above). Installation stopped; fix the package source and rerun the script.\n' ;;
+  online_fetching) fmt='Downloading %s from the pinned upstream archives ...\n' ;;
+  online_fetch_failed) fmt='Could not download or verify a bundled component. Nothing was changed; check the network, or use the offline package.\n' ;;
+  apt_installing) fmt='Installing host tools from the distro: %s ...\n' ;;
+  apt_tools_failed) fmt='Warning: could not install the host tools with apt (output above). Features that need them may not work.\n' ;;
   anytls_arch) fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   proxy_arch) fmt='The proxy module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   iperf_web_required) fmt='The iperf3 module has no effect without the web module — the console is the only thing that opens or closes its window. Add "web" to VPSSRV_MODULES, or drop "iperf3".\n' ;;

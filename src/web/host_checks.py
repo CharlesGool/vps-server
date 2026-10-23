@@ -11,6 +11,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 
@@ -35,9 +36,12 @@ def _nft(source, prefix):
     asset = Path(source) / NFT_ASSET if source else None
     if asset and asset.is_file():
         with tempfile.TemporaryDirectory() as probe:
-            unpacked = subprocess.run(["tar", "-xzf", str(asset), "-C", probe],
-                                      capture_output=True, timeout=60, check=False)
-            bundled = bundle_command(probe) if unpacked.returncode == 0 else None
+            try:  # tarfile reads gzip itself, so no tar or gzip binary is needed.
+                with tarfile.open(asset, "r:gz") as archive:
+                    archive.extractall(probe)
+                bundled = bundle_command(probe)
+            except (OSError, tarfile.TarError):
+                bundled = None
             if bundled and lists_tables(*bundled):
                 return []
     elif not system and not (prefix and bundle_command(Path(prefix) / "vendor" / "nft")):

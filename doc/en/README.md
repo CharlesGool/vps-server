@@ -116,7 +116,7 @@ Captured from the pre-release test build of v5.3.0 in the test environment with 
 
 Minimum: x86-64 Linux, systemd, root access, Python 3.9+, Bash and writable installation/state directories. The installer targets Debian 11+ and Ubuntu 20.04+; other architectures are unsupported. Port forwarding needs iptables and Singbox node accounting and rate limits need nft; when the host has no working copy, the complete package supplies Debian 13 nft/iptables with their own loader and glibc, which also work offline. Changing the console port and detecting the Lucky admin port need `ss`; the install summary and Tailscale route display need `ip` (both from iproute2). The installer checks these before changing any service: Python older than 3.9 stops the install, a missing iptables (with no bundled runtime), `ss` or `ip` only warns, and an unusable nft or an existing system Tailscale daemon stops the install.
 
-Use a maintained Debian/Ubuntu release, reserve backup space and allow ports for enabled features. Debian 13 x86-64 was tested on a host; Python 3.9 and other distributions have not been independently accepted. Complete Release packages contain offline artifacts, but missing base OS packages still require a working package repository. Building the complete offline package from source requires network access.
+Use a maintained Debian/Ubuntu release, reserve backup space and allow ports for enabled features. Debian 13 x86-64 was tested on a host; Python 3.9 and other distributions have not been independently accepted. Releases ship two packages. The offline package bundles every third-party program; the target needs only Python 3.9+, with no curl, Git, tar or gzip and no network. The online package is small and downloads those programs at install time, verified by SHA-256; missing iptables, iproute2 and nftables are installed by the installer with apt. The offline package does not yet bundle iproute2 (`ss`, `ip`); a missing one only produces a warning. Building the offline package from source requires network access.
 
 ## Install
 
@@ -124,10 +124,10 @@ Run as root.
 
 ### Quick Install
 
-Install only the Web console with one command. Add other modules as needed from Settings/Modules.
+Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v5.4.0-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -142,17 +142,23 @@ cp .env.example .env
 bash deploy/install.sh
 ```
 
+#### Online Install
+
+The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules.
+
+```bash
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+```
+
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target must already have the base OS dependencies listed above.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.4.0
-tar -xzf vps-server-v5.4.0-linux-amd64.tar.gz -C /root/vps-server-v5.4.0 --strip-components=1
-cd /root/vps-server-v5.4.0
-VPSSRV_MODULES=web bash deploy/install.sh
+python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.4.0-linux-amd64.tar.gz
+VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 After language selection, systemd runs the installation in the background while the current terminal shows only the key steps, then the console address and initial password; on failure it shows the reason and a few related log lines. Ctrl-C or a terminal disconnection stops only the display; the installation continues. You **MUST** keep the source directory until completion. After leaving the display, inspect the full log and result for the default prefix:

@@ -116,7 +116,7 @@
 
 最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 安装器在改动任何服务前检查这些条件: Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
-推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. 完整 Release 包包含离线构件, 但缺少系统基础包时仍需可用的软件包仓库. 源码构建完整离线包需要联网.
+推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. Release 提供两个安装包: 离线版内置全部第三方程序, 目标机只需 Python 3.9+, 不需要 curl, Git, tar 或 gzip, 也不联网; 在线版体积小, 安装时联网下载这些程序并校验 SHA-256, 缺少的 iptables, iproute2, nftables 由安装器用 apt 安装. 离线版暂未内置 iproute2(`ss`, `ip`), 缺少时只警告. 源码构建离线包需要联网.
 
 ## 安装
 
@@ -124,10 +124,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加.
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v5.4.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-curl -fL https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz | tar -xz -C /root && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -142,17 +142,23 @@ cp .env.example .env
 bash deploy/install.sh
 ```
 
+#### 在线版
+
+只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载.
+
+```bash
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+```
+
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机需预先具备上述系统基础依赖.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-mkdir -p /root/vps-server-v5.4.0
-tar -xzf vps-server-v5.4.0-linux-amd64.tar.gz -C /root/vps-server-v5.4.0 --strip-components=1
-cd /root/vps-server-v5.4.0
-VPSSRV_MODULES=web bash deploy/install.sh
+python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.4.0-linux-amd64.tar.gz
+VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 完成语言选择后, 安装交给 systemd 后台任务执行, 当前终端只显示关键步骤, 完成后给出控制台地址和初始密码;失败时给出原因和几行相关日志. 按 Ctrl-C 或终端断开只停止显示, 安装继续. 源码目录在任务完成前**必须**保留. 停止显示后, 默认路径下查看完整日志和结果:
