@@ -90,6 +90,7 @@ case "$key" in
   ask_new_var) fmt='  %s [%s]： ' ;;
   upgrade_vars_unknown) fmt='旧安装没有记录它支持哪些配置项，因此无法判断哪些是新增的。它记录过的都会沿用，其余按 .env.example 里的默认值。想逐项复核就重跑一次、在上面回答 n。\n' ;;
   language_menu) fmt='语言:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
+  language_auto) fmt='%s 秒内不选择, 将直接使用默认值继续.\n' ;;
   language_choice) fmt='Choice / 选择 / Elección [%s]: ' ;;
   language_invalid) fmt='请输入 1、2 或 3。\n' ;;
   host_placeholder) fmt='<本机地址>' ;;

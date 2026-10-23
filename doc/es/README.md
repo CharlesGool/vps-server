@@ -161,7 +161,7 @@ python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' 
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
-Después de elegir el idioma, systemd ejecuta la instalación en segundo plano y el terminal actual muestra solo los pasos clave y, al final, la dirección de la consola y la contraseña inicial; si falla, muestra el motivo y algunas líneas relacionadas del registro. Ctrl-C o una desconexión del terminal solo detienen la vista; la instalación continúa. **DEBE** conservar el directorio fuente hasta que finalice. Tras salir de la vista, consulte el registro completo y el resultado en la ruta predeterminada:
+La pregunta de idioma al inicio continúa con el valor predeterminado tras 5 segundos sin respuesta (`VPSSRV_PROMPT_TIMEOUT` cambia los segundos; `0` espera indefinidamente), así que las instalaciones desatendidas terminan solas. Después de elegir el idioma, systemd ejecuta la instalación en segundo plano y el terminal actual muestra solo los pasos clave y, al final, la dirección de la consola y la contraseña inicial; si falla, muestra el motivo y algunas líneas relacionadas del registro. Ctrl-C o una desconexión del terminal solo detienen la vista; la instalación continúa. **DEBE** conservar el directorio fuente hasta que finalice. Tras salir de la vista, consulte el registro completo y el resultado en la ruta predeterminada:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log

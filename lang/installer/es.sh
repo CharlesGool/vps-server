@@ -90,6 +90,7 @@ case "$key" in
   ask_new_var) fmt='  %s [%s]: ' ;;
   upgrade_vars_unknown) fmt='La versión instalada no registró qué ajustes admitía, por lo que no se puede saber cuáles son nuevos. Se conserva todo lo que registró; lo demás usa el valor predeterminado documentado en .env.example. Vuelve a ejecutar y responde "n" arriba para revisar todos los ajustes.\n' ;;
   language_menu) fmt='Idioma:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
+  language_auto) fmt='Sin respuesta en %s segundos se continúa con el valor predeterminado.\n' ;;
   language_choice) fmt='Choice / 选择 / Elección [%s]: ' ;;
   language_invalid) fmt='Elija 1, 2 o 3.\n' ;;
   host_placeholder) fmt='<este-servidor>' ;;

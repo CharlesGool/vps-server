@@ -90,6 +90,7 @@ case "$key" in
   ask_new_var) fmt='  %s [%s]: ' ;;
   upgrade_vars_unknown) fmt='The installed version did not record which settings it supported, so this cannot tell which are new. Everything it did record is carried forward; anything else takes the default documented in .env.example. Re-run and answer "n" above to review every setting.\n' ;;
   language_menu) fmt='Language:\n  1) English\n  2) 简体中文\n  3) Español\n' ;;
+  language_auto) fmt='No answer in %s seconds continues with the default.\n' ;;
   language_choice) fmt='Choice / 选择 / Elección [%s]: ' ;;
   language_invalid) fmt='Choose 1, 2, or 3.\n' ;;
   host_placeholder) fmt='<this-server>' ;;

@@ -161,7 +161,7 @@ python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' 
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
-After language selection, systemd runs the installation in the background while the current terminal shows only the key steps, then the console address and initial password; on failure it shows the reason and a few related log lines. Ctrl-C or a terminal disconnection stops only the display; the installation continues. You **MUST** keep the source directory until completion. After leaving the display, inspect the full log and result for the default prefix:
+The language prompt at the start continues with the default after 5 seconds without an answer (`VPSSRV_PROMPT_TIMEOUT` changes the seconds; `0` waits forever), so unattended installs finish on their own. After language selection, systemd runs the installation in the background while the current terminal shows only the key steps, then the console address and initial password; on failure it shows the reason and a few related log lines. Ctrl-C or a terminal disconnection stops only the display; the installation continues. You **MUST** keep the source directory until completion. After leaving the display, inspect the full log and result for the default prefix:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log

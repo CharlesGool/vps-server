@@ -161,7 +161,7 @@ python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' 
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
-完成语言选择后, 安装交给 systemd 后台任务执行, 当前终端只显示关键步骤, 完成后给出控制台地址和初始密码;失败时给出原因和几行相关日志. 按 Ctrl-C 或终端断开只停止显示, 安装继续. 源码目录在任务完成前**必须**保留. 停止显示后, 默认路径下查看完整日志和结果:
+安装开始时的语言选择在 5 秒内没有回答就用默认值继续(`VPSSRV_PROMPT_TIMEOUT` 可改秒数, `0` 表示一直等待), 因此无人值守也能装完. 完成语言选择后, 安装交给 systemd 后台任务执行, 当前终端只显示关键步骤, 完成后给出控制台地址和初始密码;失败时给出原因和几行相关日志. 按 Ctrl-C 或终端断开只停止显示, 安装继续. 源码目录在任务完成前**必须**保留. 停止显示后, 默认路径下查看完整日志和结果:
 
 ```bash
 tail -f /root/apps/vps-server/.local/install-job/install.log

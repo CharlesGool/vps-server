@@ -484,10 +484,22 @@ if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
   fi
   if [ -t 0 ] && [ -t 1 ]; then
     case "$INSTALL_LANG" in en) default_choice=1 ;; zh_cn) default_choice=2 ;; es) default_choice=3 ;; esac
+    # An unanswered prompt takes the default after a few seconds so an
+    # unattended install never waits; VPSSRV_PROMPT_TIMEOUT=0 waits forever.
+    prompt_timeout="${VPSSRV_PROMPT_TIMEOUT:-5}"
+    case "$prompt_timeout" in ''|*[!0-9]*) prompt_timeout=5 ;; esac
     msg language_menu
+    [ "$prompt_timeout" -eq 0 ] || msg language_auto "$prompt_timeout"
     while true; do
       msg language_choice "$default_choice"
-      IFS= read -r choice || choice=""
+      if [ "$prompt_timeout" -gt 0 ]; then
+        if ! IFS= read -r -t "$prompt_timeout" choice; then
+          choice=""
+          printf '\n'
+        fi
+      else
+        IFS= read -r choice || choice=""
+      fi
       choice="${choice:-$default_choice}"
       case "$choice" in
         1) INSTALL_LANG=en; break ;;
