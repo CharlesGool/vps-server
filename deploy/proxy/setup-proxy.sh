@@ -101,6 +101,12 @@ EOF
   fi
 }
 
+# Prefer the host's ip; fall back to the copy bundled in the offline package.
+ip() {
+  local bin
+  bin="$(type -P ip)" || bin="${PREFIX:-/root/apps/vps-server}/vendor/nft/bin/ip"
+  "$bin" "$@"
+}
 urlenc(){ python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" urlenc "$1"; }
 
 get_lan_ips(){

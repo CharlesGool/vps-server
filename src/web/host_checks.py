@@ -64,11 +64,12 @@ def _tailscale():
 
 
 def _web(source, prefix):
-    # Port forwarding falls back to the bundled iptables-nft when it ships.
+    # The offline package bundles iptables-nft, ip and ss; a missing host copy
+    # only matters when no bundle ships.
     bundled = (prefix and (Path(prefix) / "vendor" / "nft" / "bin" / "iptables").is_file()
                or source and (Path(source) / NFT_ASSET).is_file())
     return [("warning", f"{tool}_missing") for tool in ("iptables", "ss", "ip")
-            if not shutil.which(tool) and not (tool == "iptables" and bundled)]
+            if not shutil.which(tool) and not bundled]
 
 
 def check(module, *, source=None, prefix=None):

@@ -25,6 +25,11 @@ try:
 except ImportError:
     from state_paths import data_dir as state_data_dir
 
+try:
+    from .nft_runtime import tool as host_tool
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from nft_runtime import tool as host_tool
+
 
 HEADER = "| Host Port | Project / Service | Bind Address | Registration Date |\n| --- | --- | --- | --- |\n"
 ROW = re.compile(r"\|\s*(\d{1,5})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|")
@@ -173,7 +178,7 @@ def healthy(port, unit=UNIT):
     if not pid.isdecimal() or int(pid) < 1:
         return False
     try:
-        listeners = subprocess.run(["ss", "-H", "-ltnp", "sport", "=", f":{port}"],
+        listeners = subprocess.run([host_tool("ss"), "-H", "-ltnp", "sport", "=", f":{port}"],
                                    check=False, capture_output=True, text=True)
         if listeners.returncode == 0:
             return f"pid={pid}," in listeners.stdout
@@ -318,7 +323,7 @@ def lucky_listener_active(port):
                              check=True, timeout=5).stdout.strip()
         if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
             return False
-        listening = subprocess.run(["ss", "-H", "-ltnp", f"( sport = :{port} )"],
+        listening = subprocess.run([host_tool("ss"), "-H", "-ltnp", f"( sport = :{port} )"],
                                    capture_output=True, text=True, check=True, timeout=5).stdout
         return f"pid={pid}," in listening
     except (OSError, subprocess.SubprocessError):
@@ -348,7 +353,7 @@ def detect_lucky_admin():
                              check=True, timeout=5).stdout.strip()
         if not pid.isascii() or not pid.isdecimal() or int(pid) <= 0:
             return None
-        output = subprocess.run(["ss", "-H", "-ltnp"], capture_output=True, text=True,
+        output = subprocess.run([host_tool("ss"), "-H", "-ltnp"], capture_output=True, text=True,
                                 check=True, timeout=5).stdout
     except (OSError, subprocess.SubprocessError):
         return None

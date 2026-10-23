@@ -1,12 +1,12 @@
-Offline nftables and iptables runtime for x86-64 Debian 11+/Ubuntu 20.04+ hosts.
+Offline nftables, iptables and iproute2 (ip, ss) runtime for x86-64 Debian 11+/Ubuntu 20.04+ hosts.
 Source: https://snapshot.debian.org/archive/debian/20261020T000000Z/dists/trixie/main/binary-amd64/Packages.xz
 Binaries and libraries were extracted from Debian 13 amd64 packages without modification,
-including glibc 2.41. bin/nft and bin/iptables are added wrapper scripts that start the
+including glibc 2.41. bin/nft, bin/iptables, bin/ip and bin/ss are added wrapper scripts that start the
 binaries through the bundled ld-linux-x86-64.so.2 with --library-path, so the host glibc is
 not used. Unused iconv modules (usr/lib/x86_64-linux-gnu/gconv) and manual pages are omitted.
 The archive preserves /usr/share/doc/<package>/copyright for each package.
-Runtime archive SHA-256: 7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033
-Corresponding Debian source archive SHA-256: 99b4ef60318a9fc5d68168fee5259ae91576779bd759c103a2f5c8ac5c0fc30a
+Runtime archive SHA-256: 1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909
+Corresponding Debian source archive SHA-256: ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217
 The offline package includes nft-sources-trixie.tar.gz with original source,
 Debian packaging patches, and signed source descriptors. Exact source file
 names, sizes, and SHA-256 values are pinned in source-manifest.json.
@@ -29,3 +29,18 @@ libip4tc2: 762e4d9c7f86b3fdaefee2baf61ce40073d46d7602651433f2cb7a5eabfb47b4
 libip6tc2: d5ecaad5595dc88d08f317997beb53a4906c45ea79ee14ec89103f72573e3f99
 libnetfilter-conntrack3: ffbac5d06fbe432d5171f2eb5b2504968377f27be133f72c81e71250a9957506
 libnfnetlink0: 5e4c3c40a04ffdb4139e4bef1136585e151a8eb8c71efa6c7250b636b3c0d1b1
+iproute2: 7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a
+libselinux1: 68bb8d32bd8d6d7d2f5952a169db03d1484b46ae1e52abccdec42a19dccea5d5
+libpcre2-8-0: 1252b96a5bc44bb5db982bef8eb18e54f5047cede2aff641bce4f8e1edb91c3e
+libtirpc3t64: ef4536c09bf5063554310e22d586ae90990100ba66d2fe7c35660e9e658913b6
+libgssapi-krb5-2: 30847c1fde4240567d7ed3aeab4f655dd591203758b857e85e824045aae70299
+libkrb5-3: 47d71d6a7f2e59b9bae5f89602397594805113b95889ad18fa703cd53abafc97
+libk5crypto3: 7da07ee674b47f1f0be7cc89317c25310086a1f1761217d0f72e6ae2c5a69b84
+libkrb5support0: 3a0acd8b37955c0e102c756b52c97df2a31f67b96453c35dab70df218d309117
+libkeyutils1: 0b11ad17be0300b63ad4eeb4c6450fed24d34b7b740f23e5363dcb29ee6d5eba
+libcom-err2: bd43e020b8fed399db3eebf098111f10fba4c436fff99ccad72cc7e27c9764ec
+libbpf1: 04c96ead3024888d80d08c8d08cc8cf4589f4614627acc69519f87ffb5adc1c2
+libelf1t64: 94497b7e17b6f574a0605b380d454e20d3f01a9c63b70c2a2263f679d30053e1
+zlib1g: 015be740d6236ad114582dea500c1d907f29e16d6db00566ca32fb68d71ac90d
+libzstd1: 2f6a2aeacfc925eba8b00ac9139bc4bfccf8cacb09eb93de067074b26948eef9
+libcap2: 89fc4d34fc7a28ad6f0fcd0c561ab253b9dedf6f77f5a000b47c276c8295bf67

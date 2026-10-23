@@ -60,7 +60,8 @@ def local_addresses(context, ):
     Read from the kernel's own list without an outbound request.
     """
     found = []
-    output = context._cmd_output(["ip", "-o", "-4", "addr", "show", "scope", "global"])
+    from nft_runtime import tool
+    output = context._cmd_output([tool("ip"), "-o", "-4", "addr", "show", "scope", "global"])
     for line in output.splitlines():
         parts = line.split()
         if len(parts) < 4:
@@ -72,7 +73,8 @@ def local_addresses(context, ):
     return found
 
 def tailscale_address(context, ):
-    for line in context._cmd_output(["ip", "-o", "-4", "addr", "show", "tailscale0"]).splitlines():
+    from nft_runtime import tool
+    for line in context._cmd_output([tool("ip"), "-o", "-4", "addr", "show", "tailscale0"]).splitlines():
         parts = line.split()
         if len(parts) >= 4:
             return parts[3].split("/")[0]

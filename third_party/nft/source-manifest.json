@@ -1,6 +1,53 @@
 {
   "distribution": "Debian trixie main (snapshot.debian.org 20261020T000000Z)",
   "packages": {
+    "e2fsprogs": {
+      "directory": "pool/main/e/e2fsprogs",
+      "files": [
+        {
+          "name": "e2fsprogs_1.47.2-3.dsc",
+          "sha256": "860abb653ecbe01a11bb7e41c9e09a45e83847bffa585f7a3d3c0f9401c9d4bb",
+          "size": 3035
+        },
+        {
+          "name": "e2fsprogs_1.47.2.orig.tar.gz",
+          "sha256": "6dcd67ff9d8b13274ba3f088e4318be4f5b71412cd863524423fc49d39a6371f",
+          "size": 9996725
+        },
+        {
+          "name": "e2fsprogs_1.47.2.orig.tar.gz.asc",
+          "sha256": "2063f62a198dd3df21f789c990c2cf9b4a5de24ed55f0b78d86e97e98daffc9d",
+          "size": 488
+        },
+        {
+          "name": "e2fsprogs_1.47.2-3.debian.tar.xz",
+          "sha256": "5517aae5ce5196e49fa314492f0639ad7a1692c9521d703b6c81acff77a1564e",
+          "size": 103684
+        }
+      ],
+      "version": "1.47.2-3"
+    },
+    "elfutils": {
+      "directory": "pool/main/e/elfutils",
+      "files": [
+        {
+          "name": "elfutils_0.192-4.dsc",
+          "sha256": "37d101658c45a25afc15d2053a1378df2381dadbb368e262ede2cea79241779f",
+          "size": 3314
+        },
+        {
+          "name": "elfutils_0.192.orig.tar.bz2",
+          "sha256": "616099beae24aba11f9b63d86ca6cc8d566d968b802391334c91df54eab416b4",
+          "size": 11913897
+        },
+        {
+          "name": "elfutils_0.192-4.debian.tar.xz",
+          "sha256": "a18efee3ae99ea25e10a0b8c4b731a28dee685361ae89ea8136e9065c86c8942",
+          "size": 44456
+        }
+      ],
+      "version": "0.192-4"
+    },
     "glibc": {
       "directory": "pool/main/g/glibc",
       "files": [
@@ -42,6 +89,27 @@
         }
       ],
       "version": "2:6.3.0+dfsg-3"
+    },
+    "iproute2": {
+      "directory": "pool/main/i/iproute2",
+      "files": [
+        {
+          "name": "iproute2_6.15.0-1.dsc",
+          "sha256": "2558690474d6cdda5e2c4022b520935623ddd41fbf8e936315e3f4314f6f21dd",
+          "size": 2348
+        },
+        {
+          "name": "iproute2_6.15.0.orig.tar.xz",
+          "sha256": "8041854a882583ad5263466736c9c8c68c74b1a35754ab770d23343f947528fb",
+          "size": 930908
+        },
+        {
+          "name": "iproute2_6.15.0-1.debian.tar.xz",
+          "sha256": "780375193dffeb85f310a918b806f2f4e480f76b815a1f0f1eac5d0488ea1a8f",
+          "size": 39920
+        }
+      ],
+      "version": "6.15.0-1"
     },
     "iptables": {
       "directory": "pool/main/i/iptables",
@@ -90,6 +158,74 @@
       ],
       "version": "2.14-2"
     },
+    "keyutils": {
+      "directory": "pool/main/k/keyutils",
+      "files": [
+        {
+          "name": "keyutils_1.6.3-6.dsc",
+          "sha256": "e63869474c390d5d5bdee8492f7b2f4d6034ff10d8190da18593620c0f35fbf8",
+          "size": 2100
+        },
+        {
+          "name": "keyutils_1.6.3.orig.tar.gz",
+          "sha256": "a61d5706136ae4c05bd48f86186bcfdbd88dd8bd5107e3e195c924cfc1b39bb4",
+          "size": 137022
+        },
+        {
+          "name": "keyutils_1.6.3-6.debian.tar.xz",
+          "sha256": "6fc3c1217b8e92df9dff73e4919c45dff4ada5fd414ab57329af487f4476466a",
+          "size": 16588
+        }
+      ],
+      "version": "1.6.3-6"
+    },
+    "krb5": {
+      "directory": "pool/main/k/krb5",
+      "files": [
+        {
+          "name": "krb5_1.21.3-5+deb13u1.dsc",
+          "sha256": "d17d2840bc97fea2c2375245569ca67838a2b557ee083c6cbe42b129a317212c",
+          "size": 4189
+        },
+        {
+          "name": "krb5_1.21.3.orig.tar.gz",
+          "sha256": "b7a4cd5ead67fb08b980b21abd150ff7217e85ea320c9ed0c6dadd304840ad35",
+          "size": 9136145
+        },
+        {
+          "name": "krb5_1.21.3.orig.tar.gz.asc",
+          "sha256": "85047c935fe949ef2e275885451b168557b923dd13a5aab0ef8fe6acd27b94d7",
+          "size": 833
+        },
+        {
+          "name": "krb5_1.21.3-5+deb13u1.debian.tar.xz",
+          "sha256": "02b873b239fbe7ddf016dfe44deba4130673f4606c18c93da0622e2bc8500fb4",
+          "size": 105252
+        }
+      ],
+      "version": "1.21.3-5+deb13u1"
+    },
+    "libbpf": {
+      "directory": "pool/main/libb/libbpf",
+      "files": [
+        {
+          "name": "libbpf_1.5.0-3.dsc",
+          "sha256": "b8fdd3a9c58a13d13e9da0927062f1237303db3a804207e423ec4335119d3245",
+          "size": 1921
+        },
+        {
+          "name": "libbpf_1.5.0.orig.tar.gz",
+          "sha256": "53492aff6dd47e4da04ef5e672d753b9743848bdb38e9d90eafbe190b7983c44",
+          "size": 1036613
+        },
+        {
+          "name": "libbpf_1.5.0-3.debian.tar.xz",
+          "sha256": "b526c99fc75f632540306a958576fe3923890cba95d4999efc458784802da460",
+          "size": 9064
+        }
+      ],
+      "version": "1:1.5.0-3"
+    },
     "libbsd": {
       "directory": "pool/main/libb/libbsd",
       "files": [
@@ -115,6 +251,32 @@
         }
       ],
       "version": "0.12.2-2"
+    },
+    "libcap2": {
+      "directory": "pool/main/libc/libcap2",
+      "files": [
+        {
+          "name": "libcap2_2.75-10+deb13u1.dsc",
+          "sha256": "cb6af220de216655ec55bb1f5abf3fa8f03e82c9956f120b313056e895c02ea6",
+          "size": 2714
+        },
+        {
+          "name": "libcap2_2.75.orig.tar.xz",
+          "sha256": "de4e7e064c9ba451d5234dd46e897d7c71c96a9ebf9a0c445bc04f4742d83632",
+          "size": 197868
+        },
+        {
+          "name": "libcap2_2.75.orig.tar.xz.asc",
+          "sha256": "c71b593e7c3160fd7f406641074d93462bbc4906c9243937a0e232f42d5c54d2",
+          "size": 833
+        },
+        {
+          "name": "libcap2_2.75-10+deb13u1.debian.tar.xz",
+          "sha256": "d375de2f743f112835fc0eef2a9c305c1109371954cf53e109b7f046fe58c1bc",
+          "size": 24628
+        }
+      ],
+      "version": "1:2.75-10+deb13u1"
     },
     "libedit": {
       "directory": "pool/main/libe/libedit",
@@ -267,6 +429,74 @@
       ],
       "version": "1.2.9-1"
     },
+    "libselinux": {
+      "directory": "pool/main/libs/libselinux",
+      "files": [
+        {
+          "name": "libselinux_3.8.1-1.dsc",
+          "sha256": "e430b782a396e266f86c32fa779efadebfd40e6a0d10ddbd786fc47905f723b9",
+          "size": 3013
+        },
+        {
+          "name": "libselinux_3.8.1.orig.tar.gz",
+          "sha256": "ec2d2789f931152d21c1db1eb4bc202ce4eccede34d9be9e360e3b45243cee2c",
+          "size": 204411
+        },
+        {
+          "name": "libselinux_3.8.1.orig.tar.gz.asc",
+          "sha256": "7f983714a780d89f7677e7ba140ce29974022b8ba225f60246b6c33de1477dd6",
+          "size": 833
+        },
+        {
+          "name": "libselinux_3.8.1-1.debian.tar.xz",
+          "sha256": "1af25952374f083cf3d6d0edd5beb938f2e53c30eb404afa1e32fcd1cb127db7",
+          "size": 37812
+        }
+      ],
+      "version": "3.8.1-1"
+    },
+    "libtirpc": {
+      "directory": "pool/main/libt/libtirpc",
+      "files": [
+        {
+          "name": "libtirpc_1.3.6+ds-1.dsc",
+          "sha256": "737f9f15b21f8ea4226a2aa8c18c956e69e6eb3546c4c8ec9f5194380e2cd4e6",
+          "size": 2154
+        },
+        {
+          "name": "libtirpc_1.3.6+ds.orig.tar.gz",
+          "sha256": "f9eeeb368d733e11f18ddb750a41bdf9089ba5f9476404da848c2cd295624f0d",
+          "size": 704513
+        },
+        {
+          "name": "libtirpc_1.3.6+ds-1.debian.tar.xz",
+          "sha256": "3aecc6669961a233b6adda8a1d2136777b68dcf64c61dd6986262199b2e5b95b",
+          "size": 11924
+        }
+      ],
+      "version": "1.3.6+ds-1"
+    },
+    "libzstd": {
+      "directory": "pool/main/libz/libzstd",
+      "files": [
+        {
+          "name": "libzstd_1.5.7+dfsg-1.dsc",
+          "sha256": "8f6ab97fa772d921334e50fa5756a0951e23c718dc913e43a228f28c1a23adf9",
+          "size": 2371
+        },
+        {
+          "name": "libzstd_1.5.7+dfsg.orig.tar.xz",
+          "sha256": "0c092ef267edce57ba7f3f2645c861f72eaf5e76273c6c3632869423464b90a5",
+          "size": 1834780
+        },
+        {
+          "name": "libzstd_1.5.7+dfsg-1.debian.tar.xz",
+          "sha256": "5e88424d919941291f79e1bfada6cb1a6f748671d9de7d4b7d931f361f183a15",
+          "size": 23036
+        }
+      ],
+      "version": "1.5.7+dfsg-1"
+    },
     "ncurses": {
       "directory": "pool/main/n/ncurses",
       "files": [
@@ -318,6 +548,48 @@
         }
       ],
       "version": "1.1.3-1"
+    },
+    "pcre2": {
+      "directory": "pool/main/p/pcre2",
+      "files": [
+        {
+          "name": "pcre2_10.46-1~deb13u2.dsc",
+          "sha256": "4eac7bfc4d11259da7d299f90b6c74b359d7cbb3be2f017e039b02524f30d2e6",
+          "size": 2380
+        },
+        {
+          "name": "pcre2_10.46.orig.tar.gz",
+          "sha256": "8d28d7f2c3b970c3a4bf3776bcbb5adfc923183ce74bc8df1ebaad8c1985bd07",
+          "size": 2718545
+        },
+        {
+          "name": "pcre2_10.46-1~deb13u2.diff.gz",
+          "sha256": "4523b65a28a1fc9c418be7e70af68a354ae128d541243b1e1ea5c03a9e542236",
+          "size": 19569
+        }
+      ],
+      "version": "10.46-1~deb13u2"
+    },
+    "zlib": {
+      "directory": "pool/main/z/zlib",
+      "files": [
+        {
+          "name": "zlib_1.3.dfsg+really1.3.1-1.dsc",
+          "sha256": "ede2791e29c1d3b422f9208bdd7edf040c20445ea1e7453a72037576e64fa197",
+          "size": 2637
+        },
+        {
+          "name": "zlib_1.3.dfsg+really1.3.1.orig.tar.gz",
+          "sha256": "60dd315c07f616887caa029408308a018ace66e3d142726a97db164b3b8f69fb",
+          "size": 1325737
+        },
+        {
+          "name": "zlib_1.3.dfsg+really1.3.1-1.debian.tar.xz",
+          "sha256": "9ed525955ce9fb0c1b39be8ff98f73450dbfc6305a9a27e6149c8972d38a0a9e",
+          "size": 16576
+        }
+      ],
+      "version": "1:1.3.dfsg+really1.3.1-1"
     }
   }
 }

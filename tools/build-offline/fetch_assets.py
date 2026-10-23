@@ -7,6 +7,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import time
 import urllib.request
 from pathlib import Path
 
@@ -17,8 +18,8 @@ TAILSCALE = ("https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
 # A fixed snapshot keeps every pinned file downloadable after Debian point
 # releases replace them in the live pool.
 DEBIAN = "https://snapshot.debian.org/archive/debian/20261020T000000Z/"
-NFT_RUNTIME_SHA256 = "7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033"
-NFT_SOURCES_SHA256 = "99b4ef60318a9fc5d68168fee5259ae91576779bd759c103a2f5c8ac5c0fc30a"
+NFT_RUNTIME_SHA256 = "1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909"
+NFT_SOURCES_SHA256 = "ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217"
 # Debian 13 nftables and iptables with their own glibc. The wrappers run them
 # through the bundled loader, so the host's older or newer glibc is not used.
 PACKAGES = (
@@ -39,6 +40,22 @@ PACKAGES = (
     ("pool/main/i/iptables/libip6tc2_1.8.11-2_amd64.deb", "d5ecaad5595dc88d08f317997beb53a4906c45ea79ee14ec89103f72573e3f99"),
     ("pool/main/libn/libnetfilter-conntrack/libnetfilter-conntrack3_1.1.0-1_amd64.deb", "ffbac5d06fbe432d5171f2eb5b2504968377f27be133f72c81e71250a9957506"),
     ("pool/main/libn/libnfnetlink/libnfnetlink0_1.0.2-3_amd64.deb", "5e4c3c40a04ffdb4139e4bef1136585e151a8eb8c71efa6c7250b636b3c0d1b1"),
+    # iproute2 supplies ip and ss for hosts that lack them, with its own libraries.
+    ("pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb", "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"),
+    ("pool/main/libs/libselinux/libselinux1_3.8.1-1_amd64.deb", "68bb8d32bd8d6d7d2f5952a169db03d1484b46ae1e52abccdec42a19dccea5d5"),
+    ("pool/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u2_amd64.deb", "1252b96a5bc44bb5db982bef8eb18e54f5047cede2aff641bce4f8e1edb91c3e"),
+    ("pool/main/libt/libtirpc/libtirpc3t64_1.3.6+ds-1_amd64.deb", "ef4536c09bf5063554310e22d586ae90990100ba66d2fe7c35660e9e658913b6"),
+    ("pool/main/k/krb5/libgssapi-krb5-2_1.21.3-5+deb13u1_amd64.deb", "30847c1fde4240567d7ed3aeab4f655dd591203758b857e85e824045aae70299"),
+    ("pool/main/k/krb5/libkrb5-3_1.21.3-5+deb13u1_amd64.deb", "47d71d6a7f2e59b9bae5f89602397594805113b95889ad18fa703cd53abafc97"),
+    ("pool/main/k/krb5/libk5crypto3_1.21.3-5+deb13u1_amd64.deb", "7da07ee674b47f1f0be7cc89317c25310086a1f1761217d0f72e6ae2c5a69b84"),
+    ("pool/main/k/krb5/libkrb5support0_1.21.3-5+deb13u1_amd64.deb", "3a0acd8b37955c0e102c756b52c97df2a31f67b96453c35dab70df218d309117"),
+    ("pool/main/k/keyutils/libkeyutils1_1.6.3-6_amd64.deb", "0b11ad17be0300b63ad4eeb4c6450fed24d34b7b740f23e5363dcb29ee6d5eba"),
+    ("pool/main/e/e2fsprogs/libcom-err2_1.47.2-3+b12_amd64.deb", "bd43e020b8fed399db3eebf098111f10fba4c436fff99ccad72cc7e27c9764ec"),
+    ("pool/main/libb/libbpf/libbpf1_1.5.0-3_amd64.deb", "04c96ead3024888d80d08c8d08cc8cf4589f4614627acc69519f87ffb5adc1c2"),
+    ("pool/main/e/elfutils/libelf1t64_0.192-4_amd64.deb", "94497b7e17b6f574a0605b380d454e20d3f01a9c63b70c2a2263f679d30053e1"),
+    ("pool/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+b1_amd64.deb", "015be740d6236ad114582dea500c1d907f29e16d6db00566ca32fb68d71ac90d"),
+    ("pool/main/libz/libzstd/libzstd1_1.5.7+dfsg-1_amd64.deb", "2f6a2aeacfc925eba8b00ac9139bc4bfccf8cacb09eb93de067074b26948eef9"),
+    ("pool/main/libc/libcap2/libcap2_2.75-10+deb13u1+b3_amd64.deb", "89fc4d34fc7a28ad6f0fcd0c561ab253b9dedf6f77f5a000b47c276c8295bf67"),
 )
 # iconv modules and manual pages are never loaded by nft or iptables.
 PRUNED = ("usr/lib/x86_64-linux-gnu/gconv", "usr/share/man")
@@ -46,12 +63,14 @@ WRAPPER = """#!/bin/sh
 # Run the bundled {program} with the bundled loader and glibc.
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd) || exit 1
 lib="$root/usr/lib/x86_64-linux-gnu"
-{setup}exec "$lib/ld-linux-x86-64.so.2" --library-path "$lib" {argv0}"$root/usr/sbin/{binary}" "$@"
+{setup}exec "$lib/ld-linux-x86-64.so.2" --library-path "$lib" {argv0}"$root/{binary}" "$@"
 """
 WRAPPERS = {
-    "nft": WRAPPER.format(program="nft", setup="", argv0="", binary="nft"),
+    "nft": WRAPPER.format(program="nft", setup="", argv0="", binary="usr/sbin/nft"),
     "iptables": WRAPPER.format(program="iptables", setup='XTABLES_LIBDIR="$lib/xtables"\nexport XTABLES_LIBDIR\n',
-                               argv0="--argv0 iptables ", binary="xtables-nft-multi"),
+                               argv0="--argv0 iptables ", binary="usr/sbin/xtables-nft-multi"),
+    "ip": WRAPPER.format(program="ip", setup="", argv0="", binary="usr/bin/ip"),
+    "ss": WRAPPER.format(program="ss", setup="", argv0="", binary="usr/bin/ss"),
 }
 
 
@@ -62,11 +81,20 @@ def verified(path, expected):
 def download(url, path, digest):
     if verified(path, digest):
         return
-    with urllib.request.urlopen(url, timeout=45) as response:
-        payload = response.read()
-    if hashlib.sha256(payload).hexdigest() != digest:
-        raise ValueError(f"checksum mismatch: {path.name}")
-    path.write_bytes(payload)
+    # snapshot.debian.org sometimes drops a connection; retry before giving up.
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                payload = response.read()
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(2 * (attempt + 1))
+            continue
+        if hashlib.sha256(payload).hexdigest() != digest:
+            raise ValueError(f"checksum mismatch: {path.name}")
+        path.write_bytes(payload)
+        return
 
 
 def fetch(output):

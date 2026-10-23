@@ -1,8 +1,8 @@
 """Locate nft and iptables: a working host command first, else the bundle.
 
-The offline package carries Debian 13 nft and iptables-nft with their own
-loader and glibc, so `bin/nft` and `bin/iptables` run on older and newer
-hosts alike and on hosts where neither tool is installed.
+The offline package carries Debian 13 nft, iptables-nft, ip and ss with their
+own loader and glibc, so `bin/nft`, `bin/iptables`, `bin/ip` and `bin/ss` run
+on older and newer hosts alike and on hosts where none of them is installed.
 """
 
 import os
@@ -52,6 +52,16 @@ def command():
         _SELECTED = bundled
         return _SELECTED
     raise FileNotFoundError("nftables runtime unavailable")
+
+
+def tool(name):
+    """Command to run for a helper such as ip or ss: the host's when present,
+    else the bundled copy, else the bare name so callers see the usual error."""
+    system = shutil.which(name)
+    if system:
+        return system
+    bundled = bundle_command(BUNDLE, name)
+    return bundled[0] if bundled else name
 
 
 def iptables_command():

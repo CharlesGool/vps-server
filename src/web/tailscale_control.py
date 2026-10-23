@@ -9,6 +9,11 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
+try:
+    from .nft_runtime import tool as host_tool
+except ImportError:  # Installed helpers are copied into one flat directory.
+    from nft_runtime import tool as host_tool
+
 
 BINARY = "/usr/local/bin/tailscale-vps-server"
 UNIT = "vps-server-tailscale.service"
@@ -228,7 +233,7 @@ def peers(snapshot):
 def local_subnets():
     """Suggest directly connected IPv4 networks without changing routing."""
     try:
-        result = subprocess.run(["ip", "-j", "-4", "route", "show", "scope", "link"],
+        result = subprocess.run([host_tool("ip"), "-j", "-4", "route", "show", "scope", "link"],
                                 capture_output=True, text=True, timeout=5, check=True)
         routes = json.loads(result.stdout)
     except (OSError, ValueError, subprocess.SubprocessError):

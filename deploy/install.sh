@@ -950,7 +950,7 @@ stage_nft_runtime() {
     if has_module proxy && ! command -v nft >/dev/null 2>&1; then return 1; fi
     return 0
   fi
-  printf '%s  %s\n' '7b3e499cd663f4ac77c14a0f6806ee44e3455d35cbca134e65b666b9c6cbe033' "$asset" |
+  printf '%s  %s\n' '1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909' "$asset" |
     sha256sum -c - >/dev/null || return 1
   mkdir -p "$PREFIX/vendor"
   local staged="$PREFIX/vendor/.nft-staged-$$" previous="$PREFIX/vendor/.nft-previous-$$"
@@ -1413,6 +1413,13 @@ fi
 # the one worth putting first when several are present. Everything below is
 # best-effort: no `ip`, no route, no addresses — any of those just restores the
 # old placeholder rather than failing an install that otherwise succeeded.
+# Prefer the host's ip; fall back to the copy bundled in the offline package.
+ip() {
+  local bin
+  bin="$(type -P ip)" || bin="$PREFIX/vendor/nft/bin/ip"
+  "$bin" "$@"
+}
+
 primary_ip() {
   ip -4 route get 1.1.1.1 2>/dev/null |
     awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit }}'
