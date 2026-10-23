@@ -54,6 +54,7 @@ metadata:
 
 | 日期 | 决策 | 状态 | 原因 |
 | --- | --- | --- | --- |
+| 2026-10-23 | Release 提供离线版和在线版两个安装包: 离线版内置全部第三方程序与系统工具(含 iproute2), 在线版安装时下载并校验第三方程序, 缺少的系统工具用 apt 安装. | 接受 | 精简镜像没有 curl, tar, gzip, 又可能断网, 需要一个自带全部依赖的包; 联网机器只需约 4 MB 的小包. |
 | 2026-10-21 | 完整离线包随附 Debian 13 nft 与 iptables-nft 及其 glibc, 经自带加载器运行; 主机上能读取规则的 nft/iptables 优先. 取代 2026-10-04 的 Debian 11 运行库. | 接受 | 旧 nft 0.9.8 读不了 Debian 13 iptables-nft 写入的规则, 新版程序又不能直接用旧 glibc 运行. |
 | 2026-10-13 | 全新安装的控制台默认使用 HTTPS 和自签名证书; 升级保留原设置. 开启 HTTPS 时会话 Cookie 带 `Secure`. | 接受 | 自签名证书不能证明服务器身份, 但能防止密码和会话被明文窃听. |
 | 2026-10-13 | 对 10 个未合并的旧本地分支(`archive/*` 3 个, `feat/two-stage-setup`, `fix/frpc-unicode-name`, `refactor/feature-modules`, `refactor/feature-modules-repo`, `release/v4.0.0`, `release/v4.1.0-test.1`, `test/host-validation-wip`)使用 `git branch -D`. 豁免 all-in-one Git 规范 `分支和历史` 规则 2 的"禁止 `git branch -D`", 范围仅限这些分支, 一次性. | 接受 | 用户确认这些分支已废弃, 末端 SHA 已记录在本地私有笔记. |
@@ -75,18 +76,14 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.4.0(标签 `v5.4.0`, GitHub Release 含完整安装包与 `SHA256SUMS`). 开发机 `devbox` 仍运行 v5.3.1(HTTP 45352 端口, 模块 web, iperf3), 未升级.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.5.0(标签 `v5.5.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 开发机 `devbox` 仍运行 v5.3.1(HTTP 45352 端口, 模块 web, iperf3), 未升级.
 
-已完成: v5.4.0 发布, 变更见 `doc/CHANGELOG.md`: 随附 Debian 13 nft/iptables 及其 glibc, 模块主机检查, 首次安装前台只显示关键行, 以及 v5.3.1 之后的 HTTPS 默认, 单模块安装, CSRF, TLS 握手等修复.
+已完成: v5.5.0 发布, 变更见 `doc/CHANGELOG.md`: 离线版与在线版两个安装包, 离线版随附 iproute2(`ss`, `ip`), 安装不再依赖 curl, tar, gzip, 语言选择 5 秒无回答用默认值, 标签页标题分隔符改为 `-`.
 
-检查结果: `check_project.py` 与 `web/` 的 `npm run check` 通过. devbox 容器(内核 5.15)中:
-- 无网络, 无 nft, 无 iptables 的 Debian 13 systemd 容器里, 用完整安装包全新安装 web 与 proxy: 后台退出码 0, Web, 计量和代理均 active, 计量与 iptables 使用随附运行库; 前台只显示步骤, 地址和密码.
-- 同一环境登录控制台, 模块卡片正常; 移走 `/dev/net/tun` 后 Tailscale 卡片提前提示, 点击安装在改动前停止并显示原因.
-- 把随附运行库换回 v5.3.1 的 Debian 11 版本后计量失败, 用新包原地升级后恢复, 密码保留, 无残留暂存目录.
-- Debian 11/12/13, Ubuntu 20.04/22.04/24.04 容器中随附 nft 应用计量规则批次并读回计数器, 随附 iptables 开端口和端口转发规则; 主机 iptables-nft 写入扩展匹配规则后随附 nft 仍可读取; 能用的主机 iptables 优先. Debian 11 + Python 3.9 的选择逻辑通过.
+检查结果: `check_project.py` 与 `web/` 的 `npm run check` 通过. 本机检查: 离线包解压后随附的 `ip`, `ss`(含进程信息), `iptables` 可运行, `PATH` 里没有这些命令时由 `nft_runtime.tool` 回退到随附版本; 在线包下载的 sing-box, Lucky, FRP, Tailscale 与固定哈希和仓库内文件逐字节一致; 语言选择超时在伪终端中测过无回答, 手动选择和自定义秒数. 操作员安装测试版 `test-9e7f4de` 后确认没有问题(未逐项说明测了哪些模块).
 
-未验证: 真实 VPS 上安装和升级 v5.4.0(容器共用 devbox 内核); 从可运行的 v5.3.1 原地升级(v5.3.1 在测试容器中因 iperf3 残留登记问题无法启动 Web, 该问题已在本版修复); 整机重启后的自启动; 真实移动设备与浏览器中的模块提示显示; 已登录 Tailscale 退出及真实 Tailnet 路由策略; ufw/firewalld 下的防火墙记录逻辑.
+未验证: 在线版 apt 自动安装缺失工具和控制台后续添加 FRPC 或 Tailscale 时的自动下载(操作员只确认整体通过); 非 root 无法执行随附 nft, 其读规则能力靠 v5.4.0 的容器验证; 在没有 `ip`, `ss` 的主机上由随附版本回退的完整流程; 整机重启后的自启动; 真实移动设备与浏览器中的模块提示显示; 已登录 Tailscale 退出及真实 Tailnet 路由策略; ufw/firewalld 下的防火墙记录逻辑.
 
-剩余步骤: 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理. 下一步: 在真实 VPS 上升级到 v5.4.0 验收.
+剩余步骤: 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包因附 iproute2 源码增至约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.

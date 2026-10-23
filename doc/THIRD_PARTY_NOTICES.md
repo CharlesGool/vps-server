@@ -78,7 +78,7 @@ Tailscale 的 80 份依赖许可, freetype 许可和 3 份 NOTICE 共 84 个正�
 - iperf3: [3.22 源码归档](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
 - Tailscale: [v1.102.4 源码](https://github.com/tailscale/tailscale/tree/v1.102.4).
 
-完整 Release 包同时提供 `third_party/nft/nft-runtime-trixie.tar.gz` 和 `third_party/nft/nft-sources-trixie.tar.gz`, 分别固定为 SHA-256 `1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909` 与 `ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217`. 源码归档含 17 个二进制包对应的 13 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机优先使用可用的系统 nft/iptables, 不可用时才调用私有运行库, 不替换系统命令.
+完整 Release 包同时提供 `third_party/nft/nft-runtime-trixie.tar.gz` 和 `third_party/nft/nft-sources-trixie.tar.gz`, 分别固定为 SHA-256 `1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909` 与 `ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217`. 源码归档含 32 个二进制包对应的 25 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机优先使用可用的系统 nft/iptables, 不可用时才调用私有运行库, 不替换系统命令.
 
 iperf3 源码未修改, 在 Ubuntu 22.04 x86-64 以 `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` 构建并 strip, 不含 SCTP/OpenSSL 认证;旧系统静态解析兼容性仍需验收.
 

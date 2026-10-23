@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v5.4.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.4.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v5.5.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.5.0)
 
 ## 文档
 
@@ -124,10 +124,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v5.4.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v5.5.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.5.0/vps-server-v5.5.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -135,7 +135,7 @@ python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.req
 源码安装需先在 `web/` 构建前端(Node.js 24), 并包含 Tailscale 归档, 但私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v5.4.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.5.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -147,17 +147,17 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.5.0/vps-server-v5.5.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/vps-server-v5.4.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.4.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v5.5.0/vps-server-v5.5.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.5.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.4.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.5.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -240,7 +240,7 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 
 v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备份旧安装目录及模块配置, 再全新安装并手动恢复所需设置. 缺少状态定位文件或检测到旧布局时安装器会拒绝原地升级;不要先删除旧目录.
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v5.4.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v5.5.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 

@@ -56,7 +56,7 @@ metadata:
 
 `web/src/styles/tokens.css` 是设计数值的唯一来源;功能样式位于 `web/src/styles/legacy/`, 用语义标记对接现有表单. `npm ci && npm run check` 在 `web/` 检查设计, 类型和生产构建, 输出 `web/dist/ui.js` 与 `ui.css`;安装器复制到静态资源目录, 离线包携带已编译文件, VPS 不需要 Node.js. 构建附带 `web/dist/licenses/` 中的依赖原文和版本清单. Git 忽略构建输出及依赖目录.
 
-`.github/` 运行相同检查, `.claude/settings.json` 在编辑后运行模板设计检查. `tools/check-project/check_project.py` 另检查 Python/Bash/JavaScript, 翻译, 文档和固定构件. 离线包由 `tools/build-offline/build_offline.py` 生成, 固定资产由 `fetch_assets.py` 核验. 版本来自后端实际构建标识, 作为组件属性传入;正式变更日志继续取自三语言 CHANGELOG.
+`.github/` 运行相同检查, `.claude/settings.json` 在编辑后运行模板设计检查. `tools/check-project/check_project.py` 另检查 Python/Bash/JavaScript, 翻译, 文档和固定构件. `tools/build-offline/build_offline.py` 生成两个安装包: 离线版(默认)内置全部第三方程序和 Debian 13 运行库(nft, iptables, `ip`, `ss`); `--variant online` 的在线版不含大型二进制, 安装时由 `src/web/online_assets.py` 按 `config/online-assets.json` 下载并逐个校验 SHA-256. 固定资产由 `fetch_assets.py` 核验. 两个包的安装和解压只依赖 python3, 不依赖 curl, tar, gzip 或 Git. 版本来自后端实际构建标识, 作为组件属性传入;正式变更日志继续取自三语言 CHANGELOG.
 
 ## 设计约束
 

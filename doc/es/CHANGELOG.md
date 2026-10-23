@@ -26,6 +26,26 @@ metadata:
 
 ## Historial de cambios
 
+### v5.5.0 — 2026-10-23
+
+#### Añadido
+
+- Cada versión publica dos paquetes. El paquete sin conexión incluye todos los programas de terceros y herramientas del sistema; el destino no necesita red, curl, Git, tar ni gzip, solo Python 3.9+. El paquete en línea pesa unos 4 MB: el instalador descarga Singbox, Lucky, FRP y Tailscale para los módulos elegidos, verifica cada uno con SHA-256 e instala con apt los iptables, iproute2 y nftables que falten. Al añadir más tarde el módulo FRPC o Tailscale desde la consola, se descargan igual.
+
+- El entorno incluido en el paquete sin conexión ahora trae iproute2 (`ss`, `ip`) y sus bibliotecas. Si el equipo no tiene esos comandos se usan los incluidos y ya no aparece la advertencia de `ss` o `ip` ausentes.
+
+- La pregunta de idioma al inicio de la instalación continúa con el valor predeterminado tras 5 segundos sin respuesta, así que las instalaciones desatendidas terminan solas. `VPSSRV_PROMPT_TIMEOUT` cambia los segundos; `0` espera indefinidamente.
+
+#### Cambiado
+
+- La instalación ya no depende de curl, tar ni gzip: el comando de instalación en una línea, la extracción de los entornos de Tailscale y nftables y las comprobaciones del equipo usan tarfile y urllib de Python. Las imágenes mínimas no necesitan instalar esos comandos antes.
+
+- El paquete sin conexión pasó de unos 98 MB a unos 167 MB porque incluye iproute2 y su código fuente.
+
+- El separador del título de la pestaña del navegador cambió del guion largo `—` al guion corto `-`.
+
+- El script de compilación reintenta cuando falla la descarga de paquetes Debian.
+
 ### v5.4.0 — 2026-10-21
 
 #### Añadido

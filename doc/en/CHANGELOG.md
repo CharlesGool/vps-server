@@ -26,6 +26,26 @@ metadata:
 
 ## Changelog
 
+### v5.5.0 — 2026-10-23
+
+#### Added
+
+- Releases now ship two packages. The offline package bundles every third-party program and system tool; the target needs no network, curl, Git, tar or gzip, only Python 3.9+. The online package is about 4 MB: the installer downloads Singbox, Lucky, FRP and Tailscale for the selected modules, verifies each by SHA-256, and installs any missing iptables, iproute2 and nftables with apt. Adding the FRPC or Tailscale module later from the console downloads them the same way.
+
+- The offline package's bundled runtime now includes iproute2 (`ss`, `ip`) and its libraries. When the host lacks these commands the bundled ones are used, and the missing-`ss`/`ip` warning no longer appears.
+
+- The language prompt at the start of an install continues with the default after 5 seconds without an answer, so unattended installs finish on their own. `VPSSRV_PROMPT_TIMEOUT` changes the seconds; `0` waits forever.
+
+#### Changed
+
+- Installation no longer depends on curl, tar or gzip: the one-line install command, unpacking the Tailscale and nftables runtimes, and host checks now use Python's own tarfile and urllib. Minimal images do not need these commands installed first.
+
+- The offline package grew from about 98 MB to about 167 MB because it carries iproute2 and its source.
+
+- The browser tab title separator changed from the long dash `—` to a short hyphen `-`.
+
+- The build script retries when downloading Debian packages fails.
+
 ### v5.4.0 — 2026-10-21
 
 #### Added

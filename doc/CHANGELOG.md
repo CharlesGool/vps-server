@@ -26,6 +26,26 @@ metadata:
 
 ## 变更日志
 
+### v5.5.0 — 2026-10-23
+
+#### 新增
+
+- Release 提供两个安装包. 离线版内置全部第三方程序和系统工具, 目标机不需要联网, curl, Git, tar 或 gzip, 只要 Python 3.9+. 在线版约 4 MB, 安装时按所选模块下载 Singbox, Lucky, FRP 和 Tailscale, 逐个校验 SHA-256, 主机缺少的 iptables, iproute2, nftables 由安装器用 apt 装好. 控制台之后添加 FRPC 或 Tailscale 模块时同样自动下载.
+
+- 离线版的随附运行库新增 iproute2(`ss`, `ip`)及其依赖库. 主机没有这些命令时自动改用随附的, 不再弹出缺少 `ss` 或 `ip` 的警告.
+
+- 安装开头的语言选择在 5 秒内没有回答就用默认值继续, 无人值守也能装完. 环境变量 `VPSSRV_PROMPT_TIMEOUT` 可改秒数, `0` 表示一直等待.
+
+#### 变更
+
+- 安装不再依赖 curl, tar 和 gzip: 一键安装命令, Tailscale 与 nftables 运行库的解压, 主机检查都改用 Python 自带的 tarfile 和 urllib. 精简镜像不用先手动装这些命令.
+
+- 离线版安装包因随附 iproute2 及对应源码, 体积由约 98 MB 增至约 167 MB.
+
+- 浏览器标签页标题的分隔符由长横杠 `—` 改为短横杠 `-`.
+
+- 下载 Debian 软件包的构建脚本失败时自动重试.
+
 ### v5.4.0 — 2026-10-21
 
 #### 新增
