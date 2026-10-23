@@ -730,8 +730,12 @@ fetch_online_assets() {
     esac
   done
   [ -n "$components" ] || return 0
-  core online_fetching "${components# }"
   # shellcheck disable=SC2086  # Component names are fixed words from the case above.
+  if /usr/bin/python3 "$SRC_DIR/src/web/online_assets.py" --check "$SRC_DIR" $components; then
+    return 0
+  fi
+  core online_fetching "${components# }"
+  # shellcheck disable=SC2086
   /usr/bin/python3 "$SRC_DIR/src/web/online_assets.py" "$SRC_DIR" $components ||
     die "$(msg online_fetch_failed)"
 }

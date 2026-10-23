@@ -97,6 +97,13 @@ def ensure_component(source, name, spec):
             _place(staged, target, item["sha256"], 0o755 if item["member"] else 0o644)
 
 
+def missing(source, components):
+    """Components with at least one file absent or failing its SHA-256."""
+    catalog = load(source)
+    return [name for name in components if name in catalog and any(
+        not _verified(Path(source) / item["path"], item["sha256"]) for item in catalog[name]["files"])]
+
+
 def ensure(source, components):
     catalog = load(source)
     for name in components:
@@ -105,6 +112,9 @@ def ensure(source, components):
 
 
 def main(argv):
+    if argv and argv[0] == "--check":
+        # Exit 1 when something must be downloaded, 0 when every file is in place.
+        return 1 if len(argv) > 2 and missing(argv[1], argv[2:]) else 0
     if len(argv) < 2:
         return 2
     try:
