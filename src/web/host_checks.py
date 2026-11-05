@@ -7,6 +7,7 @@ work. Both callers turn the code into their own localized message.
 """
 
 import argparse
+import os
 import shutil
 import stat
 import subprocess
@@ -70,6 +71,33 @@ def _web(source, prefix):
                or source and (Path(source) / NFT_ASSET).is_file())
     return [("warning", f"{tool}_missing") for tool in ("iptables", "ss", "ip")
             if not shutil.which(tool) and not bundled]
+
+
+NFT_CODES = ("nft_missing", "nft_unusable")
+
+
+def can_install_nft():
+    """True when the distribution's nftables can be installed with apt."""
+    return shutil.which("apt-get") is not None
+
+
+def install_nft():
+    """Install the distribution's nftables with apt; True when apt succeeded.
+
+    Used by both the installer and the console module job, so the operator
+    does not have to open a terminal when the host lacks a usable nft.
+    """
+    apt = shutil.which("apt-get")
+    if not apt:
+        return False
+    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+    for args in (["update", "-qq"], ["install", "-y", "-qq", "nftables"]):
+        try:
+            if subprocess.run([apt, *args], env=env, check=False, timeout=900).returncode != 0:
+                return False
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+    return True
 
 
 def check(module, *, source=None, prefix=None):

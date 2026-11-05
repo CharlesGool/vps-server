@@ -91,9 +91,13 @@ class SettingsMixin:
         token = self.get_cookie("session")
         addresses = self.context.IP_ALLOWLIST.list_addresses()
         message = self.context.parse_qs(parsed.query).get("msg", [""])[0]
-        allowed_messages = {"access_ip_added", "access_ip_removed", "access_ip_invalid",
-                            "access_ip_error", "access_password_invalid", "access_ip_enabled", "access_ip_disabled"}
-        feedback = (f'<p class="{"notice" if message in ("access_ip_added", "access_ip_removed", "access_ip_enabled", "access_ip_disabled") else "error"}" role="status">'
+        notices = {"access_ip_added", "access_ip_removed", "access_ip_enabled", "access_ip_disabled",
+                   "client_cert_enabled", "client_cert_disabled", "client_cert_revoked_msg"}
+        allowed_messages = notices | {"access_ip_invalid", "access_ip_error", "access_password_invalid",
+                                      "client_cert_need_current", "client_cert_keep_current",
+                                      "client_cert_error", "client_cert_openssl_missing",
+                                      "client_cert_name_invalid"}
+        feedback = (f'<p class="{"notice" if message in notices else "error"}" role="status">'
                     f'{esc(t[message])}</p>') if message in allowed_messages else ""
         load_warning = f'<p class="error" role="alert">{esc(t["access_load_error"])}</p>' if self.context.IP_ALLOWLIST.load_error else ""
         rows = "".join(
@@ -114,6 +118,7 @@ class SettingsMixin:
           <h1 class="access-page-title">{esc(t['access_heading'])}</h1>{feedback}
           <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['access_heading'], quote=True)}">
             <a href="#security-ips" aria-current="location">{esc(t['access_ips'])}</a>
+            <a href="#security-client-cert">{esc(t['access_client_cert'])}</a>
             <a href="#security-password">{esc(t['access_password'])}</a>
           </nav><div class="settings-content"><section id="security-ips" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
@@ -135,6 +140,7 @@ class SettingsMixin:
             </form>
             </div>
           </section>
+          {self.render_client_cert_card(t, token)}
           <section id="security-password" class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
               <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'password')}">
@@ -146,6 +152,116 @@ class SettingsMixin:
           </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def render_client_cert_card(self, t, token):
+        esc = self.context.html.escape
+        auth = self.context.CLIENT_AUTH
+        required = auth.required()
+        current = self.client_certificate()
+        status = (t["client_cert_current_ok"].format(name=current.get("name", "")) if current
+                  else t["client_cert_current_none"])
+        rows = ""
+        for item in reversed(auth.certificates()):
+            created = self.context.time.strftime("%Y-%m-%d", self.context.time.localtime(item.get("created", 0)))
+            meta = f'{item["serial"][:8]} · {created}'
+            if item.get("revoked"):
+                action = f'<span class="muted">{esc(t["client_cert_revoked"])}</span>'
+            else:
+                action = (f'<form method="post" action="/settings/client-cert/revoke">'
+                          f'<input type="hidden" name="serial" value="{esc(item["serial"], quote=True)}">'
+                          f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, "cert-revoke")}">'
+                          f'<button type="submit" class="access-remove">{esc(t["client_cert_revoke"])}</button></form>')
+            rows += (f'<li><span><strong>{esc(item.get("name", ""))}</strong> '
+                     f'<code>{esc(meta)}</code></span>{action}</li>')
+        if not rows:
+            rows = f'<li class="muted">{esc(t["client_cert_list_empty"])}</li>'
+        return f'''<section id="security-client-cert" class="access-card access-ip-card">
+            <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
+              <h2>{esc(t['access_client_cert'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
+            <div class="access-card-body">
+            <p>{esc(t['client_cert_intro'])}</p>
+            <p>{esc(status)}</p>
+            <form method="post" action="/settings/client-cert/toggle" class="access-toggle-form">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-toggle')}">
+              <input type="hidden" name="enabled" value="{'0' if required else '1'}">
+              <span>{esc(t['client_cert_switch'])}</span>
+              <button type="submit" aria-pressed="{'true' if required else 'false'}">{esc(t['access_ip_disable'] if required else t['access_ip_enable'])}</button>
+            </form>
+            <ul class="access-ip-list">{rows}</ul>
+            <form method="post" action="/settings/client-cert/issue" class="access-ip-form">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-issue')}">
+              <label class="sr-only" for="client-cert-name">{esc(t['client_cert_name'])}</label>
+              <input id="client-cert-name" name="name" placeholder="{esc(t['client_cert_name'], quote=True)}" required maxlength="40" autocomplete="off">
+              <button type="submit">{esc(t['client_cert_issue'])}</button>
+            </form>
+            </div>
+          </section>'''
+
+    def page_client_cert_issued(self, lang, bundle, password, entry):
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        filename = "vps-server-" + entry["serial"][:8] + ".p12"
+        href = "data:application/x-pkcs12;base64," + self.context.base64.b64encode(bundle).decode("ascii")
+        body = f'''<div class="access-workspace"><section class="card access-card client-cert-issued">
+          <h1>{esc(t['client_cert_issued_heading'])}</h1>
+          <p>{esc(t['client_cert_issued_text'])}</p>
+          <p>{esc(t['client_cert_password'])}: <code>{esc(password)}</code></p>
+          <p><a class="button-link" href="{href}" download="{esc(filename, quote=True)}">{esc(t['client_cert_download'])}</a></p>
+          <p class="muted">{esc(t['client_cert_import_help'])}</p>
+          <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
+        </section></div>'''
+        return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",
+                                                    back_href='/settings/security'),
+                              {"Cache-Control": "no-store"})
+
+    def handle_client_cert_post(self, path, lang):
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if (not 0 < length <= 4096 or
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
+                "application/x-www-form-urlencoded"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"), strict_parsing=True,
+                                         keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        action, field = {"/settings/client-cert/issue": ("cert-issue", "name"),
+                         "/settings/client-cert/revoke": ("cert-revoke", "serial"),
+                         "/settings/client-cert/toggle": ("cert-toggle", "enabled")}[path]
+        if set(form) != {"csrf", field} or any(len(values) != 1 for values in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not self.context.hmac.compare_digest(form["csrf"][0],
+                                                self.context.access_csrf_token(self.get_cookie("session"), action)):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        auth = self.context.CLIENT_AUTH
+        value = form[field][0]
+        current = self.client_certificate()
+        try:
+            if action == "cert-issue":
+                bundle, password, entry = auth.issue(value)
+                return self.page_client_cert_issued(lang, bundle, password, entry)
+            if action == "cert-revoke":
+                # Revoking the certificate in use while it is required locks this browser out.
+                if auth.required() and current and current["serial"] == value:
+                    raise self.context.ClientCertError("client_cert_keep_current")
+                auth.revoke(value)
+                key = "client_cert_revoked_msg"
+            else:
+                if value not in ("0", "1"):
+                    return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+                # Only a browser that already holds an active certificate may require one.
+                if value == "1" and current is None:
+                    raise self.context.ClientCertError("client_cert_need_current")
+                auth.set_required(value == "1")
+                key = "client_cert_enabled" if value == "1" else "client_cert_disabled"
+        except self.context.ClientCertError as exc:
+            key = exc.code
+        except OSError:
+            key = "client_cert_error"
+        return self.redirect(f"/settings/security?msg={key}#security-client-cert", {"Cache-Control": "no-store"})
 
     def handle_settings_post(self, path):
         try:
@@ -219,7 +335,8 @@ class SettingsMixin:
                 self.handle_security_verify(lang)
                 return True
         security_path = path == "/settings/security" or path in (
-            "/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle", "/settings/password")
+            "/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle", "/settings/password",
+            "/settings/client-cert/issue", "/settings/client-cert/revoke", "/settings/client-cert/toggle")
         if security_path and not self.context.security_settings_valid(self.get_cookie("session")):
             if method == "GET":
                 target = "/settings/verify?next=frp" if path.startswith("/frp/") else "/settings/verify"
@@ -234,6 +351,9 @@ class SettingsMixin:
         elif method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove",
                                                 "/settings/ip/toggle", "/settings/password"):
             self.handle_settings_post(path)
+        elif method == "POST" and path in ("/settings/client-cert/issue", "/settings/client-cert/revoke",
+                                                "/settings/client-cert/toggle"):
+            self.handle_client_cert_post(path, lang)
         else:
             return False
         return True

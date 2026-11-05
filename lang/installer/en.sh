@@ -14,7 +14,6 @@ case "$key" in
   legacy_state_unsupported) fmt='An older or incomplete installation exists. Automatic state migration is not supported. Restore a backup or perform a deliberate clean install; services were not changed.\n' ;;
   state_layout_invalid) fmt='Persistent state location is invalid or already contains unrelated files; installation stopped before changing services.\n' ;;
   no_python) fmt='python3 not found (apt install python3)\n' ;;
-  no_openssl) fmt='openssl not found (apt install openssl), or set VPSSRV_CONSOLE_TLS=0 to serve plain HTTP\n' ;;
   installing) fmt='Installing to %s ...\n' ;;
   inplace_skip) fmt='Source is the install directory — skipping file copy (in-place upgrade).\n' ;;
   missing_app) fmt='%s/app.py is missing after the copy step\n' ;;
@@ -65,6 +64,7 @@ case "$key" in
   online_fetch_failed) fmt='Could not download or verify a bundled component. Nothing was changed; check the network, or use the offline package.\n' ;;
   apt_installing) fmt='Installing host tools from the distro: %s ...\n' ;;
   apt_tools_failed) fmt='Warning: could not install the host tools with apt (output above). Features that need them may not work.\n' ;;
+  console_https_forced) fmt='The console is HTTPS only; the previous plain-HTTP console now uses HTTPS on the same port.\n' ;;
   anytls_arch) fmt='The anytls module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   proxy_arch) fmt='The proxy module needs x86-64; this host is %s. Skipping it — the vendored sing-box binary would not execute here.\n' ;;
   iperf_web_required) fmt='The iperf3 module has no effect without the web module — the console is the only thing that opens or closes its window. Add "web" to VPSSRV_MODULES, or drop "iperf3".\n' ;;

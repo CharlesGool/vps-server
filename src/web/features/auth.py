@@ -22,6 +22,18 @@ class AuthMixin:
         password_field = self.context.render_password_field(
             t, "login-password", t["password"], "password",
             f'autocomplete="current-password" autofocus required{invalid}')
+        # Certificate login: offered whenever this connection presented an active
+        # client certificate; once certificates are required it is the only way in.
+        cert_required = self.context.CLIENT_AUTH.required()
+        cert_button = (f'<form method="post" action="/login/cert" class="login-form login-cert-form">{next_input}'
+                       f'<button type="submit" class="login-submit">{self.context.html.escape(t["login_cert"])}</button></form>'
+                       if self.client_certificate() is not None else "")
+        password_form = "" if cert_required else f"""
+            <form method="post" action="/login" class="login-form">
+              {next_input}
+              {password_field}
+              <button type="submit" class="login-submit">{self.context.html.escape(t['login'])}</button>
+            </form>"""
         language_menu = (
             f'<div class="login-language-field app-login-language">'
             f'<details class="language-menu login-language-menu"><summary '
@@ -35,11 +47,7 @@ class AuthMixin:
             <span class="login-mark" aria-hidden="true">{self.context.ui_icon('lock-keyhole')}</span>
             <h1>{self.context.html.escape(t['login_heading'])}</h1>
             {changed}{error_html}
-            <form method="post" action="/login" class="login-form">
-              {next_input}
-              {password_field}
-              <button type="submit" class="login-submit">{self.context.html.escape(t['login'])}</button>
-            </form>
+            {cert_button}{password_form}
             {ip_button}
             <div class="login-footer app-login-footer"><a class="login-version app-login-version" href="/changelog">{self.context.html.escape(self.context.VERSION_LABEL)}</a>{language_menu}</div>
           </div>
@@ -60,6 +68,10 @@ class AuthMixin:
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
         submitted = form.get("password", [""])[0]
         next_page = form.get("next", [""])[0]
+        if self.context.CLIENT_AUTH.required():
+            # The password is kept only for re-verifying sensitive actions.
+            return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
+                                   error=self.context.STRINGS[lang]["login_password_disabled"])
         if self.context.hmac.compare_digest(submitted.encode("utf-8"), self.context.ADMIN_PASSWORD.encode("utf-8")):
             self.context.LOGIN_LIMITER.record_success(ip)
             previous = self.get_cookie("session")
@@ -79,6 +91,43 @@ class AuthMixin:
         self.context.LOGIN_LIMITER.record_failure(ip)
         self.page_login(lang, None, status=401, error=self.context.STRINGS[lang]["wrong_password"],
                         next_page=next_page)
+
+    def handle_cert_login(self, lang):
+        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
+        next_page = self.context.parse_qs(raw.decode("utf-8", errors="replace")).get("next", [""])[0]
+        if self.client_certificate() is None:
+            return self.page_login(lang, None, status=401, next_page=next_page, password_error=False,
+                                   error=self.context.STRINGS[lang]["login_cert_missing"])
+        previous = self.get_cookie("session")
+        if previous:
+            self.context.destroy_session(previous)
+        # Not security-verified: the terminal and security settings still ask for the password.
+        token = self.context.create_session()
+        cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
+                  f"Max-Age={self.context.SESSION_TTL_SECONDS}")
+        destination = ("/settings/verify" if next_page == "settings" else
+                       "/settings" if next_page == "preferences" else
+                       "/settings/verify?next=terminal" if next_page == "terminal" else
+                       "/changelog" if next_page == "changelog" else "/")
+        return self.redirect(destination, {"Set-Cookie": cookie, "Cache-Control": "no-store"})
+
+    def page_client_cert_required(self, lang):
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        body = f"""
+        <div class="login-shell">
+          <div class="login-panel app-login-card">
+            <span class="login-mark" aria-hidden="true">{self.context.ui_icon('lock-keyhole')}</span>
+            <h1>{esc(t['client_cert_required_title'])}</h1>
+            <p class="muted client-cert-gate-text">{esc(t['client_cert_required_text'])}</p>
+          </div>
+        </div>
+        """
+        self._close_after_response = True
+        self.close_connection = True
+        return self.send_html(403, self.render_page(t['client_cert_required_title'], body, lang,
+                                                    show_nav=False, bare=True),
+                              {"Cache-Control": "no-store"})
 
     def handle_ip_login(self, lang):
         if self.context.TRUST_PROXY or not self.context.IP_ALLOWLIST.contains(self.client_address[0]):
@@ -167,6 +216,8 @@ class AuthMixin:
             self.handle_login(lang)
         elif method == "POST" and path == "/login/ip":
             self.handle_ip_login(lang)
+        elif method == "POST" and path == "/login/cert":
+            self.handle_cert_login(lang)
         elif method == "GET" and path == "/logout":
             self.handle_logout()
         else:

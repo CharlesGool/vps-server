@@ -168,11 +168,25 @@ tail -f /root/apps/vps-server/.local/install-job/install.log
 cat /root/apps/vps-server/.local/install-job/exit-code
 ```
 
-`exit-code` 不存在表示未完成, `0` 表示成功, 其他值表示失败. 自定义 `PREFIX` 时替换日志路径. 每个模块在改动前检查主机条件(如 Singbox 需要可用的 nftables, Tailscale 需要 `/dev/net/tun`), 不满足时直接说明原因和处理办法;控制台的未安装模块也会提前显示.
+`exit-code` 不存在表示未完成, `0` 表示成功, 其他值表示失败. 自定义 `PREFIX` 时替换日志路径. 每个模块在改动前检查主机条件(如 Singbox 需要可用的 nftables, Tailscale 需要 `/dev/net/tun`), 不满足时直接说明原因和处理办法;控制台的未安装模块也会提前显示. 主机没有能读取规则的 nftables 时, 安装器和控制台的 Singbox 安装任务都会先用 apt 自动安装 `nftables`, 不需要再到终端执行命令;没有 apt 或安装失败时才停止并说明原因.
 
 ## 指南
 
-安装结束后用日志给出的地址和密码登录. 在设置/模块中安装所需组件, 然后管理节点, FRPC 实例或限时测速. 地址和凭据默认隐藏;编辑表单加载原值. 浏览器 root 终端和安全设置需要再次验证管理员密码. Tailscale 未登录时先连接并完成认证, 子网路由仍需 Tailnet 管理端批准.
+安装结束后用日志给出的地址和密码登录. 在设置/模块中安装所需组件, 然后管理节点, FRPC 实例或限时测速. 地址和凭据默认隐藏;编辑表单加载原值. 浏览器 root 终端和安全设置需要再次验证管理员密码. 控制台只提供 HTTPS. Tailscale 未登录时先连接并完成认证, 子网路由仍需 Tailnet 管理端批准.
+
+### 客户端证书登录
+
+可以用客户端证书(公钥/私钥)代替密码登录. 在 设置 > 安全 > 客户端证书 中为每台设备生成证书, 下载 `.p12` 文件并记下只显示一次的导入密码, 导入系统或浏览器后完全重启浏览器. 再打开控制台时浏览器会询问用哪个证书, 登录页出现"使用证书登录". 服务器只保存证书序列号, 不保存设备私钥;丢失或不用的证书在同一页撤销.
+
+确认当前连接已使用证书后, 开启"要求客户端证书": 没有有效证书的设备连登录页都打不开, 密码不能再用于登录, 只用于打开 root 终端和安全设置时的二次验证. 指定 IP 免密登录和 Clash 订阅链接不受影响. 生成证书需要主机上的 `openssl`, 安装器缺少时会用 apt 安装.
+
+证书丢失而被挡在外面时, 在服务器上以 root 关闭证书要求, 恢复密码登录(不需要重启服务, 自定义 `PREFIX` 时替换路径):
+
+```bash
+python3 /root/apps/vps-server/src/web/client_cert.py disable
+```
+
+`status` 参数列出要求状态和所有证书.
 
 配置模板: [.env.example](.env.example). 所有变量都有默认值, 不要求填写凭据. 路径使用绝对路径, 开关为 `0/1`, 端口为 `1-65535`(控制台 `0` 例外), 数量和时长为整数. 除 `PREFIX` 与首次 `VPSSRV_STATE_DIR` 外, 以下项保存在状态根 `.env`, 修改后重启 Web;模块初始参数在安装模块时生效.
 
@@ -188,7 +202,7 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 | `VPSSRV_HOST` | `0.0.0.0` | Web 监听地址. |
 | `VPSSRV_CONSOLE_PORT` | `0` | 控制台端口;0 自动选择 20000-59999 并保存. |
 | `VPSSRV_CONSOLE_PORT_FILE` | 空 | 端口文件;空值使用状态根下 `console_port.txt`. |
-| `VPSSRV_CONSOLE_TLS` | `1` | 控制台 HTTPS 开关; 全新安装默认开启并使用自签名证书, 升级保留原值. 自签名证书可防窃听, 不能证明服务器身份. |
+| `VPSSRV_CONSOLE_TLS` | `1` | 固定为 1: 控制台只提供 HTTPS, 默认使用自签名证书; 填 0 无效, 原来是 HTTP 的安装升级后改为 HTTPS(端口不变). 自签名证书可防窃听, 不能证明服务器身份. |
 | `VPSSRV_AUTH` | `1` | 控制台认证开关;0 允许无认证访问管理功能. |
 | `VPSSRV_PASSWORD_FILE` | 空 | 管理员密码文件;空值使用状态根下 `admin_password.txt`. |
 | `VPSSRV_IP_ALLOWLIST_FILE` | 空 | 免密 IP 清单文件;空值使用状态根下默认清单. |

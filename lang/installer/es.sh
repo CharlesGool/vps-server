@@ -14,7 +14,6 @@ case "$key" in
   legacy_state_unsupported) fmt='Existe una instalación antigua o incompleta. Esta versión no migra su estado automáticamente. Restaura una copia o realiza una instalación nueva de forma deliberada; los servicios no se han modificado.\n' ;;
   state_layout_invalid) fmt='La ubicación de datos persistentes no es válida o contiene archivos ajenos; la instalación se detuvo antes de modificar servicios.\n' ;;
   no_python) fmt='No se encontró python3 (apt install python3)\n' ;;
-  no_openssl) fmt='No se encontró openssl (apt install openssl), o configura VPSSRV_CONSOLE_TLS=0 para usar HTTP sin cifrar\n' ;;
   installing) fmt='Instalando en %s ...\n' ;;
   inplace_skip) fmt='El origen es el directorio de instalación: se omite la copia de archivos (actualización en el sitio).\n' ;;
   missing_app) fmt='Falta %s/app.py después del paso de copia\n' ;;
@@ -65,6 +64,7 @@ case "$key" in
   online_fetch_failed) fmt='No se pudo descargar o verificar un componente incluido. No se cambió nada; revisa la red o usa el paquete sin conexión.\n' ;;
   apt_installing) fmt='Instalando herramientas del sistema desde la distribución: %s ...\n' ;;
   apt_tools_failed) fmt='Aviso: no se pudieron instalar las herramientas con apt (consulta la salida anterior). Las funciones que las necesitan pueden no funcionar.\n' ;;
+  console_https_forced) fmt='La consola solo admite HTTPS; la consola HTTP anterior ahora usa HTTPS en el mismo puerto.\n' ;;
   anytls_arch) fmt='El módulo anytls requiere x86-64; este host es %s. Se omite porque el binario sing-box incluido no podría ejecutarse aquí.\n' ;;
   proxy_arch) fmt='El módulo proxy requiere x86-64; este host es %s. Se omite porque el binario sing-box incluido no podría ejecutarse aquí.\n' ;;
   iperf_web_required) fmt='El módulo iperf3 no funciona sin el módulo web: solo la consola puede abrir o cerrar su ventana. Añade "web" a VPSSRV_MODULES o elimina "iperf3".\n' ;;

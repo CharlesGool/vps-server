@@ -69,6 +69,7 @@ metadata:
 - 重启 Web 期间**禁止**持有 `.ports.lock`;新 Web 进程启动时通过同一锁释放残留登记.
 - 单模块安装**禁止**停止, 重装或禁用其他模块的服务.
 - 公开监听器与控制台路由边界**必须**分离. 信任代理地址头时**禁止**依赖其地址进行 IP 免密认证.
+- 控制台**必须**只提供 HTTPS. 客户端证书由控制台自建 CA(`certs/client-ca.*`)签发, 服务器**禁止**保存设备私钥;TLS 层只请求不强制证书(`CERT_OPTIONAL`), "要求证书"在 HTTP 层逐请求检查并核对未撤销的序列号, 以便 Clash 订阅照常访问, 撤销无需重建 TLS. 开启要求前当前连接**必须**已出示有效证书, 要求期间**禁止**撤销当前连接使用的证书.
 - 同布局安装**必须**保留持久状态;旧布局或缺失定位文件**禁止**被当作空白安装自动覆盖.
 - 第三方构件**必须**核验固定摘要并携带原始许可与对应源码获取方式. 文件身份校验不代表系统依赖完全锁定.
 
@@ -82,7 +83,7 @@ metadata:
 | --- | --- |
 | `/var/lib/vps-server` | 默认状态根, 布局 1;由 `/etc/vps-server/state-dir` 定位. |
 | `admin_password.txt`, `console_port.txt`, `.env`, `paths.json`, `.layout-version` | 认证, 固定端口, 配置及路径/布局元数据. |
-| `certs/` | TLS 证书与私钥. |
+| `certs/` | TLS 证书与私钥;客户端证书 CA(`client-ca.pem`, `client-ca.key`)与签发记录 `client-auth.json`(要求开关, 序列号, 设备名, 撤销状态). |
 | `data/` | SQLite 访客库, 会话与签名密钥, 功能状态, 节点清单和后台任务. |
 | `/etc/vps-server-proxy/config.json` | Singbox 运行配置;节点身份与策略由受管清单协调. |
 | `/etc/vps-server-frps/frps.toml` | FRPS 服务端配置. |

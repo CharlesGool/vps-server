@@ -97,11 +97,14 @@ def host_findings(context, t, module):
     now = time.monotonic()
     cached = _HOST_FINDINGS.get(module)
     if cached is None or now - cached[0] > 60:
-        from host_checks import check
+        from host_checks import NFT_CODES, can_install_nft, check
         try:
             findings = check(module, source=context.BASE_DIR / "installer-source", prefix=context.BASE_DIR)
         except (OSError, ValueError):
             findings = []
+        # A missing nft is installed by the module job itself when apt exists.
+        findings = [(level, "nft_auto" if code in NFT_CODES and can_install_nft() else code)
+                    for level, code in findings]
         cached = _HOST_FINDINGS[module] = (now, findings)
     return " ".join(t["host_check_" + code] for _level, code in cached[1] if "host_check_" + code in t)
 

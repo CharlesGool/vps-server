@@ -7,6 +7,7 @@
 .login-mark { display: inline-flex; align-items: center; justify-content: center; width: var(--compat-size-8); height: var(--compat-size-8); margin-bottom: var(--compat-size-9); border-radius: var(--radius-lg); background: var(--secondary); color: var(--primary); }
 .login-mark .ui-icon { width: var(--compat-size-10); height: var(--compat-size-10); }
 .login-panel h1 { margin: 0 0 var(--compat-size-1); font-size: var(--text-3xl); }
+.client-cert-gate-text { margin: var(--compat-size-11) 0 0; }
 .login-language-field { margin-left: auto; color: var(--foreground); font-size: var(--text-sm); }
 .login-language-menu { position: relative; }
 .login-language-menu summary { display: flex; align-items: center; gap: var(--compat-size-11); min-height: var(--compat-size-12); padding: var(--compat-size-13) var(--compat-size-14); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--foreground); background: var(--card); font-size: var(--text-sm); cursor: pointer; list-style: none; }

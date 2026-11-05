@@ -3,6 +3,11 @@
 .access-verify-form { display: grid; gap: var(--compat-size-1); margin-top: var(--compat-size-9); }
 .access-verify-form label, .access-verify-form input { margin: 0; }
 .access-verify-form button { justify-self: start; margin-top: var(--compat-size-11); }
+.client-cert-issued { display: grid; gap: var(--compat-size-1); }
+.client-cert-issued p { margin: 0; }
+.client-cert-issued .button-link { display: inline-flex; }
+.access-ip-list li > span { min-width: 0; overflow-wrap: anywhere; }
+.access-ip-list .access-remove, .access-ip-list li > span.muted { flex-shrink: 0; white-space: nowrap; }
 .settings-layout { display: grid; grid-template-columns: var(--compat-size-37) minmax(0, 1fr); align-items: start; gap: var(--compat-size-9); }
 .section-nav { position: sticky; top: var(--compat-size-35); display: grid; gap: var(--compat-size-20); }
 .section-nav a { display: block; min-height: var(--compat-size-38); padding: var(--compat-size-42) var(--compat-size-26); border-radius: var(--radius-md); color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); text-decoration: none; }

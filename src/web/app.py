@@ -75,6 +75,7 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          password_file as host_password_file,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
+from client_cert import ClientAuth, ClientCertError
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
@@ -218,11 +219,11 @@ STATE_FILE = install_state_file()
 TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
 MAX_TEST_MB = int(os.environ.get("VPSSRV_MAX_TEST_MB", "200"))
 
-# TLS for the console. Fresh installs turn it on: a self-signed certificate
-# cannot prove the server's identity, but it keeps the password and session off
-# the wire in plaintext. Existing installs keep their recorded choice. A real
+# The console is HTTPS only. A self-signed certificate cannot prove the
+# server's identity, but it keeps the password and session off the wire in
+# plaintext. VPSSRV_CONSOLE_TLS=0 from older installs is ignored. A real
 # certificate can be supplied through VPSSRV_TLS_CERT/VPSSRV_TLS_KEY.
-CONSOLE_TLS = os.environ.get("VPSSRV_CONSOLE_TLS", "0") == "1"
+CONSOLE_TLS = True
 # Over HTTPS the browser must never send the session cookie in plaintext.
 SESSION_COOKIE_ATTRS = "Path=/; HttpOnly; SameSite=Strict" + ("; Secure" if CONSOLE_TLS else "")
 # The console port is resolved by ensure_console_port() further down (it needs
@@ -377,6 +378,7 @@ def ensure_tls_files(*args, **kwargs):
 
 ADMIN_PASSWORD = ensure_admin_password()
 IP_ALLOWLIST = IpAllowlist(IP_ALLOWLIST_FILE)
+CLIENT_AUTH = ClientAuth(CERT_DIR)
 CONSOLE_PORT = ensure_console_port()
 SESSION_SECRET = ensure_session_secret()
 FILL_BUFFER = os.urandom(DOWNLOAD_CHUNK)
@@ -1012,6 +1014,10 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         token = self.get_cookie("session")
         return session_valid(token) or ip_session_valid(token, self.client_address[0])
 
+    def client_certificate(self):
+        """The active client certificate this connection presented, or None."""
+        return CLIENT_AUTH.peer(self.connection)
+
     def is_password_authenticated(self):
         return AUTH_ENABLED and session_valid(self.get_cookie("session"))
 
@@ -1139,10 +1145,15 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
         lang, query_lang = self.resolve_lang(parsed)
 
+        # With client certificates required, a device without an active one
+        # reaches nothing but static files and Clash subscriptions above.
+        if AUTH_ENABLED and CLIENT_AUTH.required() and self.client_certificate() is None:
+            return self.page_client_cert_required(lang)
+
         # With auth off there is nothing to log in or out of: a login form
         # that accepts nothing and a logout link that ends no session are
         # both dead ends, so send those paths back to the dashboard.
-        if path in ("/login", "/login/ip", "/logout") and not AUTH_ENABLED:
+        if path in ("/login", "/login/ip", "/login/cert", "/logout") and not AUTH_ENABLED:
             return self.redirect("/")
         if path.startswith("/settings") and not AUTH_ENABLED:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -1244,12 +1255,15 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, address, handler, ssl_context):
         super().__init__(address, handler)
+        # A callable is asked for the current context on every connection, so
+        # a client CA created from the console applies without a restart.
         self.ssl_context = ssl_context
 
     def finish_request(self, request, client_address):
         request.settimeout(TLS_HANDSHAKE_SECONDS)
+        context = self.ssl_context() if callable(self.ssl_context) else self.ssl_context
         try:
-            secure = self.ssl_context.wrap_socket(request, server_side=True)
+            secure = context.wrap_socket(request, server_side=True)
         except (OSError, ValueError):
             return  # failed, timed out or plain-HTTP handshake: drop it
         try:
@@ -1263,11 +1277,32 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
             secure.close()
 
 
-def make_server(port, handler, tls):
+def _server_context():
+    cert, key = ensure_tls_files()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile=str(cert), keyfile=str(key))
+    return context
+
+
+def console_context_factory():
+    """Rebuild the console's TLS context whenever the client CA changes."""
+    cache = {}
+    lock = threading.Lock()
+
+    def current():
+        stamp = CLIENT_AUTH.ca_stamp()
+        with lock:
+            if cache.get("stamp", object()) != stamp:
+                cache["context"] = CLIENT_AUTH.configure(_server_context())
+                cache["stamp"] = stamp
+            return cache["context"]
+    current()  # Fail at startup, not on the first connection.
+    return current
+
+
+def make_server(port, handler, tls, *, client_auth=False):
     if tls:
-        cert, key = ensure_tls_files()
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(certfile=str(cert), keyfile=str(key))
+        context = console_context_factory() if client_auth else _server_context()
         server = TLSThreadingHTTPServer((HOST, port), handler, context)
     else:
         server = ThreadingHTTPServer((HOST, port), handler)
@@ -1340,7 +1375,7 @@ def main():
         # A prior Web process might have died while its temporary iperf3
         # listener was registered. A fresh process has no live window.
         close_iperf_window()
-        console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS)
+        console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS, client_auth=True)
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
 

@@ -41,9 +41,9 @@ except ImportError:  # Installed helpers are copied into one flat directory.
     from frp_control import client_names as frpc_names, client_unit as frpc_unit
 
 try:
-    from .host_checks import check as host_check
+    from .host_checks import NFT_CODES, check as host_check, install_nft
 except ImportError:
-    from host_checks import check as host_check
+    from host_checks import NFT_CODES, check as host_check, install_nft
 
 
 MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale")
@@ -362,8 +362,15 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
 
 def run_install(prefix, module):
     # Stop before anything is changed; the console names each unmet need.
-    errors = [code for level, code in host_check(module, source=Path(prefix) / "installer-source",
-                                                 prefix=prefix) if level == "error"]
+    def unmet():
+        return [code for level, code in host_check(module, source=Path(prefix) / "installer-source",
+                                                   prefix=prefix) if level == "error"]
+    errors = unmet()
+    if errors and set(errors) <= set(NFT_CODES):
+        # Install the distribution's nftables instead of asking for a terminal.
+        print("Installing nftables with apt ...", flush=True)
+        if install_nft():
+            errors = unmet()
     if errors:
         raise HostCheckFailed(errors)
     if module == "frpc":

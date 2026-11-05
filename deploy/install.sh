@@ -669,10 +669,14 @@ if [ "$UPGRADE" = "0" ]; then
   # The public reachability page is optional; only the random-port console
   # answers on a fresh install until the operator enables other features.
   export VPSSRV_PUBLIC_ENABLE="${VPSSRV_PUBLIC_ENABLE:-0}"
-  # A self-signed certificate does not prove identity, but it keeps the
-  # password and session cookie out of plaintext. Upgrades keep their choice.
-  export VPSSRV_CONSOLE_TLS="${VPSSRV_CONSOLE_TLS:-1}"
 fi
+# The console is HTTPS only. A self-signed certificate does not prove identity,
+# but it keeps the password and session cookie out of plaintext. An older
+# install recorded as plain HTTP moves to HTTPS on the same port.
+if [ "${VPSSRV_CONSOLE_TLS:-1}" != "1" ] && has_module web; then
+  core console_https_forced
+fi
+export VPSSRV_CONSOLE_TLS=1
 
 # Re-derived here, because apply_previous may have just supplied the values
 # these are computed from. Left at their top-of-script values they keep the
@@ -740,19 +744,26 @@ fetch_online_assets() {
     die "$(msg online_fetch_failed)"
 }
 
-# Only the online package installs host tools from the distribution's
+# The online package installs missing host tools from the distribution's
 # repositories; the offline package carries its own nft and iptables and treats
-# a missing ss or ip as a warning.
+# a missing ss or ip as a warning. Either package installs nftables with apt
+# when the proxy module finds no nft that can read the rules, so the operator
+# never has to run apt by hand.
 install_system_tools() {
-  [ "$(tr -d '[:space:]' < "$SRC_DIR/config/PACKAGE_VARIANT" 2>/dev/null || true)" = online ] || return 0
   command -v apt-get >/dev/null 2>&1 || return 0
   local packages=""
-  if has_module web; then
+  if has_module web &&
+     [ "$(tr -d '[:space:]' < "$SRC_DIR/config/PACKAGE_VARIANT" 2>/dev/null || true)" = online ]; then
     command -v iptables >/dev/null 2>&1 || packages="$packages iptables"
     { command -v ss >/dev/null 2>&1 && command -v ip >/dev/null 2>&1; } || packages="$packages iproute2"
   fi
-  if has_module proxy; then
-    command -v nft >/dev/null 2>&1 || packages="$packages nftables"
+  # The console signs client certificates with openssl.
+  if has_module web; then
+    command -v openssl >/dev/null 2>&1 || packages="$packages openssl"
+  fi
+  if has_module proxy &&
+     ! /usr/bin/python3 "$SRC_DIR/src/web/host_checks.py" --source "$SRC_DIR" --prefix "$PREFIX" proxy >/dev/null; then
+    packages="$packages nftables"
   fi
   [ -n "$packages" ] || return 0
   core apt_installing "${packages# }"

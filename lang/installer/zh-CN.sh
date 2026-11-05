@@ -14,7 +14,6 @@ case "$key" in
   legacy_state_unsupported) fmt='发现旧版或不完整的安装.本版本不自动迁移旧状态.请恢复备份或明确执行全新安装;现有服务尚未改变.\n' ;;
   state_layout_invalid) fmt='持久状态目录无效或已有无关文件;安装在修改服务前停止.\n' ;;
   no_python) fmt='找不到 python3（apt install python3）\n' ;;
-  no_openssl) fmt='找不到 openssl（apt install openssl）；也可以设置 VPSSRV_CONSOLE_TLS=0 改用明文 HTTP\n' ;;
   installing) fmt='正在安装到 %s ...\n' ;;
   inplace_skip) fmt='源目录就是安装目录 —— 跳过文件拷贝（原地升级）。\n' ;;
   missing_app) fmt='拷贝完成后 %s/app.py 仍然不存在\n' ;;
@@ -65,6 +64,7 @@ case "$key" in
   online_fetch_failed) fmt='无法下载或校验随附组件。未做任何改动；请检查网络，或改用离线版安装包。\n' ;;
   apt_installing) fmt='正在从发行版仓库安装系统工具：%s ...\n' ;;
   apt_tools_failed) fmt='警告：用 apt 安装系统工具失败（输出见上）。依赖它们的功能可能无法使用。\n' ;;
+  console_https_forced) fmt='控制台只支持 HTTPS，原来的 HTTP 控制台已改为 HTTPS（端口不变）。\n' ;;
   anytls_arch) fmt='anytls 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   proxy_arch) fmt='proxy 模块需要 x86-64，本机是 %s，跳过 —— 随仓分发的 sing-box 二进制在这里跑不起来。\n' ;;
   iperf_web_required) fmt='iperf3 模块离开 web 模块单独安装没有任何作用 —— 只有控制台能打开/关闭它的窗口。请在 VPSSRV_MODULES 里加上 web，或者去掉 iperf3。\n' ;;
