@@ -175,12 +175,15 @@ class SettingsMixin:
                      f'<code>{esc(meta)}</code></span>{action}</li>')
         if not rows:
             rows = f'<li class="muted">{esc(t["client_cert_list_empty"])}</li>'
+        hint = ""
+        if not current and any(not item.get("revoked") for item in auth.certificates()):
+            hint = f'<p class="muted">{esc(t["client_cert_current_none_hint"])}</p>'
         return f'''<section id="security-client-cert" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
               <h2>{esc(t['access_client_cert'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
             <div class="access-card-body">
             <p>{esc(t['client_cert_intro'])}</p>
-            <p>{esc(status)}</p>
+            <p>{esc(status)}</p>{hint}
             <form method="post" action="/settings/client-cert/toggle" class="access-toggle-form">
               <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-toggle')}">
               <input type="hidden" name="enabled" value="{'0' if required else '1'}">
@@ -202,12 +205,21 @@ class SettingsMixin:
         esc = self.context.html.escape
         filename = "vps-server-" + entry["serial"][:8] + ".p12"
         href = "data:application/x-pkcs12;base64," + self.context.base64.b64encode(bundle).decode("ascii")
+        os_items = "".join(f"<li>{esc(t[key])}</li>" for key in (
+            "client_cert_os_windows", "client_cert_os_macos", "client_cert_os_android",
+            "client_cert_os_ios", "client_cert_os_firefox"))
         body = f'''<div class="access-workspace"><section class="card access-card client-cert-issued">
           <h1>{esc(t['client_cert_issued_heading'])}</h1>
           <p>{esc(t['client_cert_issued_text'])}</p>
           <p>{esc(t['client_cert_password'])}: <code>{esc(password)}</code></p>
-          <p><a class="button-link" href="{href}" download="{esc(filename, quote=True)}">{esc(t['client_cert_download'])}</a></p>
-          <p class="muted">{esc(t['client_cert_import_help'])}</p>
+          <h2>{esc(t['client_cert_steps_title'])}</h2>
+          <ol class="client-cert-steps">
+            <li><p>{esc(t['client_cert_step_download'])}</p>
+              <p><a class="button-link" href="{href}" download="{esc(filename, quote=True)}">{esc(t['client_cert_download'])}</a></p></li>
+            <li><p>{esc(t['client_cert_step_import'])}</p><ul>{os_items}</ul></li>
+            <li><p>{esc(t['client_cert_step_restart'])}</p></li>
+            <li><p>{esc(t['client_cert_step_verify'])}</p></li>
+          </ol>
           <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
         </section></div>'''
         return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",

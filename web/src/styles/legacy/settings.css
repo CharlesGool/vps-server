@@ -6,6 +6,10 @@
 .client-cert-issued { display: grid; gap: var(--compat-size-1); }
 .client-cert-issued p { margin: 0; }
 .client-cert-issued .button-link { display: inline-flex; }
+.client-cert-issued h2 { margin: var(--compat-size-1) 0 0; font-size: 1.05rem; }
+.client-cert-steps { display: grid; gap: var(--compat-size-1); margin: 0; padding-left: 1.4em; }
+.client-cert-steps li { display: grid; gap: calc(var(--compat-size-1) / 2); }
+.client-cert-steps ul { margin: 0; padding-left: 1.2em; display: grid; gap: calc(var(--compat-size-1) / 2); }
 .access-ip-list li > span { min-width: 0; overflow-wrap: anywhere; }
 .access-ip-list .access-remove, .access-ip-list li > span.muted { flex-shrink: 0; white-space: nowrap; }
 .settings-layout { display: grid; grid-template-columns: var(--compat-size-37) minmax(0, 1fr); align-items: start; gap: var(--compat-size-9); }
