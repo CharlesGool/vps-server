@@ -127,7 +127,7 @@ Run as root.
 Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v5.6.3-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -147,7 +147,7 @@ bash deploy/install.sh
 The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Offline Install
@@ -157,7 +157,7 @@ Download the [complete package](https://github.com/CharlesGool/vps-server/releas
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 

@@ -23,6 +23,10 @@ except ImportError:  # Installed helpers are copied into one flat directory.
 
 
 NFT_ASSET = Path("third_party") / "nft" / "nft-runtime-trixie.tar.gz"
+# Name the extraction filter so Python 3.12 and 3.13 do not warn and every
+# version unpacks the runtime the same way. "tar" keeps its relative symlinks;
+# Pythons without extraction filters get None and behave as before.
+TAR_FILTER = getattr(tarfile, "tar_filter", None)
 TAILSCALE_UNIT = Path("/etc/systemd/system/vps-server-tailscale.service")
 
 
@@ -39,6 +43,7 @@ def _nft(source, prefix):
         with tempfile.TemporaryDirectory() as probe:
             try:  # tarfile reads gzip itself, so no tar or gzip binary is needed.
                 with tarfile.open(asset, "r:gz") as archive:
+                    archive.extraction_filter = TAR_FILTER
                     archive.extractall(probe)
                 bundled = bundle_command(probe)
             except (OSError, tarfile.TarError):

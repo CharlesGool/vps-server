@@ -994,7 +994,9 @@ stage_nft_runtime() {
   mkdir -p "$staged"
   # python3 is already required, and its tarfile module reads gzip itself, so
   # minimal hosts without the tar or gzip binaries can still unpack the asset.
-  python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1], "r:gz").extractall(sys.argv[2])' \
+  # Naming the "tar" filter avoids the Python 3.12/3.13 warning and unpacks
+  # the same way on every version; older Pythons ignore the attribute.
+  python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1], "r:gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall(sys.argv[2])' \
     "$asset" "$staged" || return 1
   [ -x "$staged/bin/nft" ] && [ -x "$staged/bin/iptables" ] || return 1
   if [ -d "$PREFIX/vendor/nft" ]; then mv "$PREFIX/vendor/nft" "$previous"; fi

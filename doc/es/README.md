@@ -127,7 +127,7 @@ Ejecute como root.
 Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v5.6.3-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -147,7 +147,7 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
@@ -157,7 +157,7 @@ Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releas
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 

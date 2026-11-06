@@ -127,7 +127,7 @@
 一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v5.6.3-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -147,7 +147,7 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz").extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
@@ -157,7 +157,7 @@ python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.req
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-python3 -c 'import sys, tarfile; tarfile.open(sys.argv[1]).extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
