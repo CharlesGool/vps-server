@@ -90,6 +90,8 @@ metadata:
 
 依赖审查(2026-11-06): npm 依赖 0 个已知漏洞; Tailscale, sing-box, frp 已在 v5.6.2 升级. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像. nft 运行库 2026-11-06 逐包对照 trixie, trixie-updates, trixie-proposed-updates 和 trixie-security 的当前索引, 只有 pcre2 有安全更新(此前快照只取了主仓库, 漏了 security 仓库), 已更新.
 
+真机验证(2026-11-06): 操作员在一台 VPS 上用 v5.6.3 离线包经 SSH 原地升级, 后台退出码 0, `vps-server-web` 为 active, 版本 5.6.3, 安装的 pcre2 库为新版本. 控制台终端内升级的提示和新证书导入页尚未在真机确认.
+
 剩余步骤: v5.6.3 已发布以下改动, 其中证书导入步骤未在 macOS, Android, iOS 实测: `Terminated` 修复(见缺陷); 证书生成页改为四步导入说明(下载不等于导入, 各系统导入方法, Firefox 单独证书库, 完全退出浏览器, 确认后再开启要求), 安全设置在有证书但当前连接未出示时提示原因; 上游二进制(sing-box, frps, frpc, Lucky, Tailscale 归档)不再提交到 Git, 构建离线版时按 `config/online-assets.json` 下载校验, `build_offline.py` 不再需要 `--tailscale-archive`; nft 运行库的 pcre2 换成 trixie-security 的 10.46-1~deb13u3(GHSA-r9hj-j2rw-4q3m, JIT 栈分配过大), 其余 31 个包与 Debian 13 当前版本一致. 历史提交中仍保留旧二进制, 未改写历史. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.
