@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-TAILSCALE_SHA256 = "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
+TAILSCALE_SHA256 = "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
 NFT_SHA256 = "1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909"
 NFT_SOURCES_SHA256 = "ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217"
 VARIANTS = ("offline", "online")
@@ -91,7 +91,7 @@ def build(asset, nft_asset, nft_sources, output, version, variant="offline"):
             raise ValueError("frontend bundle missing; run npm ci and npm run check in web/")
         shutil.copytree(bundle, staged / "web/dist")
         if offline:
-            destination = staged / "third_party" / "tailscale" / "tailscale_1.102.4_amd64.tgz"
+            destination = staged / "third_party" / "tailscale" / "tailscale_1.104.5_amd64.tgz"
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(asset, destination)
             nft_destination = staged / "third_party" / "nft" / "nft-runtime-trixie.tar.gz"

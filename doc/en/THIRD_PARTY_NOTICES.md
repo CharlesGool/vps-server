@@ -32,10 +32,10 @@ This inventory records distributed component identity and obligations, preserves
 
 | Component | Version or hash | Upstream | License | Usage | Copyright holder | Distribution obligations | Verification date |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | 0.71.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Independent server binary. | fatedier/frp contributors | Retain license; official archive has no NOTICE. | 2026-09-27 |
-| frpc | 0.71.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Instance client binary. | fatedier/frp contributors | Retain attribution and full license. | 2026-10-04 |
+| frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Independent server binary. | fatedier/frp contributors | Retain license; official archive has no NOTICE. | 2026-11-06 |
+| frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Instance client binary. | fatedier/frp contributors | Retain attribution and full license. | 2026-11-06 |
 | Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | Independent management service. | gdy (2022) | Retain attribution and full license. | 2026-09-27 |
-| sing-box | 1.13.14 / `25a600db24f7680ad9806ce5427bd0ab8afe1114` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Independent proxy core. | nekohasekai (2022) | Retain source access and upstream naming/affiliation conditions. | 2026-09-27 |
+| sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Independent proxy core. | nekohasekai (2022) | Retain source access and upstream naming/affiliation conditions. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | Browser speed-test engine. | LibreSpeed contributors | Retain LGPL/GPL texts, provide corresponding source and replaceable client files. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | Client QR library. | Kazuhiko Arase (2009) | Retain attribution and full license. | 2026-09-27 |
 | Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | Bundled font, 400/600/700. | The Inter Project Authors (2016) | Retain OFL/attribution and reserved font-name conditions. | 2026-09-27 |
@@ -43,7 +43,7 @@ This inventory records distributed component identity and obligations, preserves
 | Lucide | main, 2026-09-27; additional icons from lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled SVG icons. | Lucide Icons and Contributors; Cole Bemis | Retain attribution and full license. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Terminal rendering and fitting. | The xterm.js authors; SourceLair; Christopher Jeffrey | Retain both original license/attribution texts. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Static build from unchanged source for TCP/UDP tests. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Retain attribution and full license. | 2026-10-04 |
-| Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | Official static client/daemon archive. | Tailscale Inc & contributors (2020) | Retain LICENSE, PATENTS and original dependency notices/licenses. | 2026-10-04 |
+| Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Official static client/daemon archive. | Tailscale Inc & contributors (2020) | Retain LICENSE, PATENTS and original dependency notices/licenses. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4 | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | Per-package copyright: GPL/LGPL/BSD and others. | Private runtime with its own loader and glibc, supplied only in complete offline packages. | Upstream package authors; see original archive notices. | Distribute complete corresponding sources, patches and package notices together. | 2026-10-04 |
 
 Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, OpenSSL, iptables and similar OS components are not pinned by this lock; their licenses/security updates follow distribution channels.
@@ -69,14 +69,14 @@ The Vue frontend adds Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS
 - [Tailscale dependencies](../../third_party/tailscale/DEPENDENCY_NOTICES.md)
 - [Tailscale license manifest](../../third_party/tailscale/license-manifest.json)
 
-Tailscale's 80 dependency licenses, freetype license and 3 NOTICE files total 84 original files in `third_party/tailscale/licenses/`; the manifest pins origins and hashes. The upstream dependency list still calls freetype Unknown; this project supplements the original BSD-style text at a fixed revision without altering that list. The nftables runtime retains each package's `usr/share/doc/<package>/copyright`; package names/hashes are in [component.txt](../../third_party/nft/component.txt).
+Tailscale's 79 dependency licenses, freetype license and 3 NOTICE files total 83 original files in `third_party/tailscale/licenses/`; the manifest pins origins and hashes. The upstream dependency list still calls freetype Unknown; this project supplements the original BSD-style text at a fixed revision without altering that list. The nftables runtime retains each package's `usr/share/doc/<package>/copyright`; package names/hashes are in [component.txt](../../third_party/nft/component.txt).
 
 ### Source Code Offer
 
-- sing-box: [v1.13.14 source](https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114), [source archive](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz).
+- sing-box: [v1.13.21 source](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [source archive](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [v6.2.1 source](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 source archive](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
-- Tailscale: [v1.102.4 source](https://github.com/tailscale/tailscale/tree/v1.102.4).
+- Tailscale: [v1.104.5 source](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 The complete Release includes `third_party/nft/nft-runtime-trixie.tar.gz` and `third_party/nft/nft-sources-trixie.tar.gz`, pinned to SHA-256 `1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909` and `ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217`. The source archive supplies 25 upstream source groups, Debian patches and source descriptors corresponding to 32 binary packages; files are pinned in [source-manifest.json](../../third_party/nft/source-manifest.json). The build script downloads and verifies them from Debian; a source checkout alone does not include these two nft archives. Source descriptors/patches restore the corresponding Debian tree with packaging build files. Hosts prefer a working system nft/iptables and use the private runtime only otherwise, without replacing system commands.
 

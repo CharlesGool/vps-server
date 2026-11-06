@@ -32,10 +32,10 @@ metadata:
 
 | 组件名称 | 版本或哈希 | 上游地址 | 许可证类型 | 使用方式 | 版权归属 | 发布合规义务 | 核验日期 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | 0.71.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | 独立服务二进制. | fatedier/frp contributors | 保留许可;官方归档没有 NOTICE. | 2026-09-27 |
-| frpc | 0.71.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | 实例客户端二进制. | fatedier/frp contributors | 保留版权及完整许可. | 2026-10-04 |
+| frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | 独立服务二进制. | fatedier/frp contributors | 保留许可;官方归档没有 NOTICE. | 2026-11-06 |
+| frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | 实例客户端二进制. | fatedier/frp contributors | 保留版权及完整许可. | 2026-11-06 |
 | Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | 独立管理服务. | gdy (2022) | 保留版权及完整许可. | 2026-09-27 |
-| sing-box | 1.13.14 / `25a600db24f7680ad9806ce5427bd0ab8afe1114` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | 独立代理核心. | nekohasekai (2022) | 保留源码获取方式及上游名称/关联条件. | 2026-09-27 |
+| sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | 独立代理核心. | nekohasekai (2022) | 保留源码获取方式及上游名称/关联条件. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | 浏览器测速引擎. | LibreSpeed contributors | 保留 LGPL/GPL 原文, 提供对应源码, 可替换客户端文件. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | 客户端二维码库. | Kazuhiko Arase (2009) | 保留版权及完整许可. | 2026-09-27 |
 | Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | 随附字体, 400/600/700. | The Inter Project Authors (2016) | 保留 OFL 和版权, 遵循保留字体名条件. | 2026-09-27 |
@@ -43,7 +43,7 @@ metadata:
 | Lucide | main, 2026-09-27; 补充图标取自 lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | 随附 SVG 图标. | Lucide Icons and Contributors; Cole Bemis | 保留版权及完整许可. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | 终端渲染与尺寸适配. | The xterm.js authors; SourceLair; Christopher Jeffrey | 保留两份许可和版权原文. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | 原源码静态构建, TCP/UDP 测试. | The Regents of the University of California / Lawrence Berkeley National Laboratory | 保留版权及完整许可. | 2026-10-04 |
-| Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-10-04 |
+| Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4 | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | 各包 copyright: GPL/LGPL/BSD 等. | 私有运行库, 只进入完整离线包;自带加载器与 glibc. | 各包上游作者, 见归档原文. | 同时分发完整对应源码, 补丁和包版权原文. | 2026-10-04 |
 
 核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Lucky, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, OpenSSL, iptables 等由系统提供, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
@@ -69,14 +69,14 @@ metadata:
 - [Tailscale dependencies](../third_party/tailscale/DEPENDENCY_NOTICES.md)
 - [Tailscale license manifest](../third_party/tailscale/license-manifest.json)
 
-Tailscale 的 80 份依赖许可, freetype 许可和 3 份 NOTICE 共 84 个正文文件保存在 `third_party/tailscale/licenses/`, 由上方许可清单固定来源和摘要. freetype 在上游依赖清单中仍为 Unknown, 本项目补充固定修订的原始 BSD 风格正文, 不改写上游清单. nftables 运行归档保留每个包的 `usr/share/doc/<package>/copyright`, 具体包名与摘要见 [component.txt](../third_party/nft/component.txt).
+Tailscale 的 79 份依赖许可, freetype 许可和 3 份 NOTICE 共 83 个正文文件保存在 `third_party/tailscale/licenses/`, 由上方许可清单固定来源和摘要. freetype 在上游依赖清单中仍为 Unknown, 本项目补充固定修订的原始 BSD 风格正文, 不改写上游清单. nftables 运行归档保留每个包的 `usr/share/doc/<package>/copyright`, 具体包名与摘要见 [component.txt](../third_party/nft/component.txt).
 
 ### 源代码提供
 
-- sing-box: [v1.13.14 源码](https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114), [源码归档](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz).
+- sing-box: [v1.13.21 源码](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [源码归档](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [v6.2.1 源码](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 源码归档](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
-- Tailscale: [v1.102.4 源码](https://github.com/tailscale/tailscale/tree/v1.102.4).
+- Tailscale: [v1.104.5 源码](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 完整 Release 包同时提供 `third_party/nft/nft-runtime-trixie.tar.gz` 和 `third_party/nft/nft-sources-trixie.tar.gz`, 分别固定为 SHA-256 `1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909` 与 `ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217`. 源码归档含 32 个二进制包对应的 25 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机优先使用可用的系统 nft/iptables, 不可用时才调用私有运行库, 不替换系统命令.
 

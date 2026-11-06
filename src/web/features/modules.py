@@ -402,7 +402,7 @@ class ModulesMixin:
                                   {"Cache-Control": "no-store"})
         if action == "install" and module == "tailscale" and not (
                 (self.context.BASE_DIR / "installer-source" / "third_party" / "tailscale" /
-                 "tailscale_1.102.4_amd64.tgz").is_file() or
+                 "tailscale_1.104.5_amd64.tgz").is_file() or
                 (self.context.BASE_DIR / "installer-source" / "config" / "online-assets.json").is_file()):
             return self.send_html(503, esc(self.context.STRINGS[lang]["module_tailscale_asset_missing"]),
                                   {"Cache-Control": "no-store"})

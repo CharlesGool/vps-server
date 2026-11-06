@@ -14,7 +14,9 @@ from frp_control import client_names, client_unit, valid_client_name
 from state_paths import data_dir as state_data_dir
 
 
-FRPC_SHA256 = "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
+FRPC_SHA256 = "522352244a4872beaa0ad6fa136c8cc8d2e993e72bcf49f9c8a1d9683770d80e"
+# Clients pinned by earlier releases (frp 0.71.0), still this project's own.
+PREVIOUS_FRPC_SHA256 = ("f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068",)
 SOURCE_TEMPLATE = Path(__file__).resolve().parents[2] / "deploy/systemd/frpc@.service"
 FRPC_DIR = Path("/etc/frp")
 FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
@@ -69,7 +71,8 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
     if directory.is_symlink():
         raise CleanupError("FRPC configuration directory is a symlink")
     marker = state_data_dir() / "frpc-binary-owned"
-    owned_binary = marker.is_file() and marker.read_text().strip() == FRPC_SHA256
+    marker_hash = marker.read_text().strip() if marker.is_file() else ""
+    owned_binary = marker_hash in (FRPC_SHA256, *PREVIOUS_FRPC_SHA256)
     matching_unit = (unit.is_file() and not unit.is_symlink() and
                      template.is_file() and unit.read_bytes() == template.read_bytes())
     names = _instances(directory)
@@ -87,7 +90,7 @@ def cleanup_frpc(prefix, keep_data, *, directory=FRPC_DIR, unit=FRPC_UNIT,
     if not matching_unit and not owned_binary and not purge_named_clients:
         return False
     if binary.exists() and (binary.is_symlink() or not binary.is_file() or
-            hashlib.sha256(binary.read_bytes()).hexdigest() != FRPC_SHA256):
+            hashlib.sha256(binary.read_bytes()).hexdigest() != (marker_hash if owned_binary else FRPC_SHA256)):
         raise CleanupError("FRPC binary changed")
 
     services = {client_unit(name) for name in names}

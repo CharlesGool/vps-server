@@ -110,6 +110,7 @@ case "$key" in
   frps_console_conflict) fmt='Console port %s conflicts with existing frps bindPort\n' ;;
   node_meter_failed) fmt='Node traffic accounting or limit service failed to start; proxy services remain stopped. Check: journalctl -u vps-server-node-meter.service -e\n' ;;
   proxy_migration_failed) fmt='Could not merge the legacy AnyTLS service into the unified proxy; installation stopped. Keep the migration backup and check the original service state.\n' ;;
+  frpc_refresh_failed) fmt='FRPC client update failed\n' ;;
   frps_install_failed) fmt='frps installation failed\n' ;;
   lucky_install_failed) fmt='Lucky installation failed\n' ;;
   lucky_port_verify) fmt='Cannot verify existing Lucky admin port; web install refused\n' ;;

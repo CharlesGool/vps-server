@@ -36,7 +36,7 @@ else
 fi
 CONFIG=/etc/vps-server-frps/frps.toml
 UNIT=/etc/systemd/system/vps-server-frps.service
-EXPECTED=b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654
+EXPECTED=4ad311e0630cf12945041143b926f515458836e896ff93c253d43c98cf304b89
 [ -f "$BIN" ] && [ "$(sha256sum "$BIN" | cut -d' ' -f1)" = "$EXPECTED" ] || { msg integrity_failure >&2; exit 1; }
 # Inspect existing config and every known reservation before modifying state.
 STAGE="$(mktemp -d)"

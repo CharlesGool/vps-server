@@ -13,8 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-TAILSCALE = ("https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
-             "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9")
+TAILSCALE = ("https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz",
+             "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7")
 # A fixed snapshot keeps every pinned file downloadable after Debian point
 # releases replace them in the live pool.
 DEBIAN = "https://snapshot.debian.org/archive/debian/20261020T000000Z/"
@@ -100,7 +100,7 @@ def download(url, path, digest):
 def fetch(output):
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    tailscale = output / "tailscale_1.102.4_amd64.tgz"
+    tailscale = output / "tailscale_1.104.5_amd64.tgz"
     bundled_tailscale = ROOT / "third_party" / "tailscale" / tailscale.name
     if verified(bundled_tailscale, TAILSCALE[1]):
         if bundled_tailscale != tailscale:

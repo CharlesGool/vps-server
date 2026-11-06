@@ -60,7 +60,10 @@ UNITS = {
 FRPC_BINARY = Path("/usr/local/bin/frpc")
 FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
 FRPC_CONFIG_DIR = Path("/etc/frp")
-FRPC_SHA256 = "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
+FRPC_SHA256 = "522352244a4872beaa0ad6fa136c8cc8d2e993e72bcf49f9c8a1d9683770d80e"
+# Earlier pinned clients this project may have installed (frp 0.71.0). Upgrades
+# replace them; uninstall still recognizes them as this project's.
+PREVIOUS_FRPC_SHA256 = ("f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068",)
 IPERF_SHA256 = "f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
 
 
@@ -541,13 +544,7 @@ def install_frps(prefix):
         raise
 
 
-def install_frpc(prefix):
-    """Install the pinned client and service template without creating a connection."""
-    if frpc_installed():
-        raise RuntimeError("FRPC is already installed")
-    template = Path(prefix) / "installer-source" / "deploy" / "systemd" / "frpc@.service"
-    if not template.is_file():
-        raise RuntimeError("FRPC service template is unavailable")
+def _frpc_source(prefix):
     source = Path(prefix) / "vendor" / "frp" / "frpc"
     bundled = Path(prefix) / "installer-source" / "third_party" / "frp" / "frpc"
     if not source.is_file():
@@ -558,6 +555,52 @@ def install_frpc(prefix):
             online_assets.ensure(Path(prefix) / "installer-source", ["frp"])
         except (OSError, RuntimeError, tarfile.TarError):
             pass
+    return source
+
+
+def refresh_frpc(prefix):
+    """Replace an older pinned client this project installed with the current one.
+
+    A client this project did not install, or one changed since, is left alone.
+    Returns True when the binary was replaced.
+    """
+    owned = state_data_dir() / "frpc-binary-owned"
+    if not owned.is_file() or FRPC_BINARY.is_symlink() or not FRPC_BINARY.is_file():
+        return False
+    marker = owned.read_text().strip()
+    current = hashlib.sha256(FRPC_BINARY.read_bytes()).hexdigest()
+    if marker not in PREVIOUS_FRPC_SHA256:
+        return False
+    if current == FRPC_SHA256:
+        # An earlier run replaced the binary but stopped before the marker.
+        owned.write_text(FRPC_SHA256 + "\n")
+        return False
+    if current != marker:
+        return False
+    source = _frpc_source(prefix)
+    if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != FRPC_SHA256:
+        raise RuntimeError("FRPC binary checksum mismatch")
+    staged = FRPC_BINARY.with_suffix(".tmp")
+    try:
+        shutil.copyfile(source, staged)
+        os.chmod(staged, 0o755)
+        os.replace(staged, FRPC_BINARY)
+    finally:
+        staged.unlink(missing_ok=True)
+    owned.write_text(FRPC_SHA256 + "\n")
+    os.chmod(owned, 0o600)
+    subprocess.run(["systemctl", "try-restart", "frpc@*.service"], check=False, timeout=120)
+    return True
+
+
+def install_frpc(prefix):
+    """Install the pinned client and service template without creating a connection."""
+    if frpc_installed():
+        raise RuntimeError("FRPC is already installed")
+    template = Path(prefix) / "installer-source" / "deploy" / "systemd" / "frpc@.service"
+    if not template.is_file():
+        raise RuntimeError("FRPC service template is unavailable")
+    source = _frpc_source(prefix)
     if not source.is_file():
         raise RuntimeError("bundled FRPC binary is unavailable")
     if hashlib.sha256(source.read_bytes()).hexdigest() != FRPC_SHA256:
@@ -997,8 +1040,9 @@ def uninstall_frpc(prefix):
         subprocess.run(["systemctl", "daemon-reload"], check=False, timeout=30)
         raise
     owned = state_data_dir() / "frpc-binary-owned"
-    if owned.is_file() and owned.read_text().strip() == FRPC_SHA256 and FRPC_BINARY.is_file():
-        if hashlib.sha256(FRPC_BINARY.read_bytes()).hexdigest() == FRPC_SHA256:
+    marker = owned.read_text().strip() if owned.is_file() else ""
+    if marker in (FRPC_SHA256, *PREVIOUS_FRPC_SHA256) and FRPC_BINARY.is_file():
+        if hashlib.sha256(FRPC_BINARY.read_bytes()).hexdigest() == marker:
             FRPC_BINARY.unlink()
             owned.unlink()
     print("FRPC service removed; server configurations retained.", flush=True)

@@ -2,9 +2,9 @@
 set -euo pipefail
 
 PREFIX="${PREFIX:-/root/apps/vps-server}"
-ARCHIVE="${1:-$PREFIX/installer-source/third_party/tailscale/tailscale_1.102.4_amd64.tgz}"
-SHA256="50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
-ROOT="tailscale_1.102.4_amd64"
+ARCHIVE="${1:-$PREFIX/installer-source/third_party/tailscale/tailscale_1.104.5_amd64.tgz}"
+SHA256="720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
+ROOT="tailscale_1.104.5_amd64"
 UNIT=/etc/systemd/system/vps-server-tailscale.service
 STATE="${VPSSRV_STATE_DIR:-/var/lib/vps-server}/tailscale"
 PORT=41641

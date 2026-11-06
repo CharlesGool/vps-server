@@ -3,13 +3,13 @@
   "comment": "Pinned upstream downloads for the online package, which ships without these binaries. Every archive and extracted file is verified by SHA-256 before it is used.",
   "components": {
     "sing-box": {
-      "url": "https://github.com/SagerNet/sing-box/releases/download/v1.13.14/sing-box-1.13.14-linux-amd64.tar.gz",
-      "archive_sha256": "f48703461a15476951ac4967cdad339d986f4b8096b4eb3ff0829a500502d697",
+      "url": "https://github.com/SagerNet/sing-box/releases/download/v1.13.21/sing-box-1.13.21-linux-amd64.tar.gz",
+      "archive_sha256": "24f9ef8e7234e13e71e74c3598a4164c5fe07b7b67ccc6e96cf68b54789f72cd",
       "files": [
         {
-          "member": "sing-box-1.13.14-linux-amd64/sing-box",
+          "member": "sing-box-1.13.21-linux-amd64/sing-box",
           "path": "third_party/sing-box/sing-box",
-          "sha256": "68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7"
+          "sha256": "ddf3a5c6f7594b18992c1b374e1694d12fe0e3e37accef7b97c6f987dd7b7479"
         }
       ]
     },
@@ -25,29 +25,29 @@
       ]
     },
     "frp": {
-      "url": "https://github.com/fatedier/frp/releases/download/v0.71.0/frp_0.71.0_linux_amd64.tar.gz",
-      "archive_sha256": "84f27e39f11169f7adcef8e8b70c9329de17747b1f14dad9fb95eef5682ea716",
+      "url": "https://github.com/fatedier/frp/releases/download/v0.72.0/frp_0.72.0_linux_amd64.tar.gz",
+      "archive_sha256": "daf719b32ca2778770bb92955e231a07414d754378b9af328aa2642862479804",
       "files": [
         {
-          "member": "frp_0.71.0_linux_amd64/frps",
+          "member": "frp_0.72.0_linux_amd64/frps",
           "path": "third_party/frp/frps",
-          "sha256": "b95dee2bf29a021c562565cdf2116376b9fa7590361bd36ef57041a04d0e6654"
+          "sha256": "4ad311e0630cf12945041143b926f515458836e896ff93c253d43c98cf304b89"
         },
         {
-          "member": "frp_0.71.0_linux_amd64/frpc",
+          "member": "frp_0.72.0_linux_amd64/frpc",
           "path": "third_party/frp/frpc",
-          "sha256": "f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d58c21b068"
+          "sha256": "522352244a4872beaa0ad6fa136c8cc8d2e993e72bcf49f9c8a1d9683770d80e"
         }
       ]
     },
     "tailscale": {
-      "url": "https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz",
-      "archive_sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz",
+      "archive_sha256": "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7",
       "files": [
         {
           "member": null,
-          "path": "third_party/tailscale/tailscale_1.102.4_amd64.tgz",
-          "sha256": "50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9"
+          "path": "third_party/tailscale/tailscale_1.104.5_amd64.tgz",
+          "sha256": "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
         }
       ]
     }

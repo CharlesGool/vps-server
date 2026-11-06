@@ -955,7 +955,7 @@ first_busy_public_port() {
 # expect the shared binary directly under PREFIX. Never copy stateful data.
 copy_singbox_binary() {
   [ -f "$SRC_DIR/third_party/sing-box/sing-box" ] || return 1
-  printf '%s  %s\n' '68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7' \
+  printf '%s  %s\n' 'ddf3a5c6f7594b18992c1b374e1694d12fe0e3e37accef7b97c6f987dd7b7479' \
     "$SRC_DIR/third_party/sing-box/sing-box" | sha256sum -c - >/dev/null || return 1
   install -m 0755 "$SRC_DIR/third_party/sing-box/sing-box" "$PREFIX/sing-box"
   install -m 0755 "$SRC_DIR/third_party/sing-box/sing-box" /usr/local/bin/sing-box-vps-server
@@ -1078,7 +1078,7 @@ copy_selected_files() {
   fi
   if has_module tailscale; then
     mkdir -p "$PREFIX/vendor/tailscale"
-    cp "$SRC_DIR/third_party/tailscale/tailscale_1.102.4_amd64.tgz" "$PREFIX/vendor/tailscale/"
+    cp "$SRC_DIR/third_party/tailscale/tailscale_1.104.5_amd64.tgz" "$PREFIX/vendor/tailscale/"
   fi
   if has_module frps; then
     mkdir -p "$PREFIX/vendor/frp"
@@ -1170,7 +1170,7 @@ msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME"
   fi
   if has_module frps; then register_optional_listener frps; fi
   if has_module tailscale; then
-    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.102.4_amd64.tgz" || die "$(msg tailscale_install_failed)"
+    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
   fi
   write_state
   if [ -f "$PREFIX/src/web/proxy_migration.py" ]; then
@@ -1280,12 +1280,22 @@ if has_module lucky; then
   register_optional_listener lucky
 fi
 if has_module tailscale; then
-  PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.102.4_amd64.tgz" || die "$(msg tailscale_install_failed)"
+  PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
 fi
 if has_module frps; then
   PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || die "$(msg frps_install_failed)"
   register_optional_listener frps
 fi
+# FRPC is installed from the console, not here. An upgrade still replaces an
+# older pinned client this project installed, so running tunnels get the fix.
+VPSSRV_STATE_DIR="$STATE_DIR" python3 - "$PREFIX" <<'PY' || die "$(msg frpc_refresh_failed)"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from module_manager import refresh_frpc
+if refresh_frpc(sys.argv[1]):
+    print('FRPC client updated.', flush=True)
+PY
 
 # Whichever path was taken, the app must actually be there before we go on to
 # write a unit file pointing at it.

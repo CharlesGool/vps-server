@@ -1,9 +1,9 @@
-Tailscale Linux static binaries, version 1.102.4, amd64
-Archive: https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz
-SHA-256: 50748df1045e60b5b695f19f4c56b0da36c019948b440fb456b6584a50f0d8b9
-License source: https://github.com/tailscale/tailscale/blob/v1.102.4/LICENSE
-Patent grant: https://github.com/tailscale/tailscale/blob/v1.102.4/PATENTS
-Dependency notices: https://github.com/tailscale/tailscale/blob/v1.102.4/licenses/tailscale.md
-DEPENDENCY_NOTICES.md SHA-256: 9467842c7b63c53ca102a9485075ee375f3ac3a03b51764ed2d247d530df5fa2
+Tailscale Linux static binaries, version 1.104.5, amd64
+Archive: https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz
+SHA-256: 720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7
+License source: https://github.com/tailscale/tailscale/blob/v1.104.5/LICENSE
+Patent grant: https://github.com/tailscale/tailscale/blob/v1.104.5/PATENTS
+Dependency notices: https://github.com/tailscale/tailscale/blob/v1.104.5/licenses/tailscale.md
+DEPENDENCY_NOTICES.md SHA-256: fe5729149b37198fad6c6227f2923760f3fa1540ad99a7b8d1981cebb80d65d1
 PATENTS SHA-256: debc5ca73d082a6c7de743fecdba6f75deafdf9200acfbddeb8ca32d66e6e128
 The verified archive is tracked with the source and included in generated offline packages. Web installation retains it in installer-source even when Tailscale is not initially selected. It is not downloaded on the target host.

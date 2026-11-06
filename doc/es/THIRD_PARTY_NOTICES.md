@@ -32,10 +32,10 @@ Este inventario registra componentes y obligaciones, conserva textos originales 
 
 | Componente | Versión o hash | Origen | Licencia | Uso | Titular de derechos | Obligaciones de distribución | Fecha de verificación |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frps | 0.71.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Binario de servidor independiente. | fatedier/frp contributors | Conservar licencia; el archivo oficial no contiene NOTICE. | 2026-09-27 |
-| frpc | 0.71.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Binario de cliente por instancia. | fatedier/frp contributors | Conservar atribución y licencia íntegra. | 2026-10-04 |
+| frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Binario de servidor independiente. | fatedier/frp contributors | Conservar licencia; el archivo oficial no contiene NOTICE. | 2026-11-06 |
+| frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Binario de cliente por instancia. | fatedier/frp contributors | Conservar atribución y licencia íntegra. | 2026-11-06 |
 | Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | Servicio de gestión independiente. | gdy (2022) | Conservar atribución y licencia íntegra. | 2026-09-27 |
-| sing-box | 1.13.14 / `25a600db24f7680ad9806ce5427bd0ab8afe1114` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Núcleo proxy independiente. | nekohasekai (2022) | Conservar acceso al código y condiciones de nombre/asociación. | 2026-09-27 |
+| sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Núcleo proxy independiente. | nekohasekai (2022) | Conservar acceso al código y condiciones de nombre/asociación. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | Motor de pruebas del navegador. | LibreSpeed contributors | Conservar LGPL/GPL, ofrecer código correspondiente y archivos de cliente reemplazables. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | Biblioteca QR del cliente. | Kazuhiko Arase (2009) | Conservar atribución y licencia íntegra. | 2026-09-27 |
 | Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | Fuente incluida, 400/600/700. | The Inter Project Authors (2016) | Conservar OFL/atribución y condiciones de nombres reservados. | 2026-09-27 |
@@ -43,7 +43,7 @@ Este inventario registra componentes y obligaciones, conserva textos originales 
 | Lucide | main, 2026-09-27; iconos adicionales de lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos. | Lucide Icons and Contributors; Cole Bemis | Conservar atribución y licencia íntegra. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Renderizado y tamaño del terminal. | The xterm.js authors; SourceLair; Christopher Jeffrey | Conservar ambos textos originales de licencia/atribución. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Compilación estática sin cambios para TCP/UDP. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Conservar atribución y licencia íntegra. | 2026-10-04 |
-| Tailscale | 1.102.4 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.102.4_amd64.tgz) | BSD-3-Clause | Archivo oficial de cliente/daemon estático. | Tailscale Inc & contributors (2020) | Conservar LICENSE, PATENTS y avisos/licencias originales de dependencias. | 2026-10-04 |
+| Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Archivo oficial de cliente/daemon estático. | Tailscale Inc & contributors (2020) | Conservar LICENSE, PATENTS y avisos/licencias originales de dependencias. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4 | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | copyright de cada paquete: GPL/LGPL/BSD y otras. | Entorno privado con cargador y glibc propios, solo en paquetes completos. | Autores de cada paquete; consulte avisos del archivo. | Distribuir fuentes completas correspondientes, parches y avisos juntos. | 2026-10-04 |
 
 Las fechas corresponden a verificaciones originales; el 2026-10-05 se repitieron sumas, no toda la procedencia. Los artefactos frp, Lucky, Singbox, LibreSpeed y QR no se modificaron. Inter/Noto indican versiones Fontsource, no internas. No se incluyen paquetes Python de terceros, conjuntos de imágenes ni pesos. Python, systemd, OpenSSL, iptables y similares dependen del sistema; sus licencias/actualizaciones corresponden a la distribución.
@@ -69,14 +69,14 @@ El frontend Vue añade Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CS
 - [Tailscale dependencies](../../third_party/tailscale/DEPENDENCY_NOTICES.md)
 - [Tailscale license manifest](../../third_party/tailscale/license-manifest.json)
 
-Las 80 licencias de dependencias Tailscale, licencia freetype y 3 NOTICE suman 84 originales en `third_party/tailscale/licenses/`, con procedencia y sumas en el manifiesto. freetype sigue como Unknown en la lista original; se añade el texto BSD original de una revisión fija sin modificarla. El archivo nftables conserva `usr/share/doc/<package>/copyright`; nombres y sumas están en [component.txt](../../third_party/nft/component.txt).
+Las 79 licencias de dependencias Tailscale, licencia freetype y 3 NOTICE suman 83 originales en `third_party/tailscale/licenses/`, con procedencia y sumas en el manifiesto. freetype sigue como Unknown en la lista original; se añade el texto BSD original de una revisión fija sin modificarla. El archivo nftables conserva `usr/share/doc/<package>/copyright`; nombres y sumas están en [component.txt](../../third_party/nft/component.txt).
 
 ### Oferta de código fuente
 
-- sing-box: [código v1.13.14](https://github.com/SagerNet/sing-box/tree/25a600db24f7680ad9806ce5427bd0ab8afe1114), [archivo fuente](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz).
+- sing-box: [código v1.13.21](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [archivo fuente](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [código v6.2.1](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 archivo fuente](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
-- Tailscale: [código v1.102.4](https://github.com/tailscale/tailscale/tree/v1.102.4).
+- Tailscale: [código v1.104.5](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 El Release completo incluye `third_party/nft/nft-runtime-trixie.tar.gz` y `third_party/nft/nft-sources-trixie.tar.gz`, con SHA-256 `1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909` y `ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217`. Las fuentes incluyen 25 grupos, parches Debian y descriptores correspondientes a 32 paquetes binarios; los archivos están fijados en [source-manifest.json](../../third_party/nft/source-manifest.json). El constructor los descarga y verifica desde Debian; una copia del código no incluye ambos archivos nft. Los descriptores/parches reconstruyen el árbol Debian con archivos de compilación. El host prefiere nft/iptables del sistema si funcionan y solo usa el entorno privado en caso contrario, sin sustituir comandos del sistema.
 

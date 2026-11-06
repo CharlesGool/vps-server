@@ -110,6 +110,7 @@ case "$key" in
   frps_console_conflict) fmt='控制台端口 %s 与已有 frps 的 bindPort 冲突\n' ;;
   node_meter_failed) fmt='节点流量统计或限速服务启动失败；代理服务保持停止。检查：journalctl -u vps-server-node-meter.service -e\n' ;;
   proxy_migration_failed) fmt='旧 AnyTLS 合并到统一代理服务失败；安装已停止。请检查上方错误,保留迁移备份并核对原服务状态.\n' ;;
+  frpc_refresh_failed) fmt='FRPC 客户端更新失败\n' ;;
   frps_install_failed) fmt='frps 安装失败\n' ;;
   lucky_install_failed) fmt='Lucky 安装失败\n' ;;
   lucky_port_verify) fmt='无法核实已有 Lucky 管理端口;拒绝安装 web 模块\n' ;;
