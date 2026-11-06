@@ -26,6 +26,28 @@ metadata:
 
 ## Changelog
 
+### v5.6.3 — 2026-11-06
+
+**Upgrading is recommended for everyone, especially hosts installed from the offline package.** The upgrade command is unchanged and configuration and data are kept. Run the upgrade over SSH, not in the console's own terminal.
+
+#### Fixed
+
+- pcre2 in the system runtime bundled with the offline package (nft, iptables, `ip`, `ss`) is updated to the Debian security release 10.46-1~deb13u3, which fixes an oversized JIT stack allocation (GHSA-r9hj-j2rw-4q3m). Packages were previously taken only from the Debian main archive, which missed the security archive; the other 31 packages were checked one by one and match current Debian 13. Upgrades replace the installed runtime.
+- Upgrading from the console's own terminal showed only a bare `Terminated`, with no sign whether the installation was still running. It now warns up front that the terminal disconnects when the console restarts while the installation continues in the background, and gives the command to check the result; an interrupted progress view also says the installation continues.
+- Console restarts no longer stall for 90 seconds: open terminals are now hung up properly on shutdown.
+
+#### Improved
+
+- After a client certificate is generated, the page now shows four steps: download, import into the system certificate store (Windows, macOS, Android and iOS each explained, plus Firefox's separate store), fully quit and reopen the browser, and confirm the certificate is in use before turning on Require client certificate. Security settings explain the usual causes when certificates exist but the current connection presented none.
+
+#### Internal maintenance
+
+- Upstream binaries such as sing-box, frp, Lucky and Tailscale are no longer committed; the offline build downloads them from pinned URLs and verifies each SHA-256. Package contents are unchanged. Source installs download these programs at install time, like the online package.
+
+#### Verification
+
+Verified in a throwaway Debian 13 container: upgrades from v5.6.2 run both inside the console terminal's control group and from a normal shell; nft, iptables, `ip` and `ss` from the new runtime run; an offline package built from a fresh clone carries byte-identical programs and installed and ran the proxy module. The certificate import steps were checked as page content only and are not yet tested on macOS, Android or iOS.
+
 ### v5.6.2 — 2026-11-06
 
 **Upgrading is strongly recommended, especially on hosts with the Tailscale module.** The upgrade command is unchanged and configuration and data are kept.

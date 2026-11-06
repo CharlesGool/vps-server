@@ -26,6 +26,28 @@ metadata:
 
 ## Historial de cambios
 
+### v5.6.3 — 2026-11-06
+
+**Se recomienda actualizar a todos, sobre todo en equipos instalados con el paquete offline.** El comando de actualización no cambia y se conservan la configuración y los datos. Ejecute la actualización por SSH, no en el terminal integrado de la consola.
+
+#### Corregido
+
+- pcre2 del entorno de sistema incluido en el paquete offline (nft, iptables, `ip`, `ss`) se actualiza a la versión de seguridad de Debian 10.46-1~deb13u3, que corrige una reserva excesiva de pila JIT (GHSA-r9hj-j2rw-4q3m). Antes los paquetes se tomaban solo del archivo principal de Debian y faltaba el de seguridad; los otros 31 paquetes se revisaron uno a uno y coinciden con Debian 13 actual. Las actualizaciones sustituyen el entorno instalado.
+- Al actualizar desde el terminal integrado de la consola solo aparecía `Terminated`, sin indicar si la instalación seguía en marcha. Ahora avisa de antemano de que el terminal se desconecta cuando la consola se reinicia mientras la instalación continúa en segundo plano, e indica el comando para ver el resultado; si la vista del progreso se interrumpe, también lo explica.
+- Los reinicios de la consola ya no se bloquean 90 segundos: los terminales abiertos se cuelgan correctamente al apagar.
+
+#### Mejorado
+
+- Tras generar un certificado de cliente, la página muestra cuatro pasos: descargar, importar en el almacén de certificados del sistema (con Windows, macOS, Android e iOS explicados por separado, y el almacén propio de Firefox), cerrar y reabrir el navegador por completo, y confirmar que el certificado está en uso antes de activar Exigir certificado de cliente. Los ajustes de seguridad explican las causas habituales cuando hay certificados pero la conexión actual no presentó ninguno.
+
+#### Mantenimiento interno
+
+- Los binarios de terceros como sing-box, frp, Lucky y Tailscale ya no se guardan en el repositorio; la compilación offline los descarga desde direcciones fijadas y verifica cada SHA-256. El contenido de los paquetes no cambia. La instalación desde código descarga estos programas al instalar, como el paquete en línea.
+
+#### Verificación
+
+Verificado en un contenedor Debian 13 desechable: actualizaciones desde v5.6.2 dentro del grupo de control del terminal de la consola y desde un shell normal; nft, iptables, `ip` y `ss` del nuevo entorno funcionan; un paquete offline compilado desde un clon nuevo contiene programas idénticos byte a byte e instaló y ejecutó el módulo de proxy. Los pasos de importación del certificado solo se revisaron como contenido de la página y aún no se probaron en macOS, Android ni iOS.
+
 ### v5.6.2 — 2026-11-06
 
 **Se recomienda encarecidamente actualizar, sobre todo en equipos con el módulo Tailscale.** El comando de actualización no cambia y se conservan la configuración y los datos.

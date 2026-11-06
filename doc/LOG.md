@@ -40,7 +40,7 @@ metadata:
 - [ ] 月度配额与真实持续流量/限速策略没有在 v5.2.2 发布时重新全面验证;此前操作员确认不等于本次独立复测.
 - [ ] 英语/西班牙语文档尚无独立母语审阅.
 - [x] 2026-10-21 vmshell Debian 13 (KVM) 主机上节点计量服务反复重启, 日志只有 `cannot list nftables tables`, Singbox 因依赖计量被停止. 原因: 该主机镜像未装 nftables, 计量回退到随包 nft 0.9.8, 它读不了 Debian 13 iptables-nft 规则; 运行时检查只执行 `nft --version`, 安装预检因此放行. v5.4.0 修复: 检查改为读取规则表, 随附运行库换成 Debian 13 nft/iptables 及其 glibc.
-- [x] 2026-11-06 在 `KVM11553` 上用 `v5.6.0-test.1` 升级时, 前台跟随安装进度的进程在开始后打印 `Terminated` 退出, 后台安装本身完成. 原因(已在容器中复现): 从控制台 root 终端运行时, 终端在 Web 单元的控制组里, 安装重启 Web 时 systemd 向整个控制组发 SIGTERM; 交互式 bash 忽略 SIGTERM, 所以 Web 停止还要等 90 秒超时. 已修复(未发布): 跟随进程捕获 TERM/HUP 并说明安装仍在后台继续, 在控制台终端内运行时预先提示; 控制台关闭和退出时向终端发 SIGHUP, 重启约 1 秒完成.
+- [x] 2026-11-06 在 `KVM11553` 上用 `v5.6.0-test.1` 升级时, 前台跟随安装进度的进程在开始后打印 `Terminated` 退出, 后台安装本身完成. 原因(已在容器中复现): 从控制台 root 终端运行时, 终端在 Web 单元的控制组里, 安装重启 Web 时 systemd 向整个控制组发 SIGTERM; 交互式 bash 忽略 SIGTERM, 所以 Web 停止还要等 90 秒超时. 已修复(v5.6.3): 跟随进程捕获 TERM/HUP 并说明安装仍在后台继续, 在控制台终端内运行时预先提示; 控制台关闭和退出时向终端发 SIGHUP, 重启约 1 秒完成.
 - [ ] 2026-10-21 控制台 root 终端从 Web 进程派生, 继承 Web 单元的 `ProtectSystem=strict`, 不能用 apt 安装软件包或修改 `/etc`. 改为 systemd-run 独立单元的修改被 Claude Code 权限检查拦下, 未实施, 待操作员决定.
 
 以上未勾选项为验收缺口, 不代表已复现的运行故障.
@@ -80,9 +80,9 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.2(标签 `v5.6.2`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.3(标签 `v5.6.3`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
-已完成: v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
+已完成: v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
 检查结果: `check_project.py` 通过(含 `npm run check`). 本机端到端脚本验证了签发, mTLS 证书登录, 无证书时拦截, Clash 订阅不受拦截, 要求期间拒绝密码登录和撤销当前证书, `client_cert.py disable` 恢复, 撤销后不再接受. 操作员在 vmshell 主机 `KVM11553` 上用 `v5.6.0-test.1` 离线包原地升级, 在 Windows Chrome 上完成证书签发, 导入, 弹出证书选择, 证书登录并开启要求, 确认测试通过. 远程探测确认该主机控制台在 TLS 1.2 和 1.3 下都发出证书请求.
 
@@ -90,6 +90,6 @@ metadata:
 
 依赖审查(2026-11-06): npm 依赖 0 个已知漏洞; Tailscale, sing-box, frp 已在 v5.6.2 升级. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像. nft 运行库 2026-11-06 逐包对照 trixie, trixie-updates, trixie-proposed-updates 和 trixie-security 的当前索引, 只有 pcre2 有安全更新(此前快照只取了主仓库, 漏了 security 仓库), 已更新.
 
-剩余步骤: 以下改动已提交但未发布, 建议作为 v5.6.3 发布: `Terminated` 修复(见缺陷); 证书生成页改为四步导入说明(下载不等于导入, 各系统导入方法, Firefox 单独证书库, 完全退出浏览器, 确认后再开启要求), 安全设置在有证书但当前连接未出示时提示原因; 上游二进制(sing-box, frps, frpc, Lucky, Tailscale 归档)不再提交到 Git, 构建离线版时按 `config/online-assets.json` 下载校验, `build_offline.py` 不再需要 `--tailscale-archive`; nft 运行库的 pcre2 换成 trixie-security 的 10.46-1~deb13u3(GHSA-r9hj-j2rw-4q3m, JIT 栈分配过大), 其余 31 个包与 Debian 13 当前版本一致. 历史提交中仍保留旧二进制, 未改写历史. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
+剩余步骤: v5.6.3 已发布以下改动, 其中证书导入步骤未在 macOS, Android, iOS 实测: `Terminated` 修复(见缺陷); 证书生成页改为四步导入说明(下载不等于导入, 各系统导入方法, Firefox 单独证书库, 完全退出浏览器, 确认后再开启要求), 安全设置在有证书但当前连接未出示时提示原因; 上游二进制(sing-box, frps, frpc, Lucky, Tailscale 归档)不再提交到 Git, 构建离线版时按 `config/online-assets.json` 下载校验, `build_offline.py` 不再需要 `--tailscale-archive`; nft 运行库的 pcre2 换成 trixie-security 的 10.46-1~deb13u3(GHSA-r9hj-j2rw-4q3m, JIT 栈分配过大), 其余 31 个包与 Debian 13 当前版本一致. 历史提交中仍保留旧二进制, 未改写历史. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.
