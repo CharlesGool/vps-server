@@ -26,6 +26,14 @@ metadata:
 
 ## Changelog
 
+### v5.6.1 — 2026-11-06
+
+**All users are strongly advised to upgrade.** This release only updates a security-relevant dependency; the upgrade steps are unchanged and configuration and data are not affected.
+
+#### Fixed
+
+- The console frontend's vue-i18n moves from 11.4.13 to 11.4.18, fixing two cross-site scripting (XSS) advisories (GHSA-8rc2-428q-7ww3, GHSA-83rm-6c8r-g728). Analysis of the current code found no exploitable path, since the console does not enable `escapeParameter` or render translations as HTML; the upgrade keeps a dependency with open advisories off installed systems.
+
 ### v5.6.0 — 2026-11-06
 
 #### Added

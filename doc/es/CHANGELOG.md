@@ -26,6 +26,14 @@ metadata:
 
 ## Historial de cambios
 
+### v5.6.1 — 2026-11-06
+
+**Se recomienda encarecidamente actualizar.** Esta versión solo actualiza una dependencia relacionada con la seguridad; los pasos de actualización no cambian y la configuración y los datos no se ven afectados.
+
+#### Corregido
+
+- vue-i18n del frontend de la consola pasa de 11.4.13 a 11.4.18 y corrige dos avisos de cross-site scripting (XSS) (GHSA-8rc2-428q-7ww3, GHSA-83rm-6c8r-g728). El análisis del código actual no encontró una vía explotable, porque la consola no activa `escapeParameter` ni muestra traducciones como HTML; la actualización evita dejar en los sistemas instalados una dependencia con avisos abiertos.
+
 ### v5.6.0 — 2026-11-06
 
 #### Añadido

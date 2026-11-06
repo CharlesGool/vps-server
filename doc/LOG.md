@@ -80,11 +80,9 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.0(标签 `v5.6.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.1(标签 `v5.6.1`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
-已完成: v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
-
-未发布的改动(2026-11-06, 在 `main`): 前端 vue-i18n 由 11.4.13 升到 11.4.18, 消除 `npm audit` 报告的两个 XSS 公告(GHSA-8rc2-428q-7ww3, GHSA-83rm-6c8r-g728); 项目未开启 `escapeParameter`, 不用 `v-html`, 翻译只来自打包的 JSON, 旧版本不可利用, 所以不单独发版. 升级后 `npm audit` 为 0, `check_project.py` 通过.
+已完成: v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
 检查结果: `check_project.py` 通过(含 `npm run check`). 本机端到端脚本验证了签发, mTLS 证书登录, 无证书时拦截, Clash 订阅不受拦截, 要求期间拒绝密码登录和撤销当前证书, `client_cert.py disable` 恢复, 撤销后不再接受. 操作员在 vmshell 主机 `KVM11553` 上用 `v5.6.0-test.1` 离线包原地升级, 在 Windows Chrome 上完成证书签发, 导入, 弹出证书选择, 证书登录并开启要求, 确认测试通过. 远程探测确认该主机控制台在 TLS 1.2 和 1.3 下都发出证书请求.
 
