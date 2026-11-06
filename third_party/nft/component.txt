@@ -1,12 +1,13 @@
 Offline nftables, iptables and iproute2 (ip, ss) runtime for x86-64 Debian 11+/Ubuntu 20.04+ hosts.
 Source: https://snapshot.debian.org/archive/debian/20261020T000000Z/dists/trixie/main/binary-amd64/Packages.xz
+Security updates: https://snapshot.debian.org/archive/debian-security/20261020T000000Z/dists/trixie-security/main/binary-amd64/Packages.xz
 Binaries and libraries were extracted from Debian 13 amd64 packages without modification,
 including glibc 2.41. bin/nft, bin/iptables, bin/ip and bin/ss are added wrapper scripts that start the
 binaries through the bundled ld-linux-x86-64.so.2 with --library-path, so the host glibc is
 not used. Unused iconv modules (usr/lib/x86_64-linux-gnu/gconv) and manual pages are omitted.
 The archive preserves /usr/share/doc/<package>/copyright for each package.
-Runtime archive SHA-256: 1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909
-Corresponding Debian source archive SHA-256: ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217
+Runtime archive SHA-256: fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68
+Corresponding Debian source archive SHA-256: cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3
 The offline package includes nft-sources-trixie.tar.gz with original source,
 Debian packaging patches, and signed source descriptors. Exact source file
 names, sizes, and SHA-256 values are pinned in source-manifest.json.
@@ -31,7 +32,7 @@ libnetfilter-conntrack3: ffbac5d06fbe432d5171f2eb5b2504968377f27be133f72c81e7125
 libnfnetlink0: 5e4c3c40a04ffdb4139e4bef1136585e151a8eb8c71efa6c7250b636b3c0d1b1
 iproute2: 7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a
 libselinux1: 68bb8d32bd8d6d7d2f5952a169db03d1484b46ae1e52abccdec42a19dccea5d5
-libpcre2-8-0: 1252b96a5bc44bb5db982bef8eb18e54f5047cede2aff641bce4f8e1edb91c3e
+libpcre2-8-0: e226f661d918f04daf38cdbc4806b7ed7d6ef95c7eb0ade692fc350e31970040 (trixie-security 10.46-1~deb13u3)
 libtirpc3t64: ef4536c09bf5063554310e22d586ae90990100ba66d2fe7c35660e9e658913b6
 libgssapi-krb5-2: 30847c1fde4240567d7ed3aeab4f655dd591203758b857e85e824045aae70299
 libkrb5-3: 47d71d6a7f2e59b9bae5f89602397594805113b95889ad18fa703cd53abafc97

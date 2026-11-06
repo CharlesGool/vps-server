@@ -1,5 +1,5 @@
 {
-  "distribution": "Debian trixie main (snapshot.debian.org 20261020T000000Z)",
+  "distribution": "Debian trixie main (snapshot.debian.org 20261020T000000Z) and trixie-security (debian-security snapshot 20261020T000000Z)",
   "packages": {
     "e2fsprogs": {
       "directory": "pool/main/e/e2fsprogs",
@@ -550,12 +550,12 @@
       "version": "1.1.3-1"
     },
     "pcre2": {
-      "directory": "pool/main/p/pcre2",
+      "directory": "pool/updates/main/p/pcre2",
       "files": [
         {
-          "name": "pcre2_10.46-1~deb13u2.dsc",
-          "sha256": "4eac7bfc4d11259da7d299f90b6c74b359d7cbb3be2f017e039b02524f30d2e6",
-          "size": 2380
+          "name": "pcre2_10.46-1~deb13u3.dsc",
+          "sha256": "5f317534eff1e33f0a5690a866ba2f2c9399c60ce9b74c89039d4de372420c5c",
+          "size": 2406
         },
         {
           "name": "pcre2_10.46.orig.tar.gz",
@@ -563,12 +563,12 @@
           "size": 2718545
         },
         {
-          "name": "pcre2_10.46-1~deb13u2.diff.gz",
-          "sha256": "4523b65a28a1fc9c418be7e70af68a354ae128d541243b1e1ea5c03a9e542236",
-          "size": 19569
+          "name": "pcre2_10.46-1~deb13u3.diff.gz",
+          "sha256": "28734c85365f431a4494c2efe2cdb42ed432673f962e421826f3c3b7aa76c4cf",
+          "size": 20405
         }
       ],
-      "version": "10.46-1~deb13u2"
+      "version": "10.46-1~deb13u3"
     },
     "zlib": {
       "directory": "pool/main/z/zlib",

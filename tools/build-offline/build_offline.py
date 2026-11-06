@@ -23,8 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src" / "web"))
 import online_assets  # noqa: E402
-NFT_SHA256 = "1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909"
-NFT_SOURCES_SHA256 = "ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217"
+NFT_SHA256 = "fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68"
+NFT_SOURCES_SHA256 = "cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3"
 VARIANTS = ("offline", "online")
 
 

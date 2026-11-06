@@ -987,7 +987,7 @@ stage_nft_runtime() {
     if has_module proxy && ! command -v nft >/dev/null 2>&1; then return 1; fi
     return 0
   fi
-  printf '%s  %s\n' '1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909' "$asset" |
+  printf '%s  %s\n' 'fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68' "$asset" |
     sha256sum -c - >/dev/null || return 1
   mkdir -p "$PREFIX/vendor"
   local staged="$PREFIX/vendor/.nft-staged-$$" previous="$PREFIX/vendor/.nft-previous-$$"

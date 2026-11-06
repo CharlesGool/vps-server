@@ -20,8 +20,14 @@ ROOT = Path(__file__).resolve().parents[2]
 # A fixed snapshot keeps every pinned file downloadable after Debian point
 # releases replace them in the live pool.
 DEBIAN = "https://snapshot.debian.org/archive/debian/20261020T000000Z/"
-NFT_RUNTIME_SHA256 = "1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909"
-NFT_SOURCES_SHA256 = "ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217"
+# Security updates live in a separate archive; their paths start pool/updates/.
+DEBIAN_SECURITY = "https://snapshot.debian.org/archive/debian-security/20261020T000000Z/"
+
+
+def debian_url(path):
+    return (DEBIAN_SECURITY if path.startswith("pool/updates/") else DEBIAN) + path
+NFT_RUNTIME_SHA256 = "fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68"
+NFT_SOURCES_SHA256 = "cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3"
 # Debian 13 nftables and iptables with their own glibc. The wrappers run them
 # through the bundled loader, so the host's older or newer glibc is not used.
 PACKAGES = (
@@ -45,7 +51,7 @@ PACKAGES = (
     # iproute2 supplies ip and ss for hosts that lack them, with its own libraries.
     ("pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb", "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a"),
     ("pool/main/libs/libselinux/libselinux1_3.8.1-1_amd64.deb", "68bb8d32bd8d6d7d2f5952a169db03d1484b46ae1e52abccdec42a19dccea5d5"),
-    ("pool/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u2_amd64.deb", "1252b96a5bc44bb5db982bef8eb18e54f5047cede2aff641bce4f8e1edb91c3e"),
+    ("pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_amd64.deb", "e226f661d918f04daf38cdbc4806b7ed7d6ef95c7eb0ade692fc350e31970040"),
     ("pool/main/libt/libtirpc/libtirpc3t64_1.3.6+ds-1_amd64.deb", "ef4536c09bf5063554310e22d586ae90990100ba66d2fe7c35660e9e658913b6"),
     ("pool/main/k/krb5/libgssapi-krb5-2_1.21.3-5+deb13u1_amd64.deb", "30847c1fde4240567d7ed3aeab4f655dd591203758b857e85e824045aae70299"),
     ("pool/main/k/krb5/libkrb5-3_1.21.3-5+deb13u1_amd64.deb", "47d71d6a7f2e59b9bae5f89602397594805113b95889ad18fa703cd53abafc97"),
@@ -110,7 +116,7 @@ def fetch(output):
             root.chmod(0o755)
             for filename, digest in PACKAGES:
                 package = output / Path(filename).name
-                download(DEBIAN + filename, package, digest)
+                download(debian_url(filename), package, digest)
                 subprocess.run(["dpkg-deb", "-x", str(package), str(root)], check=True)
             for pruned in PRUNED:
                 shutil.rmtree(root / pruned)
@@ -138,7 +144,7 @@ def fetch(output):
                     if Path(filename).name != filename:
                         raise ValueError("unsafe source filename")
                     target = package_dir / filename
-                    download(DEBIAN + metadata["directory"] + "/" + filename,
+                    download(debian_url(metadata["directory"] + "/" + filename),
                              target, item["sha256"])
                     if target.stat().st_size != item["size"]:
                         raise ValueError("source size mismatch")
