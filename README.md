@@ -132,7 +132,7 @@ python3 -c 'import sys, tarfile, urllib.request; tarfile.open(fileobj=urllib.req
 
 ### 常规安装
 
-源码安装需先在 `web/` 构建前端(Node.js 24), 并包含 Tailscale 归档, 但私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
+源码安装需先在 `web/` 构建前端(Node.js 24). 仓库不含 sing-box, frp, Lucky 和 Tailscale 等上游程序, 安装时像在线版一样联网下载并校验 SHA-256;私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
 git clone --depth 1 --branch v5.6.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
