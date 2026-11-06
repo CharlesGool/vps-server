@@ -80,16 +80,16 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.1(标签 `v5.6.1`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.2(标签 `v5.6.2`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
-已完成: v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
+已完成: v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
 检查结果: `check_project.py` 通过(含 `npm run check`). 本机端到端脚本验证了签发, mTLS 证书登录, 无证书时拦截, Clash 订阅不受拦截, 要求期间拒绝密码登录和撤销当前证书, `client_cert.py disable` 恢复, 撤销后不再接受. 操作员在 vmshell 主机 `KVM11553` 上用 `v5.6.0-test.1` 离线包原地升级, 在 Windows Chrome 上完成证书签发, 导入, 弹出证书选择, 证书登录并开启要求, 确认测试通过. 远程探测确认该主机控制台在 TLS 1.2 和 1.3 下都发出证书请求.
 
 未验证: 真实主机上 apt 自动安装 nftables/openssl(该主机 Singbox 原已安装); HTTP 安装升级为 HTTPS 的过程; macOS, Android, iOS 导入 `.p12`(OpenSSL 3 默认 AES-256 加密, 很旧的系统可能不支持); 无证书设备被拦截, 开启要求后终端二次验证和 Clash 订阅在真实设备上的表现(操作员只概括确认通过).
 
-依赖审查(2026-11-06): npm 依赖 0 个已知漏洞. Tailscale 1.102.4 受 TS-2026-014 至 017(Tailscale SSH 与 serve, 1.104.4 修复)影响, 本项目不启用这两项功能, 默认用法不可利用. sing-box 1.13.14(同线最新 1.13.21), frp 0.71.0(最新 0.72.0, 修复崩溃与 CPU 空转)无未修复的已发布公告. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像, 本项目只用其前端脚本. nft 运行库取自 2026-10-20 的 Debian 13 快照, 之后的 Debian 安全公告未逐包核对.
+依赖审查(2026-11-06): npm 依赖 0 个已知漏洞; Tailscale, sing-box, frp 已在 v5.6.2 升级. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像. nft 运行库取自 2026-10-20 的 Debian 13 快照, 之后的 Debian 安全公告未逐包核对.
 
-剩余步骤: 待操作员决定是否升级 Tailscale 到 1.104.5, sing-box 到 1.13.21, frp 到 0.72.0. 查明升级时前台跟随进程打印 `Terminated` 的原因(见缺陷). 生成页的导入说明可写明需要导入系统证书库并完全重启浏览器(操作员首次下载后未导入, 浏览器不弹窗). 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
+剩余步骤: 查明升级时前台跟随进程打印 `Terminated` 的原因(见缺陷). 生成页的导入说明可写明需要导入系统证书库并完全重启浏览器(操作员首次下载后未导入, 浏览器不弹窗). 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.

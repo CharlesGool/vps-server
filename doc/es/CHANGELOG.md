@@ -26,6 +26,17 @@ metadata:
 
 ## Historial de cambios
 
+### v5.6.2 — 2026-11-06
+
+**Se recomienda encarecidamente actualizar, sobre todo en equipos con el módulo Tailscale.** El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Cambiado
+
+- Componentes incluidos actualizados: Tailscale 1.102.4 → 1.104.5, sing-box 1.13.14 → 1.13.21, frp (FRPS, FRPC) 0.71.0 → 0.72.0. Los tres coinciden con las sumas publicadas por los proyectos originales.
+  - Tailscale 1.104.4 corrige los boletines de seguridad TS-2026-014 a 017 (Tailscale SSH y serve). Este proyecto no activa ninguna de las dos funciones, así que el uso predeterminado no se ve afectado; los equipos donde se activó Tailscale SSH manualmente deben actualizar cuanto antes.
+  - frp 0.72.0 corrige la pérdida de configuración de frpc al reconectar, un bucle de CPU tras cerrar la sesión y una condición de carrera que podía bloquear el proceso.
+- Las actualizaciones sustituyen ahora el cliente FRPC anterior instalado por este proyecto (`/usr/local/bin/frpc`) y reinician las instancias en ejecución; un frpc colocado o modificado por el usuario no se toca. La desinstalación sigue reconociendo el cliente anterior.
+
 ### v5.6.1 — 2026-11-06
 
 **Se recomienda encarecidamente actualizar.** Esta versión solo actualiza una dependencia relacionada con la seguridad; los pasos de actualización no cambian y la configuración y los datos no se ven afectados.

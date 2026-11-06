@@ -26,6 +26,17 @@ metadata:
 
 ## Changelog
 
+### v5.6.2 — 2026-11-06
+
+**Upgrading is strongly recommended, especially on hosts with the Tailscale module.** The upgrade command is unchanged and configuration and data are kept.
+
+#### Changed
+
+- Bundled components updated: Tailscale 1.102.4 → 1.104.5, sing-box 1.13.14 → 1.13.21, frp (FRPS, FRPC) 0.71.0 → 0.72.0. All three match the upstream published checksums.
+  - Tailscale 1.104.4 fixes security bulletins TS-2026-014 to 017 (Tailscale SSH and serve). This project does not enable either feature, so default use is not affected; hosts where Tailscale SSH was turned on manually should upgrade promptly.
+  - frp 0.72.0 fixes lost frpc configuration on reconnect, a CPU busy loop after session close and a data race that could crash the process.
+- Upgrades now replace the older FRPC client this project installed (`/usr/local/bin/frpc`) and restart running instances; an frpc placed or changed by the user is left alone. Uninstall still recognizes the older client.
+
 ### v5.6.1 — 2026-11-06
 
 **All users are strongly advised to upgrade.** This release only updates a security-relevant dependency; the upgrade steps are unchanged and configuration and data are not affected.
