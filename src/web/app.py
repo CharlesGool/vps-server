@@ -76,6 +76,7 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
 from client_cert import ClientAuth, ClientCertError
+import terminal_session
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
@@ -1422,6 +1423,7 @@ def main():
             except ValueError:
                 pass
         stop_event.set()
+        terminal_session.hangup_all()
         close_iperf_window()
         if portfwd_enabled():
             PORTFWD.shutdown()

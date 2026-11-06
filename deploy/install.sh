@@ -512,13 +512,20 @@ if [ -z "${VPSSRV_DEFAULT_LANG:-}" ]; then
 fi
 # Pass the selected locale to every module setup script.
 export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
-# Show the background job's core lines until it records an exit code. Ctrl-C
-# or a dropped SSH session only stops this view; systemd keeps the job.
+# Show the background job's core lines until it records an exit code. Ctrl-C,
+# a dropped SSH session or a console restart only stops this view; systemd
+# keeps the job.
 follow_install_job() {
   local summary="$INSTALL_JOB_DIR/summary.log" log="$INSTALL_JOB_DIR/install.log"
   local result="$INSTALL_JOB_DIR/exit-code" shown=0 total code="" finished=0
   trap 'printf "\n"; msg install_detached "$log" "$result"; exit 0' INT
+  # Restarting the console stops every process in its control group, which
+  # includes a shell opened in the console's own terminal.
+  trap 'printf "\n"; msg install_view_stopped; msg install_detached "$log" "$result"; exit 0' TERM HUP
   msg install_following
+  if grep -qs "/$SERVICE_NAME\.service\$" /proc/self/cgroup; then
+    msg install_in_console "$result" "$log"
+  fi
   while :; do
     [ -s "$result" ] && finished=1
     total="$(wc -l < "$summary" 2>/dev/null || echo 0)"
@@ -534,7 +541,7 @@ follow_install_job() {
     esac
     sleep 1
   done
-  trap - INT
+  trap - INT TERM HUP
   code="$(tr -dc '0-9' < "$result")"
   [ "${code:-1}" = 0 ] && exit 0
   # The step that failed often prints its reason just before the error line.

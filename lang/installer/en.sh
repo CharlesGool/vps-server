@@ -2,6 +2,8 @@
 case "$key" in
   install_detached) fmt='Installation continues in the background. Log: %s\nCompletion exit code (0 = success): %s\n' ;;
   install_following) fmt='Installation started in the background; only the key steps are shown below. Ctrl-C stops this view, not the installation.\n' ;;
+  install_view_stopped) fmt='The progress view was stopped; installation continues in the background.\n' ;;
+  install_in_console) fmt='Note: you are running this in the console'"'"'s own terminal. When the installation restarts the console, this terminal disconnects; the installation still finishes in the background.\nAfter about a minute, reload the console, sign in again and run cat %s in the terminal to see the result (0 = success). Full log: %s\nPrefer running installs and upgrades over SSH.\n' ;;
   install_failed_tail) fmt='\nInstallation failed (exit code %s). Relevant log lines:\n' ;;
   install_full_log) fmt='Full log: %s\n' ;;
   install_result_unknown) fmt='The background installation ended without recording a result. Full log: %s\n' ;;

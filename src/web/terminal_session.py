@@ -21,6 +21,22 @@ from urllib.parse import urlsplit
 MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 MAX_FRAME = 65536
 _SLOTS = threading.BoundedSemaphore(2)
+_LIVE = set()
+_LIVE_LOCK = threading.Lock()
+
+
+def hangup_all():
+    """Hang up every open terminal, as a closed SSH session would.
+
+    An interactive shell ignores SIGTERM, so without this a service stop
+    waits for systemd's stop timeout before the shells are killed."""
+    with _LIVE_LOCK:
+        pids = list(_LIVE)
+    for pid in pids:
+        try:
+            os.killpg(pid, signal.SIGHUP)
+        except (ProcessLookupError, PermissionError):
+            pass
 
 
 def _exact(sock, size):
@@ -102,6 +118,8 @@ def serve(handler, context, parsed):
                        "TERM": "xterm-256color", "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                        "LANG": os.environ.get("LANG", "C.UTF-8")}
         os.execve("/bin/bash", ["/bin/bash", "-li"], environment)
+    with _LIVE_LOCK:
+        _LIVE.add(pid)
     connection = handler.connection
     connection.settimeout(10)
     deadline = time.monotonic() + 1800
@@ -146,7 +164,7 @@ def serve(handler, context, parsed):
         pass
     finally:
         try:
-            os.killpg(pid, signal.SIGTERM)
+            os.killpg(pid, signal.SIGHUP)
         except ProcessLookupError:
             pass
         os.close(master)
@@ -154,4 +172,6 @@ def serve(handler, context, parsed):
             os.waitpid(pid, 0)
         except ChildProcessError:
             pass
+        with _LIVE_LOCK:
+            _LIVE.discard(pid)
         _SLOTS.release()

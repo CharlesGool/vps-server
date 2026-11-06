@@ -2,6 +2,8 @@
 case "$key" in
   install_detached) fmt='安装已交给后台任务执行。日志：%s\n完成后退出码（0 表示成功）：%s\n' ;;
   install_following) fmt='安装已在后台开始，下面只显示关键步骤。按 Ctrl-C 只停止显示，安装会继续。\n' ;;
+  install_view_stopped) fmt='进度显示被中断，安装仍在后台继续。\n' ;;
+  install_in_console) fmt='提示：你正在控制台自带的终端里运行。安装重启控制台时，这个终端会断开，安装仍会在后台完成。\n约一分钟后刷新控制台重新登录，在终端运行 cat %s 查看结果（0 表示成功），完整日志：%s\n以后建议通过 SSH 运行安装或升级。\n' ;;
   install_failed_tail) fmt='\n安装失败（退出码 %s）。相关日志：\n' ;;
   install_full_log) fmt='完整日志：%s\n' ;;
   install_result_unknown) fmt='后台安装任务已结束，但没有留下结果。完整日志：%s\n' ;;

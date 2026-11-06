@@ -2,6 +2,8 @@
 case "$key" in
   install_detached) fmt='La instalación continúa en segundo plano. Registro: %s\nCódigo de salida al finalizar (0 = éxito): %s\n' ;;
   install_following) fmt='La instalación se inició en segundo plano; abajo solo se muestran los pasos clave. Ctrl-C detiene esta vista, no la instalación.\n' ;;
+  install_view_stopped) fmt='La vista del progreso se detuvo; la instalación continúa en segundo plano.\n' ;;
+  install_in_console) fmt='Aviso: estás usando el terminal integrado de la consola. Cuando la instalación reinicie la consola, este terminal se desconectará; la instalación terminará igualmente en segundo plano.\nTras un minuto, recarga la consola, vuelve a iniciar sesión y ejecuta cat %s en el terminal para ver el resultado (0 = éxito). Registro completo: %s\nEs preferible instalar y actualizar por SSH.\n' ;;
   install_failed_tail) fmt='\nLa instalación falló (código de salida %s). Líneas relevantes del registro:\n' ;;
   install_full_log) fmt='Registro completo: %s\n' ;;
   install_result_unknown) fmt='La instalación en segundo plano terminó sin registrar un resultado. Registro completo: %s\n' ;;
