@@ -515,6 +515,9 @@ export VPSSRV_DEFAULT_LANG="$INSTALL_LANG"
 # Show the background job's core lines until it records an exit code. Ctrl-C,
 # a dropped SSH session or a console restart only stops this view; systemd
 # keeps the job.
+# A background sleep lets the traps below run at once, and bash does not
+# print "Terminated" when the console restart kills it.
+pause_view() { sleep 1 & wait "$!"; }
 follow_install_job() {
   local summary="$INSTALL_JOB_DIR/summary.log" log="$INSTALL_JOB_DIR/install.log"
   local result="$INSTALL_JOB_DIR/exit-code" shown=0 total code="" finished=0
@@ -536,10 +539,10 @@ follow_install_job() {
     [ "$finished" = 1 ] && break
     case "$(systemctl show -p ActiveState --value vps-server-install.service 2>/dev/null || true)" in
       active|activating|reloading|deactivating) ;;
-      *) sleep 1; [ -s "$result" ] && continue
+      *) pause_view; [ -s "$result" ] && continue
          msg install_result_unknown "$log"; exit 1 ;;
     esac
-    sleep 1
+    pause_view
   done
   trap - INT TERM HUP
   code="$(tr -dc '0-9' < "$result")"
