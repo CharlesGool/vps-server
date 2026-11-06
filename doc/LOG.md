@@ -40,7 +40,7 @@ metadata:
 - [ ] 月度配额与真实持续流量/限速策略没有在 v5.2.2 发布时重新全面验证;此前操作员确认不等于本次独立复测.
 - [ ] 英语/西班牙语文档尚无独立母语审阅.
 - [x] 2026-10-21 vmshell Debian 13 (KVM) 主机上节点计量服务反复重启, 日志只有 `cannot list nftables tables`, Singbox 因依赖计量被停止. 原因: 该主机镜像未装 nftables, 计量回退到随包 nft 0.9.8, 它读不了 Debian 13 iptables-nft 规则; 运行时检查只执行 `nft --version`, 安装预检因此放行. v5.4.0 修复: 检查改为读取规则表, 随附运行库换成 Debian 13 nft/iptables 及其 glibc.
-- [ ] 2026-11-06 在 `KVM11553` 上用 `v5.6.0-test.1` 升级时, 前台跟随安装进度的进程在开始后打印 `Terminated` 退出, 后台安装本身完成. 原因未确认, 怀疑是从控制台 root 终端执行, Web 重启时终端所在的控制组被结束.
+- [x] 2026-11-06 在 `KVM11553` 上用 `v5.6.0-test.1` 升级时, 前台跟随安装进度的进程在开始后打印 `Terminated` 退出, 后台安装本身完成. 原因(已在容器中复现): 从控制台 root 终端运行时, 终端在 Web 单元的控制组里, 安装重启 Web 时 systemd 向整个控制组发 SIGTERM; 交互式 bash 忽略 SIGTERM, 所以 Web 停止还要等 90 秒超时. 已修复(未发布): 跟随进程捕获 TERM/HUP 并说明安装仍在后台继续, 在控制台终端内运行时预先提示; 控制台关闭和退出时向终端发 SIGHUP, 重启约 1 秒完成.
 - [ ] 2026-10-21 控制台 root 终端从 Web 进程派生, 继承 Web 单元的 `ProtectSystem=strict`, 不能用 apt 安装软件包或修改 `/etc`. 改为 systemd-run 独立单元的修改被 Claude Code 权限检查拦下, 未实施, 待操作员决定.
 
 以上未勾选项为验收缺口, 不代表已复现的运行故障.
@@ -88,8 +88,8 @@ metadata:
 
 未验证: 真实主机上 apt 自动安装 nftables/openssl(该主机 Singbox 原已安装); HTTP 安装升级为 HTTPS 的过程; macOS, Android, iOS 导入 `.p12`(OpenSSL 3 默认 AES-256 加密, 很旧的系统可能不支持); 无证书设备被拦截, 开启要求后终端二次验证和 Clash 订阅在真实设备上的表现(操作员只概括确认通过).
 
-依赖审查(2026-11-06): npm 依赖 0 个已知漏洞; Tailscale, sing-box, frp 已在 v5.6.2 升级. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像. nft 运行库取自 2026-10-20 的 Debian 13 快照, 之后的 Debian 安全公告未逐包核对.
+依赖审查(2026-11-06): npm 依赖 0 个已知漏洞; Tailscale, sing-box, frp 已在 v5.6.2 升级. Lucky 2.27.2, iperf3 3.22, xterm.js 6.0.0, qrcode-generator js2.0.4 为各自最新或同大版本最新; LibreSpeed 6.3.1 的安全项只涉及 PHP 后端镜像. nft 运行库 2026-11-06 逐包对照 trixie, trixie-updates, trixie-proposed-updates 和 trixie-security 的当前索引, 只有 pcre2 有安全更新(此前快照只取了主仓库, 漏了 security 仓库), 已更新.
 
-剩余步骤: 查明升级时前台跟随进程打印 `Terminated` 的原因(见缺陷). 生成页的导入说明可写明需要导入系统证书库并完全重启浏览器(操作员首次下载后未导入, 浏览器不弹窗). 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
+剩余步骤: 以下改动已提交但未发布, 建议作为 v5.6.3 发布: `Terminated` 修复(见缺陷); 证书生成页改为四步导入说明(下载不等于导入, 各系统导入方法, Firefox 单独证书库, 完全退出浏览器, 确认后再开启要求), 安全设置在有证书但当前连接未出示时提示原因; 上游二进制(sing-box, frps, frpc, Lucky, Tailscale 归档)不再提交到 Git, 构建离线版时按 `config/online-assets.json` 下载校验, `build_offline.py` 不再需要 `--tailscale-archive`; nft 运行库的 pcre2 换成 trixie-security 的 10.46-1~deb13u3(GHSA-r9hj-j2rw-4q3m, JIT 栈分配过大), 其余 31 个包与 Debian 13 当前版本一致. 历史提交中仍保留旧二进制, 未改写历史. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.
