@@ -6,5 +6,5 @@ Extracted member: frp_0.72.0_linux_amd64/frps
 Binary SHA256: 4ad311e0630cf12945041143b926f515458836e896ff93c253d43c98cf304b89
 Client member: frp_0.72.0_linux_amd64/frpc
 Client SHA256: 522352244a4872beaa0ad6fa136c8cc8d2e993e72bcf49f9c8a1d9683770d80e
-Client source in repository: third_party/frp/frpc; installed copy: PREFIX/vendor/frp/frpc
+Client path in the package: third_party/frp/frpc (not committed; fetched and verified from the archive above); installed copy: PREFIX/vendor/frp/frpc
 License member: frp_0.72.0_linux_amd64/LICENSE (Apache-2.0)

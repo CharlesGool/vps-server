@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch and verify the pinned upstream archives on a connected build host."""
+"""Fetch, assemble and verify the nftables runtime and source archives.
+
+The other upstream binaries come from config/online-assets.json; the offline
+build fetches those itself.
+"""
 
 import argparse
 import hashlib
@@ -13,8 +17,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-TAILSCALE = ("https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz",
-             "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7")
 # A fixed snapshot keeps every pinned file downloadable after Debian point
 # releases replace them in the live pool.
 DEBIAN = "https://snapshot.debian.org/archive/debian/20261020T000000Z/"
@@ -100,13 +102,6 @@ def download(url, path, digest):
 def fetch(output):
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    tailscale = output / "tailscale_1.104.5_amd64.tgz"
-    bundled_tailscale = ROOT / "third_party" / "tailscale" / tailscale.name
-    if verified(bundled_tailscale, TAILSCALE[1]):
-        if bundled_tailscale != tailscale:
-            shutil.copy2(bundled_tailscale, tailscale)
-    else:
-        download(TAILSCALE[0], tailscale, TAILSCALE[1])
     runtime = output / "nft-runtime-trixie.tar.gz"
     if not verified(runtime, NFT_RUNTIME_SHA256):
         with tempfile.TemporaryDirectory(prefix="vps-nft-build-") as temporary:
@@ -151,7 +146,7 @@ def fetch(output):
                             "--numeric-owner", "-czf", str(sources), "-C", str(root), "."], check=True)
         if not verified(sources, NFT_SOURCES_SHA256):
             raise ValueError("assembled nftables source checksum mismatch")
-    return tailscale, runtime, sources
+    return runtime, sources
 
 
 def main():

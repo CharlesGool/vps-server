@@ -5,5 +5,7 @@
   "missing_artifact": "FALLO {name}: falta o está fuera del árbol de trabajo",
   "hash_mismatch": "FALLO {name}: el SHA-256 no coincide",
   "artifact_ok": "OK   {name}: {hash}",
-  "invalid_lock": "Bloqueo de dependencias no válido: {error}"
+  "invalid_lock": "Bloqueo de dependencias no válido: {error}",
+  "artifact_fetched": "SKIP {name}: no descargado; la compilación offline y el instalador lo descargan y verifican",
+  "online_mismatch": "FAIL {name}: el SHA-256 no coincide con online-assets.json"
 }

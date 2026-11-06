@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Create a release tarball that needs no Git or curl on the target.
 
-The offline variant carries every binary and system-tool runtime. The online
-variant leaves out the large third-party binaries listed in
-config/online-assets.json; the installer downloads and verifies them.
+The offline variant carries every binary and system-tool runtime. The large
+third-party binaries listed in config/online-assets.json are not committed:
+the offline build downloads them into third_party/ (ignored by Git) and checks
+each SHA-256 first. The online variant leaves them out; the installer
+downloads and verifies them.
 """
 
 import argparse
@@ -14,11 +16,13 @@ import re
 import shutil
 import subprocess
 import tarfile
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-TAILSCALE_SHA256 = "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
+sys.path.insert(0, str(ROOT / "src" / "web"))
+import online_assets  # noqa: E402
 NFT_SHA256 = "1357164ec1f43bfff0ab99b6b13030215e437ecd3b25d7c4b241ae4923613909"
 NFT_SOURCES_SHA256 = "ef1400a06c405c717f33c469c10672cd6906c52676faa8a318c3ac716007d217"
 VARIANTS = ("offline", "online")
@@ -56,7 +60,7 @@ def _tracked_source(destination, exclude=frozenset()):
             raise ValueError("tracked source is missing or not a file")
 
 
-def build(asset, nft_asset, nft_sources, output, version, variant="offline"):
+def build(nft_asset, nft_sources, output, version, variant="offline"):
     if variant not in VARIANTS:
         raise ValueError("invalid package variant")
     if not re.fullmatch(r"(?:dev-local|test-[0-9a-f]{7,40}|[0-9]+\.[0-9]+\.[0-9]+(?:-test\.[0-9]+)?)", version):
@@ -73,9 +77,8 @@ def build(asset, nft_asset, nft_sources, output, version, variant="offline"):
             raise ValueError("tagged package version does not match HEAD tag")
     offline = variant == "offline"
     if offline:
-        asset = Path(asset).resolve()
-        if hashlib.sha256(asset.read_bytes()).hexdigest() != TAILSCALE_SHA256:
-            raise ValueError("Tailscale archive checksum mismatch")
+        catalog = online_assets.load(ROOT)
+        online_assets.ensure(ROOT, list(catalog))
         nft_asset = Path(nft_asset).resolve()
         if hashlib.sha256(nft_asset.read_bytes()).hexdigest() != NFT_SHA256:
             raise ValueError("nftables runtime checksum mismatch")
@@ -85,15 +88,18 @@ def build(asset, nft_asset, nft_sources, output, version, variant="offline"):
     with tempfile.TemporaryDirectory(prefix="vps-server-offline-") as temporary:
         staged = Path(temporary) / "vps-server"
         staged.mkdir()
-        _tracked_source(staged, frozenset() if offline else _online_only_paths())
+        fetched = _online_only_paths()
+        _tracked_source(staged, fetched)
         bundle = ROOT / "web/dist"
         if not all((bundle / name).is_file() for name in ("ui.js", "ui.css")):
             raise ValueError("frontend bundle missing; run npm ci and npm run check in web/")
         shutil.copytree(bundle, staged / "web/dist")
         if offline:
-            destination = staged / "third_party" / "tailscale" / "tailscale_1.104.5_amd64.tgz"
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(asset, destination)
+            # ensure() above verified every file; copy them with their modes.
+            for relative in sorted(fetched):
+                destination = staged / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, destination)
             nft_destination = staged / "third_party" / "nft" / "nft-runtime-trixie.tar.gz"
             nft_destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(nft_asset, nft_destination)
@@ -110,15 +116,14 @@ def build(asset, nft_asset, nft_sources, output, version, variant="offline"):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--variant", choices=VARIANTS, default="offline")
-    parser.add_argument("--tailscale-archive")
     parser.add_argument("--nft-runtime")
     parser.add_argument("--nft-sources")
     parser.add_argument("--output", required=True)
     parser.add_argument("--version", required=True)
     args = parser.parse_args()
-    if args.variant == "offline" and not (args.tailscale_archive and args.nft_runtime and args.nft_sources):
-        parser.error("the offline variant needs --tailscale-archive, --nft-runtime and --nft-sources")
-    print(build(args.tailscale_archive, args.nft_runtime, args.nft_sources,
+    if args.variant == "offline" and not (args.nft_runtime and args.nft_sources):
+        parser.error("the offline variant needs --nft-runtime and --nft-sources")
+    print(build(args.nft_runtime, args.nft_sources,
                 args.output, args.version, args.variant))
 
 

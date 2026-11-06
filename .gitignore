@@ -68,3 +68,12 @@ Thumbs.db
 
 /web/dist/
 **/.npm/
+
+# Pinned upstream binaries from config/online-assets.json. The offline build
+# and the installer download them and check each SHA-256; they stay out of Git.
+/third_party/sing-box/sing-box
+/third_party/frp/frps
+/third_party/frp/frpc
+/third_party/lucky/lucky
+/third_party/tailscale/tailscale_*_amd64.tgz
+.online-assets-*/

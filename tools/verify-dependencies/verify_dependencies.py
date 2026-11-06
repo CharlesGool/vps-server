@@ -2,6 +2,9 @@
 """Offline SHA-256 check of artifacts listed in dependencies.lock.json.
 
 This checks checkout bytes, not upstream identity or distro package versions.
+Binaries listed in online-assets.json are not committed: the offline build and
+the installer download and verify them. A checkout without them passes, but
+their pinned hashes must agree with the lock file.
 """
 
 import hashlib
@@ -33,6 +36,11 @@ def verify(lock_file=ROOT / "config/dependencies.lock.json", root=ROOT):
     errors = []
     seen = set()
     root = Path(root).resolve()
+    fetched = {}
+    online = root / "config" / "online-assets.json"
+    if online.is_file():
+        for spec in json.loads(online.read_text(encoding="utf-8"))["components"].values():
+            fetched.update({item["path"]: item["sha256"] for item in spec["files"]})
     for entry in lock["artifacts"]:
         name = entry["path"]
         expected = entry["sha256"]
@@ -41,7 +49,13 @@ def verify(lock_file=ROOT / "config/dependencies.lock.json", root=ROOT):
                 or re.fullmatch(r"[0-9a-f]{64}", expected) is None):
             raise ValueError(_t("invalid_path_hash"))
         seen.add(name)
+        if name in fetched and fetched[name] != expected:
+            errors.append(_t("online_mismatch", name=name))
+            continue
         path = (root / name).resolve()
+        if name in fetched and path.is_relative_to(root) and not path.exists():
+            print(_t("artifact_fetched", name=name))
+            continue
         if not path.is_relative_to(root) or not path.is_file():
             errors.append(_t("missing_artifact", name=name))
             continue

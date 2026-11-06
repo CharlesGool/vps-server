@@ -5,5 +5,7 @@
   "missing_artifact": "FAIL {name}: missing or outside checkout",
   "hash_mismatch": "FAIL {name}: SHA-256 mismatch",
   "artifact_ok": "OK   {name}: {hash}",
-  "invalid_lock": "Invalid dependency lock: {error}"
+  "invalid_lock": "Invalid dependency lock: {error}",
+  "artifact_fetched": "SKIP {name}: not downloaded; the offline build and the installer fetch and verify it",
+  "online_mismatch": "FAIL {name}: SHA-256 differs from online-assets.json"
 }
