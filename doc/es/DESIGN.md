@@ -69,6 +69,7 @@ El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y
 - Los reinicios de Web **NO DEBEN** mantener `.ports.lock`; el nuevo proceso Web libera registros pendientes mediante el mismo bloqueo al iniciarse.
 - La instalación de un solo módulo **NO DEBE** detener, reinstalar ni desactivar los servicios de otros módulos.
 - Las rutas públicas y de consola **DEBEN** permanecer separadas. Las cabeceras del proxy **NO DEBEN** autorizar acceso por IP sin contraseña.
+- La consola **DEBE** servirse solo por HTTPS. Los certificados de cliente los firma la CA propia de la consola (`certs/client-ca.*`) y el servidor **NO DEBE** guardar claves privadas de los dispositivos; TLS solo solicita el certificado sin exigirlo (`CERT_OPTIONAL`), y "requerir certificado" se comprueba en cada solicitud HTTP contra números de serie no revocados, para que las suscripciones de Clash sigan funcionando y revocar no exija reconstruir TLS. Antes de activar el requisito, la conexión actual **DEBE** presentar un certificado válido; mientras esté activo, **NO DEBE** revocarse el certificado de la conexión actual.
 - Las instalaciones del mismo esquema **DEBEN** conservar el estado; un esquema antiguo o localizador ausente **NO DEBE** sobrescribirse silenciosamente.
 - Los artefactos **DEBEN** coincidir con sus sumas y conservar licencias y acceso al código correspondiente. Esto no fija todas las dependencias del sistema.
 
@@ -82,7 +83,7 @@ Se usan los tokens actuales de la plantilla para tipografía, espaciado, radios,
 | --- | --- |
 | `/var/lib/vps-server` | Raíz predeterminada del esquema 1, localizada por `/etc/vps-server/state-dir`. |
 | `admin_password.txt`, `console_port.txt`, `.env`, `paths.json`, `.layout-version` | Autenticación, puerto guardado, configuración y metadatos. |
-| `certs/` | Certificados TLS y claves privadas. |
+| `certs/` | Certificados TLS y claves privadas; CA de certificados de cliente (`client-ca.pem`, `client-ca.key`) y registro de emisión `client-auth.json` (requisito, números de serie, nombres de dispositivo, estado de revocación). |
 | `data/` | Base SQLite de visitantes, sesiones/secreto, estado, nodos y tareas. |
 | `/etc/vps-server-proxy/config.json` | Configuración Singbox coordinada con el manifiesto de nodos. |
 | `/etc/vps-server-frps/frps.toml` | Configuración del servidor FRPS. |

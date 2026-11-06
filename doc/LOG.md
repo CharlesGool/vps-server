@@ -40,6 +40,7 @@ metadata:
 - [ ] 月度配额与真实持续流量/限速策略没有在 v5.2.2 发布时重新全面验证;此前操作员确认不等于本次独立复测.
 - [ ] 英语/西班牙语文档尚无独立母语审阅.
 - [x] 2026-10-21 vmshell Debian 13 (KVM) 主机上节点计量服务反复重启, 日志只有 `cannot list nftables tables`, Singbox 因依赖计量被停止. 原因: 该主机镜像未装 nftables, 计量回退到随包 nft 0.9.8, 它读不了 Debian 13 iptables-nft 规则; 运行时检查只执行 `nft --version`, 安装预检因此放行. v5.4.0 修复: 检查改为读取规则表, 随附运行库换成 Debian 13 nft/iptables 及其 glibc.
+- [ ] 2026-11-06 在 `KVM11553` 上用 `v5.6.0-test.1` 升级时, 前台跟随安装进度的进程在开始后打印 `Terminated` 退出, 后台安装本身完成. 原因未确认, 怀疑是从控制台 root 终端执行, Web 重启时终端所在的控制组被结束.
 - [ ] 2026-10-21 控制台 root 终端从 Web 进程派生, 继承 Web 单元的 `ProtectSystem=strict`, 不能用 apt 安装软件包或修改 `/etc`. 改为 systemd-run 独立单元的修改被 Claude Code 权限检查拦下, 未实施, 待操作员决定.
 
 以上未勾选项为验收缺口, 不代表已复现的运行故障.
@@ -79,20 +80,14 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.5.1(标签 `v5.5.1`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web; 2026-10-23 先从 v5.4.0 用离线包升级到 v5.5.0, 备份在 ubt-sev 的 `/root/backups/`, 之后由操作员自行升到 v5.5.1).
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.6.0(标签 `v5.6.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
-未发布的改动(2026-11-05, 在 `main`, 尚未打测试版或正式版): 控制台强制 HTTPS;TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后禁用密码登录, 密码只作敏感操作的二次验证);主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装;安装器在 web 模块缺少 openssl 时用 apt 安装.
+已完成: v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
-本次检查: `check_project.py` 通过(含 `npm run check`). 本机用临时状态目录启动后端做了 24 项端到端检查, 全部通过: 签发证书并用导出的 `.p12` 建立 mTLS, 证书登录, 证书会话进安全设置仍需密码, 没有证书时不能开启要求, 开启后无证书请求(含带有效会话 Cookie)返回 403 而 Clash 订阅路径不受拦截, 要求期间拒绝密码登录和撤销当前证书, `client_cert.py disable` 立即恢复密码登录, 撤销后证书不再被接受. Playwright(Chromium)以客户端证书截图核对了桌面和 375px 宽度下的证书卡片, 生成页, 登录页与拦截页. 用假的 apt-get 确认 `install_nft` 依次执行 `apt-get update` 和 `apt-get install -y nftables`.
+检查结果: `check_project.py` 通过(含 `npm run check`). 本机端到端脚本验证了签发, mTLS 证书登录, 无证书时拦截, Clash 订阅不受拦截, 要求期间拒绝密码登录和撤销当前证书, `client_cert.py disable` 恢复, 撤销后不再接受. 操作员在 vmshell 主机 `KVM11553` 上用 `v5.6.0-test.1` 离线包原地升级, 在 Windows Chrome 上完成证书签发, 导入, 弹出证书选择, 证书登录并开启要求, 确认测试通过. 远程探测确认该主机控制台在 TLS 1.2 和 1.3 下都发出证书请求.
 
-本次未验证: 真实 VPS 上的 apt 自动安装 nftables/openssl 与 HTTP 安装升级为 HTTPS 的提示; Windows, macOS, Android, iOS 实际导入 `.p12`(OpenSSL 3 默认 AES-256 加密, 很旧的系统可能不支持)并在真实浏览器中弹出证书选择.
+未验证: 真实主机上 apt 自动安装 nftables/openssl(该主机 Singbox 原已安装); HTTP 安装升级为 HTTPS 的过程; macOS, Android, iOS 导入 `.p12`(OpenSSL 3 默认 AES-256 加密, 很旧的系统可能不支持); 无证书设备被拦截, 开启要求后终端二次验证和 Clash 订阅在真实设备上的表现(操作员只概括确认通过).
 
-已完成: v5.5.1 修复离线版安装时的误导下载提示; v5.5.0 发布, 变更见 `doc/CHANGELOG.md`: 离线版与在线版两个安装包, 离线版随附 iproute2(`ss`, `ip`), 安装不再依赖 curl, tar, gzip, 语言选择 5 秒无回答用默认值, 标签页标题分隔符改为 `-`.
-
-检查结果: `check_project.py` 与 `web/` 的 `npm run check` 通过. 本机检查: 离线包解压后随附的 `ip`, `ss`(含进程信息), `iptables` 可运行, `PATH` 里没有这些命令时由 `nft_runtime.tool` 回退到随附版本; 在线包下载的 sing-box, Lucky, FRP, Tailscale 与固定哈希和仓库内文件逐字节一致; 语言选择超时在伪终端中测过无回答, 手动选择和自定义秒数. 操作员安装测试版 `test-9e7f4de` 后确认没有问题(未逐项说明测了哪些模块).
-
-未验证: 在线版 apt 自动安装缺失工具和控制台后续添加 FRPC 或 Tailscale 时的自动下载(操作员只确认整体通过); 非 root 无法执行随附 nft, 其读规则能力靠 v5.4.0 的容器验证; 在没有 `ip`, `ss` 的主机上由随附版本回退的完整流程; 整机重启后的自启动; 真实移动设备与浏览器中的模块提示显示; 已登录 Tailscale 退出及真实 Tailnet 路由策略; ufw/firewalld 下的防火墙记录逻辑.
-
-剩余步骤: 上述未发布改动需打测试版并在真实 VPS 和设备上验收. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包因附 iproute2 源码增至约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称, 可按用途逐步改名. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
+剩余步骤: 查明升级时前台跟随进程打印 `Terminated` 的原因(见缺陷). 生成页的导入说明可写明需要导入系统证书库并完全重启浏览器(操作员首次下载后未导入, 浏览器不弹窗). 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
 临时项目规则: 未发现.

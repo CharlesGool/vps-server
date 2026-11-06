@@ -26,6 +26,18 @@ metadata:
 
 ## Changelog
 
+### v5.6.0 — 2026-11-06
+
+#### Added
+
+- Client-certificate login. Settings > Security > Client certificates issues a `.p12` certificate per device (the import password is shown once); once imported into the system, the browser logs in with it instead of a password. Certificates can be revoked one by one, and the server never keeps a device's private key. With "Require client certificate" on, a device without a valid certificate sees only a block page (IP allowlist login also needs a certificate), the password is used only to re-verify the root terminal and security settings, and Clash subscriptions keep working. It cannot be turned on unless the current connection presents a certificate, and the certificate in use cannot be revoked while it is required; after losing a certificate, root runs `python3 /root/apps/vps-server/src/web/client_cert.py disable` to restore password login. Issuing, importing, certificate login and turning the requirement on were verified in Chrome on Windows.
+
+- When the host lacks a working nftables, installing Singbox from the installer or from a console module job now installs it with apt first instead of asking for a manual command; it stops with a reason only when apt is missing or the install fails. Uninstalled module cards in the console say it will be installed automatically.
+
+#### Changed
+
+- The console is served over HTTPS only. `VPSSRV_CONSOLE_TLS=0` no longer has an effect, and an install that ran over HTTP moves to HTTPS on upgrade with the same port. The installer installs `openssl` with apt when it is missing, for issuing certificates.
+
 ### v5.5.1 — 2026-10-23
 
 #### Fixed

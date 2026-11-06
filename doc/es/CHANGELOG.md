@@ -26,6 +26,18 @@ metadata:
 
 ## Historial de cambios
 
+### v5.6.0 — 2026-11-06
+
+#### Añadido
+
+- Inicio de sesión con certificado de cliente. Configuración > Seguridad > Certificados de cliente emite un certificado `.p12` por dispositivo (la contraseña de importación se muestra una sola vez); una vez importado en el sistema, el navegador inicia sesión con él en lugar de la contraseña. Los certificados se revocan uno a uno y el servidor nunca guarda la clave privada de un dispositivo. Con "Exigir certificado de cliente" activado, un dispositivo sin certificado válido solo ve una página de bloqueo (el acceso por IP sin contraseña también necesita certificado), la contraseña solo sirve para volver a verificar el terminal root y la configuración de seguridad, y las suscripciones de Clash siguen funcionando. No se puede activar si la conexión actual no presenta un certificado, y mientras se exige no se puede revocar el certificado en uso; si se pierde un certificado, root ejecuta `python3 /root/apps/vps-server/src/web/client_cert.py disable` para recuperar el acceso con contraseña. Se verificaron en Chrome para Windows la emisión, la importación, el inicio de sesión con certificado y la activación del requisito.
+
+- Si el equipo no tiene un nftables funcional, instalar Singbox desde el instalador o desde una tarea de módulo de la consola lo instala primero con apt, sin pedir un comando manual; solo se detiene con un motivo si no hay apt o la instalación falla. Las tarjetas de módulos no instalados de la consola indican que se instalará automáticamente.
+
+#### Cambiado
+
+- La consola solo se sirve por HTTPS. `VPSSRV_CONSOLE_TLS=0` ya no tiene efecto y una instalación que funcionaba por HTTP pasa a HTTPS al actualizar, con el mismo puerto. El instalador instala `openssl` con apt si falta, para emitir certificados.
+
 ### v5.5.1 — 2026-10-23
 
 #### Corregido
