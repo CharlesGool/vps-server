@@ -188,6 +188,10 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 `status` 参数列出要求状态和所有证书.
 
+### 登录失败封禁
+
+同一 IP 在窗口内输错密码达到次数后, 该 IP 被暂时封禁, 封禁期间正确密码也无法登录, 成功登录会清除计数. 次数, 窗口和封禁时长由下表 `VPSSRV_LOGIN_*` 设置. 开关在 设置 > 安全 > 登录失败封禁, 默认开启. 关闭后仍记录每个 IP 的失败次数, 达到阈值只标记不封禁, 可以在同一页查看计数和状态, 用于测试检测是否生效. 切换开关会清除当前的封禁和标记; 记录保存在内存中, Web 重启后清空.
+
 配置模板: [.env.example](.env.example). 所有变量都有默认值, 不要求填写凭据. 路径使用绝对路径, 开关为 `0/1`, 端口为 `1-65535`(控制台 `0` 例外), 数量和时长为整数. 除 `PREFIX` 与首次 `VPSSRV_STATE_DIR` 外, 以下项保存在状态根 `.env`, 修改后重启 Web;模块初始参数在安装模块时生效.
 
 | 参数 | 默认值 | 含义 |
@@ -208,7 +212,7 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 | `VPSSRV_IP_ALLOWLIST_FILE` | 空 | 免密 IP 清单文件;空值使用状态根下默认清单. |
 | `VPSSRV_LOGIN_MAX_ATTEMPTS` | `5` | 登录窗口内最大失败次数. |
 | `VPSSRV_LOGIN_WINDOW_SECONDS` | `60` | 统计登录失败的窗口秒数. |
-| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | 超限后的锁定秒数. |
+| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | 超限后的锁定秒数;封禁开关在安全设置中, 不在 `.env`. |
 | `VPSSRV_TLS_CERT` | 空 | 自备 TLS 证书路径;与密钥同时指定. |
 | `VPSSRV_TLS_KEY` | 空 | 自备 TLS 私钥路径;未指定时生成自签名证书. |
 | `VPSSRV_IPERF_ENABLE` | `1` | iperf3 功能开关. |

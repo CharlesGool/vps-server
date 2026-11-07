@@ -754,7 +754,11 @@ class LoginRateLimiter(_feature_auth.LoginRateLimiter):
     context = sys.modules[__name__]
 
 
-LOGIN_LIMITER = LoginRateLimiter(LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS, LOGIN_LOCKOUT_SECONDS)
+# The ban switch (Settings > Security) defaults to on. Turned off, failures
+# are still counted and shown so detection can be tested safely.
+LOGIN_BAN_FILE = DATA_DIR / "login-ban.json"
+LOGIN_LIMITER = LoginRateLimiter(LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS, LOGIN_LOCKOUT_SECONDS,
+                                 LOGIN_BAN_FILE)
 
 
 # ---------------------------------------------------------------------------

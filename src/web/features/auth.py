@@ -527,17 +527,75 @@ def change_admin_password(context, replacement):
             save_sessions(context)
 
 class LoginRateLimiter:
-    def __init__(self, max_attempts, window_seconds, lockout_seconds):
+    """Per-IP failed-login counting with an optional temporary ban.
+
+    The ban switch is persisted in ``state_path`` and defaults to on. With
+    the ban off, failures are still counted and threshold hits still
+    recorded, so detection can be tested without locking the tester out;
+    such a hit is only flagged, and turning the ban back on does not turn
+    an old flag into a lockout.
+    """
+
+    STATS_LIMIT = 100
+
+    def __init__(self, max_attempts, window_seconds, lockout_seconds, state_path=None):
         self._max_attempts = max_attempts
         self._window = window_seconds
         self._lockout = lockout_seconds
         self._lock = self.context.threading.Lock()
         self._failures = {}       # ip -> [failure timestamps within window]
-        self._locked_until = {}   # ip -> unix time the lockout ends
+        self._locked_until = {}   # ip -> unix time the lockout ends (ban on)
+        self._flagged_until = {}  # ip -> same, but only displayed (ban off)
+        self._stats = {}          # ip -> {"total", "triggered", "last"}
+        self._state_path = self.context.Path(state_path) if state_path else None
+        self.enabled = True
+        self.load_error = False
+        if self._state_path and self._state_path.exists():
+            try:
+                document = self.context.json.loads(self._state_path.read_text(encoding="utf-8"))
+                if not isinstance(document, dict) or set(document) != {"enabled"} or \
+                        not isinstance(document["enabled"], bool):
+                    raise ValueError("invalid login ban state")
+                self.enabled = document["enabled"]
+            except (OSError, ValueError, TypeError):
+                self.load_error = True
+
+    @property
+    def max_attempts(self):
+        return self._max_attempts
+
+    @property
+    def window_seconds(self):
+        return self._window
+
+    @property
+    def lockout_seconds(self):
+        return self._lockout
+
+    def is_enabled(self):
+        with self._lock:
+            return self.enabled
+
+    def set_enabled(self, enabled):
+        if not isinstance(enabled, bool):
+            raise ValueError("invalid login ban setting")
+        with self._lock:
+            if self._state_path:
+                self.context._atomic_private_text(self._state_path,
+                                                  self.context.json.dumps({"enabled": enabled}) + "\n")
+            self.enabled = enabled
+            self.load_error = False
+            # Switching either way starts from a clean slate: no surprise
+            # lockout from flags gathered while off, no stale lockout left.
+            self._locked_until.clear()
+            self._flagged_until.clear()
+            self._failures.clear()
 
     def check(self, ip):
         """(allowed, retry_after_seconds). retry_after is 0 when allowed."""
         with self._lock:
+            if not self.enabled:
+                return True, 0
             until = self._locked_until.get(ip)
             if until is None:
                 return True, 0
@@ -549,30 +607,73 @@ class LoginRateLimiter:
             return False, int(remaining) + 1
 
     def record_failure(self, ip):
+        """Count one failure; return True when it reached the threshold."""
         with self._lock:
             now = self.context.time.time()
+            stats = self._stats.setdefault(ip, {"total": 0, "triggered": 0, "last": 0})
+            stats["total"] += 1
+            stats["last"] = now
             attempts = [t for t in self._failures.get(ip, []) if now - t < self._window]
             attempts.append(now)
-            if len(attempts) >= self._max_attempts:
-                self._locked_until[ip] = now + self._lockout
+            triggered = len(attempts) >= self._max_attempts
+            enabled = self.enabled
+            if triggered:
+                stats["triggered"] += 1
+                (self._locked_until if enabled else self._flagged_until)[ip] = now + self._lockout
                 self._failures.pop(ip, None)
             else:
                 self._failures[ip] = attempts
             self._prune(now)
+        if triggered:
+            key = "log_login_ban" if enabled else "log_login_ban_observed"
+            print(self.context._log_text(key, ip=ip, count=self._max_attempts, seconds=self._lockout),
+                  file=self.context.sys.stderr)
+        return triggered
 
     def record_success(self, ip):
         with self._lock:
             self._failures.pop(ip, None)
             self._locked_until.pop(ip, None)
+            self._flagged_until.pop(ip, None)
+
+    def clear(self):
+        with self._lock:
+            self._failures.clear()
+            self._locked_until.clear()
+            self._flagged_until.clear()
+            self._stats.clear()
+
+    def snapshot(self):
+        """Rows for the security page, most recent failure first."""
+        with self._lock:
+            now = self.context.time.time()
+            rows = []
+            for ip, stats in self._stats.items():
+                locked = self._locked_until.get(ip, 0) - now
+                flagged = self._flagged_until.get(ip, 0) - now
+                rows.append({
+                    "ip": ip,
+                    "recent": len([t for t in self._failures.get(ip, []) if now - t < self._window]),
+                    "total": stats["total"],
+                    "triggered": stats["triggered"],
+                    "last": stats["last"],
+                    "state": "banned" if locked > 0 else "flagged" if flagged > 0 else "normal",
+                    "remaining": int(max(locked, flagged, 0)) + (1 if max(locked, flagged) > 0 else 0),
+                })
+            return sorted(rows, key=lambda row: row["last"], reverse=True)
 
     def _prune(self, now):
         # Runs on every failure, not on a timer: cheap, and keeps a scan
         # hammering many source IPs from growing these dicts without bound.
-        for ip in [i for i, until in self._locked_until.items() if until < now]:
-            del self._locked_until[ip]
+        for table in (self._locked_until, self._flagged_until):
+            for ip in [i for i, until in table.items() if until < now]:
+                del table[ip]
         for ip in [i for i, ts in self._failures.items()
                    if not any(now - t < self._window for t in ts)]:
             del self._failures[ip]
+        if len(self._stats) > self.STATS_LIMIT:
+            keep = sorted(self._stats, key=lambda i: self._stats[i]["last"], reverse=True)[:self.STATS_LIMIT]
+            self._stats = {ip: self._stats[ip] for ip in keep}
 
 def ip_scope(context, ip):
     """Classify an address so the UI can filter loopback/LAN noise out."""

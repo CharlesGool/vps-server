@@ -92,11 +92,12 @@ class SettingsMixin:
         addresses = self.context.IP_ALLOWLIST.list_addresses()
         message = self.context.parse_qs(parsed.query).get("msg", [""])[0]
         notices = {"access_ip_added", "access_ip_removed", "access_ip_enabled", "access_ip_disabled",
-                   "client_cert_enabled", "client_cert_disabled", "client_cert_revoked_msg"}
+                   "client_cert_enabled", "client_cert_disabled", "client_cert_revoked_msg",
+                   "login_ban_enabled", "login_ban_disabled", "login_ban_cleared"}
         allowed_messages = notices | {"access_ip_invalid", "access_ip_error", "access_password_invalid",
                                       "client_cert_need_current", "client_cert_keep_current",
                                       "client_cert_error", "client_cert_openssl_missing",
-                                      "client_cert_name_invalid"}
+                                      "client_cert_name_invalid", "login_ban_error"}
         feedback = (f'<p class="{"notice" if message in notices else "error"}" role="status">'
                     f'{esc(t[message])}</p>') if message in allowed_messages else ""
         load_warning = f'<p class="error" role="alert">{esc(t["access_load_error"])}</p>' if self.context.IP_ALLOWLIST.load_error else ""
@@ -119,6 +120,7 @@ class SettingsMixin:
           <div class="settings-layout"><nav class="section-nav" aria-label="{esc(t['access_heading'], quote=True)}">
             <a href="#security-ips" aria-current="location">{esc(t['access_ips'])}</a>
             <a href="#security-client-cert">{esc(t['access_client_cert'])}</a>
+            <a href="#security-login-ban">{esc(t['login_ban_heading'])}</a>
             <a href="#security-password">{esc(t['access_password'])}</a>
           </nav><div class="settings-content"><section id="security-ips" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
@@ -141,6 +143,7 @@ class SettingsMixin:
             </div>
           </section>
           {self.render_client_cert_card(t, token)}
+          {self.render_login_ban_card(t, token)}
           <section id="security-password" class="card access-card"><h2>{esc(t['access_password'])}</h2>
             <form method="post" action="/settings/password" autocomplete="off">
               <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'password')}">
@@ -152,6 +155,45 @@ class SettingsMixin:
           </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def render_login_ban_card(self, t, token):
+        esc = self.context.html.escape
+        limiter = self.context.LOGIN_LIMITER
+        enabled = limiter.is_enabled()
+        rule = t["login_ban_rule"].format(window=limiter.window_seconds, count=limiter.max_attempts,
+                                          seconds=limiter.lockout_seconds)
+        load_warning = f'<p class="error" role="alert">{esc(t["login_ban_load_error"])}</p>' if limiter.load_error else ""
+        rows = ""
+        for row in limiter.snapshot():
+            last = self.context.time.strftime("%Y-%m-%d %H:%M:%S", self.context.time.localtime(row["last"]))
+            state = (t["login_ban_state_banned"].format(seconds=row["remaining"]) if row["state"] == "banned" else
+                     t["login_ban_state_flagged"].format(seconds=row["remaining"]) if row["state"] == "flagged" else
+                     t["login_ban_state_normal"])
+            counts = t["login_ban_counts"].format(recent=row["recent"], total=row["total"],
+                                                  triggered=row["triggered"], last=last)
+            rows += (f'<li><span><code>{esc(row["ip"])}</code> <span class="muted">{esc(counts)}</span></span>'
+                     f'<span class="{"error" if row["state"] == "banned" else "muted"}">{esc(state)}</span></li>')
+        if not rows:
+            rows = f'<li class="muted">{esc(t["login_ban_empty"])}</li>'
+        return f'''<section id="security-login-ban" class="access-card access-ip-card">
+            <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
+              <h2>{esc(t['login_ban_heading'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
+            <div class="access-card-body">{load_warning}
+            <p>{esc(rule)}</p>
+            <form method="post" action="/settings/login-ban/toggle" class="access-toggle-form">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'login-ban-toggle')}">
+              <input type="hidden" name="enabled" value="{'0' if enabled else '1'}">
+              <span>{esc(t['login_ban_switch'])}</span>
+              <button type="submit" aria-pressed="{'true' if enabled else 'false'}">{esc(t['access_ip_disable'] if enabled else t['access_ip_enable'])}</button>
+            </form>
+            <p class="muted">{esc(t['login_ban_observe_hint'])}</p>
+            <ul class="access-ip-list">{rows}</ul>
+            <form method="post" action="/settings/login-ban/clear">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'login-ban-clear')}">
+              <button type="submit">{esc(t['login_ban_clear'])}</button>
+            </form>
+            </div>
+          </section>'''
 
     def render_client_cert_card(self, t, token):
         esc = self.context.html.escape
@@ -293,9 +335,12 @@ class SettingsMixin:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         action = {"/settings/ip/add": "ip-add", "/settings/ip/remove": "ip-remove",
                   "/settings/ip/toggle": "ip-toggle",
+                  "/settings/login-ban/toggle": "login-ban-toggle",
+                  "/settings/login-ban/clear": "login-ban-clear",
                   "/settings/password": "password"}[path]
         expected = ({"csrf", "new", "confirm"} if action == "password" else
-                    {"csrf", "enabled"} if action == "ip-toggle" else {"csrf", "ip"})
+                    {"csrf", "enabled"} if action in ("ip-toggle", "login-ban-toggle") else
+                    {"csrf"} if action == "login-ban-clear" else {"csrf", "ip"})
         if set(form) != expected:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if not self.context.hmac.compare_digest(form["csrf"][0],
@@ -313,6 +358,19 @@ class SettingsMixin:
             if not key:
                 cookie = f"session=; {self.context.SESSION_COOKIE_ATTRS}; Max-Age=0"
                 return self.redirect("/login?changed=1", {"Set-Cookie": cookie})
+        elif action == "login-ban-toggle":
+            if form["enabled"][0] not in ("0", "1"):
+                return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+            try:
+                self.context.LOGIN_LIMITER.set_enabled(form["enabled"][0] == "1")
+                key = "login_ban_enabled" if self.context.LOGIN_LIMITER.is_enabled() else "login_ban_disabled"
+            except OSError:
+                key = "login_ban_error"
+            return self.redirect(f"/settings/security?msg={key}#security-login-ban", {"Cache-Control": "no-store"})
+        elif action == "login-ban-clear":
+            self.context.LOGIN_LIMITER.clear()
+            return self.redirect("/settings/security?msg=login_ban_cleared#security-login-ban",
+                                 {"Cache-Control": "no-store"})
         elif action == "ip-toggle":
             if form["enabled"][0] not in ("0", "1"):
                 return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
@@ -348,6 +406,7 @@ class SettingsMixin:
                 return True
         security_path = path == "/settings/security" or path in (
             "/settings/ip/add", "/settings/ip/remove", "/settings/ip/toggle", "/settings/password",
+            "/settings/login-ban/toggle", "/settings/login-ban/clear",
             "/settings/client-cert/issue", "/settings/client-cert/revoke", "/settings/client-cert/toggle")
         if security_path and not self.context.security_settings_valid(self.get_cookie("session")):
             if method == "GET":
@@ -361,7 +420,8 @@ class SettingsMixin:
         elif method == "GET" and path == "/settings/security":
             self.page_settings(lang, query_lang, parsed)
         elif method == "POST" and path in ("/settings/ip/add", "/settings/ip/remove",
-                                                "/settings/ip/toggle", "/settings/password"):
+                                                "/settings/ip/toggle", "/settings/password",
+                                                "/settings/login-ban/toggle", "/settings/login-ban/clear"):
             self.handle_settings_post(path)
         elif method == "POST" and path in ("/settings/client-cert/issue", "/settings/client-cert/revoke",
                                                 "/settings/client-cert/toggle"):
