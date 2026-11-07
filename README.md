@@ -24,6 +24,7 @@
 - Singbox 托管 AnyTLS, VMess, VLESS, Trojan 和 Shadowsocks 节点, 支持分享, 配额, 限速与到期策略.
 - FRPS 服务端, FRPC 实例及 TCP/UDP 代理管理, Lucky 原生管理入口, Tailscale 状态与设备管理.
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
+- 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).
 
 ### 界面预览
@@ -188,9 +189,22 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 `status` 参数列出要求状态和所有证书.
 
-### 登录失败封禁
+### 登录安全
 
-同一 IP 在窗口内输错密码达到次数后, 该 IP 被暂时封禁, 封禁期间正确密码也无法登录, 成功登录会清除计数. 次数, 窗口和封禁时长由下表 `VPSSRV_LOGIN_*` 设置. 开关在 设置 > 安全 > 登录失败封禁, 默认开启. 关闭后仍记录每个 IP 的失败次数, 达到阈值只标记不封禁, 可以在同一页查看计数和状态, 用于测试检测是否生效. 切换开关会清除当前的封禁和标记; 记录保存在内存中, Web 重启后清空.
+以下设置都在 设置 > 安全.
+
+- **登录失败封禁**: 同一 IP 在窗口内输错密码达到次数后被暂时封禁, IPv6 按 /64 网段合并计数. 一天内再次触发时封禁时长每次乘 10(默认 30 秒, 5 分钟, 50 分钟, 约 8 小时, 最长 24 小时). 封禁期间正确密码也无法登录, 成功登录会清除该 IP 的计数. 所有来源合计失败过多时, 暂停从未成功登录过的地址用密码登录(默认 60 秒内 20 次, 暂停 5 分钟), 已登录过的地址, 证书登录和 IP 免密登录不受影响. 开关默认开启; 关闭后仍记录每个 IP 的失败次数, 达到阈值只标记不封禁, 用于测试检测是否生效. 切换开关会清除当前的封禁和标记; 记录保存在内存中, Web 重启后清空.
+- **控制台访问限制**: 开启后只有列表中的 IP 或网段能连接控制台, 其他地址在 TLS 握手前被断开. 本机回环地址始终允许, 局域网设备(包括 Clash 订阅)也要加入列表. 只有当前连接的地址在列表中才能开启, 也不能移除覆盖当前连接的项. 默认关闭. 被挡在外面时, 在服务器上以 root 关闭限制(不需要重启服务, 自定义 `PREFIX` 时替换路径):
+
+  ```bash
+  python3 /root/apps/vps-server/src/web/console_access.py disable
+  ```
+
+- **登录设备**: 列出已登录的设备(浏览器, 系统, IP, 登录和最近活动时间), 可以让单台或其他所有设备退出. 登录最长有效 12 小时, 闲置超过 `VPSSRV_SESSION_IDLE_SECONDS`(默认 2 小时)自动退出; 终端输入算作活动.
+- **登录提醒**: 填入 Bark 服务器和推送密钥后, 新地址首次登录和触发封禁时推送到手机, 同一地址同类提醒一小时内只发一次. 密钥保存在服务器上, 页面不回显.
+- **安全记录**: 显示最近 50 条登录, 封禁, 打开 root 终端和安全设置变更, 服务器保留最近 500 条.
+
+控制台响应带 Content-Security-Policy(只允许本站脚本), 禁止被其他网站嵌入. 使用反向代理(`VPSSRV_TRUST_PROXY=1`)时, 客户端地址取代理追加的最后一个 `X-Forwarded-For` 项, 访问限制按该地址逐个请求检查.
 
 配置模板: [.env.example](.env.example). 所有变量都有默认值, 不要求填写凭据. 路径使用绝对路径, 开关为 `0/1`, 端口为 `1-65535`(控制台 `0` 例外), 数量和时长为整数. 除 `PREFIX` 与首次 `VPSSRV_STATE_DIR` 外, 以下项保存在状态根 `.env`, 修改后重启 Web;模块初始参数在安装模块时生效.
 
@@ -212,7 +226,11 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 | `VPSSRV_IP_ALLOWLIST_FILE` | 空 | 免密 IP 清单文件;空值使用状态根下默认清单. |
 | `VPSSRV_LOGIN_MAX_ATTEMPTS` | `5` | 登录窗口内最大失败次数. |
 | `VPSSRV_LOGIN_WINDOW_SECONDS` | `60` | 统计登录失败的窗口秒数. |
-| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | 超限后的锁定秒数;封禁开关在安全设置中, 不在 `.env`. |
+| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | 首次超限的锁定秒数;封禁开关在安全设置中, 不在 `.env`. |
+| `VPSSRV_LOGIN_LOCKOUT_MAX_SECONDS` | `86400` | 重复封禁时长的上限秒数. |
+| `VPSSRV_LOGIN_GLOBAL_MAX_ATTEMPTS` | `20` | 所有来源在窗口内的失败总数上限;0 关闭全局暂停. |
+| `VPSSRV_LOGIN_GLOBAL_LOCKOUT_SECONDS` | `300` | 全局暂停秒数. |
+| `VPSSRV_SESSION_IDLE_SECONDS` | `7200` | 登录闲置超时秒数;0 关闭. |
 | `VPSSRV_TLS_CERT` | 空 | 自备 TLS 证书路径;与密钥同时指定. |
 | `VPSSRV_TLS_KEY` | 空 | 自备 TLS 私钥路径;未指定时生成自签名证书. |
 | `VPSSRV_IPERF_ENABLE` | `1` | iperf3 功能开关. |

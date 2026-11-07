@@ -23,11 +23,7 @@ class PublicMixin:
         super().send_response(code, message)
 
     def client_ip(self):
-        if self.context.TRUST_PROXY:
-            xff = self.headers.get("X-Forwarded-For")
-            if xff:
-                return xff.split(",")[0].strip()
-        return self.client_address[0]
+        return self.context.forwarded_client_ip(self.headers, self.client_address[0])
 
     def do_GET(self):
         self._dispatch(send_body=True)

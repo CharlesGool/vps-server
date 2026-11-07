@@ -120,6 +120,7 @@ def serve(handler, context, parsed):
         os.execve("/bin/bash", ["/bin/bash", "-li"], environment)
     with _LIVE_LOCK:
         _LIVE.add(pid)
+    context.AUDIT.record("terminal_open", handler.client_ip())
     connection = handler.connection
     connection.settimeout(10)
     deadline = time.monotonic() + 1800
@@ -138,6 +139,7 @@ def serve(handler, context, parsed):
             if connection in readable:
                 opcode, payload = _frame(connection)
                 deadline = time.monotonic() + 1800
+                context.touch_session(token)  # typing keeps the session from idling out
                 if opcode == 8:
                     break
                 if opcode == 9:

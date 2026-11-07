@@ -76,6 +76,8 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
 from client_cert import ClientAuth, ClientCertError
+from console_access import ConsoleAccess, ConsoleAccessError
+from security_events import AuditLog, KnownLogins, BarkAlerts
 import terminal_session
 from node_state import read_inventory, _read_json
 from node_inventory import advance_reset_interval, reset_interval
@@ -218,6 +220,24 @@ HOST = os.environ.get("VPSSRV_HOST", "0.0.0.0")
 DATA_DIR = host_data_dir()
 STATE_FILE = install_state_file()
 TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
+
+
+def forwarded_client_ip(headers, peer):
+    """The client's address.
+
+    Behind a trusted reverse proxy it is the last X-Forwarded-For entry: the
+    one the proxy appended itself. Entries to its left arrive from the client
+    and can be anything, so they must never key a ban or an allowlist.
+    """
+    if TRUST_PROXY:
+        entries = [item.strip() for value in (headers.get_all("X-Forwarded-For") or [])
+                   for item in value.split(",") if item.strip()]
+        if entries:
+            try:
+                return str(ipaddress.ip_address(entries[-1]))
+            except ValueError:
+                pass
+    return peer
 MAX_TEST_MB = int(os.environ.get("VPSSRV_MAX_TEST_MB", "200"))
 
 # The console is HTTPS only. A self-signed certificate cannot prove the
@@ -283,6 +303,16 @@ AUTH_ENABLED = os.environ.get("VPSSRV_AUTH", "1") == "1"
 LOGIN_MAX_ATTEMPTS = int(os.environ.get("VPSSRV_LOGIN_MAX_ATTEMPTS", "5"))
 LOGIN_WINDOW_SECONDS = int(os.environ.get("VPSSRV_LOGIN_WINDOW_SECONDS", "60"))
 LOGIN_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_SECONDS", "30"))
+# Each repeat ban of the same address within a day lasts ten times longer,
+# up to this ceiling (30 s, 5 min, 50 min, 8.3 h, then 24 h by default).
+LOGIN_LOCKOUT_MAX_SECONDS = int(os.environ.get("VPSSRV_LOGIN_LOCKOUT_MAX_SECONDS", "86400"))
+# Failures from all addresses together within the window that pause password
+# login for addresses that never logged in successfully. 0 turns it off.
+LOGIN_GLOBAL_MAX_ATTEMPTS = int(os.environ.get("VPSSRV_LOGIN_GLOBAL_MAX_ATTEMPTS", "20"))
+LOGIN_GLOBAL_LOCKOUT_SECONDS = int(os.environ.get("VPSSRV_LOGIN_GLOBAL_LOCKOUT_SECONDS", "300"))
+# A session unused for this long ends even before its 12-hour lifetime.
+# 0 turns the idle limit off.
+SESSION_IDLE_SECONDS = int(os.environ.get("VPSSRV_SESSION_IDLE_SECONDS", "7200"))
 
 # iperf3 window. There is no "leave it running" option on purpose: an
 # unauthenticated public `iperf3 -s` lets any stranger saturate the uplink for
@@ -703,6 +733,8 @@ def pick_lang(*args, **kwargs):
 _sessions = {}
 _ip_sessions = {}
 _security_sessions = {}
+_session_meta = {}
+_sessions_saved_at = 0
 _sessions_lock = threading.Lock()
 _feature_auth.load_sessions(sys.modules[__name__])
 
@@ -731,6 +763,22 @@ def destroy_session(*args, **kwargs):
     return _feature_auth.destroy_session(sys.modules[__name__], *args, **kwargs)
 
 
+def touch_session(*args, **kwargs):
+    return _feature_auth.touch_session(sys.modules[__name__], *args, **kwargs)
+
+
+def session_id(*args, **kwargs):
+    return _feature_auth.session_id(sys.modules[__name__], *args, **kwargs)
+
+
+def list_sessions(*args, **kwargs):
+    return _feature_auth.list_sessions(sys.modules[__name__], *args, **kwargs)
+
+
+def revoke_sessions(*args, **kwargs):
+    return _feature_auth.revoke_sessions(sys.modules[__name__], *args, **kwargs)
+
+
 def access_csrf_token(*args, **kwargs):
     return _feature_auth.access_csrf_token(sys.modules[__name__], *args, **kwargs)
 
@@ -754,11 +802,24 @@ class LoginRateLimiter(_feature_auth.LoginRateLimiter):
     context = sys.modules[__name__]
 
 
+# Security records and alerts: the audit log, addresses that have logged in
+# before (exempt from the global pause, and "new" for alerts) and Bark.
+AUDIT = AuditLog(DATA_DIR / "security-audit.jsonl")
+_audit_blocked_seen = {}
+KNOWN_LOGINS = KnownLogins(DATA_DIR / "known-logins.json")
+ALERTS = BarkAlerts(DATA_DIR / "alerts.json",
+                    log=lambda error: print(_log_text('log_alert_failed', error=error), file=sys.stderr))
+# Which source addresses may connect to the console at all. Off by default.
+CONSOLE_ACCESS = ConsoleAccess(DATA_DIR / "console-access.json")
+
 # The ban switch (Settings > Security) defaults to on. Turned off, failures
 # are still counted and shown so detection can be tested safely.
 LOGIN_BAN_FILE = DATA_DIR / "login-ban.json"
 LOGIN_LIMITER = LoginRateLimiter(LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS, LOGIN_LOCKOUT_SECONDS,
-                                 LOGIN_BAN_FILE)
+                                 LOGIN_BAN_FILE, lockout_max_seconds=LOGIN_LOCKOUT_MAX_SECONDS,
+                                 global_max_attempts=LOGIN_GLOBAL_MAX_ATTEMPTS,
+                                 global_lockout_seconds=LOGIN_GLOBAL_LOCKOUT_SECONDS,
+                                 is_known=KNOWN_LOGINS.is_known)
 
 
 # ---------------------------------------------------------------------------
@@ -898,6 +959,7 @@ CHANGELOG_PATHS = {
 CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
+    "/static/boot.js": ("application/javascript", STATIC_DIR / "boot.js"),
     "/static/ui.js": ("application/javascript", STATIC_DIR / "ui.js" if (STATIC_DIR / "ui.js").exists() else BASE_DIR / "web/dist/ui.js"),
     "/static/style.css": ("text/css", STATIC_DIR / "ui.css" if (STATIC_DIR / "ui.css").exists() else BASE_DIR / "web/dist/ui.css"),
     "/static/password-fields.js": ("application/javascript", STATIC_DIR / "password-fields.js"),
@@ -962,6 +1024,25 @@ from features.changelog import ChangelogMixin
 from features.visitors import VisitorsMixin
 from features.public import PublicMixin
 
+# Sent on every console response unless the route set its own. Scripts only
+# from this origin; inline styles stay allowed because xterm.js and the UI
+# set them at run time. No framing (clickjacking), no MIME sniffing, no
+# referrer to other sites. HSTS is left out on purpose: it would bind every
+# port of the host name to HTTPS, including other services and port 80.
+SECURITY_HEADERS = (
+    ("Content-Security-Policy",
+     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+     "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
+     "worker-src 'self' blob:; object-src 'none'; base-uri 'none'; "
+     "form-action 'self'; frame-ancestors 'none'"),
+    ("X-Frame-Options", "DENY"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "same-origin"),
+    ("Permissions-Policy", "camera=(), microphone=(), geolocation=()"),
+    ("Cross-Origin-Opener-Policy", "same-origin"),
+)
+
+
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
                      PortfwdMixin, LuckyMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
@@ -992,11 +1073,28 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
     def send_response(self, code, message=None):
         self._last_status = code
+        self._sent_headers = set()
         super().send_response(code, message)
         if getattr(self, "_close_after_response", False):
             self.send_header("Connection", "close")
 
+    def send_header(self, keyword, value):
+        sent = getattr(self, "_sent_headers", None)
+        if sent is not None:
+            sent.add(keyword.lower())
+        super().send_header(keyword, value)
+
     def end_headers(self):
+        # Defaults for every console response; a route that set its own
+        # value for one of these keeps it.
+        sent = getattr(self, "_sent_headers", set())
+        for keyword, value in SECURITY_HEADERS:
+            if keyword.lower() not in sent:
+                super().send_header(keyword, value)
+        self._sent_headers = None
+        self._end_headers_committed()
+
+    def _end_headers_committed(self):
         # Once the headers are out, the response is committed: anything that
         # goes wrong afterwards must not try to send a second one.
         self._body_started = True
@@ -1017,7 +1115,10 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if not AUTH_ENABLED:
             return True
         token = self.get_cookie("session")
-        return session_valid(token) or ip_session_valid(token, self.client_address[0])
+        if session_valid(token) or ip_session_valid(token, self.client_address[0]):
+            touch_session(token)
+            return True
+        return False
 
     def client_certificate(self):
         """The active client certificate this connection presented, or None."""
@@ -1035,11 +1136,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                            back_href=back_href, icon=icon)
 
     def client_ip(self):
-        if TRUST_PROXY:
-            xff = self.headers.get("X-Forwarded-For")
-            if xff:
-                return xff.split(",")[0].strip()
-        return self.client_address[0]
+        return forwarded_client_ip(self.headers, self.client_address[0])
 
     def resolve_lang(self, parsed):
         query_lang = parse_qs(parsed.query).get("lang", [None])[0]
@@ -1107,6 +1204,10 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._close_after_response = method == "POST" and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
+        if TRUST_PROXY and not CONSOLE_ACCESS.allows(self.client_ip()):
+            self.close_connection = True
+            self._close_after_response = True
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         try:
             self._route(method, path, parsed)
         except (BrokenPipeError, ConnectionResetError):
@@ -1264,6 +1365,14 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
         # a client CA created from the console applies without a restart.
         self.ssl_context = ssl_context
 
+    # Optional predicate on the peer address; False drops the connection
+    # before the TLS handshake, so a refused address sees nothing at all.
+    access_check = None
+
+    def verify_request(self, request, client_address):
+        check = self.access_check
+        return check is None or check(client_address[0])
+
     def finish_request(self, request, client_address):
         request.settimeout(TLS_HANDSHAKE_SECONDS)
         context = self.ssl_context() if callable(self.ssl_context) else self.ssl_context
@@ -1381,6 +1490,10 @@ def main():
         # listener was registered. A fresh process has no live window.
         close_iperf_window()
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS, client_auth=True)
+        if not TRUST_PROXY:
+            # Behind a proxy every connection comes from the proxy; the
+            # forwarded address is checked per request in _dispatch instead.
+            console.access_check = CONSOLE_ACCESS.allows
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
 

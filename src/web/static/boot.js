@@ -1,0 +1,4 @@
+// Runs synchronously in <head> before first paint: restores the saved theme and
+// colour mode and hides the page until the UI scripts report ready (3 s max).
+// Kept out of the page so the Content-Security-Policy can forbid inline script.
+document.documentElement.classList.add('ui-pending');var ready={};window.vpsReady=function(k){ready[k]=1;if(ready.ui&&ready.sel)document.documentElement.classList.remove('ui-pending')};setTimeout(function(){document.documentElement.classList.remove('ui-pending')},3000);try{var v=localStorage.getItem('vps-server-theme');if(['slate-blue','sage','teal','plum','ocean','olive','terracotta','indigo'].indexOf(v)>=0)document.documentElement.dataset.theme=v;var m=localStorage.getItem('vps-server-mode');if(m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}

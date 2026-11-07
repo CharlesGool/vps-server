@@ -6,6 +6,54 @@ can be reused with another application context.
 
 
 class AuthMixin:
+    def user_agent(self):
+        return (self.headers.get("User-Agent") or "")[:200]
+
+    def audit(self, event, detail=""):
+        ip = self.client_ip()
+        if event.endswith("_blocked"):
+            # A banned client may keep hammering; one line a minute is enough.
+            key = (event, self.context.LOGIN_LIMITER.key(ip))
+            now = self.context.time.time()
+            last = self.context._audit_blocked_seen
+            if now - last.get(key, 0) < 60:
+                return
+            if len(last) > 1000:
+                last.clear()
+            last[key] = now
+        self.context.AUDIT.record(event, ip, detail)
+
+    def _alert_text(self, key, **values):
+        label = self.context.server_label() or ""
+        return self.context._log_text(key, server=label or "vps-server", **values)
+
+    def login_succeeded(self, method):
+        ip = self.client_ip()
+        self.context.LOGIN_LIMITER.record_success(ip)
+        self.audit("login_ok", method)
+        key = self.context.LOGIN_LIMITER.key(ip)
+        if self.context.KNOWN_LOGINS.remember(key):
+            self.audit("login_new_ip", method)
+            self.context.ALERTS.notify("new_ip", self._alert_text("alert_new_ip_title"),
+                                       self._alert_text("alert_new_ip_body", ip=ip, method=self.context.STRINGS[
+                                           self.context.DEFAULT_LANG].get("sessions_method_" + method, method)),
+                                       dedupe=key)
+
+    def login_failed(self, event_name):
+        ip = self.client_ip()
+        event = self.context.LOGIN_LIMITER.record_failure(ip)
+        self.audit(event_name)
+        if not event:
+            return
+        name = ("ban" if event["scope"] == "ip" else "global_ban") + ("" if event["banned"] else "_observed")
+        self.audit(name, f'{event["key"]} {event["seconds"]}s')
+        if event["banned"]:
+            title_key, body_key = (("alert_ban_title", "alert_ban_body") if event["scope"] == "ip" else
+                                   ("alert_global_title", "alert_global_body"))
+            self.context.ALERTS.notify("ban", self._alert_text(title_key),
+                                       self._alert_text(body_key, ip=event["key"], seconds=event["seconds"]),
+                                       dedupe=event["scope"] + ":" + event["key"])
+
     def page_login(self, lang, query_lang, status=200, error=None, next_page="", password_error=True):
         t = self.context.STRINGS[lang]
         if not error and self.context.parse_qs(self.context.urlsplit(self.path).query).get("ip") == ["unavailable"]:
@@ -58,9 +106,10 @@ class AuthMixin:
 
     def handle_login(self, lang):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        ip = self.client_address[0]
+        ip = self.client_ip()
         allowed, retry_after = self.context.LOGIN_LIMITER.check(ip)
         if not allowed:
+            self.audit("login_blocked")
             return self.page_login(
                 lang, None, status=429,
                 error=self.context.STRINGS[lang]["login_locked"].format(seconds=retry_after),
@@ -73,11 +122,12 @@ class AuthMixin:
             return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
                                    error=self.context.STRINGS[lang]["login_password_disabled"])
         if self.context.hmac.compare_digest(submitted.encode("utf-8"), self.context.ADMIN_PASSWORD.encode("utf-8")):
-            self.context.LOGIN_LIMITER.record_success(ip)
+            self.login_succeeded("password")
             previous = self.get_cookie("session")
             if previous:
                 self.context.destroy_session(previous)
-            token = self.context.create_session(security_verified=True)
+            token = self.context.create_session(security_verified=True, ip=ip, agent=self.user_agent(),
+                                                method="password")
             cookie = (
                 f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
                 f"Max-Age={self.context.SESSION_TTL_SECONDS}"
@@ -88,7 +138,7 @@ class AuthMixin:
                            "/changelog" if next_page == "changelog" else "/")
             return self.redirect(destination,
                                  {"Set-Cookie": cookie})
-        self.context.LOGIN_LIMITER.record_failure(ip)
+        self.login_failed("login_fail")
         self.page_login(lang, None, status=401, error=self.context.STRINGS[lang]["wrong_password"],
                         next_page=next_page)
 
@@ -102,7 +152,8 @@ class AuthMixin:
         if previous:
             self.context.destroy_session(previous)
         # Not security-verified: the terminal and security settings still ask for the password.
-        token = self.context.create_session()
+        self.login_succeeded("certificate")
+        token = self.context.create_session(ip=self.client_ip(), agent=self.user_agent(), method="certificate")
         cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
         destination = ("/settings/verify" if next_page == "settings" else
@@ -133,7 +184,8 @@ class AuthMixin:
         if self.context.TRUST_PROXY or not self.context.IP_ALLOWLIST.contains(self.client_address[0]):
             return self.redirect("/login?ip=unavailable&next=settings",
                                  {"Cache-Control": "no-store"})
-        token = self.context.create_ip_session(self.client_address[0])
+        self.login_succeeded("ip")
+        token = self.context.create_ip_session(self.client_address[0], self.user_agent())
         cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
         return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
@@ -180,19 +232,23 @@ class AuthMixin:
         next_page = form.get("next", [""])[0]
         if next_page not in ("", "frp", "terminal"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        ip = self.client_address[0]
+        ip = self.client_ip()
         allowed, retry_after = self.context.LOGIN_LIMITER.check(ip)
         if not allowed:
+            self.audit("verify_blocked")
             return self.page_security_verify(lang,
                                              error=self.context.STRINGS[lang]["login_locked"].format(seconds=retry_after),
                                              status=429, next_page=next_page)
         if not self.context.hmac.compare_digest(form["password"][0].encode("utf-8"),
                                                 self.context.ADMIN_PASSWORD.encode("utf-8")):
-            self.context.LOGIN_LIMITER.record_failure(ip)
+            self.login_failed("verify_fail")
             return self.page_security_verify(lang, error=self.context.STRINGS[lang]["wrong_password"], status=401, next_page=next_page)
         self.context.LOGIN_LIMITER.record_success(ip)
+        self.audit("verify_ok", next_page)
+        method = self.context._session_meta.get(token, {}).get("method", "password")
         self.context.destroy_session(token)
-        new_token = self.context.create_session(security_verified=True)
+        new_token = self.context.create_session(security_verified=True, ip=ip, agent=self.user_agent(),
+                                                method=method)
         cookie = (f"session={new_token}; {self.context.SESSION_COOKIE_ATTRS}; "
                   f"Max-Age={self.context.SESSION_TTL_SECONDS}")
         return self.redirect("/frpc" if next_page == "frp" else "/terminal" if next_page == "terminal" else "/settings/security",
@@ -201,6 +257,8 @@ class AuthMixin:
     def handle_logout(self):
         token = self.get_cookie("session")
         if token:
+            if self.context.session_valid(token) or token in self.context._ip_sessions:
+                self.audit("logout")
             self.context.destroy_session(token)
         cookie = f"session=; {self.context.SESSION_COOKIE_ATTRS}; Max-Age=0"
         self.redirect("/login", {"Set-Cookie": cookie})
@@ -418,10 +476,17 @@ def pick_lang(context, cookie_lang, query_lang, accept_language):
                 return code
     return context.DEFAULT_LANG
 
-def create_session(context, *, security_verified=False):
+def _new_meta(context, ip, agent, method):
+    now = context.time.time()
+    return {"created": now, "seen": now, "ip": str(ip or "")[:64],
+            "agent": str(agent or "")[:200], "method": method}
+
+
+def create_session(context, *, security_verified=False, ip="", agent="", method="password"):
     token = context.secrets.token_urlsafe(32)
     with context._sessions_lock:
         context._sessions[token] = context.time.time() + context.SESSION_TTL_SECONDS
+        context._session_meta[token] = _new_meta(context, ip, agent, method)
         if security_verified:
             context._security_sessions[token] = context.time.time() + context.SECURITY_PERMISSION_SECONDS
         save_sessions(context)
@@ -433,8 +498,10 @@ def save_sessions(context):
     state = {"password": context.hmac.new(context.SESSION_SECRET.encode(),
              context.ADMIN_PASSWORD.encode(), "sha256").hexdigest(),
              "sessions": context._sessions, "ip_sessions": context._ip_sessions,
-             "security_sessions": context._security_sessions}
+             "security_sessions": context._security_sessions,
+             "meta": context._session_meta}
     context._atomic_private_text(context.SESSION_STATE_FILE, context.json.dumps(state))
+    context._sessions_saved_at = context.time.time()
 
 
 def load_sessions(context):
@@ -453,8 +520,36 @@ def load_sessions(context):
                                      and isinstance(entry[0], str) and isinstance(entry[1], (int, float)) and entry[1] > now})
         context._security_sessions.update({token: expiry for token, expiry in state["security_sessions"].items()
                                            if token in context._sessions and isinstance(expiry, (int, float)) and expiry > now})
+        meta = state.get("meta", {})
+        if isinstance(meta, dict):
+            for token, entry in meta.items():
+                if ((token in context._sessions or token in context._ip_sessions) and isinstance(entry, dict)
+                        and all(isinstance(entry.get(field), (int, float)) for field in ("created", "seen"))
+                        and all(isinstance(entry.get(field), str) for field in ("ip", "agent", "method"))):
+                    context._session_meta[token] = {field: entry[field] for field in
+                                                    ("created", "seen", "ip", "agent", "method")}
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
+
+
+def _idle_expired(context, token, now):
+    """Whether ``token`` went unused longer than the idle limit (lock held)."""
+    if context.SESSION_IDLE_SECONDS <= 0:
+        return False
+    meta = context._session_meta.get(token)
+    if meta is None:
+        # Sessions saved before session details existed: start the clock now.
+        context._session_meta[token] = _new_meta(context, "", "", "password")
+        return False
+    return now - meta["seen"] > context.SESSION_IDLE_SECONDS
+
+
+def _drop(context, token):
+    context._sessions.pop(token, None)
+    context._ip_sessions.pop(token, None)
+    context._security_sessions.pop(token, None)
+    context._session_meta.pop(token, None)
+
 
 def session_valid(context, token):
     if not token:
@@ -463,9 +558,9 @@ def session_valid(context, token):
         expiry = context._sessions.get(token)
         if expiry is None:
             return False
-        if expiry < context.time.time():
-            del context._sessions[token]
-            context._security_sessions.pop(token, None)
+        now = context.time.time()
+        if expiry < now or _idle_expired(context, token, now):
+            _drop(context, token)
             save_sessions(context)
             return False
         return True
@@ -481,10 +576,11 @@ def security_settings_valid(context, token):
             return False
         return True
 
-def create_ip_session(context, address):
+def create_ip_session(context, address, agent=""):
     token = context.secrets.token_urlsafe(32)
     with context._sessions_lock:
         context._ip_sessions[token] = (address, context.time.time() + context.SESSION_TTL_SECONDS)
+        context._session_meta[token] = _new_meta(context, address, agent, "ip")
         save_sessions(context)
     return token
 
@@ -496,17 +592,61 @@ def ip_session_valid(context, token, address):
         if entry is None:
             return False
         saved_address, expiry = entry
-        if expiry < context.time.time():
-            del context._ip_sessions[token]
+        now = context.time.time()
+        if expiry < now or _idle_expired(context, token, now):
+            _drop(context, token)
             save_sessions(context)
             return False
         return context.hmac.compare_digest(saved_address, address)
 
+def touch_session(context, token):
+    """Mark ``token`` as used now; saved to disk at most once a minute."""
+    if not token:
+        return
+    with context._sessions_lock:
+        meta = context._session_meta.get(token)
+        if meta is None or (token not in context._sessions and token not in context._ip_sessions):
+            return
+        now = context.time.time()
+        meta["seen"] = now
+        if now - getattr(context, "_sessions_saved_at", 0) >= 60:
+            save_sessions(context)
+
+def session_id(context, token):
+    """A stable, non-secret handle for one session, safe to put in a page."""
+    return context.hmac.new(context.SESSION_SECRET.encode(), f"sid:{token}".encode(),
+                            "sha256").hexdigest()[:20]
+
+def list_sessions(context, current=None):
+    """Active sessions, most recently used first."""
+    with context._sessions_lock:
+        now = context.time.time()
+        rows = []
+        for token in list(context._sessions) + list(context._ip_sessions):
+            expiry = context._sessions.get(token) or context._ip_sessions.get(token, ("", 0))[1]
+            if expiry < now or _idle_expired(context, token, now):
+                continue
+            meta = context._session_meta.get(token, {})
+            rows.append({"id": session_id(context, token), "current": token == current,
+                         "ip": meta.get("ip", ""), "agent": meta.get("agent", ""),
+                         "method": meta.get("method", "password"),
+                         "created": meta.get("created", 0), "seen": meta.get("seen", 0)})
+    return sorted(rows, key=lambda row: (not row["current"], -row["seen"]))
+
+def revoke_sessions(context, *, session_ids=None, keep=None):
+    """End sessions by id, or every session except ``keep``; return the count."""
+    with context._sessions_lock:
+        tokens = [token for token in list(context._sessions) + list(context._ip_sessions)
+                  if token != keep and (session_ids is None or session_id(context, token) in session_ids)]
+        for token in tokens:
+            _drop(context, token)
+        if tokens:
+            save_sessions(context)
+    return len(tokens)
+
 def destroy_session(context, token):
     with context._sessions_lock:
-        context._sessions.pop(token, None)
-        context._ip_sessions.pop(token, None)
-        context._security_sessions.pop(token, None)
+        _drop(context, token)
         save_sessions(context)
 
 def access_csrf_token(context, session, action):
@@ -524,10 +664,18 @@ def change_admin_password(context, replacement):
             context._sessions.clear()
             context._ip_sessions.clear()
             context._security_sessions.clear()
+            context._session_meta.clear()
             save_sessions(context)
 
 class LoginRateLimiter:
-    """Per-IP failed-login counting with an optional temporary ban.
+    """Failed-login counting with an optional, escalating temporary ban.
+
+    Failures are counted per source key: an IPv4 address, or the /64 an
+    IPv6 address belongs to, since one IPv6 host can rotate through a whole
+    /64. Each repeat ban of the same key within a day lasts ten times longer
+    than the last, up to ``lockout_max_seconds``. A global limit pauses
+    password login for keys that never logged in successfully when failures
+    from all keys together pass ``global_max_attempts`` within the window.
 
     The ban switch is persisted in ``state_path`` and defaults to on. With
     the ban off, failures are still counted and threshold hits still
@@ -537,16 +685,28 @@ class LoginRateLimiter:
     """
 
     STATS_LIMIT = 100
+    STRIKE_RESET_SECONDS = 24 * 3600
+    ESCALATION = 10
 
-    def __init__(self, max_attempts, window_seconds, lockout_seconds, state_path=None):
+    def __init__(self, max_attempts, window_seconds, lockout_seconds, state_path=None, *,
+                 lockout_max_seconds=None, global_max_attempts=0, global_lockout_seconds=300,
+                 is_known=None):
         self._max_attempts = max_attempts
         self._window = window_seconds
         self._lockout = lockout_seconds
+        self._lockout_max = max(lockout_max_seconds or lockout_seconds, lockout_seconds)
+        self._global_max = global_max_attempts
+        self._global_lockout = global_lockout_seconds
+        self._is_known = is_known or (lambda key: False)
         self._lock = self.context.threading.Lock()
-        self._failures = {}       # ip -> [failure timestamps within window]
-        self._locked_until = {}   # ip -> unix time the lockout ends (ban on)
-        self._flagged_until = {}  # ip -> same, but only displayed (ban off)
-        self._stats = {}          # ip -> {"total", "triggered", "last"}
+        self._failures = {}       # key -> [failure timestamps within window]
+        self._locked_until = {}   # key -> unix time the lockout ends (ban on)
+        self._flagged_until = {}  # key -> same, but only displayed (ban off)
+        self._strikes = {}        # key -> (bans so far, time of the last one)
+        self._stats = {}          # key -> {"total", "triggered", "last"}
+        self._global_failures = []
+        self._global_until = 0
+        self._global_flagged_until = 0
         self._state_path = self.context.Path(state_path) if state_path else None
         self.enabled = True
         self.load_error = False
@@ -560,6 +720,20 @@ class LoginRateLimiter:
             except (OSError, ValueError, TypeError):
                 self.load_error = True
 
+    @classmethod
+    def key(cls, ip):
+        """The address failures are counted under: IPv4 itself, IPv6 by /64."""
+        ipaddress = cls.context.ipaddress
+        try:
+            address = ipaddress.ip_address(ip)
+        except ValueError:
+            return str(ip)
+        if isinstance(address, ipaddress.IPv6Address):
+            if address.ipv4_mapped:
+                return str(address.ipv4_mapped)
+            return str(ipaddress.ip_network(f"{address}/64", strict=False))
+        return str(address)
+
     @property
     def max_attempts(self):
         return self._max_attempts
@@ -571,6 +745,18 @@ class LoginRateLimiter:
     @property
     def lockout_seconds(self):
         return self._lockout
+
+    @property
+    def lockout_max_seconds(self):
+        return self._lockout_max
+
+    @property
+    def global_max_attempts(self):
+        return self._global_max
+
+    @property
+    def global_lockout_seconds(self):
+        return self._global_lockout
 
     def is_enabled(self):
         with self._lock:
@@ -587,78 +773,121 @@ class LoginRateLimiter:
             self.load_error = False
             # Switching either way starts from a clean slate: no surprise
             # lockout from flags gathered while off, no stale lockout left.
-            self._locked_until.clear()
-            self._flagged_until.clear()
-            self._failures.clear()
+            self._reset_active()
+
+    def _reset_active(self):
+        self._locked_until.clear()
+        self._flagged_until.clear()
+        self._failures.clear()
+        self._strikes.clear()
+        self._global_failures = []
+        self._global_until = self._global_flagged_until = 0
 
     def check(self, ip):
         """(allowed, retry_after_seconds). retry_after is 0 when allowed."""
+        key = self.key(ip)
         with self._lock:
             if not self.enabled:
                 return True, 0
-            until = self._locked_until.get(ip)
-            if until is None:
-                return True, 0
-            remaining = until - self.context.time.time()
+            now = self.context.time.time()
+            remaining = self._locked_until.get(key, 0) - now
             if remaining <= 0:
-                del self._locked_until[ip]
-                self._failures.pop(ip, None)
+                self._locked_until.pop(key, None)
+            if self._global_until > now and not self._is_known(key):
+                remaining = max(remaining, self._global_until - now)
+            if remaining <= 0:
                 return True, 0
             return False, int(remaining) + 1
 
     def record_failure(self, ip):
-        """Count one failure; return True when it reached the threshold."""
+        """Count one failure.
+
+        Returns None, or a dict describing the threshold hit this failure
+        caused: {"scope": "ip" | "global", "key", "seconds", "banned"}.
+        """
+        key = self.key(ip)
+        event = None
         with self._lock:
             now = self.context.time.time()
-            stats = self._stats.setdefault(ip, {"total": 0, "triggered": 0, "last": 0})
+            enabled = self.enabled
+            stats = self._stats.setdefault(key, {"total": 0, "triggered": 0, "last": 0})
             stats["total"] += 1
             stats["last"] = now
-            attempts = [t for t in self._failures.get(ip, []) if now - t < self._window]
+            attempts = [t for t in self._failures.get(key, []) if now - t < self._window]
             attempts.append(now)
-            triggered = len(attempts) >= self._max_attempts
-            enabled = self.enabled
-            if triggered:
+            if len(attempts) >= self._max_attempts:
+                strikes, last = self._strikes.get(key, (0, 0))
+                strikes = strikes + 1 if now - last < self.STRIKE_RESET_SECONDS else 1
+                self._strikes[key] = (strikes, now)
+                seconds = min(self._lockout * self.ESCALATION ** (strikes - 1), self._lockout_max)
                 stats["triggered"] += 1
-                (self._locked_until if enabled else self._flagged_until)[ip] = now + self._lockout
-                self._failures.pop(ip, None)
+                (self._locked_until if enabled else self._flagged_until)[key] = now + seconds
+                self._failures.pop(key, None)
+                event = {"scope": "ip", "key": key, "seconds": int(seconds), "banned": enabled}
             else:
-                self._failures[ip] = attempts
+                self._failures[key] = attempts
+            if self._global_max > 0:
+                self._global_failures = [t for t in self._global_failures if now - t < self._window]
+                self._global_failures.append(now)
+                active = max(self._global_until, self._global_flagged_until) > now
+                if len(self._global_failures) >= self._global_max and not active:
+                    if enabled:
+                        self._global_until = now + self._global_lockout
+                    else:
+                        self._global_flagged_until = now + self._global_lockout
+                    self._global_failures = []
+                    if event is None:
+                        event = {"scope": "global", "key": key, "seconds": int(self._global_lockout),
+                                 "banned": enabled}
             self._prune(now)
-        if triggered:
-            key = "log_login_ban" if enabled else "log_login_ban_observed"
-            print(self.context._log_text(key, ip=ip, count=self._max_attempts, seconds=self._lockout),
-                  file=self.context.sys.stderr)
-        return triggered
+        if event:
+            log_key = (("log_login_ban" if event["banned"] else "log_login_ban_observed")
+                       if event["scope"] == "ip" else
+                       ("log_login_global" if event["banned"] else "log_login_global_observed"))
+            print(self.context._log_text(log_key, ip=event["key"], count=self._max_attempts,
+                                         seconds=event["seconds"]), file=self.context.sys.stderr)
+        return event
 
     def record_success(self, ip):
+        key = self.key(ip)
         with self._lock:
-            self._failures.pop(ip, None)
-            self._locked_until.pop(ip, None)
-            self._flagged_until.pop(ip, None)
+            self._failures.pop(key, None)
+            self._locked_until.pop(key, None)
+            self._flagged_until.pop(key, None)
+            self._strikes.pop(key, None)
 
     def clear(self):
         with self._lock:
-            self._failures.clear()
-            self._locked_until.clear()
-            self._flagged_until.clear()
+            self._reset_active()
             self._stats.clear()
+
+    def global_state(self):
+        """("banned" | "flagged" | "normal", seconds left)."""
+        with self._lock:
+            now = self.context.time.time()
+            if self._global_until > now:
+                return "banned", int(self._global_until - now) + 1
+            if self._global_flagged_until > now:
+                return "flagged", int(self._global_flagged_until - now) + 1
+            return "normal", 0
 
     def snapshot(self):
         """Rows for the security page, most recent failure first."""
         with self._lock:
             now = self.context.time.time()
             rows = []
-            for ip, stats in self._stats.items():
-                locked = self._locked_until.get(ip, 0) - now
-                flagged = self._flagged_until.get(ip, 0) - now
+            for key, stats in self._stats.items():
+                locked = self._locked_until.get(key, 0) - now
+                flagged = self._flagged_until.get(key, 0) - now
+                left = max(locked, flagged)
                 rows.append({
-                    "ip": ip,
-                    "recent": len([t for t in self._failures.get(ip, []) if now - t < self._window]),
+                    "ip": key,
+                    "recent": len([t for t in self._failures.get(key, []) if now - t < self._window]),
                     "total": stats["total"],
                     "triggered": stats["triggered"],
                     "last": stats["last"],
                     "state": "banned" if locked > 0 else "flagged" if flagged > 0 else "normal",
-                    "remaining": int(max(locked, flagged, 0)) + (1 if max(locked, flagged) > 0 else 0),
+                    "remaining": int(left) + 1 if left > 0 else 0,
                 })
             return sorted(rows, key=lambda row: row["last"], reverse=True)
 
@@ -666,14 +895,17 @@ class LoginRateLimiter:
         # Runs on every failure, not on a timer: cheap, and keeps a scan
         # hammering many source IPs from growing these dicts without bound.
         for table in (self._locked_until, self._flagged_until):
-            for ip in [i for i, until in table.items() if until < now]:
-                del table[ip]
-        for ip in [i for i, ts in self._failures.items()
-                   if not any(now - t < self._window for t in ts)]:
-            del self._failures[ip]
+            for key in [k for k, until in table.items() if until < now]:
+                del table[key]
+        for key in [k for k, ts in self._failures.items()
+                    if not any(now - t < self._window for t in ts)]:
+            del self._failures[key]
+        for key in [k for k, (_, last) in self._strikes.items() if now - last >= self.STRIKE_RESET_SECONDS]:
+            del self._strikes[key]
         if len(self._stats) > self.STATS_LIMIT:
-            keep = sorted(self._stats, key=lambda i: self._stats[i]["last"], reverse=True)[:self.STATS_LIMIT]
-            self._stats = {ip: self._stats[ip] for ip in keep}
+            keep = sorted(self._stats, key=lambda k: self._stats[k]["last"], reverse=True)[:self.STATS_LIMIT]
+            self._stats = {key: self._stats[key] for key in keep}
+
 
 def ip_scope(context, ip):
     """Classify an address so the UI can filter loopback/LAN noise out."""
