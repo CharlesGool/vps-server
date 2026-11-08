@@ -37,7 +37,7 @@ Non-goals: a general container platform, arbitrary FRP configuration editing, au
 
 The browser uses pages and authenticated endpoints served by a Python standard-library HTTP service. Handlers are divided by feature in `src/web/features/`. Independent systemd services run Singbox, FRPS, FRPC, Lucky and Tailscale. Web uses system protection options and delegates limited privileged actions to root helpers; a separately password-verified browser terminal runs a root PTY.
 
-After language selection, the installer starts background job `vps-server-install` and follows its `summary.log` in the foreground, showing only key steps, the address and password, or the failure reason. Module host requirements (nft able to list tables, `/dev/net/tun`, an existing tailscaled, iptables and `ss`/`ip`) come from `src/web/host_checks.py`; the installer, console module jobs and uninstalled module cards share its result codes. Console module installs use `VPSSRV_MODULE_ONLY=1` to install only the selected module while Web and other modules keep running. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
+After language selection, the installer starts background job `vps-server-install` and follows its `summary.log` in the foreground, showing only key steps, the address and password, or the failure reason. Before stopping any service, the installer checks minimum host component versions (the `core` check: Bash, systemd, SQLite, the OpenSSL library used by Python, basic commands). Module host requirements (nft able to list tables, `/dev/net/tun`, an existing tailscaled, iptables and `ss`/`ip`) come from `src/web/host_checks.py`; the installer, console module jobs and uninstalled module cards share its result codes. Console module installs use `VPSSRV_MODULE_ONLY=1` to install only the selected module while Web and other modules keep running. FRPC save/rename returns a waiting page before background validation and application, followed by a delayed instance restart. Status polling retries after tunnel interruption; success or failure comes from the actual job result.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -64,6 +64,8 @@ Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and sh
 - Ports **MUST** be locked and recorded before activation; failures release new reservations. Other projects' reservations **MUST NOT** be taken.
 - FRP changes **MUST** validate first and retain or restore old settings on failure. Structured editing **MUST NOT** discard unsupported advanced configuration.
 - Quotas count `(upload + download) × 2`; missing meter readings **MUST NOT** count as quota exhaustion. Cycle resets **MUST** rebuild kernel quota state.
+- FRPS uses the same accounting and nft rules as nodes, metered on its bindPort (`src/web/frps_meter.py`, separate table `vps_server_frps`); the FRPS service requires the meter, and a meter failure **MUST** stop FRPS.
+- Client certificates **MUST** be signed with the bundled openssl and the project's own minimal configuration; a new certificate authority **MUST** first pass a mutual-TLS self test on the host TLS library.
 - iperf3 servers **MUST** be time-limited; Web shutdown closes temporary processes and project forwarding rules. Code **MUST NOT** reset host-wide `ip_forward` or remove unrelated firewall rules.
 - TLS handshakes **MUST** finish in each connection's worker thread with a timeout; a handshake on the accepting thread lets one idle connection block the whole listener.
 - Web restarts **MUST NOT** hold `.ports.lock`; the new Web process releases stale registrations through the same lock at startup.
@@ -90,6 +92,7 @@ Use the latest starter tokens for typography, spacing, radii, shadows, container
 | `data/` | SQLite visitor database, sessions/signing secret, feature state, node manifest and jobs; login security settings (`login-ban.json`, `console-access.json`, `alerts.json`), the security log (`security-audit.jsonl`) and known login addresses (`known-logins.json`). |
 | `/etc/vps-server-proxy/config.json` | Singbox runtime configuration coordinated with the managed node manifest. |
 | `/etc/vps-server-frps/frps.toml` | FRPS server configuration. |
+| `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | FRPS traffic entry (cap, speed limits, validity, usage) and meter ledger. |
 | `/etc/frp/frpc-<name>.toml` | FRPC instance configuration; non-ASCII names map to stable unit aliases. |
 | `/etc/vps-server-lucky` | Native Lucky settings and tasks. |
 | `~/apps/PORTS.md`, `~/apps/.ports.lock` | Host port ownership registry and mutex. |

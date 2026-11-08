@@ -26,6 +26,31 @@ metadata:
 
 ## Changelog
 
+### v5.8.0 — 2026-11-08
+
+FRPS gets the same traffic accounting and limits as Singbox nodes; client certificates are now signed with a bundled OpenSSL, fixing invalid certificate authorities on hosts with an old openssl. The upgrade command is unchanged and configuration and data are kept.
+
+#### Added
+
+- **FRPS traffic accounting and limits.** The same as a Singbox node: upload/download usage, a traffic cap (throttle to 1 Mbps or block once exceeded), upload and download speed limits, a validity period and a reset schedule; the cap counts `(upload + download) × 2`. FRPS is metered on its bindPort, which every frpc tunnel crosses. Usage shows on the FRPS page and the "Limits" dialog edits it. A new service, `vps-server-frps-meter`, does the metering and stops FRPS if accounting fails. The FRPS module therefore needs nftables: the offline package bundles it, and the installer installs it with apt for the online package when missing.
+- **Minimum dependency versions.** Before changing any service, the installer checks Bash 4.1, systemd 240, SQLite 3.24 and the OpenSSL library 1.1.1 as used by Python, `/usr/bin/python3` 3.9+ and basic commands (flock, sha256sum, base64, getent, install, mktemp, systemd-run); the online package also checks for CA certificates. Unmet requirements stop the install and name what is missing.
+- `python3 /root/apps/vps-server/src/web/client_cert.py check` shows the openssl used to sign certificates and the certificate authority's self-test result.
+
+#### Improved
+
+- Client certificates are signed by the static OpenSSL 3.5.9 LTS shipped in the package, with the project's own minimal configuration, so the host's openssl version and openssl.cnf no longer matter; the installer no longer installs openssl with apt.
+- A host `ip`/`ss` without JSON routes or `-H` gives way to the bundled copy; a host iperf3 is used only when no bundled copy exists, and must be 3.1+.
+
+#### Fixed
+
+- On hosts with OpenSSL 1.1.1k or similar old versions, the client certificate authority was written with Basic Constraints twice and failed even its own verification, so certificate login could not work. A new authority must now pass a mutual-TLS self test on the host TLS library; an existing invalid authority is replaced the next time a certificate is issued, the certificates it signed are marked revoked, and "Require client certificate" is turned off.
+- FRPC connection status always read disconnected on hosts with only the bundled `ss`.
+- The README offline install's `sha256sum -c SHA256SUMS` failed when only the offline package was downloaded; it now uses `--ignore-missing`.
+
+#### Verification
+
+OpenSSL 1.1.1k reproduced the original problem locally and the fix was confirmed; dependency checks and certificate issuing passed in a Debian 11 container (Python 3.9, libssl 1.1.1w). In a Debian 13 system container, the offline package installed web, proxy and frps: all services ran, the console was driven over HTTPS, FRPS limits took effect in the kernel rules, node limits worked as before, and a full uninstall left nothing behind. The operator upgraded a VPS in place with `v5.8.0-test.1` and confirmed certificate issuing and login and FRPS traffic and cap limits. Not verified on a real host whose TLS library is OpenSSL 1.1.1k, and the 1 Mbps throttle rate was not measured on a real host. After the FRPS bindPort changes, the new port goes unmetered for up to about 2 seconds.
+
 ### v5.7.0 — 2026-11-08
 
 Stronger console login security. The upgrade command is unchanged and configuration and data are kept; the installer mentions 4 new optional variables, and leaving them unset keeps the defaults. The new settings are under Settings > Security.

@@ -26,6 +26,31 @@ metadata:
 
 ## 变更日志
 
+### v5.8.0 — 2026-11-08
+
+FRPS 加上与 Singbox 节点相同的流量统计和限制; 客户端证书改用随附的 OpenSSL, 修复旧版 openssl 主机生成无效证书颁发机构的问题. 升级命令不变, 配置和数据保留.
+
+#### 新增
+
+- **FRPS 流量统计和限制.** 与 Singbox 节点相同: 上传/下载用量, 流量配额(超出后限速到 1 Mbps 或封禁), 上下行限速, 有效期和重置周期, 配额按 `(上传 + 下载) × 2` 计入. 按 FRPS 的 bindPort 计量, 所有 frpc 隧道的流量都经过它. 在 FRPS 页面查看用量, 用"限制"对话框修改. 新服务 `vps-server-frps-meter` 负责计量, 计量失败时停止 FRPS. FRPS 模块因此需要 nftables: 离线版自带, 在线版缺少时由安装器用 apt 安装.
+- **依赖最低版本检查.** 安装器在改动任何服务前检查 Bash 4.1, systemd 240, Python 使用的 SQLite 3.24 和 OpenSSL 库 1.1.1, `/usr/bin/python3` 3.9+ 和基础命令(flock, sha256sum, base64, getent, install, mktemp, systemd-run); 在线版还检查 CA 证书. 不满足时停止安装并说明缺什么.
+- `python3 /root/apps/vps-server/src/web/client_cert.py check` 显示签发证书所用的 openssl 和证书颁发机构的自检结果.
+
+#### 改进
+
+- 客户端证书由安装包随附的静态 OpenSSL 3.5.9 LTS 签发, 使用项目自带的最小配置, 不再依赖主机 openssl 的版本和 openssl.cnf; 安装器不再用 apt 安装 openssl.
+- 主机的 `ip`/`ss` 不支持 JSON 路由或 `-H` 时改用随附版本; 只在没有随附 iperf3 时使用主机 iperf3, 且须为 3.1+.
+
+#### 修复
+
+- 主机为 OpenSSL 1.1.1k 等旧版本时, 生成的客户端证书颁发机构重复写入 Basic Constraints, 连自身验证都不通过, 证书登录无法使用. 现在新的颁发机构须先在主机 TLS 库上通过一次双向 TLS 自检; 已有的无效颁发机构在下次签发证书时自动替换, 它签发的证书标为已撤销, 并关闭"要求客户端证书".
+- FRPC 连接状态在只有随附 `ss` 的主机上始终显示未连接.
+- README 离线安装的 `sha256sum -c SHA256SUMS` 只下载离线包时因缺少在线包而失败, 改为 `--ignore-missing`.
+
+#### 验证
+
+本机用 OpenSSL 1.1.1k 复现原问题并确认修复; Debian 11 容器(Python 3.9, libssl 1.1.1w)中依赖检查和证书签发通过. Debian 13 系统容器中离线版安装 web, proxy, frps: 服务全部运行, 经 HTTPS 操作控制台, FRPS 限制在内核规则中生效, 节点限制照常, 完全卸载无残留. 操作员在一台 VPS 上用 `v5.8.0-test.1` 原地升级, 确认证书签发与登录, FRPS 流量与配额限制正常. 未在主机 TLS 库为 OpenSSL 1.1.1k 的真机上验证, 未在真机实测 1 Mbps 限速速率. 修改 FRPS bindPort 后新端口最多约 2 秒未计量.
+
 ### v5.7.0 — 2026-11-08
 
 加强控制台登录安全. 升级命令不变, 配置和数据保留; 升级时安装器会提示 4 个新的可选变量, 不填写即使用默认值. 新设置都在 设置 > 安全.

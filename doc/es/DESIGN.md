@@ -37,7 +37,7 @@ Fuera del alcance: plataforma general de contenedores, edición arbitraria de FR
 
 El navegador accede a páginas y endpoints autenticados de un servicio HTTP de la biblioteca estándar de Python. Los manejadores se separan en `src/web/features/`. Servicios systemd independientes ejecutan Singbox, FRPS, FRPC, Lucky y Tailscale. Web usa protecciones del sistema y delega acciones privilegiadas limitadas; el terminal del navegador inicia un PTY root tras verificar la contraseña.
 
-Tras elegir el idioma, el instalador inicia la tarea `vps-server-install` y sigue su `summary.log` en primer plano, mostrando solo los pasos clave, la dirección y la contraseña o el motivo del fallo. Los requisitos del equipo por módulo (nft capaz de listar tablas, `/dev/net/tun`, un tailscaled existente, iptables y `ss`/`ip`) provienen de `src/web/host_checks.py`; el instalador, las tareas de módulos de la consola y las tarjetas de módulos no instalados comparten sus códigos. Al instalar un módulo desde la consola se usa `VPSSRV_MODULE_ONLY=1` para instalar solo el módulo elegido mientras Web y los demás módulos siguen funcionando. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
+Tras elegir el idioma, el instalador inicia la tarea `vps-server-install` y sigue su `summary.log` en primer plano, mostrando solo los pasos clave, la dirección y la contraseña o el motivo del fallo. Antes de detener cualquier servicio, el instalador comprueba las versiones mínimas de los componentes del equipo (la comprobación `core`: Bash, systemd, SQLite, la biblioteca OpenSSL que usa Python, comandos básicos). Los requisitos del equipo por módulo (nft capaz de listar tablas, `/dev/net/tun`, un tailscaled existente, iptables y `ss`/`ip`) provienen de `src/web/host_checks.py`; el instalador, las tareas de módulos de la consola y las tarjetas de módulos no instalados comparten sus códigos. Al instalar un módulo desde la consola se usa `VPSSRV_MODULE_ONLY=1` para instalar solo el módulo elegido mientras Web y los demás módulos siguen funcionando. Guardar/renombrar FRPC devuelve primero una página de espera; la tarea valida y aplica la configuración y reinicia la instancia con retraso. La consulta se reintenta tras una interrupción del túnel y muestra el resultado real.
 
 | Directorio | Responsabilidad |
 | --- | --- |
@@ -64,6 +64,8 @@ El código frontend está en `web/`, con Vue 3, Vite, TypeScript, Tailwind CSS y
 - Los puertos **DEBEN** bloquearse y registrarse antes de activar; los fallos liberan reservas nuevas. **NO DEBEN** usurparse registros ajenos.
 - Los cambios FRP **DEBEN** validarse y conservar o restaurar la configuración en caso de fallo. El editor **NO DEBE** descartar opciones avanzadas no soportadas.
 - La cuota cuenta `(subida + bajada) × 2`; la ausencia de lecturas **NO DEBE** significar cuota agotada. Los reinicios de ciclo **DEBEN** reconstruir la cuota del núcleo.
+- FRPS usa la misma contabilidad y reglas nft que los nodos, medido en su bindPort (`src/web/frps_meter.py`, tabla propia `vps_server_frps`); el servicio FRPS depende del medidor, y un fallo del medidor **DEBE** detener FRPS.
+- Los certificados de cliente **DEBEN** firmarse con el openssl incluido y la configuración mínima propia del proyecto; una autoridad de certificación nueva **DEBE** pasar antes una autoprueba de TLS mutuo con la biblioteca TLS del equipo.
 - Los servidores iperf3 **DEBEN** tener duración limitada; detener Web cierra procesos temporales y reglas propias. **NO DEBE** restablecerse `ip_forward` global ni borrarse reglas ajenas.
 - Los handshakes TLS **DEBEN** completarse en el hilo de trabajo de cada conexión con un tiempo límite; un handshake en el hilo que acepta conexiones permite que una conexión inactiva bloquee todo el servicio.
 - Los reinicios de Web **NO DEBEN** mantener `.ports.lock`; el nuevo proceso Web libera registros pendientes mediante el mismo bloqueo al iniciarse.
@@ -90,6 +92,7 @@ Se usan los tokens actuales de la plantilla para tipografía, espaciado, radios,
 | `data/` | Base SQLite de visitantes, sesiones/secreto, estado, nodos y tareas; configuración de seguridad del inicio de sesión (`login-ban.json`, `console-access.json`, `alerts.json`), registro de seguridad (`security-audit.jsonl`) y direcciones con inicio de sesión (`known-logins.json`). |
 | `/etc/vps-server-proxy/config.json` | Configuración Singbox coordinada con el manifiesto de nodos. |
 | `/etc/vps-server-frps/frps.toml` | Configuración del servidor FRPS. |
+| `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | Entrada de tráfico de FRPS (cuota, límites de velocidad, vigencia, uso) y registro del medidor. |
 | `/etc/frp/frpc-<name>.toml` | Configuración de instancias FRPC; los nombres no ASCII usan alias estables. |
 | `/etc/vps-server-lucky` | Configuración y tareas de Lucky. |
 | `~/apps/PORTS.md`, `~/apps/.ports.lock` | Registro de puertos y bloqueo del host. |

@@ -37,7 +37,7 @@ metadata:
 
 浏览器通过 Python 标准库 HTTP 服务访问页面与认证接口. `src/web/features/` 按功能提供处理器;独立 systemd 服务运行 Singbox, FRPS, FRPC, Lucky 和 Tailscale. Web 服务使用系统保护选项, 把有限的特权操作交给 root 辅助程序;浏览器终端经过单独的密码验证后运行 root PTY.
 
-安装器在语言选择后启动 `vps-server-install` 后台任务, 前台跟随任务的 `summary.log`, 只显示关键步骤, 地址密码和失败原因. 停止任何服务前检查 Python 版本;各模块的主机条件(nft 能读取规则表, `/dev/net/tun`, 已有 tailscaled, iptables 与 `ss`/`ip`)由 `src/web/host_checks.py` 统一判断, 安装器, 控制台模块任务和未安装模块卡片共用同一结果代码. 控制台安装模块时以 `VPSSRV_MODULE_ONLY=1` 只安装所选模块, Web 和其他模块保持运行. FRPC 保存/重命名先返回等待页, 后台验证并应用配置, 延迟重启实例;状态查询在隧道中断后重试, 成功与失败均以实际任务结果为准.
+安装器在语言选择后启动 `vps-server-install` 后台任务, 前台跟随任务的 `summary.log`, 只显示关键步骤, 地址密码和失败原因. 停止任何服务前检查 Python 版本和主机基础组件的最低版本(`core` 检查: Bash, systemd, SQLite, Python 使用的 OpenSSL 库, 基础命令);各模块的主机条件(nft 能读取规则表, `/dev/net/tun`, 已有 tailscaled, iptables 与 `ss`/`ip`)由 `src/web/host_checks.py` 统一判断, 安装器, 控制台模块任务和未安装模块卡片共用同一结果代码. 控制台安装模块时以 `VPSSRV_MODULE_ONLY=1` 只安装所选模块, Web 和其他模块保持运行. FRPC 保存/重命名先返回等待页, 后台验证并应用配置, 延迟重启实例;状态查询在隧道中断后重试, 成功与失败均以实际任务结果为准.
 
 | 目录 | 职责 |
 | --- | --- |
@@ -64,6 +64,8 @@ metadata:
 - 端口**必须**先锁定并登记归属再启用监听;失败时释放新增登记, **禁止**抢占其他项目的登记.
 - FRP 修改**必须**先验证, 失败时保留或尽可能恢复原配置;高级非受管配置**禁止**被结构化编辑器丢弃.
 - 流量配额按 `(上传 + 下载) × 2` 计入;读取计量失败**禁止**被当作达到配额. 周期重置**必须**同步重建内核 quota.
+- FRPS 与节点使用同一套计费和 nft 规则, 按 bindPort 计量(`src/web/frps_meter.py`, 独立表 `vps_server_frps`);FRPS 服务依赖计量服务, 计量失败时**必须**停止 FRPS.
+- 客户端证书**必须**用随附的 openssl 和项目自带的最小配置签发;新的证书颁发机构**必须**先在主机 TLS 库上通过双向 TLS 自检.
 - iperf3 服务端**必须**限时运行, Web 停止时关闭临时进程与本项目转发规则. **禁止**重置整个主机的 `ip_forward` 或删除其他程序的防火墙规则.
 - TLS 握手**必须**在各连接的工作线程中完成并设置超时;在接受连接的线程中握手会让空闲连接阻塞整个监听器.
 - 重启 Web 期间**禁止**持有 `.ports.lock`;新 Web 进程启动时通过同一锁释放残留登记.
@@ -90,6 +92,7 @@ metadata:
 | `data/` | SQLite 访客库, 会话与签名密钥, 功能状态, 节点清单和后台任务; 登录安全设置(`login-ban.json`, `console-access.json`, `alerts.json`), 安全记录(`security-audit.jsonl`)和登录过的地址(`known-logins.json`). |
 | `/etc/vps-server-proxy/config.json` | Singbox 运行配置;节点身份与策略由受管清单协调. |
 | `/etc/vps-server-frps/frps.toml` | FRPS 服务端配置. |
+| `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | FRPS 流量条目(配额, 限速, 有效期, 用量)与计量账本. |
 | `/etc/frp/frpc-<name>.toml` | FRPC 实例配置;非 ASCII 名称映射到稳定的 unit 别名. |
 | `/etc/vps-server-lucky` | Lucky 原生设置及任务. |
 | `~/apps/PORTS.md`, `~/apps/.ports.lock` | 主机端口归属清单与互斥锁. |

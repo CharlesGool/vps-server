@@ -26,6 +26,31 @@ metadata:
 
 ## Historial de cambios
 
+### v5.8.0 — 2026-11-08
+
+FRPS obtiene la misma contabilidad y límites de tráfico que los nodos Singbox; los certificados de cliente se firman ahora con un OpenSSL incluido, lo que corrige autoridades de certificación inválidas en equipos con un openssl antiguo. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Añadido
+
+- **Contabilidad y límites de tráfico de FRPS.** Igual que un nodo Singbox: uso de subida/bajada, cuota de tráfico (limitar a 1 Mbps o bloquear al superarla), límites de velocidad de subida y bajada, vigencia y ciclo de reinicio; la cuota cuenta `(subida + bajada) × 2`. FRPS se mide en su bindPort, por el que pasan todos los túneles frpc. El uso aparece en la página de FRPS y se edita en el diálogo "Límites". Un servicio nuevo, `vps-server-frps-meter`, hace la medición y detiene FRPS si la contabilidad falla. Por ello el módulo FRPS necesita nftables: el paquete sin conexión lo incluye y, para el paquete en línea, el instalador lo instala con apt si falta.
+- **Versiones mínimas de dependencias.** Antes de cambiar cualquier servicio, el instalador comprueba Bash 4.1, systemd 240, SQLite 3.24 y la biblioteca OpenSSL 1.1.1 que usa Python, `/usr/bin/python3` 3.9+ y comandos básicos (flock, sha256sum, base64, getent, install, mktemp, systemd-run); el paquete en línea también comprueba los certificados CA. Si algo no se cumple, la instalación se detiene e indica qué falta.
+- `python3 /root/apps/vps-server/src/web/client_cert.py check` muestra el openssl usado para firmar certificados y el resultado de la autoprueba de la autoridad de certificación.
+
+#### Mejorado
+
+- Los certificados de cliente los firma el OpenSSL 3.5.9 LTS estático incluido en el paquete, con una configuración mínima propia, así que la versión de openssl y el openssl.cnf del equipo ya no influyen; el instalador ya no instala openssl con apt.
+- Un `ip`/`ss` del equipo sin rutas JSON o sin `-H` cede ante la copia incluida; un iperf3 del equipo solo se usa si no hay copia incluida y debe ser 3.1+.
+
+#### Corregido
+
+- En equipos con OpenSSL 1.1.1k u otras versiones antiguas, la autoridad de certificados de cliente se creaba con Basic Constraints duplicado y fallaba incluso su propia verificación, por lo que el inicio de sesión con certificado no funcionaba. Ahora una autoridad nueva debe pasar una autoprueba de TLS mutuo con la biblioteca TLS del equipo; una autoridad inválida existente se reemplaza la próxima vez que se emite un certificado, sus certificados se marcan como revocados y se desactiva "Exigir certificado de cliente".
+- El estado de conexión de FRPC siempre aparecía como desconectado en equipos que solo tienen el `ss` incluido.
+- El `sha256sum -c SHA256SUMS` de la instalación sin conexión del README fallaba si solo se descargaba el paquete sin conexión; ahora usa `--ignore-missing`.
+
+#### Verificación
+
+OpenSSL 1.1.1k reprodujo el problema original en local y se confirmó la corrección; las comprobaciones de dependencias y la emisión de certificados pasaron en un contenedor Debian 11 (Python 3.9, libssl 1.1.1w). En un contenedor de sistema Debian 13, el paquete sin conexión instaló web, proxy y frps: todos los servicios funcionaron, la consola se usó por HTTPS, los límites de FRPS se aplicaron en las reglas del kernel, los límites de nodos siguieron funcionando y la desinstalación completa no dejó restos. El operador actualizó un VPS en el sitio con `v5.8.0-test.1` y confirmó la emisión e inicio de sesión con certificado y la contabilidad y cuota de FRPS. No se verificó en un equipo real cuya biblioteca TLS sea OpenSSL 1.1.1k, ni se midió en un equipo real la velocidad del límite de 1 Mbps. Tras cambiar el bindPort de FRPS, el nuevo puerto queda sin medir hasta unos 2 segundos.
+
 ### v5.7.0 — 2026-11-08
 
 Más seguridad en el inicio de sesión de la consola. El comando de actualización no cambia y se conservan la configuración y los datos; el instalador menciona 4 variables opcionales nuevas, y si no se definen se usan los valores predeterminados. La nueva configuración está en Configuración > Seguridad.
