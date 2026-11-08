@@ -100,4 +100,6 @@ metadata:
 
 未发布改动(2026-11-08): FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`src/web/frps_meter.py`): 计量 bindPort(所有 frpc 隧道流量经过它), 复用 `node_accounting` 与 `node_meter` 规则(独立表 `vps_server_frps`, 状态 `/etc/vps-server-frps/traffic.json`, 服务 `vps-server-frps-meter.service`, FRPS `Requires` 它, 计量失败时停止 FRPS); FRPS 页面显示用量并用与节点相同的限制对话框编辑; FRPS 模块因此需要 nft. 已验证: `check_project.py` 通过; 假后端单元测试(计数, 配额后限速, 端口随 frps.toml 变化); Debian 13 容器真实 nft 下计数准确, 封禁生效. 未验证: 真机上 1 Mbps 限速实测(回环测试不准), 控制台页面实际显示, 安装/卸载流程. 已知: 修改 bindPort 后最多约 2 秒新端口未计量.
 
+真机验证(2026-11-08): 操作员在 vmshell 主机 `KVM11553`(主机 TLS 库 OpenSSL 3.5.7)用 `v5.8.0-test.1` 离线包从控制台终端原地升级, `client_cert.py check` 显示随附 openssl 且原 CA 自检通过; 证书签发与登录, FRPS 流量卡片与配额限制等测试操作员确认一切正常. 仍未验证: 主机 TLS 库为 OpenSSL 1.1.1k 的那台主机. 待办: README 离线安装的 `sha256sum -c SHA256SUMS` 只下载离线包时会因缺少在线包而失败, 应加 `--ignore-missing`.
+
 临时项目规则: 未发现.
