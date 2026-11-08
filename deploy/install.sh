@@ -775,7 +775,7 @@ install_system_tools() {
     command -v iptables >/dev/null 2>&1 || packages="$packages iptables"
     { command -v ss >/dev/null 2>&1 && command -v ip >/dev/null 2>&1; } || packages="$packages iproute2"
   fi
-  if has_module proxy &&
+  if { has_module proxy || has_module frps; } &&
      ! /usr/bin/python3 "$SRC_DIR/src/web/host_checks.py" --source "$SRC_DIR" --prefix "$PREFIX" proxy >/dev/null; then
     packages="$packages nftables"
   fi
@@ -995,14 +995,14 @@ copy_singbox_binary() {
 }
 
 # The bundled Debian 13 nft and iptables run on their own glibc. Web uses the
-# iptables for port forwarding and proxy uses nft for node metering; a working
-# host copy of either is still preferred at run time.
+# iptables for port forwarding; proxy and frps use nft for traffic metering. A
+# working host copy of either is still preferred at run time.
 stage_nft_runtime() {
-  has_module web || has_module proxy || return 0
+  has_module web || has_module proxy || has_module frps || return 0
   local asset="$SRC_DIR/third_party/nft/nft-runtime-trixie.tar.gz"
   if [ ! -f "$asset" ]; then
     # A source checkout without the offline asset relies on the host's nft.
-    if has_module proxy && ! command -v nft >/dev/null 2>&1; then return 1; fi
+    if { has_module proxy || has_module frps; } && ! command -v nft >/dev/null 2>&1; then return 1; fi
     return 0
   fi
   printf '%s  %s\n' 'fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68' "$asset" |
@@ -1019,7 +1019,7 @@ stage_nft_runtime() {
   [ -x "$staged/bin/nft" ] && [ -x "$staged/bin/iptables" ] || return 1
   if [ -d "$PREFIX/vendor/nft" ]; then mv "$PREFIX/vendor/nft" "$previous"; fi
   mv "$staged" "$PREFIX/vendor/nft"
-  if has_module proxy &&
+  if { has_module proxy || has_module frps; } &&
      ! VPSSRV_NFT_ROOT="$PREFIX/vendor/nft" /usr/bin/python3 "$SRC_DIR/src/web/nft_runtime.py" check >/dev/null 2>&1; then
     rm -r -- "$PREFIX/vendor/nft"
     if [ -d "$previous" ]; then mv "$previous" "$PREFIX/vendor/nft"; fi
@@ -1063,7 +1063,7 @@ copy_selected_files() {
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web || has_module proxy || has_module tailscale || \
+  if has_module web || has_module proxy || has_module tailscale || has_module frps || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     if [ "$SRC_DIR" != "$prefix_abs" ]; then
       mkdir -p "$PREFIX/src/web"

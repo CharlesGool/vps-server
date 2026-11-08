@@ -157,7 +157,7 @@ def check(module, *, source=None, prefix=None):
         return _core(source)
     if module == "web":
         return _web(source, prefix)
-    if module in ("proxy", "proxy_nodes"):
+    if module in ("proxy", "proxy_nodes", "frps"):  # frps traffic is metered with nft
         return _nft(source, prefix)
     if module == "tailscale":
         return _tailscale()

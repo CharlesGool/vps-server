@@ -979,6 +979,13 @@ def run_uninstall(prefix, module):
                             "delete-table"], check=False, timeout=20)
     elif module == "frps":
         subprocess.run(["systemctl", "disable", "--now", UNITS["frps"]], check=True, timeout=60)
+        # Like the node meter: stop metering and drop the table, keep the ledger
+        # beside frps.toml so a reinstall continues the same counters.
+        subprocess.run(["systemctl", "disable", "--now", "vps-server-frps-meter.service"],
+                       check=False, timeout=60)
+        subprocess.run([sys.executable, str(Path(prefix) / "src" / "web" / "frps_meter.py"),
+                        "delete-table"], check=False, timeout=20)
+        Path("/etc/systemd/system/vps-server-frps-meter.service").unlink(missing_ok=True)
         from console_port import release_owned_port
         release_owned_port(prefix, *managed_listener("frps"))
         remove_owned_firewall_rule(Path("/etc/vps-server-frps/firewall-owned"))

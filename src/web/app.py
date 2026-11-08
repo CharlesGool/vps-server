@@ -80,12 +80,13 @@ from console_access import ConsoleAccess, ConsoleAccessError
 from security_events import AuditLog, KnownLogins, BarkAlerts
 import terminal_session
 from node_state import read_inventory, _read_json
-from node_inventory import advance_reset_interval, reset_interval
+from node_inventory import InvalidInventory, advance_reset_interval, reset_interval
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
 from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
 from module_manager import history_path as module_history_path
 from node_accounting import billable_bytes
+import frps_meter
 from module_manager import installed_modules, save_status as save_module_status
 from module_manager import iperf_binary
 from module_manager import snapshot_tailscale_ports
@@ -609,6 +610,8 @@ def proxy_nodes(*args, **kwargs):
 
 FRPS_CONFIG = Path(os.environ.get('VPSSRV_FRPS_CONFIG', '/etc/vps-server-frps/frps.toml'))
 FRPS_SERVICE = 'vps-server-frps.service'
+FRPS_TRAFFIC_PATH = FRPS_CONFIG.parent / 'traffic.json'
+FRPS_METER_PATH = FRPS_CONFIG.parent / 'traffic-meter.json'
 FRPC_BINARY = Path(os.environ.get('VPSSRV_FRPC_BIN', '/usr/local/bin/frpc'))
 FRP_CONTROL_HELPER = WEB_CODE_DIR / 'frp_control.py'
 LUCKY_CONFIG = Path(os.environ.get('VPSSRV_LUCKY_CONFIG', '/etc/vps-server-lucky/config.json'))
@@ -643,6 +646,14 @@ def watch_lucky_port(stop_event):
 
 def frps_node(*args, **kwargs):
     return _feature_frp.frps_node(sys.modules[__name__], *args, **kwargs)
+
+
+def frps_traffic_state(*args, **kwargs):
+    return _feature_frp.frps_traffic_state(sys.modules[__name__], *args, **kwargs)
+
+
+def frps_traffic_apply(*args, **kwargs):
+    return _feature_frp.frps_traffic_apply(sys.modules[__name__], *args, **kwargs)
 
 
 def frpc_connected(*args, **kwargs):

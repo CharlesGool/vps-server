@@ -81,7 +81,7 @@ def _now(now):
         raise InvalidInventory("now must be a UTC datetime")
 
 
-def update_accounting(inventory, state, snapshots):
+def update_accounting(inventory, state, snapshots, *, validate=validate_inventory):
     """Return new (inventory, state). Missing ID/metrics mark suspect, never zero.
 
     snapshots maps node ID to both families, each with upload/download
@@ -91,7 +91,7 @@ def update_accounting(inventory, state, snapshots):
     Same-epoch decreases and new epochs add the new raw value as a lower bound,
     preserve accumulated totals, and mark suspect (reset gaps are unknowable).
     """
-    validate_inventory(inventory)
+    validate(inventory)
     _state(inventory, state)
     if not isinstance(snapshots, dict):
         raise InvalidInventory("counter snapshot mapping required")
@@ -138,13 +138,13 @@ def update_accounting(inventory, state, snapshots):
                 node[f"total_{direction}_bytes"] = _uint(node[f"total_{direction}_bytes"] + delta)
         _uint(node["upload_bytes"] + node["download_bytes"])
         entry["samples"] = current
-    validate_inventory(result)
+    validate(result)
     return result, ledger
 
 
-def desired_policy(inventory, state, *, now):
+def desired_policy(inventory, state, *, now, validate=validate_inventory):
     """Return per-ID decisions for quota throttling or complete blocking."""
-    validate_inventory(inventory)
+    validate(inventory)
     _state(inventory, state)
     _now(now)
     policy = {}
@@ -180,14 +180,14 @@ def _month_after(value):
     return value.replace(year=year, month=month, day=day)
 
 
-def advance_cycles(inventory, state, *, now):
+def advance_cycles(inventory, state, *, now, validate=validate_inventory):
     """Start due cycles after the latest counter sample has been persisted.
 
     Period totals clear; lifetime totals and the last kernel-counter baseline do
     not. A one-time reset clears its date deadline. Monthly resets move a date
     deadline by the same number of calendar months as the reset boundary.
     """
-    validate_inventory(inventory)
+    validate(inventory)
     _state(inventory, state)
     _now(now)
     result, ledger = copy.deepcopy(inventory), copy.deepcopy(state)
@@ -215,5 +215,5 @@ def advance_cycles(inventory, state, *, now):
         entry = ledger["nodes"].get(node["id"])
         if entry is not None and entry["samples"] is not None:
             entry["suspect"] = False
-    validate_inventory(result)
+    validate(result)
     return result, ledger

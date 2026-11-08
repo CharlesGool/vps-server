@@ -98,4 +98,6 @@ metadata:
 
 未发布改动(2026-11-08, 下次发布时写入 CHANGELOG): 客户端证书改用随附的静态 OpenSSL 3.5.9 LTS(`third_party/openssl/`, 安装到 `vendor/openssl/`)和项目自带的最小配置; 起因是一台主机的 OpenSSL 1.1.1k 把系统 openssl.cnf 的 v3_ca 与 `-addext` 合并, 颁发机构写了两次 Basic Constraints, 连自验证都失败(本机用 1.1.1k 复现). 颁发机构须先通过主机 TLS 库上的双向 TLS 自检, 不通过时换新并撤销其旧证书; 新增 `client_cert.py check`. 安装器新增 core 检查: Bash 4.1, systemd 240, SQLite 3.24, Python 用的 OpenSSL 库 1.1.1, `/usr/bin/python3` 3.9+, 基础命令, 在线版 CA 证书; `ip`/`ss` 能力不足时改用随附版本, 主机 iperf3 须 3.1+. 已验证: `check_project.py` 通过; Debian 11 容器(Python 3.9.2, libssl 1.1.1w)core 检查通过, 随附和系统 openssl 签发均通过自检. 未验证: 出问题的那台主机实机; 主机 libssl 为 1.1.1k 时的握手自检; 完整安装流程. 另: Debian 11 的 security 源已移到 archive.debian.org, 未改源的主机无法 apt 更新.
 
+未发布改动(2026-11-08): FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`src/web/frps_meter.py`): 计量 bindPort(所有 frpc 隧道流量经过它), 复用 `node_accounting` 与 `node_meter` 规则(独立表 `vps_server_frps`, 状态 `/etc/vps-server-frps/traffic.json`, 服务 `vps-server-frps-meter.service`, FRPS `Requires` 它, 计量失败时停止 FRPS); FRPS 页面显示用量并用与节点相同的限制对话框编辑; FRPS 模块因此需要 nft. 已验证: `check_project.py` 通过; 假后端单元测试(计数, 配额后限速, 端口随 frps.toml 变化); Debian 13 容器真实 nft 下计数准确, 封禁生效. 未验证: 真机上 1 Mbps 限速实测(回环测试不准), 控制台页面实际显示, 安装/卸载流程. 已知: 修改 bindPort 后最多约 2 秒新端口未计量.
+
 临时项目规则: 未发现.

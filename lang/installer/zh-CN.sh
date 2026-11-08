@@ -44,8 +44,8 @@ case "$key" in
   deps_iptables_missing) fmt='警告：未安装 iptables，端口转发规则无法生效。需要端口转发时请安装（Debian/Ubuntu：apt install iptables）后重启控制台。\n' ;;
   deps_ss_missing) fmt='警告：未安装 ss（iproute2），修改控制台端口和检测 Lucky 管理端口会失败。请用 apt install iproute2 安装。\n' ;;
   deps_ip_missing) fmt='警告：未安装 ip（iproute2），安装摘要无法列出地址，Tailscale 也无法显示本机路由。请用 apt install iproute2 安装。\n' ;;
-  deps_nft_missing) fmt='代理模块需要 nftables，但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
-  deps_nft_unusable) fmt='代理模块需要 nftables，但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
+  deps_nft_missing) fmt='代理和 FRPS 模块需要 nftables（流量统计和限速），但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
+  deps_nft_unusable) fmt='代理和 FRPS 模块需要 nftables（流量统计和限速），但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
   deps_tailscale_conflict) fmt='系统中已有运行中的 Tailscale 守护进程（tailscaled.service）。请先停止它，或从 VPSSRV_MODULES 中去掉 tailscale。' ;;
   deps_tun_missing) fmt='Tailscale 需要 /dev/net/tun，但本机没有这个设备。请在 VPS 控制面板中开启 TUN/TAP 后重试。' ;;
   deps_bash_old) fmt='需要 bash 4.1 或更高版本。请先升级系统软件包。' ;;

@@ -46,15 +46,67 @@ class FrpMixin:
                       f'<div><dt>{esc(t["frps_bind"])}</dt><dd><code>{esc(node["address"])}</code></dd></div>'
                       f'<div><dt>{esc(t["proxy_port"])}</dt><dd>{self.private_value_control("frps", "port", t, endpoint="/frp/server/value")}</dd></div>'
                       f'<div><dt>{esc(t["frps_token"])}</dt><dd>{self.private_value_control("frps", "credential", t, copy=True, endpoint="/frp/server/value")}</dd></div></dl>'
-                      f'{address_list}')
+                      f'{address_list}'
+                      f'{self.frps_traffic_section(t)}')
         message = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
         feedback = (f'<p class="{"notice" if message == "done" else "error"}" role="status">'
                     f'{esc(t["frp_saved"] if message == "done" else t["frp_save_failed"])}</p>') if message in ("done", "failed") else ""
+        if message in ("node_settings_done", "node_settings_failed"):
+            feedback = (f'<p class="{"notice" if message == "node_settings_done" else "error"}" role="status">'
+                        f'{esc(t[message])}</p>')
         body = (f'<h1>{esc(t["frps_heading"])}</h1><div class="frp-workspace">{feedback}'
                 f'<section class="card frp-card">{server}</section></div>'
-                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script><script src="/static/frp-editor.js" defer></script>')
+                '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script><script src="/static/frp-editor.js" defer></script>'
+                '<script src="/static/node-controls.js"></script>')
         return self.send_html(200, self.render_page(t["frps_heading"], body, lang),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def frps_traffic_section(self, t):
+        """FRPS traffic, cap and limits, shown and edited like a sing-box node."""
+        try:
+            state = self.context.frps_traffic_state()
+        except (OSError, ValueError, TypeError):
+            state = None
+        if state is None:
+            return ""
+        entry, meter_nodes = state
+        esc = self.context.html.escape
+        token = self.context.access_csrf_token(self.get_cookie("session"), "frp:server:limits")
+        return (f'{self.node_metrics(entry, meter_nodes, t)}'
+                f'<div class="node-secondary"><button type="button" class="node-action node-access-open" '
+                f'data-dialog-open="node-access-frps">{esc(t["node_limit_manage"])}</button></div>'
+                f'{self.node_limits_dialog(entry, "frps", token, "/frp/server/limits", t)}')
+
+    def handle_frps_limits(self):
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if (not 0 < length <= 4096 or
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded"):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"),
+                                         strict_parsing=True, keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        expected = {"id", "csrf", "cap_gib", "upload_mbps", "download_mbps", "cap_action", "expiry_mode",
+                    "expiry_count", "expiry_unit", "reset_mode", "reset_count", "reset_unit", "next_reset_at"}
+        if set(form) != expected or any(len(values) != 1 for values in form.values()) or form["id"] != ["frps"]:
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not self.context.hmac.compare_digest(
+                form["csrf"][0], self.context.access_csrf_token(self.get_cookie("session"), "frp:server:limits")):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        try:
+            state = self.context.frps_traffic_state()
+            if state is None:
+                raise ValueError("no FRPS traffic state")
+            request = {"action": "edit", **self.node_limits_request(form, state[0])}
+        except (ValueError, self.context.InvalidOperation, OverflowError, KeyError,
+                self.context.InvalidInventory, TypeError):
+            return self.redirect("/frps?msg=node_settings_failed", {"Cache-Control": "no-store"})
+        key = "node_settings_done" if self.context.frps_traffic_apply(request) else "node_settings_failed"
+        return self.redirect(f"/frps?msg={key}", {"Cache-Control": "no-store"})
 
     def page_frpc(self, lang, query_lang):
         t = self.context.STRINGS[lang]
@@ -498,6 +550,8 @@ class FrpMixin:
                 self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
             else:
                 self.handle_proxy_private_value(parsed)
+        elif method == "POST" and path == "/frp/server/limits":
+            self.handle_frps_limits()
         elif method == "POST" and path == "/frp/client/test":
             self.handle_frpc_test()
         elif method == "POST" and path in ("/frp/server/save", "/frp/client/toggle",
@@ -516,6 +570,35 @@ def _host_tool(name):
     except ImportError:
         from ..nft_runtime import tool
     return tool(name)
+
+
+def frps_traffic_state(context):
+    """(entry, meter ledger nodes) for the FRPS page, or None before the meter starts."""
+    state = context._read_json(context.FRPS_TRAFFIC_PATH)
+    if state is None:
+        return None
+    context.frps_meter.validate(state)
+    meter = context._read_json(context.FRPS_METER_PATH) or {}
+    return state["nodes"][0], meter.get("ledger", {}).get("nodes", {})
+
+
+def frps_traffic_apply(context, request):
+    """Send one limits edit to the privileged FRPS meter helper."""
+    direct = ["/usr/bin/python3", str(context.WEB_CODE_DIR / "frps_meter.py"), "apply"]
+    systemd_run = context.shutil.which("systemd-run")
+    command = (["systemd-run", "--pipe", "--wait", "--collect", "--quiet",
+                "--unit=vps-server-frps-traffic-edit.service", *direct] if systemd_run else direct)
+    try:
+        result = context.subprocess.run(command, input=context.json.dumps(request).encode("utf-8"),
+                                        stdout=context.subprocess.DEVNULL, stderr=context.subprocess.DEVNULL,
+                                        timeout=context.NODE_APPLY_TIMEOUT, check=False)
+    except (OSError, context.subprocess.TimeoutExpired):
+        print("FRPS traffic apply failed: helper unavailable or timed out", file=context.sys.stderr)
+        return False
+    if result.returncode:
+        print(f"FRPS traffic apply failed: exit {result.returncode}", file=context.sys.stderr)
+        return False
+    return True
 
 
 def frps_node(context, ):

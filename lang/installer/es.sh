@@ -44,8 +44,8 @@ case "$key" in
   deps_iptables_missing) fmt='Aviso: iptables no está instalado, por lo que las reglas de reenvío de puertos no pueden aplicarse. Instálalo (Debian/Ubuntu: apt install iptables) y reinicia la consola para usar el reenvío de puertos.\n' ;;
   deps_ss_missing) fmt='Aviso: ss (iproute2) no está instalado, por lo que fallarán el cambio del puerto de la consola y la detección del puerto de administración de Lucky. Instálalo con apt install iproute2.\n' ;;
   deps_ip_missing) fmt='Aviso: ip (iproute2) no está instalado, por lo que el resumen no puede listar direcciones y Tailscale no puede mostrar las rutas locales. Instálalo con apt install iproute2.\n' ;;
-  deps_nft_missing) fmt='El módulo proxy necesita nftables, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
-  deps_nft_unusable) fmt='El módulo proxy necesita nftables, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
+  deps_nft_missing) fmt='Los módulos proxy y FRPS necesitan nftables para contar y limitar el tráfico, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
+  deps_nft_unusable) fmt='Los módulos proxy y FRPS necesitan nftables para contar y limitar el tráfico, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
   deps_tailscale_conflict) fmt='Ya hay un demonio de Tailscale del sistema en ejecución (tailscaled.service). Detenlo o quita tailscale de VPSSRV_MODULES.' ;;
   deps_tun_missing) fmt='Tailscale necesita /dev/net/tun, pero este equipo no tiene ese dispositivo. Activa TUN/TAP en el panel de control del VPS e inténtalo de nuevo.' ;;
   deps_bash_old) fmt='Se requiere bash 4.1 o posterior. Actualiza primero los paquetes del sistema.' ;;

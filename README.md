@@ -22,7 +22,7 @@
 
 - 浏览器上传/下载测速, 访客记录, 限时 iperf3 服务端与客户端测试.
 - Singbox 托管 AnyTLS, VMess, VLESS, Trojan 和 Shadowsocks 节点, 支持分享, 配额, 限速与到期策略.
-- FRPS 服务端, FRPC 实例及 TCP/UDP 代理管理, Lucky 原生管理入口, Tailscale 状态与设备管理.
+- FRPS 服务端(与 Singbox 节点相同的流量统计, 配额, 限速与到期策略, 按 bindPort 计量), FRPC 实例及 TCP/UDP 代理管理, Lucky 原生管理入口, Tailscale 状态与设备管理.
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
 - 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).
@@ -115,7 +115,7 @@
 
 ## 要求
 
-最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 系统组件的最低版本: Bash 4.1, systemd 240, Python 使用的 SQLite 3.24 和 OpenSSL 库 1.1.1, `/usr/bin/python3` 与 PATH 中的 `python3` 都须为 3.9+;还需要 flock, sha256sum, base64, getent, install, mktemp, systemd-run. 在线版还需要 CA 证书(ca-certificates). 主机的 `ip`/`ss` 不支持 JSON 路由或 `-H` 时改用随附的版本. 主机 iperf3 只在没有随附版本时使用, 且须为 3.1+. 安装器在改动任何服务前检查这些条件: 上述最低版本不满足或 Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
+最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点和 FRPS 的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 系统组件的最低版本: Bash 4.1, systemd 240, Python 使用的 SQLite 3.24 和 OpenSSL 库 1.1.1, `/usr/bin/python3` 与 PATH 中的 `python3` 都须为 3.9+;还需要 flock, sha256sum, base64, getent, install, mktemp, systemd-run. 在线版还需要 CA 证书(ca-certificates). 主机的 `ip`/`ss` 不支持 JSON 路由或 `-H` 时改用随附的版本. 主机 iperf3 只在没有随附版本时使用, 且须为 3.1+. 安装器在改动任何服务前检查这些条件: 上述最低版本不满足或 Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
 推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. Release 提供两个安装包: 离线版内置全部第三方程序, 目标机只需 Python 3.9+, 不需要 curl, Git, tar 或 gzip, 也不联网; 在线版体积小, 安装时联网下载这些程序并校验 SHA-256, 缺少的 iptables, iproute2, nftables 由安装器用 apt 安装. 离线版还内置 iptables, nftables 和 iproute2(`ss`, `ip`), 主机缺少时自动改用内置的. 源码构建离线包需要联网.
 

@@ -118,6 +118,12 @@ if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-l
   if [ "${KEEP_DATA:-0}" = 1 ]; then msg lucky_config_retained >&2; fi
 fi
 
+if [ -f /etc/systemd/system/vps-server-frps-meter.service ]; then
+  systemctl disable --now vps-server-frps-meter.service 2>/dev/null || true
+  if command -v nft >/dev/null 2>&1; then nft delete table inet vps_server_frps 2>/dev/null || true; fi
+  /usr/bin/python3 "$PREFIX/src/web/frps_meter.py" delete-table >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/vps-server-frps-meter.service
+fi
 if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firewall-owned ]; then
   if [ -f "/etc/systemd/system/$FRPS_SERVICE" ]; then
     systemctl disable --now "$FRPS_SERVICE" || true
@@ -139,7 +145,10 @@ if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firew
     fi
   fi
   rm -f "/etc/systemd/system/$FRPS_SERVICE" /usr/local/bin/frps-vps-server
-  if [ "${KEEP_DATA:-0}" != 1 ]; then rm -f /etc/vps-server-frps/frps.toml; fi
+  if [ "${KEEP_DATA:-0}" != 1 ]; then
+    rm -f /etc/vps-server-frps/frps.toml /etc/vps-server-frps/traffic.json \
+          /etc/vps-server-frps/traffic-meter.json /etc/vps-server-frps/traffic.lock
+  fi
   if [ ! -f "$frps_owner" ]; then rmdir /etc/vps-server-frps 2>/dev/null || true; fi
   systemctl daemon-reload
 fi

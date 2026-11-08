@@ -44,7 +44,7 @@ def _zero_samples(inventory, epoch):
             for node in inventory["nodes"]}
 
 
-def parse_counters(document, inventory, epoch, *, new_ids=frozenset()):
+def parse_counters(document, inventory, epoch, *, new_ids=frozenset(), table=TABLE):
     """Decode all four named byte counters for every node, or fail closed."""
     if not isinstance(document, dict) or not isinstance(document.get("nftables"), list):
         raise InvalidInventory("invalid nftables counter JSON")
@@ -53,7 +53,7 @@ def parse_counters(document, inventory, epoch, *, new_ids=frozenset()):
         if not isinstance(item, dict) or "counter" not in item:
             continue
         counter = item["counter"]
-        if counter.get("family") != "inet" or counter.get("table") != TABLE:
+        if counter.get("family") != "inet" or counter.get("table") != table:
             continue
         name, amount = counter.get("name"), counter.get("bytes")
         if not isinstance(name, str) or type(amount) is not int or amount < 0 or name in found:
@@ -86,27 +86,27 @@ def _policy_key(inventory, policy):
     return hashlib.sha256(json.dumps(inputs, separators=(",", ":")).encode()).hexdigest()
 
 
-def render_rules(inventory, policy, *, replace=False):
+def render_rules(inventory, policy, *, replace=False, table=TABLE):
     """Build an atomic nft batch; all identifiers and ports are validated data."""
     lines = []
     if replace:
-        lines.append(f"delete table inet {TABLE}")
-    lines += [f"add table inet {TABLE}",
-              f"add chain inet {TABLE} input {{ type filter hook input priority -50; policy accept; }}",
-              f"add chain inet {TABLE} output {{ type filter hook output priority -50; policy accept; }}"]
+        lines.append(f"delete table inet {table}")
+    lines += [f"add table inet {table}",
+              f"add chain inet {table} input {{ type filter hook input priority -50; policy accept; }}",
+              f"add chain inet {table} output {{ type filter hook output priority -50; policy accept; }}"]
     for node in inventory["nodes"]:
         identifier, port = node["id"], node["port"]
         stem = identifier.replace("-", "")
         decision = policy[identifier]
         for family in ("ipv4", "ipv6"):
             for direction in ("upload", "download"):
-                lines.append(f"add counter inet {TABLE} {_name(identifier, family, direction)}")
+                lines.append(f"add counter inet {table} {_name(identifier, family, direction)}")
         if not decision["active"]:
             continue
         for direction in ("upload", "download"):
             rate = decision[f"{direction}_bps"]
             if rate is not None:
-                lines.append(f"add limit inet {TABLE} l_{stem}_{direction} "
+                lines.append(f"add limit inet {table} l_{stem}_{direction} "
                              f"{{ rate over {(rate + 7) // 8} bytes/second "
                              "burst 16384 bytes; }")
         # A named quota is shared across upload/download and both IP families.
@@ -118,11 +118,11 @@ def render_rules(inventory, policy, *, replace=False):
         if quota:
             used = node["upload_bytes"] + node["download_bytes"]
             quota_bytes = max(1, node["cap_bytes"] // BILLABLE_MULTIPLIER)
-            lines.append(f"add quota inet {TABLE} q_{stem} "
+            lines.append(f"add quota inet {table} q_{stem} "
                          f"{{ over {quota_bytes} bytes used {used} bytes; }}")
             if node["cap_action"] == "throttle":
                 for direction in ("upload", "download"):
-                    lines.append(f"add limit inet {TABLE} lcap_{stem}_{direction} "
+                    lines.append(f"add limit inet {table} lcap_{stem}_{direction} "
                                  f"{{ rate over {LIMIT_BYTES_PER_SECOND} bytes/second "
                                  "burst 16384 bytes; }")
         for family, nft_family in (("ipv4", "ipv4"), ("ipv6", "ipv6")):
@@ -132,21 +132,24 @@ def render_rules(inventory, policy, *, replace=False):
                     match = (f"meta nfproto {nft_family} {protocol} "
                              f"{port_field} {port}")
                     if decision["blocked"]:
-                        lines.append(f"add rule inet {TABLE} {chain} {match} drop")
+                        lines.append(f"add rule inet {table} {chain} {match} drop")
                     elif decision[f"{direction}_bps"] is not None:
-                        lines.append(f"add rule inet {TABLE} {chain} {match} "
+                        lines.append(f"add rule inet {table} {chain} {match} "
                                      f"limit name \"l_{stem}_{direction}\" drop")
                     if quota:
                         tail = ("drop" if node["cap_action"] == "block" else
                                 f'limit name "lcap_{stem}_{direction}" drop')
-                        lines.append(f"add rule inet {TABLE} {chain} {match} "
+                        lines.append(f"add rule inet {table} {chain} {match} "
                                      f"quota name \"q_{stem}\" {tail}")
-                    lines.append(f"add rule inet {TABLE} {chain} {match} "
+                    lines.append(f"add rule inet {table} {chain} {match} "
                                  f"counter name {_name(identifier, family, direction)}")
     return "\n".join(lines) + "\n"
 
 
 class NftBackend:
+    def __init__(self, table=TABLE):
+        self.table = table
+
     def _run(self, args, *, input=None):
         from nft_runtime import command
         binary, env = command()
@@ -165,11 +168,11 @@ class NftBackend:
             raise self._failure("cannot list nftables tables", result)
         document = json.loads(result.stdout)
         return any(item.get("table", {}).get("family") == "inet" and
-                   item.get("table", {}).get("name") == TABLE
+                   item.get("table", {}).get("name") == self.table
                    for item in document.get("nftables", []))
 
     def counters(self):
-        result = self._run(["-j", "list", "counters", "table", "inet", TABLE])
+        result = self._run(["-j", "list", "counters", "table", "inet", self.table])
         if result.returncode:
             raise self._failure("cannot read node counters", result)
         return json.loads(result.stdout)
@@ -187,14 +190,22 @@ def _ledger(inventory, epoch, *, suspect):
 
 
 def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
-         meter_path=METER_PATH, lock_path=LOCK_PATH, backend=None, lock_held=False):
-    """Sample, advance due cycles, reconcile rules, then persist both ledgers."""
+         meter_path=METER_PATH, lock_path=LOCK_PATH, backend=None, lock_held=False,
+         table=TABLE, reader=None, writer=None, validate=None):
+    """Sample, advance due cycles, reconcile rules, then persist both ledgers.
+
+    The FRPS meter reuses this with its own table, state reader/writer and
+    validator; the defaults are the sing-box node inventory.
+    """
     now = now or datetime.now(timezone.utc)
-    backend = backend or NftBackend()
+    backend = backend or NftBackend(table)
+    reader = reader or read_inventory
+    writer = writer or write_inventory
+    checks = {} if validate is None else {"validate": validate}
     with (nullcontext() if lock_held else open(lock_path, "a+b")) as lock:
         if lock is not None:
             fcntl.flock(lock, fcntl.LOCK_EX)
-        inventory = read_inventory(state_path=state_path, config_paths=config_paths)
+        inventory = reader(state_path=state_path, config_paths=config_paths)
         if inventory is None:
             return None
         metadata = _read_json(meter_path)
@@ -219,8 +230,8 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
             ledger["nodes"] = {identifier: entry for identifier, entry in ledger["nodes"].items()
                                if identifier in current_ids}
             if exists:
-                snapshots = parse_counters(backend.counters(), inventory, epoch, new_ids=new_ids)
-                inventory, ledger = update_accounting(inventory, ledger, snapshots)
+                snapshots = parse_counters(backend.counters(), inventory, epoch, new_ids=new_ids, table=table)
+                inventory, ledger = update_accounting(inventory, ledger, snapshots, **checks)
                 # node_control stops the service before a new listener is
                 # installed, so its first meter baseline has a known zero.
                 zero = _zero_samples(inventory, epoch)
@@ -237,19 +248,19 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         # the resulting policy is identical. Rebuild the nft table once so
         # the kernel and the persisted period start at the same zero.
         previous_resets = {node["id"]: node["next_reset_at"] for node in inventory["nodes"]}
-        inventory, ledger = advance_cycles(inventory, ledger, now=now)
+        inventory, ledger = advance_cycles(inventory, ledger, now=now, **checks)
         cycle_changed = any(node["next_reset_at"] != previous_resets[node["id"]]
                             for node in inventory["nodes"])
-        policy = desired_policy(inventory, ledger, now=now)
+        policy = desired_policy(inventory, ledger, now=now, **checks)
         fingerprint = _policy_key(inventory, policy)
         if not exists or cycle_changed or fingerprint != old_fingerprint:
-            backend.apply(render_rules(inventory, policy, replace=exists))
+            backend.apply(render_rules(inventory, policy, replace=exists, table=table))
             if metadata is not None:
                 epoch += 1
             baseline = _zero_samples(inventory, epoch)
             for identifier, sample in baseline.items():
                 ledger["nodes"].setdefault(identifier, {"samples": None, "suspect": False})["samples"] = sample
-        write_inventory(inventory, state_path=state_path)
+        writer(inventory, state_path=state_path)
         write_json({"version": 1, "epoch": epoch, "fingerprint": fingerprint,
                     "ledger": ledger}, meter_path)
         return policy

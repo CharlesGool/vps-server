@@ -202,6 +202,51 @@ def _hash(document: dict[str, Any]) -> str:
                                    separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+def validate_metering(node: dict[str, Any], legacy: bool = False) -> None:
+    """Check the traffic fields shared by sing-box nodes and the FRPS entry:
+    cap, cap action, speed limits, validity period, reset schedule, counters."""
+    cap = node["cap_bytes"]
+    if cap is not None and (type(cap) is not int or cap <= 0):
+        raise InvalidInventory("invalid cap")
+    if not legacy and node["cap_action"] not in ("throttle", "block"):
+        raise InvalidInventory("invalid traffic cap action")
+    if not legacy:
+        for key in ("upload_limit_bps", "download_limit_bps"):
+            value = node[key]
+            if value is not None and (type(value) is not int or not 1_000 <= value <= 10_000_000_000_000):
+                raise InvalidInventory("invalid directional speed limit")
+        count, unit, expiry = node["expiry_count"], node["expiry_unit"], node["expires_at"]
+        if (count, unit, expiry) != (None, None, None) and \
+                (type(count) is not int or not 1 <= count <= 9999 or
+                 unit not in ("days", "months", "years") or expiry is None):
+            raise InvalidInventory("invalid validity period")
+    for key in ("expires_at", "next_reset_at"):
+        value = node[key]
+        if value is not None:
+            if not isinstance(value, str):
+                raise InvalidInventory("invalid node date")
+            try:
+                date = datetime.fromisoformat(value)
+            except ValueError as exc:
+                raise InvalidInventory("invalid node date") from exc
+            if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
+                raise InvalidInventory("node date must be UTC")
+    if ((node["reset_mode"] not in ("none", "monthly", "once") and
+         reset_interval(node["reset_mode"]) is None) or
+            (node["reset_mode"] == "none") != (node["next_reset_at"] is None)):
+        raise InvalidInventory("invalid reset schedule")
+    if node["reset_mode"] == "monthly" and node["next_reset_at"] is not None:
+        date = datetime.fromisoformat(node["next_reset_at"])
+        if date.day != 1 or date.hour or date.minute or date.second or date.microsecond:
+            raise InvalidInventory("monthly reset must start at 00:00 UTC on day one")
+    if any(type(node[k]) is not int or node[k] < 0 for k in
+           ("upload_bytes", "download_bytes", "total_upload_bytes", "total_download_bytes", "counter_epoch")):
+        raise InvalidInventory("invalid counters")
+    if node["upload_bytes"] > node["total_upload_bytes"] or \
+            node["download_bytes"] > node["total_download_bytes"]:
+        raise InvalidInventory("period usage exceeds lifetime usage")
+
+
 def validate_inventory(inventory: Inventory) -> None:
     """Reject malformed state, duplicate IDs/ports/tags, and invalid metadata."""
     if not isinstance(inventory, dict) or set(inventory) != {"version", "next_number", "migration_namespace", "migration_hashes", "base_config", "nodes"} or type(inventory["version"]) is not int or inventory["version"] not in (1, 2):
@@ -236,46 +281,7 @@ def validate_inventory(inventory: Inventory) -> None:
         protocol, port, tag = _inbound(node["inbound"])
         if node["protocol"] != protocol or type(node["port"]) is not int or node["port"] != port or type(node["enabled"]) is not bool:
             raise InvalidInventory("node/inbound mismatch")
-        cap = node["cap_bytes"]
-        if cap is not None and (type(cap) is not int or cap <= 0):
-            raise InvalidInventory("invalid cap")
-        if not legacy and node["cap_action"] not in ("throttle", "block"):
-            raise InvalidInventory("invalid traffic cap action")
-        if not legacy:
-            for key in ("upload_limit_bps", "download_limit_bps"):
-                value = node[key]
-                if value is not None and (type(value) is not int or not 1_000 <= value <= 10_000_000_000_000):
-                    raise InvalidInventory("invalid directional speed limit")
-            count, unit, expiry = node["expiry_count"], node["expiry_unit"], node["expires_at"]
-            if (count, unit, expiry) != (None, None, None) and \
-                    (type(count) is not int or not 1 <= count <= 9999 or
-                     unit not in ("days", "months", "years") or expiry is None):
-                raise InvalidInventory("invalid validity period")
-        for key in ("expires_at", "next_reset_at"):
-            value = node[key]
-            if value is not None:
-                if not isinstance(value, str):
-                    raise InvalidInventory("invalid node date")
-                try:
-                    date = datetime.fromisoformat(value)
-                except ValueError as exc:
-                    raise InvalidInventory("invalid node date") from exc
-                if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
-                    raise InvalidInventory("node date must be UTC")
-        if ((node["reset_mode"] not in ("none", "monthly", "once") and
-             reset_interval(node["reset_mode"]) is None) or
-                (node["reset_mode"] == "none") != (node["next_reset_at"] is None)):
-            raise InvalidInventory("invalid reset schedule")
-        if node["reset_mode"] == "monthly" and node["next_reset_at"] is not None:
-            date = datetime.fromisoformat(node["next_reset_at"])
-            if date.day != 1 or date.hour or date.minute or date.second or date.microsecond:
-                raise InvalidInventory("monthly reset must start at 00:00 UTC on day one")
-        if any(type(node[k]) is not int or node[k] < 0 for k in
-               ("upload_bytes", "download_bytes", "total_upload_bytes", "total_download_bytes", "counter_epoch")):
-            raise InvalidInventory("invalid counters")
-        if node["upload_bytes"] > node["total_upload_bytes"] or \
-                node["download_bytes"] > node["total_download_bytes"]:
-            raise InvalidInventory("period usage exceeds lifetime usage")
+        validate_metering(node, legacy)
         if identifier in ids or tag in tags or tag in outbound_tags or port in ports:
             raise InvalidInventory("duplicate node identity, port or tag")
         ids.add(identifier)

@@ -55,20 +55,6 @@ class ProxyMixin:
             addresses = "".join(f'<div class="node-address"><span>{esc(label)}</span>'
                                 f'{self.private_value_control("interface-" + str(index), "address", t)}</div>'
                                 for index, (label, _) in enumerate(addresses_available))
-            cap = "" if node["cap_bytes"] is None else str(self.context.Decimal(node["cap_bytes"]) / 1073741824)
-            upload_speed = "" if node["upload_limit_bps"] is None else str(self.context.Decimal(node["upload_limit_bps"]) / 1000000)
-            download_speed = "" if node["download_limit_bps"] is None else str(self.context.Decimal(node["download_limit_bps"]) / 1000000)
-            interval = self.context.reset_interval(node["reset_mode"])
-            reset_choice = "none" if node["reset_mode"] == "none" else "once" if node["reset_mode"] == "once" else "repeat"
-            reset_count, reset_unit = (interval[0], interval[1]) if interval else (1, "months")
-            next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
-            def radios(name, options, selected):
-                return "".join(f'<label class="node-radio"><input type="radio" name="{name}" value="{value}"'
-                               f'{" checked" if value == selected else ""}><span>{esc(t[key])}</span></label>'
-                               for value, key in options)
-            units = (("days", "node_days"), ("months", "node_months"), ("years", "node_years"))
-            reset_modes = (("none", "node_reset_none"), ("repeat", "node_reset_repeat")) + \
-                          ((("once", "node_reset_once"),) if reset_choice == "once" else ())
             is_active = node["enabled"] and running[module]
             status_key = "node_disabled" if not node["enabled"] else ("node_active" if is_active else "node_stopped")
             status_class = "is-open" if is_active else "is-closed"
@@ -107,27 +93,7 @@ class ProxyMixin:
                 <div class="node-destructive-actions"><button type="button" class="node-action node-action-danger" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
                 <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button></div>
               </div>
-              <dialog class="node-access-dialog" id="node-access-{identifier}" aria-labelledby="node-access-title-{identifier}">
-                  <form method="post" action="/proxy/node/limits">
-                    <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
-                    <h3 id="node-access-title-{identifier}">{esc(t['node_limit_manage'])}</h3>
-                    <div class="node-form-grid">
-                      <label>{esc(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
-                      <label>{esc(t['node_upload_speed'])}<input type="number" name="upload_mbps" min="0.001" max="10000000" step="any" value="{upload_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
-                      <label>{esc(t['node_download_speed'])}<input type="number" name="download_mbps" min="0.001" max="10000000" step="any" value="{download_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
-                    </div>
-                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_cap_action'])}</legend>{radios('cap_action', (("throttle", "node_cap_slow"), ("block", "node_cap_block")), node['cap_action'])}</fieldset>
-                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_schedule'])}</legend>{radios('reset_mode', reset_modes, reset_choice)}</fieldset>
-                    <div class="node-duration"><label>{esc(t['node_reset_every'])}<input type="number" name="reset_count" min="1" max="9999" value="{reset_count}"></label>
-                      <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_unit'])}</legend>{radios('reset_unit', units, reset_unit)}</fieldset></div>
-                    {'<label>' + esc(t['node_reset_time_utc']) + '<input type="datetime-local" name="next_reset_at" value="' + next_reset + '"></label>' if reset_choice == 'once' else '<input type="hidden" name="next_reset_at" value="">'}
-                    <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity'])}</legend>{radios('expiry_mode', (("none", "node_validity_none"), ("set", "node_validity_set")), 'set' if node['expiry_count'] else 'none')}</fieldset>
-                    <div class="node-duration"><label>{esc(t['node_validity_length'])}<input type="number" name="expiry_count" min="1" max="9999" value="{node['expiry_count'] or 1}"></label>
-                      <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity_unit'])}</legend>{radios('expiry_unit', units, node['expiry_unit'] or 'months')}</fieldset></div>
-                    <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button>
-                    <button type="submit">{esc(t['node_save_limits'])}</button></div>
-                  </form>
-              </dialog>
+              {self.node_limits_dialog(node, identifier, token, "/proxy/node/limits", t)}
               <dialog class="node-confirm-dialog" id="node-reset-{identifier}" aria-labelledby="node-reset-title-{identifier}">
                 <form method="post" action="/proxy/node/reset">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}"><input type="hidden" name="confirm" value="yes">
@@ -362,6 +328,113 @@ class ProxyMixin:
           </div>
         </section>'''
 
+    def node_limits_dialog(self, node, identifier, token, action, t):
+        """The traffic cap, speed, validity and reset dialog for one metered entry."""
+        esc = self.context.html.escape
+        cap = "" if node["cap_bytes"] is None else str(self.context.Decimal(node["cap_bytes"]) / 1073741824)
+        upload_speed = "" if node["upload_limit_bps"] is None else str(self.context.Decimal(node["upload_limit_bps"]) / 1000000)
+        download_speed = "" if node["download_limit_bps"] is None else str(self.context.Decimal(node["download_limit_bps"]) / 1000000)
+        interval = self.context.reset_interval(node["reset_mode"])
+        reset_choice = "none" if node["reset_mode"] == "none" else "once" if node["reset_mode"] == "once" else "repeat"
+        reset_count, reset_unit = (interval[0], interval[1]) if interval else (1, "months")
+        next_reset = node["next_reset_at"][:16] if node["reset_mode"] == "once" and node["next_reset_at"] else ""
+        def radios(name, options, selected):
+            return "".join(f'<label class="node-radio"><input type="radio" name="{name}" value="{value}"'
+                           f'{" checked" if value == selected else ""}><span>{esc(t[key])}</span></label>'
+                           for value, key in options)
+        units = (("days", "node_days"), ("months", "node_months"), ("years", "node_years"))
+        reset_modes = (("none", "node_reset_none"), ("repeat", "node_reset_repeat")) + \
+                      ((("once", "node_reset_once"),) if reset_choice == "once" else ())
+        return f'''    <dialog class="node-access-dialog" id="node-access-{identifier}" aria-labelledby="node-access-title-{identifier}">
+        <form method="post" action="{action}">
+          <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+          <h3 id="node-access-title-{identifier}">{esc(t['node_limit_manage'])}</h3>
+          <div class="node-form-grid">
+            <label>{esc(t['node_cap_gib'])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" value="{cap}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+            <label>{esc(t['node_upload_speed'])}<input type="number" name="upload_mbps" min="0.001" max="10000000" step="any" value="{upload_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+            <label>{esc(t['node_download_speed'])}<input type="number" name="download_mbps" min="0.001" max="10000000" step="any" value="{download_speed}" placeholder="{esc(t['node_unlimited'], quote=True)}"></label>
+          </div>
+          <fieldset class="node-reset-cycle"><legend>{esc(t['node_cap_action'])}</legend>{radios('cap_action', (("throttle", "node_cap_slow"), ("block", "node_cap_block")), node['cap_action'])}</fieldset>
+          <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_schedule'])}</legend>{radios('reset_mode', reset_modes, reset_choice)}</fieldset>
+          <div class="node-duration"><label>{esc(t['node_reset_every'])}<input type="number" name="reset_count" min="1" max="9999" value="{reset_count}"></label>
+            <fieldset class="node-reset-cycle"><legend>{esc(t['node_reset_unit'])}</legend>{radios('reset_unit', units, reset_unit)}</fieldset></div>
+          {'<label>' + esc(t['node_reset_time_utc']) + '<input type="datetime-local" name="next_reset_at" value="' + next_reset + '"></label>' if reset_choice == 'once' else '<input type="hidden" name="next_reset_at" value="">'}
+          <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity'])}</legend>{radios('expiry_mode', (("none", "node_validity_none"), ("set", "node_validity_set")), 'set' if node['expiry_count'] else 'none')}</fieldset>
+          <div class="node-duration"><label>{esc(t['node_validity_length'])}<input type="number" name="expiry_count" min="1" max="9999" value="{node['expiry_count'] or 1}"></label>
+            <fieldset class="node-reset-cycle"><legend>{esc(t['node_validity_unit'])}</legend>{radios('expiry_unit', units, node['expiry_unit'] or 'months')}</fieldset></div>
+          <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button>
+          <button type="submit">{esc(t['node_save_limits'])}</button></div>
+        </form>
+    </dialog>'''
+
+    def node_limits_request(self, form, existing):
+        """Turn the limits form into node fields; raises ValueError on bad input.
+        Shared by sing-box nodes and the FRPS entry."""
+        request = {}
+        cap = form["cap_gib"][0].strip()
+        if cap:
+            amount = self.context.Decimal(cap)
+            if not amount.is_finite() or not 0 < amount <= 100000000:
+                raise ValueError("invalid cap")
+            request["cap_bytes"] = int(amount * 1073741824)
+        else:
+            request["cap_bytes"] = None
+        def speed(value):
+            if not value.strip():
+                return None
+            amount = self.context.Decimal(value)
+            if not amount.is_finite() or not self.context.Decimal("0.001") <= amount <= 10000000:
+                raise ValueError("invalid speed")
+            result = int(amount * 1000000)
+            if result < 1000:
+                raise ValueError("invalid speed")
+            return result
+        request["upload_limit_bps"] = speed(form["upload_mbps"][0])
+        request["download_limit_bps"] = speed(form["download_mbps"][0])
+        if form["cap_action"][0] not in ("throttle", "block"):
+            raise ValueError("invalid cap action")
+        request["cap_action"] = form["cap_action"][0]
+        now = self.context.datetime.now(self.context.timezone.utc)
+        def duration(count_value, unit_value):
+            count = int(count_value)
+            if not 1 <= count <= 9999 or unit_value not in ("days", "months", "years"):
+                raise ValueError("invalid duration")
+            anchor = "-" if unit_value == "days" else "1" if unit_value == "months" else now.strftime("%m-%d")
+            mode = f"every:{count}:{unit_value}:{anchor}"
+            return count, unit_value, mode, self.context.advance_reset_interval(now, mode).isoformat()
+        def date_value(value):
+            if not value:
+                return None
+            if not self.context.re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
+                raise ValueError("invalid date")
+            return self.context.datetime.fromisoformat(value).replace(tzinfo=self.context.timezone.utc).isoformat()
+        expiry_mode = form["expiry_mode"][0]
+        if expiry_mode == "set":
+            count, unit, _, due = duration(form["expiry_count"][0], form["expiry_unit"][0])
+            if (existing["expiry_count"], existing["expiry_unit"]) != (count, unit):
+                request.update(expiry_count=count, expiry_unit=unit, expires_at=due)
+        elif expiry_mode == "none":
+            if existing["expiry_count"] is not None:
+                request.update(expiry_count=None, expiry_unit=None, expires_at=None)
+        else:
+            raise ValueError("invalid expiry mode")
+        mode = form["reset_mode"][0]
+        if mode not in ("none", "repeat", "once"):
+            raise ValueError("invalid reset mode")
+        if mode == "repeat":
+            _, _, request["reset_mode"], request["next_reset_at"] = duration(
+                form["reset_count"][0], form["reset_unit"][0])
+        elif mode == "once":
+            request["reset_mode"] = "once"
+            request["next_reset_at"] = date_value(form["next_reset_at"][0])
+            if request["next_reset_at"] is None or \
+                    self.context.datetime.fromisoformat(request["next_reset_at"]) <= now:
+                raise ValueError("reset must be future")
+        else:
+            request["reset_mode"] = "none"
+            request["next_reset_at"] = None
+        return request
+
     def handle_node_control(self, action):
         """Validate the browser request, then identify the node only on server."""
         try:
@@ -444,71 +517,10 @@ class ProxyMixin:
                 return self.redirect("/proxy?msg=node_settings_failed")
         elif action == "limits":
             try:
-                cap = form["cap_gib"][0].strip()
-                if cap:
-                    amount = self.context.Decimal(cap)
-                    if not amount.is_finite() or not 0 < amount <= 100000000:
-                        raise ValueError("invalid cap")
-                    request["cap_bytes"] = int(amount * 1073741824)
-                else:
-                    request["cap_bytes"] = None
-                def speed(value):
-                    if not value.strip():
-                        return None
-                    amount = self.context.Decimal(value)
-                    if not amount.is_finite() or not self.context.Decimal("0.001") <= amount <= 10000000:
-                        raise ValueError("invalid speed")
-                    result = int(amount * 1000000)
-                    if result < 1000:
-                        raise ValueError("invalid speed")
-                    return result
-                request["upload_limit_bps"] = speed(form["upload_mbps"][0])
-                request["download_limit_bps"] = speed(form["download_mbps"][0])
-                if form["cap_action"][0] not in ("throttle", "block"):
-                    raise ValueError("invalid cap action")
-                request["cap_action"] = form["cap_action"][0]
-                now = self.context.datetime.now(self.context.timezone.utc)
-                def duration(count_value, unit_value):
-                    count = int(count_value)
-                    if not 1 <= count <= 9999 or unit_value not in ("days", "months", "years"):
-                        raise ValueError("invalid duration")
-                    anchor = "-" if unit_value == "days" else "1" if unit_value == "months" else now.strftime("%m-%d")
-                    mode = f"every:{count}:{unit_value}:{anchor}"
-                    return count, unit_value, mode, self.context.advance_reset_interval(now, mode).isoformat()
-                def date_value(value):
-                    if not value:
-                        return None
-                    if not self.context.re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
-                        raise ValueError("invalid date")
-                    return self.context.datetime.fromisoformat(value).replace(tzinfo=self.context.timezone.utc).isoformat()
-                expiry_mode = form["expiry_mode"][0]
                 current = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
                                          config_paths={"proxy": self.context.PROXY_CONFIG})
                 existing = next(node for node in current["nodes"] if node["id"] == identifier)
-                if expiry_mode == "set":
-                    count, unit, _, due = duration(form["expiry_count"][0], form["expiry_unit"][0])
-                    if (existing["expiry_count"], existing["expiry_unit"]) != (count, unit):
-                        request.update(expiry_count=count, expiry_unit=unit, expires_at=due)
-                elif expiry_mode == "none":
-                    if existing["expiry_count"] is not None:
-                        request.update(expiry_count=None, expiry_unit=None, expires_at=None)
-                else:
-                    raise ValueError("invalid expiry mode")
-                mode = form["reset_mode"][0]
-                if mode not in ("none", "repeat", "once"):
-                    raise ValueError("invalid reset mode")
-                if mode == "repeat":
-                    _, _, request["reset_mode"], request["next_reset_at"] = duration(
-                        form["reset_count"][0], form["reset_unit"][0])
-                elif mode == "once":
-                    request["reset_mode"] = "once"
-                    request["next_reset_at"] = date_value(form["next_reset_at"][0])
-                    if request["next_reset_at"] is None or \
-                            self.context.datetime.fromisoformat(request["next_reset_at"]) <= now:
-                        raise ValueError("reset must be future")
-                else:
-                    request["reset_mode"] = "none"
-                    request["next_reset_at"] = None
+                request.update(self.node_limits_request(form, existing))
             except (ValueError, self.context.InvalidOperation, OverflowError, KeyError, self.context.InvalidInventory,
                     TypeError, StopIteration):
                 return self.redirect("/proxy?msg=node_settings_failed")

@@ -44,8 +44,8 @@ case "$key" in
   deps_iptables_missing) fmt='Warning: iptables is not installed, so port forwarding rules cannot be applied. Install it (Debian/Ubuntu: apt install iptables) and restart the console to use port forwarding.\n' ;;
   deps_ss_missing) fmt='Warning: ss (iproute2) is not installed, so changing the console port and detecting the Lucky admin port will fail. Install it with apt install iproute2.\n' ;;
   deps_ip_missing) fmt='Warning: ip (iproute2) is not installed, so the install summary cannot list addresses and Tailscale cannot show local routes. Install it with apt install iproute2.\n' ;;
-  deps_nft_missing) fmt='The proxy module needs nftables, but this host has no usable nft and the bundled runtime is missing. Install nftables (apt install nftables) or use the full release package.' ;;
-  deps_nft_unusable) fmt='The proxy module needs nftables, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
+  deps_nft_missing) fmt='The proxy and FRPS modules need nftables for traffic accounting and limits, but this host has no usable nft and the bundled runtime is missing. Install nftables (apt install nftables) or use the full release package.' ;;
+  deps_nft_unusable) fmt='The proxy and FRPS modules need nftables for traffic accounting and limits, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
   deps_tailscale_conflict) fmt='A system Tailscale daemon (tailscaled.service) is already running. Stop it or leave tailscale out of VPSSRV_MODULES.' ;;
   deps_tun_missing) fmt='Tailscale needs /dev/net/tun, but this host has no such device. Enable TUN/TAP in the VPS control panel and try again.' ;;
   deps_bash_old) fmt='bash 4.1 or newer is required. Upgrade the system packages first.' ;;

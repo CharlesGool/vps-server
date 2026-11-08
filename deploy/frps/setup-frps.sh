@@ -36,6 +36,9 @@ else
 fi
 CONFIG=/etc/vps-server-frps/frps.toml
 UNIT=/etc/systemd/system/vps-server-frps.service
+# Traffic counters and limits for the bindPort, like a sing-box node's.
+METER_UNIT=/etc/systemd/system/vps-server-frps-meter.service
+METER="$PREFIX_DIR/src/web/frps_meter.py"
 EXPECTED=4ad311e0630cf12945041143b926f515458836e896ff93c253d43c98cf304b89
 [ -f "$BIN" ] && [ "$(sha256sum "$BIN" | cut -d' ' -f1)" = "$EXPECTED" ] || { msg integrity_failure >&2; exit 1; }
 # Inspect existing config and every known reservation before modifying state.
@@ -153,8 +156,8 @@ TARGET=/usr/local/bin/frps-vps-server
 ACTIVE=0 ENABLED=0
 systemctl is-active --quiet vps-server-frps.service && ACTIVE=1 || true
 systemctl is-enabled --quiet vps-server-frps.service && ENABLED=1 || true
-for name in config binary unit; do
-  case "$name" in config) file="$CONFIG" ;; binary) file="$TARGET" ;; unit) file="$UNIT" ;; esac
+for name in config binary unit meter; do
+  case "$name" in config) file="$CONFIG" ;; binary) file="$TARGET" ;; unit) file="$UNIT" ;; meter) file="$METER_UNIT" ;; esac
   if [ -e "$file" ]; then cp -p -- "$file" "$STAGE/$name.old"; fi
 done
 rollback() {
@@ -162,8 +165,10 @@ rollback() {
   trap - EXIT
   if [ "$status" -ne 0 ]; then
     local degraded=0 name file
-    for name in config binary unit; do
-      case "$name" in config) file="$CONFIG" ;; binary) file="$TARGET" ;; unit) file="$UNIT" ;; esac
+    # A meter unit created by this run goes away with it.
+    [ -f "$STAGE/meter.old" ] || systemctl disable --now vps-server-frps-meter.service >/dev/null 2>&1 || true
+    for name in config binary unit meter; do
+      case "$name" in config) file="$CONFIG" ;; binary) file="$TARGET" ;; unit) file="$UNIT" ;; meter) file="$METER_UNIT" ;; esac
       if [ -f "$STAGE/$name.old" ]; then
         cp -p -- "$STAGE/$name.old" "$file" || degraded=1
       else
@@ -191,10 +196,30 @@ trap rollback EXIT
 mkdir -p "$(dirname "$CONFIG")"
 install -m 0600 "$STAGE/config" "$CONFIG"
 install -m 0755 "$BIN" /usr/local/bin/frps-vps-server
+[ -f "$METER" ] || { msg integrity_failure >&2; exit 1; }
+cat > "$METER_UNIT" <<EOF
+[Unit]
+Description=vps-server frps traffic accounting and limits
+After=network-online.target
+Wants=network-online.target
+Before=vps-server-frps.service
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/python3 $METER run
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/etc/vps-server-frps
+[Install]
+WantedBy=multi-user.target
+EOF
 cat > "$UNIT" <<'EOF'
 [Unit]
 Description=vps-server frps server
-After=network.target
+After=network.target vps-server-frps-meter.service
+Requires=vps-server-frps-meter.service
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/frps-vps-server -c /etc/vps-server-frps/frps.toml
@@ -205,6 +230,9 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
+systemctl enable vps-server-frps-meter.service >/dev/null
+# The meter follows bindPort from frps.toml; restart it so a new port is metered at once.
+systemctl restart vps-server-frps-meter.service || { msg start_failed >&2; exit 1; }
 systemctl enable vps-server-frps.service >/dev/null
 systemctl restart vps-server-frps.service
 systemctl is-active --quiet vps-server-frps.service || { msg start_failed >&2; exit 1; }
