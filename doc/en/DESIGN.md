@@ -69,6 +69,9 @@ Frontend source is in `web/`, using Vue 3, Vite, TypeScript, Tailwind CSS and sh
 - Web restarts **MUST NOT** hold `.ports.lock`; the new Web process releases stale registrations through the same lock at startup.
 - A single-module install **MUST NOT** stop, reinstall or disable another module's services.
 - Public listener and console route boundaries **MUST** remain separate. Trusted proxy headers **MUST NOT** authorize passwordless IP login.
+- When proxy address headers are trusted, the client address **MUST** be the last `X-Forwarded-For` entry the proxy appended; the entries to its left can be forged by the client and **MUST NOT** be used for bans or the access limit.
+- Console pages **MUST NOT** use inline scripts or inline event attributes; responses carry a Content-Security-Policy with `script-src 'self'` and headers that forbid embedding by default. Inline styles stay allowed because xterm.js and the UI set styles at run time.
+- The console access limit drops connections by source address before the TLS handshake, and loopback is always allowed; changes to the settings file apply immediately, and a damaged file counts as off so it cannot shut everyone out.
 - The console **MUST** be served over HTTPS only. Client certificates are signed by the console's own CA (`certs/client-ca.*`), and the server **MUST NOT** keep device private keys; TLS only requests a certificate without enforcing it (`CERT_OPTIONAL`), and "require certificate" is checked per request at the HTTP layer against unrevoked serial numbers, so Clash subscriptions still work and revocation needs no TLS rebuild. Before the requirement is turned on, the current connection **MUST** present a valid certificate; while it is on, the certificate used by the current connection **MUST NOT** be revoked.
 - Same-layout installs **MUST** retain state. Old layouts or missing locators **MUST NOT** be silently overwritten as fresh installs.
 - Third-party artifacts **MUST** match pinned hashes and retain original licenses and corresponding source access. Artifact verification is not a complete OS dependency lock.
@@ -84,7 +87,7 @@ Use the latest starter tokens for typography, spacing, radii, shadows, container
 | `/var/lib/vps-server` | Default layout-1 state root, located through `/etc/vps-server/state-dir`. |
 | `admin_password.txt`, `console_port.txt`, `.env`, `paths.json`, `.layout-version` | Authentication, persisted port, configuration and path/layout metadata. |
 | `certs/` | TLS certificates and private keys; the client-certificate CA (`client-ca.pem`, `client-ca.key`) and issuance record `client-auth.json` (requirement switch, serial numbers, device names, revocation state). |
-| `data/` | SQLite visitor database, sessions/signing secret, feature state, node manifest and jobs. |
+| `data/` | SQLite visitor database, sessions/signing secret, feature state, node manifest and jobs; login security settings (`login-ban.json`, `console-access.json`, `alerts.json`), the security log (`security-audit.jsonl`) and known login addresses (`known-logins.json`). |
 | `/etc/vps-server-proxy/config.json` | Singbox runtime configuration coordinated with the managed node manifest. |
 | `/etc/vps-server-frps/frps.toml` | FRPS server configuration. |
 | `/etc/frp/frpc-<name>.toml` | FRPC instance configuration; non-ASCII names map to stable unit aliases. |

@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.6.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.6.3)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v5.7.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v5.7.0)
 
 ## Documentación
 
@@ -24,6 +24,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Nodos Singbox para AnyTLS, VMess, VLESS, Trojan y Shadowsocks, con enlaces, cuotas, límites de velocidad y caducidad.
 - Servidor FRPS, instancias FRPC y proxies TCP/UDP, acceso a Lucky y estado y dispositivos de Tailscale.
 - Módulos opcionales, reenvío de puertos, registros detallados, terminal root con contraseña, tres idiomas y temas.
+- Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
 ### Capturas de pantalla
@@ -124,10 +125,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v5.6.3-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v5.7.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.7.0/vps-server-v5.7.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -135,7 +136,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Lucky y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v5.6.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v5.7.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -147,17 +148,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v5.7.0/vps-server-v5.7.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/vps-server-v5.6.3-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.6.3/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v5.7.0/vps-server-v5.7.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v5.7.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v5.6.3-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v5.7.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -188,6 +189,23 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 El argumento `status` muestra el estado del requisito y todos los certificados.
 
+### Seguridad del inicio de sesión
+
+Toda esta configuración está en Configuración > Seguridad.
+
+- **Bloqueo por fallos**: una IP que falla la contraseña el número de veces configurado dentro de la ventana queda bloqueada un tiempo; las direcciones IPv6 cuentan juntas por /64. Cada nuevo bloqueo en un día dura diez veces más (por defecto 30 segundos, 5 minutos, 50 minutos, unas 8 horas, como máximo 24 horas). Durante el bloqueo se rechaza incluso la contraseña correcta; un inicio de sesión correcto borra el recuento de esa IP. Si todas las fuentes juntas fallan demasiado, las direcciones que nunca iniciaron sesión no pueden usar la contraseña durante un tiempo (por defecto, 20 fallos en 60 segundos la pausan 5 minutos); las direcciones conocidas, el acceso con certificado y el acceso por IP no se ven afectados. El interruptor está activado por defecto; desactivado, se siguen contando los fallos de cada IP y alcanzar el umbral solo la marca, para comprobar que la detección funciona. Cambiar el interruptor borra los bloqueos y marcas actuales; los registros están en memoria y se borran al reiniciar Web.
+- **Límite de acceso a la consola**: activado, solo las IP o redes de la lista pueden conectarse a la consola y las demás se cortan antes del saludo TLS. La dirección local (loopback) siempre se permite; los equipos de la LAN, incluidas las suscripciones de Clash, también deben estar en la lista. Solo se puede activar si la dirección actual está en la lista, y no se puede quitar una entrada que cubra la conexión actual. Desactivado por defecto. Si queda fuera, desactívelo como root en el servidor (sin reiniciar; cambie la ruta si usa otro `PREFIX`):
+
+  ```bash
+  python3 /root/apps/vps-server/src/web/console_access.py disable
+  ```
+
+- **Dispositivos conectados**: muestra los dispositivos con sesión (navegador, sistema, IP, inicio y última actividad) y permite cerrar la sesión de uno o de todos los demás. Una sesión dura como máximo 12 horas y termina tras `VPSSRV_SESSION_IDLE_SECONDS` sin actividad (2 horas por defecto); escribir en el terminal cuenta como actividad.
+- **Avisos de inicio de sesión**: con un servidor y una clave de Bark, los inicios de sesión desde una dirección nueva y los bloqueos se envían al móvil; el mismo aviso para la misma dirección se envía como máximo una vez por hora. La clave se guarda en el servidor y nunca se muestra en la página.
+- **Registro de seguridad**: muestra los 50 inicios de sesión, bloqueos, aperturas del terminal root y cambios de seguridad más recientes; el servidor guarda los últimos 500.
+
+Las respuestas de la consola llevan una Content-Security-Policy que solo permite los scripts propios y prohíben que otros sitios la incrusten. Detrás de un proxy inverso (`VPSSRV_TRUST_PROXY=1`), la dirección del cliente es la última entrada de `X-Forwarded-For` añadida por el proxy, y el límite de acceso comprueba esa dirección en cada solicitud.
+
 Plantilla de configuración: [.env.example](../../.env.example). Todas las variables tienen valores predeterminados; no es obligatorio indicar credenciales. Use rutas absolutas, interruptores `0/1`, puertos `1-65535` (salvo el `0` de consola) y cantidades/duraciones enteras. Salvo `PREFIX` y el `VPSSRV_STATE_DIR` inicial, se guardan en `.env` de la raíz del estado; reinicie Web tras cambiarlos. Los valores iniciales de módulos se aplican al instalarlos.
 
 | Parámetro | Predeterminado | Significado |
@@ -208,7 +226,11 @@ Plantilla de configuración: [.env.example](../../.env.example). Todas las varia
 | `VPSSRV_IP_ALLOWLIST_FILE` | vacío | Archivo de IP permitidas sin contraseña; vacío usa la lista predeterminada. |
 | `VPSSRV_LOGIN_MAX_ATTEMPTS` | `5` | Máximo de intentos fallidos por ventana. |
 | `VPSSRV_LOGIN_WINDOW_SECONDS` | `60` | Ventana de intentos fallidos en segundos. |
-| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | Bloqueo tras superar el límite, en segundos. |
+| `VPSSRV_LOGIN_LOCKOUT_SECONDS` | `30` | Bloqueo la primera vez que se supera el límite, en segundos; el interruptor está en Seguridad, no en `.env`. |
+| `VPSSRV_LOGIN_LOCKOUT_MAX_SECONDS` | `86400` | Límite superior de los bloqueos repetidos, en segundos. |
+| `VPSSRV_LOGIN_GLOBAL_MAX_ATTEMPTS` | `20` | Total de fallos de todas las fuentes en la ventana; 0 desactiva la pausa global. |
+| `VPSSRV_LOGIN_GLOBAL_LOCKOUT_SECONDS` | `300` | Pausa global en segundos. |
+| `VPSSRV_SESSION_IDLE_SECONDS` | `7200` | Tiempo de inactividad de la sesión en segundos; 0 lo desactiva. |
 | `VPSSRV_TLS_CERT` | vacío | Ruta del certificado TLS propio; indique también la clave. |
 | `VPSSRV_TLS_KEY` | vacío | Ruta de clave TLS propia; sin el par se genera un certificado autofirmado. |
 | `VPSSRV_IPERF_ENABLE` | `1` | Activación de iperf3. |
@@ -254,7 +276,7 @@ Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pas
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.6.3, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v5.7.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

@@ -26,6 +26,33 @@ metadata:
 
 ## Historial de cambios
 
+### v5.7.0 — 2026-11-08
+
+Más seguridad en el inicio de sesión de la consola. El comando de actualización no cambia y se conservan la configuración y los datos; el instalador menciona 4 variables opcionales nuevas, y si no se definen se usan los valores predeterminados. La nueva configuración está en Configuración > Seguridad.
+
+#### Añadido
+
+- **Interruptor del bloqueo por fallos.** Activado por defecto. Desactivado no bloquea, pero sigue contando los fallos de cada IP y marca la que alcanza el umbral como "umbral alcanzado, sin bloqueo", para comprobar que la detección funciona. Los registros se pueden borrar.
+- **Bloqueos crecientes.** Cada nuevo bloqueo de la misma IP en un día dura diez veces más: 30 segundos, 5 minutos, 50 minutos, unas 8 horas, como máximo 24 horas (`VPSSRV_LOGIN_LOCKOUT_MAX_SECONDS`). Un inicio de sesión correcto lo reinicia.
+- **Agrupación IPv6 por /64 y límite global.** Las direcciones del mismo /64 cuentan juntas. Si todas las fuentes suman 20 fallos en 60 segundos, las direcciones que nunca iniciaron sesión no pueden usar la contraseña durante 5 minutos (`VPSSRV_LOGIN_GLOBAL_MAX_ATTEMPTS`, `VPSSRV_LOGIN_GLOBAL_LOCKOUT_SECONDS`); las direcciones conocidas, el acceso con certificado y el acceso por IP no se ven afectados.
+- **Límite de acceso a la consola.** Desactivado por defecto. Activado, solo las IP o redes de la lista pueden conectarse a la consola; las demás se cortan antes del saludo TLS. No se puede activar ni quitar una entrada de forma que deje fuera la conexión actual. Si queda fuera, ejecute como root `python3 /root/apps/vps-server/src/web/console_access.py disable`; no hace falta reiniciar.
+- **Dispositivos conectados.** Muestra los dispositivos con sesión (navegador, sistema, IP, inicio y última actividad) y permite cerrar la sesión de uno o de todos los demás. La sesión termina tras 2 horas sin actividad (`VPSSRV_SESSION_IDLE_SECONDS`); escribir en el terminal cuenta como actividad.
+- **Registro de seguridad y avisos de Bark.** Registra inicios de sesión, bloqueos, aperturas del terminal root y cambios de seguridad, y muestra los 50 más recientes. Con una clave de Bark, los inicios de sesión desde una dirección nueva y los bloqueos se envían al móvil; la clave nunca se muestra en la página.
+
+#### Mejorado
+
+- Las respuestas de la consola llevan una Content-Security-Policy que solo permite los scripts propios y prohíben que otros sitios la incrusten. El antiguo script en línea pasó a un archivo propio.
+
+#### Corregido
+
+- Detrás de un proxy inverso (`VPSSRV_TRUST_PROXY=1`), la dirección del cliente es ahora la última entrada de `X-Forwarded-For` añadida por el proxy, así que un encabezado falsificado ya no afecta al límite de intentos, los registros ni el límite de acceso.
+- La página de inicio de sesión deja espacio entre el botón de acceso con certificado y la etiqueta de la contraseña.
+- Los comandos de extracción del README y la extracción interna del instalador indican el filtro `tar` de forma explícita, lo que elimina el `DeprecationWarning` de Python 3.12 y 3.13.
+
+#### Verificación
+
+Las pruebas locales cubren bloqueos, el interruptor, la agrupación IPv6, la pausa global, el límite de acceso, los dispositivos, el registro de seguridad y los avisos de Bark con un servidor simulado; 15 páginas no muestran bloqueos de CSP en un navegador sin interfaz. El operador instaló por red `v5.7.0-test.1` y `v5.7.0-test.2` en un equipo de prueba de la LAN y confirmó el recuento de fallos, el marcado con el bloqueo desactivado, el bloqueo activado y el nuevo diseño. Aún no se ha probado con una cuenta real de Bark ni detrás de un proxy inverso real.
+
 ### v5.6.3 — 2026-11-06
 
 **Se recomienda actualizar a todos, sobre todo en equipos instalados con el paquete offline.** El comando de actualización no cambia y se conservan la configuración y los datos. Ejecute la actualización por SSH, no en el terminal integrado de la consola.

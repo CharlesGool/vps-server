@@ -26,6 +26,33 @@ metadata:
 
 ## Changelog
 
+### v5.7.0 — 2026-11-08
+
+Stronger console login security. The upgrade command is unchanged and configuration and data are kept; the installer mentions 4 new optional variables, and leaving them unset keeps the defaults. The new settings are under Settings > Security.
+
+#### Added
+
+- **Failed-login ban switch.** On by default. When off, nothing is banned, but failures per IP are still counted and an IP that reaches the threshold is marked "threshold reached, not banned", so you can test that detection works. Records can be cleared.
+- **Escalating bans.** Each repeat ban of the same IP within a day lasts ten times longer: 30 seconds, 5 minutes, 50 minutes, about 8 hours, at most 24 hours (`VPSSRV_LOGIN_LOCKOUT_MAX_SECONDS`). A successful login resets it.
+- **IPv6 /64 grouping and a global limit.** Addresses in the same /64 count together. When all sources together fail 20 times within 60 seconds, addresses that never logged in successfully cannot use the password for 5 minutes (`VPSSRV_LOGIN_GLOBAL_MAX_ATTEMPTS`, `VPSSRV_LOGIN_GLOBAL_LOCKOUT_SECONDS`); known addresses, certificate login and IP access are not affected.
+- **Console access limit.** Off by default. When on, only listed IPs or networks can connect to the console; other addresses are dropped before the TLS handshake. It cannot be turned on, nor an entry removed, in a way that shuts out the current connection. If you are locked out, run `python3 /root/apps/vps-server/src/web/console_access.py disable` as root; no restart is needed.
+- **Signed-in devices.** Lists signed-in devices (browser, system, IP, sign-in and last activity) and can sign out one device or all others. Logins end after 2 hours without activity (`VPSSRV_SESSION_IDLE_SECONDS`); terminal input counts as activity.
+- **Security log and Bark login alerts.** Records logins, bans, root terminal sessions and security setting changes, and shows the latest 50. With a Bark key, logins from a new address and bans are pushed to your phone; the key is never shown on the page.
+
+#### Improved
+
+- Console responses carry a Content-Security-Policy that allows only the console's own scripts, and forbid embedding by other sites. The former inline script moved to its own file.
+
+#### Fixed
+
+- Behind a reverse proxy (`VPSSRV_TRUST_PROXY=1`), the client address is now the last `X-Forwarded-For` entry the proxy appended, so a forged header no longer affects rate limiting, logs or the access limit.
+- The login page leaves space between the certificate login button and the password label.
+- The README extraction commands and the installer's own extraction name the `tar` filter explicitly, removing the `DeprecationWarning` on Python 3.12 and 3.13.
+
+#### Verification
+
+Local runtime tests cover bans, the switch, IPv6 grouping, the global pause, the access limit, signed-in devices, the security log and Bark alerts against a mock server; 15 pages show no CSP violations in a headless browser. The operator installed `v5.7.0-test.1` and `v5.7.0-test.2` online on a LAN test machine and confirmed failure counting, marking while off, banning while on and the new layout. Not yet tested with a real Bark account or behind a real reverse proxy.
+
 ### v5.6.3 — 2026-11-06
 
 **Upgrading is recommended for everyone, especially hosts installed from the offline package.** The upgrade command is unchanged and configuration and data are kept. Run the upgrade over SSH, not in the console's own terminal.
