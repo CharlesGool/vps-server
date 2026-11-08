@@ -35,6 +35,14 @@
       "sha256": "f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
     },
     {
+      "component": "OpenSSL CLI",
+      "version": "3.5.9 x86-64 Linux static build",
+      "upstream": "https://github.com/openssl/openssl",
+      "recorded_upstream_revision": null,
+      "path": "third_party/openssl/openssl",
+      "sha256": "04097434d525522b36a902eb26eed50616744e083d216905acc1d9c08fb4ed50"
+    },
+    {
       "component": "sing-box",
       "version": "v1.13.21",
       "upstream": "https://github.com/SagerNet/sing-box",
@@ -127,7 +135,6 @@
     {
       "items": [
         "python3 and its standard library",
-        "openssl",
         "curl",
         "jq",
         "iproute2",

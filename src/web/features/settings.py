@@ -100,6 +100,7 @@ class SettingsMixin:
         allowed_messages = notices | {"access_ip_invalid", "access_ip_error", "access_password_invalid",
                                       "client_cert_need_current", "client_cert_keep_current",
                                       "client_cert_error", "client_cert_openssl_missing",
+                                      "client_cert_tls_unsupported",
                                       "client_cert_name_invalid", "login_ban_error",
                                       "console_access_invalid", "console_access_too_wide",
                                       "console_access_full", "console_access_need_current",

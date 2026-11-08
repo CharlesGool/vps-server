@@ -48,6 +48,12 @@ case "$key" in
   deps_nft_unusable) fmt='代理模块需要 nftables，但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
   deps_tailscale_conflict) fmt='系统中已有运行中的 Tailscale 守护进程（tailscaled.service）。请先停止它，或从 VPSSRV_MODULES 中去掉 tailscale。' ;;
   deps_tun_missing) fmt='Tailscale 需要 /dev/net/tun，但本机没有这个设备。请在 VPS 控制面板中开启 TUN/TAP 后重试。' ;;
+  deps_bash_old) fmt='需要 bash 4.1 或更高版本。请先升级系统软件包。' ;;
+  deps_systemd_old) fmt='需要 systemd 240 或更高版本（Debian 10 / Ubuntu 20.04 起）。请先升级系统。' ;;
+  deps_sqlite_old) fmt='Python 使用的 SQLite 需要 3.24 或更高版本。请先升级系统软件包。' ;;
+  deps_libssl_old) fmt='Python 使用的 OpenSSL 库需要 1.1.1 或更高版本。请先升级系统的 openssl/libssl 软件包。' ;;
+  deps_base_tools_missing) fmt='缺少基础命令（flock, sha256sum, base64, getent, install, mktemp, systemd-run 之一）。请安装 coreutils, util-linux, libc-bin 和 systemd。' ;;
+  deps_ca_missing) fmt='在线安装包要通过 HTTPS 下载组件，但本机没有 CA 证书。请先安装 ca-certificates，或改用完整离线包。' ;;
   tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
   web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
   proxy_protocols_head) fmt='  哪些协议？下面每一项独立回答。\n' ;;
@@ -62,6 +68,7 @@ case "$key" in
   ui_bundle_missing) fmt='缺少前端构建产物 web/dist/ui.js 和 ui.css，安装在修改任何内容前停止。\n请使用完整安装包，或先在 web/ 目录执行 npm ci && npm run check（需要 Node.js 24）。\n' ;;
   iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
   iperf_failed) fmt='iperf3 安装失败（apt 输出见上）。安装已停止；请修复软件源后重新运行脚本。\n' ;;
+  openssl_bundle_failed) fmt='随附的 openssl 缺失或校验不符，安装已停止；请重新下载完整的安装包。\n' ;;
   online_fetching) fmt='正在从固定的上游压缩包下载 %s ...\n' ;;
   online_fetch_failed) fmt='无法下载或校验随附组件。未做任何改动；请检查网络，或改用离线版安装包。\n' ;;
   apt_installing) fmt='正在从发行版仓库安装系统工具：%s ...\n' ;;

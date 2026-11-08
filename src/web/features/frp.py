@@ -510,6 +510,14 @@ class FrpMixin:
         return True
 
 
+def _host_tool(name):
+    try:
+        from nft_runtime import tool
+    except ImportError:
+        from ..nft_runtime import tool
+    return tool(name)
+
+
 def frps_node(context, ):
     """Read-only server parameters; do not expose them outside an authenticated console."""
     try:
@@ -527,12 +535,12 @@ def frps_node(context, ):
 def frpc_connected(context, name, server, port):
     """Check this instance's established TCP socket to its configured server."""
     try:
-        pid_text = context.subprocess.run(['systemctl', 'show', '-P', 'MainPID', context.frpc_unit(name)],
+        pid_text = context.subprocess.run(['systemctl', 'show', '-p', 'MainPID', '--value', context.frpc_unit(name)],
                                   capture_output=True, text=True, timeout=3, check=True).stdout.strip()
         pid = int(pid_text)
         if pid <= 0 or not server or not port:
             return False
-        output = context.subprocess.run(['ss', '-Htnp', 'state', 'established'], capture_output=True,
+        output = context.subprocess.run([_host_tool('ss'), '-Htnp', 'state', 'established'], capture_output=True,
                                 text=True, timeout=3, check=True).stdout
         destinations = {address[4][0] for address in context.socket.getaddrinfo(server, port, type=context.socket.SOCK_STREAM)}
         for line in output.splitlines():

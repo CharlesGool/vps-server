@@ -1,0 +1,10 @@
+Component: OpenSSL command-line tool, x86-64 Linux
+Version: 3.5.9 (LTS)
+Official source: https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz
+Official source SHA256: 603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
+Build: ./Configure linux-x86_64 --prefix=/opt/vps-openssl --openssldir=/nonexistent/vps-openssl no-shared no-module no-dso no-engine no-tests no-docs -static -O2 && make build_programs; strip apps/openssl
+Build host: Ubuntu 22.04 x86-64; gcc and glibc static linker
+Binary SHA256: 04097434d525522b36a902eb26eed50616744e083d216905acc1d9c08fb4ed50
+Binary: third_party/openssl/openssl
+License: official source LICENSE.txt (Apache-2.0), included beside binary
+Use: the console signs client certificates with this binary only, with its own minimal configuration (OPENSSL_CONF), so the host's OpenSSL version and openssl.cnf do not matter. TLS handshakes still use the host libssl through Python.

@@ -78,6 +78,52 @@ def _web(source, prefix):
             if not shutil.which(tool) and not bundled]
 
 
+# Host baseline every install needs. Each floor is the oldest version that has
+# what the shipped code uses; stock Debian 11 / Ubuntu 22.04 meet all of them.
+BASH_MIN = (4, 1)        # `exec {fd}>` file-descriptor variables
+SYSTEMD_MIN = 240        # systemd-run --pipe/--collect/--wait, StandardOutput=append:
+SQLITE_MIN = (3, 24)     # UPSERT (ON CONFLICT ... DO UPDATE) in the visitor log
+LIBSSL_MIN = (1, 1, 1)   # console TLS 1.3 and client-certificate verification
+BASE_TOOLS = ("flock", "sha256sum", "base64", "getent", "install", "mktemp", "systemd-run")
+
+
+def _first_version(text):
+    import re
+    match = re.search(r"(\d+(?:\.\d+)*)", text or "")
+    return tuple(int(part) for part in match.group(1).split(".")) if match else None
+
+
+def _output(args):
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=10, check=False).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _core(source):
+    import sqlite3
+    import ssl
+    findings = []
+    bash = _first_version(_output(["bash", "-c", "echo $BASH_VERSION"]))
+    if not bash or bash < BASH_MIN:
+        findings.append(("error", "bash_old"))
+    systemd = _first_version(_output(["systemctl", "--version"]).replace("systemd ", ""))
+    if not systemd or systemd[0] < SYSTEMD_MIN:
+        findings.append(("error", "systemd_old"))
+    if sqlite3.sqlite_version_info < SQLITE_MIN:
+        findings.append(("error", "sqlite_old"))
+    if ssl.OPENSSL_VERSION_INFO < LIBSSL_MIN:
+        findings.append(("error", "libssl_old"))
+    if any(not shutil.which(tool) for tool in BASE_TOOLS):
+        findings.append(("error", "base_tools_missing"))
+    variant = Path(source) / "config" / "PACKAGE_VARIANT" if source else None
+    if variant and variant.is_file() and variant.read_text().strip() == "online":
+        # The online package downloads its binaries over HTTPS with the host CA store.
+        if not ssl.create_default_context().cert_store_stats().get("x509_ca"):
+            findings.append(("error", "ca_missing"))
+    return findings
+
+
 NFT_CODES = ("nft_missing", "nft_unusable")
 
 
@@ -107,6 +153,8 @@ def install_nft():
 
 def check(module, *, source=None, prefix=None):
     """Return the findings for one module; console names are accepted too."""
+    if module == "core":
+        return _core(source)
     if module == "web":
         return _web(source, prefix)
     if module in ("proxy", "proxy_nodes"):

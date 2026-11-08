@@ -37,6 +37,9 @@ PUBLIC_HTTP_PORT="${VPSSRV_PUBLIC_HTTP_PORT:-80}"
 PUBLIC_HTTPS_PORT="${VPSSRV_PUBLIC_HTTPS_PORT:-443}"
 
 IPERF_SHA256="f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
+# Static OpenSSL 3.5 LTS CLI; the console signs client certificates with it
+# instead of the host openssl, whose version and openssl.cnf vary.
+OPENSSL_SHA256="04097434d525522b36a902eb26eed50616744e083d216905acc1d9c08fb4ed50"
 
 has_module() {
   case ",${MODULES}," in *",$1,"*) return 0 ;; esac
@@ -468,6 +471,9 @@ PY
 command -v systemctl >/dev/null 2>&1 || die "$(msg no_systemd)"
 command -v python3 >/dev/null 2>&1 || die "$(msg no_python)"
 python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' || die "$(msg python_too_old "$(python3 -V 2>&1)")"
+# Units and helpers run /usr/bin/python3 directly, so that copy must qualify too.
+/usr/bin/python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null ||
+  die "$(msg python_too_old "/usr/bin/python3: $(/usr/bin/python3 -V 2>&1 || echo none)")"
 [ "$(uname -s)" = Linux ] && { [ "$(uname -m)" = x86_64 ] || [ "$(uname -m)" = amd64 ]; } || die "$(msg platform_unsupported)"
 
 # Reuse the installed language unless this run explicitly selects another.
@@ -716,7 +722,7 @@ fi
 check_host_prerequisites() {
   local findings level code failed=0
   findings="$(/usr/bin/python3 "$SRC_DIR/src/web/host_checks.py" --source "$SRC_DIR" --prefix "$PREFIX" \
-    ${MODULES//,/ })" || true
+    core ${MODULES//,/ })" || true
   while read -r level code; do
     [ -n "$code" ] || continue
     if [ "$level" = error ]; then
@@ -769,10 +775,6 @@ install_system_tools() {
     command -v iptables >/dev/null 2>&1 || packages="$packages iptables"
     { command -v ss >/dev/null 2>&1 && command -v ip >/dev/null 2>&1; } || packages="$packages iproute2"
   fi
-  # The console signs client certificates with openssl.
-  if has_module web; then
-    command -v openssl >/dev/null 2>&1 || packages="$packages openssl"
-  fi
   if has_module proxy &&
      ! /usr/bin/python3 "$SRC_DIR/src/web/host_checks.py" --source "$SRC_DIR" --prefix "$PREFIX" proxy >/dev/null; then
     packages="$packages nftables"
@@ -807,6 +809,20 @@ install_iperf3() {
   mkdir -p "$PREFIX/vendor/iperf3"
   install -m 755 "$source" "$PREFIX/vendor/iperf3/iperf3.tmp"
   mv -f "$PREFIX/vendor/iperf3/iperf3.tmp" "$PREFIX/vendor/iperf3/iperf3"
+}
+
+install_openssl() {
+  local source="$SRC_DIR/third_party/openssl/openssl" target="$PREFIX/vendor/openssl/openssl" digest
+  [ -f "$source" ] || { msg openssl_bundle_failed; return 1; }
+  digest="$(sha256sum "$source")"
+  [ "${digest%% *}" = "$OPENSSL_SHA256" ] || { msg openssl_bundle_failed; return 1; }
+  if [ -x "$target" ]; then
+    digest="$(sha256sum "$target")"
+    [ "${digest%% *}" = "$OPENSSL_SHA256" ] && return 0
+  fi
+  mkdir -p "$PREFIX/vendor/openssl"
+  install -m 755 "$source" "$target.tmp"
+  mv -f "$target.tmp" "$target"
 }
 
 install_proxy() {
@@ -1404,6 +1420,10 @@ fi
 
 if has_module iperf3; then
   install_iperf3 || exit 1
+fi
+
+if has_module web; then
+  install_openssl || exit 1
 fi
 
 msg writing_unit "$UNIT_PATH"

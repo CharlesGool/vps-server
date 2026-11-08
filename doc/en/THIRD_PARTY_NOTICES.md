@@ -43,10 +43,11 @@ This inventory records distributed component identity and obligations, preserves
 | Lucide | main, 2026-09-27; additional icons from lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Bundled SVG icons. | Lucide Icons and Contributors; Cole Bemis | Retain attribution and full license. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Terminal rendering and fitting. | The xterm.js authors; SourceLair; Christopher Jeffrey | Retain both original license/attribution texts. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Static build from unchanged source for TCP/UDP tests. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Retain attribution and full license. | 2026-10-04 |
+| OpenSSL | 3.5.9 (LTS) | [OpenSSL](https://github.com/openssl/openssl) | Apache-2.0 | Static build of the command-line tool from unchanged source; only signs console client certificates. | The OpenSSL Project Authors | Retain full license. | 2026-11-08 |
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Official static client/daemon archive. | Tailscale Inc & contributors (2020) | Retain LICENSE, PATENTS and original dependency notices/licenses. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | Per-package copyright: GPL/LGPL/BSD and others. | Private runtime with its own loader and glibc, supplied only in complete offline packages. | Upstream package authors; see original archive notices. | Distribute complete corresponding sources, patches and package notices together. | 2026-11-06 |
 
-Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, OpenSSL, iptables and similar OS components are not pinned by this lock; their licenses/security updates follow distribution channels.
+Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, the host OpenSSL library (used by Python TLS), iptables and similar OS components are not pinned by this lock (the installer checks minimum versions); their licenses/security updates follow distribution channels.
 
 The Vue frontend adds Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 and tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), and class-variance-authority 0.7.1 (Apache-2.0). Exact identities and download sources are in the [npm lock file](../../web/package-lock.json). They provide shared components and compiled browser resources; copyright ownership follows upstream texts. Verified on 2026-10-06. Distribution retains original copyrights and license texts. The build copies them and a version/source-download manifest to `web/dist/licenses/`, retained by installation and offline packages. Build-tool notices are included as well; this does not imply those tools run on the VPS.
 
@@ -64,6 +65,7 @@ The Vue frontend adds Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS
 - [xterm.js MIT](../../src/web/static/third_party/xterm/LICENSE-xterm)
 - [Fit Addon MIT](../../src/web/static/third_party/xterm/LICENSE-addon-fit)
 - [iperf3](../../third_party/iperf3/LICENSE)
+- [OpenSSL](../../third_party/openssl/LICENSE.txt)
 - [Tailscale LICENSE](../../third_party/tailscale/LICENSE)
 - [Tailscale PATENTS](../../third_party/tailscale/PATENTS)
 - [Tailscale dependencies](../../third_party/tailscale/DEPENDENCY_NOTICES.md)
@@ -76,11 +78,14 @@ Tailscale's 79 dependency licenses, freetype license and 3 NOTICE files total 83
 - sing-box: [v1.13.21 source](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [source archive](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [v6.2.1 source](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 source archive](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- OpenSSL: [3.5.9 source archive](https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz), SHA-256 `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`.
 - Tailscale: [v1.104.5 source](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 The complete Release includes `third_party/nft/nft-runtime-trixie.tar.gz` and `third_party/nft/nft-sources-trixie.tar.gz`, pinned to SHA-256 `fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68` and `cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3`. The source archive supplies 25 upstream source groups, Debian patches and source descriptors corresponding to 32 binary packages; files are pinned in [source-manifest.json](../../third_party/nft/source-manifest.json). The build script downloads and verifies them from Debian; a source checkout alone does not include these two nft archives. Source descriptors/patches restore the corresponding Debian tree with packaging build files. Hosts prefer a working system nft/iptables and use the private runtime only otherwise, without replacing system commands.
 
 Unchanged iperf3 source was built on Ubuntu 22.04 x86-64 with `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` and stripped, without SCTP/OpenSSL authentication; static name-resolution compatibility on older hosts still needs acceptance.
+
+Unchanged OpenSSL source was built on Ubuntu 22.04 x86-64 with `./Configure linux-x86_64 no-shared no-module no-dso no-engine no-tests no-docs -static -O2 && make build_programs` and stripped; build options are in [component.txt](../../third_party/openssl/component.txt).
 
 ### Compliance Review
 

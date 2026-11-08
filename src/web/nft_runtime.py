@@ -54,14 +54,30 @@ def command():
     raise FileNotFoundError("nftables runtime unavailable")
 
 
+# What the console needs from iproute2: JSON routes (iproute2 4.17+) and
+# header-less socket lists (4.11+). An older host copy loses to the bundle.
+_TOOL_PROBES = {"ip": ["-j", "route", "show"], "ss": ["-H", "-ltn"]}
+_TOOLS = {}
+
+
 def tool(name):
-    """Command to run for a helper such as ip or ss: the host's when present,
-    else the bundled copy, else the bare name so callers see the usual error."""
+    """Command to run for a helper such as ip or ss: the host's when it supports
+    what the console uses, else the bundled copy, else the host's or the bare
+    name so callers see the usual error."""
+    if name in _TOOLS:
+        return _TOOLS[name]
     system = shutil.which(name)
-    if system:
-        return system
     bundled = bundle_command(BUNDLE, name)
-    return bundled[0] if bundled else name
+    bundled = bundled[0] if bundled else None
+    probe = _TOOL_PROBES.get(name)
+    if system and (not probe or _works([system, *probe])):
+        chosen = system
+    elif bundled and (not probe or _works([bundled, *probe])):
+        chosen = bundled
+    else:
+        return system or bundled or name  # Not cached: a later install is picked up.
+    _TOOLS[name] = chosen
+    return chosen
 
 
 def iptables_command():

@@ -48,6 +48,12 @@ case "$key" in
   deps_nft_unusable) fmt='El módulo proxy necesita nftables, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
   deps_tailscale_conflict) fmt='Ya hay un demonio de Tailscale del sistema en ejecución (tailscaled.service). Detenlo o quita tailscale de VPSSRV_MODULES.' ;;
   deps_tun_missing) fmt='Tailscale necesita /dev/net/tun, pero este equipo no tiene ese dispositivo. Activa TUN/TAP en el panel de control del VPS e inténtalo de nuevo.' ;;
+  deps_bash_old) fmt='Se requiere bash 4.1 o posterior. Actualiza primero los paquetes del sistema.' ;;
+  deps_systemd_old) fmt='Se requiere systemd 240 o posterior (Debian 10 / Ubuntu 20.04 en adelante). Actualiza primero el sistema.' ;;
+  deps_sqlite_old) fmt='La biblioteca SQLite que usa Python debe ser 3.24 o posterior. Actualiza primero los paquetes del sistema.' ;;
+  deps_libssl_old) fmt='La biblioteca OpenSSL que usa Python debe ser 1.1.1 o posterior. Actualiza primero los paquetes openssl/libssl del sistema.' ;;
+  deps_base_tools_missing) fmt='Falta un comando básico (flock, sha256sum, base64, getent, install, mktemp o systemd-run). Instala coreutils, util-linux, libc-bin y systemd.' ;;
+  deps_ca_missing) fmt='El paquete en línea descarga componentes por HTTPS, pero este equipo no tiene certificados CA. Instala ca-certificates o usa el paquete completo sin conexión.' ;;
   tailscale_install_failed) fmt='Falló la instalación de Tailscale; consulte el registro del módulo.\n' ;;
   web_start_failed) fmt='El servicio Web no arrancó; se liberaron los nuevos puertos públicos reservados.\n' ;;
   proxy_protocols_head) fmt='  ¿Qué protocolos? Responde a cada uno por separado.\n' ;;
@@ -62,6 +68,7 @@ case "$key" in
   ui_bundle_missing) fmt='Faltan los archivos de compilación del frontend web/dist/ui.js y ui.css; la instalación se detuvo antes de cambiar nada.\nUsa el paquete completo o ejecuta antes npm ci && npm run check en web/ (requiere Node.js 24).\n' ;;
   iperf_installing) fmt='Instalando iperf3 desde la distribución ...\n' ;;
   iperf_failed) fmt='No se pudo instalar iperf3 (consulta la salida de apt anterior). La instalación se detuvo; corrige el repositorio y vuelve a ejecutar el script.\n' ;;
+  openssl_bundle_failed) fmt='Falta el openssl incluido o su suma de comprobación no coincide. La instalación se detuvo; descarga de nuevo el paquete completo.\n' ;;
   online_fetching) fmt='Descargando %s desde los archivos originales fijados ...\n' ;;
   online_fetch_failed) fmt='No se pudo descargar o verificar un componente incluido. No se cambió nada; revisa la red o usa el paquete sin conexión.\n' ;;
   apt_installing) fmt='Instalando herramientas del sistema desde la distribución: %s ...\n' ;;

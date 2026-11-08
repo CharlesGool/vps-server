@@ -12,7 +12,7 @@ def _cert_common_name(context, path):
         if sans:
             return sans[0][1]
         return next(value for group in decoded.get("subject", ()) for name, value in group if name == "commonName")
-    except (OSError, ValueError, StopIteration):
+    except (OSError, ValueError, StopIteration, AttributeError):  # private CPython helper
         return ""
 
 def anytls_installed(context, ):

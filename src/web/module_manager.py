@@ -67,9 +67,24 @@ PREVIOUS_FRPC_SHA256 = ("f79fff8de3089ec711ff8bdd4b73e00dfe491a1c3d754983c8b0f8d
 IPERF_SHA256 = "f1924a042ef4074b5974b8985a235ad2fcb45d52d02cec46b0dfb45e269b9bf2"
 
 
+IPERF_MIN = (3, 1)  # --json client output as the console parses it
+
+
 def iperf_binary(prefix):
+    """The bundled iperf3; a host copy only when it reports IPERF_MIN or newer."""
     bundled = Path(prefix) / "vendor" / "iperf3" / "iperf3"
-    return str(bundled) if bundled.is_file() else shutil.which("iperf3")
+    if bundled.is_file():
+        return str(bundled)
+    system = shutil.which("iperf3")
+    if not system:
+        return None
+    try:
+        words = subprocess.run([system, "--version"], capture_output=True, text=True,
+                               timeout=10, check=False).stdout.split()
+        version = tuple(int(part) for part in words[1].split(".")[:2])
+    except (OSError, subprocess.SubprocessError, IndexError, ValueError):
+        return None
+    return system if version >= IPERF_MIN else None
 
 
 def frpc_installed():

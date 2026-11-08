@@ -43,10 +43,11 @@ Este inventario registra componentes y obligaciones, conserva textos originales 
 | Lucide | main, 2026-09-27; iconos adicionales de lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos. | Lucide Icons and Contributors; Cole Bemis | Conservar atribución y licencia íntegra. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Renderizado y tamaño del terminal. | The xterm.js authors; SourceLair; Christopher Jeffrey | Conservar ambos textos originales de licencia/atribución. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Compilación estática sin cambios para TCP/UDP. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Conservar atribución y licencia íntegra. | 2026-10-04 |
+| OpenSSL | 3.5.9 (LTS) | [OpenSSL](https://github.com/openssl/openssl) | Apache-2.0 | Herramienta de línea de comandos compilada estáticamente sin cambios; solo firma certificados de cliente de la consola. | The OpenSSL Project Authors | Conservar licencia íntegra. | 2026-11-08 |
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Archivo oficial de cliente/daemon estático. | Tailscale Inc & contributors (2020) | Conservar LICENSE, PATENTS y avisos/licencias originales de dependencias. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | copyright de cada paquete: GPL/LGPL/BSD y otras. | Entorno privado con cargador y glibc propios, solo en paquetes completos. | Autores de cada paquete; consulte avisos del archivo. | Distribuir fuentes completas correspondientes, parches y avisos juntos. | 2026-11-06 |
 
-Las fechas corresponden a verificaciones originales; el 2026-10-05 se repitieron sumas, no toda la procedencia. Los artefactos frp, Lucky, Singbox, LibreSpeed y QR no se modificaron. Inter/Noto indican versiones Fontsource, no internas. No se incluyen paquetes Python de terceros, conjuntos de imágenes ni pesos. Python, systemd, OpenSSL, iptables y similares dependen del sistema; sus licencias/actualizaciones corresponden a la distribución.
+Las fechas corresponden a verificaciones originales; el 2026-10-05 se repitieron sumas, no toda la procedencia. Los artefactos frp, Lucky, Singbox, LibreSpeed y QR no se modificaron. Inter/Noto indican versiones Fontsource, no internas. No se incluyen paquetes Python de terceros, conjuntos de imágenes ni pesos. Python, systemd, la biblioteca OpenSSL del equipo (usada por TLS de Python), iptables y similares dependen del sistema (el instalador comprueba versiones mínimas); sus licencias/actualizaciones corresponden a la distribución.
 
 El frontend Vue añade Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 y tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC) y class-variance-authority 0.7.1 (Apache-2.0). Las identidades y fuentes exactas están en el [archivo de bloqueo npm](../../web/package-lock.json). Proporcionan componentes compartidos y recursos compilados; la titularidad corresponde a los textos originales. Verificado el 2026-10-06. La distribución conserva derechos y licencias originales. La compilación los copia con un manifiesto de versiones y descargas de fuentes a `web/dist/licenses/`; la instalación y el paquete sin conexión lo conservan. También se incluyen avisos de herramientas de compilación, sin indicar que se ejecuten en el VPS.
 
@@ -64,6 +65,7 @@ El frontend Vue añade Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CS
 - [xterm.js MIT](../../src/web/static/third_party/xterm/LICENSE-xterm)
 - [Fit Addon MIT](../../src/web/static/third_party/xterm/LICENSE-addon-fit)
 - [iperf3](../../third_party/iperf3/LICENSE)
+- [OpenSSL](../../third_party/openssl/LICENSE.txt)
 - [Tailscale LICENSE](../../third_party/tailscale/LICENSE)
 - [Tailscale PATENTS](../../third_party/tailscale/PATENTS)
 - [Tailscale dependencies](../../third_party/tailscale/DEPENDENCY_NOTICES.md)
@@ -76,11 +78,14 @@ Las 79 licencias de dependencias Tailscale, licencia freetype y 3 NOTICE suman 8
 - sing-box: [código v1.13.21](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [archivo fuente](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [código v6.2.1](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 archivo fuente](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- OpenSSL: [3.5.9 archivo fuente](https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz), SHA-256 `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`.
 - Tailscale: [código v1.104.5](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 El Release completo incluye `third_party/nft/nft-runtime-trixie.tar.gz` y `third_party/nft/nft-sources-trixie.tar.gz`, con SHA-256 `fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68` y `cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3`. Las fuentes incluyen 25 grupos, parches Debian y descriptores correspondientes a 32 paquetes binarios; los archivos están fijados en [source-manifest.json](../../third_party/nft/source-manifest.json). El constructor los descarga y verifica desde Debian; una copia del código no incluye ambos archivos nft. Los descriptores/parches reconstruyen el árbol Debian con archivos de compilación. El host prefiere nft/iptables del sistema si funcionan y solo usa el entorno privado en caso contrario, sin sustituir comandos del sistema.
 
 iperf3 se compiló sin cambios en Ubuntu 22.04 x86-64 con `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` y strip, sin SCTP/autenticación OpenSSL; falta aceptar resolución estática en sistemas antiguos.
+
+OpenSSL se compiló sin cambios en Ubuntu 22.04 x86-64 con `./Configure linux-x86_64 no-shared no-module no-dso no-engine no-tests no-docs -static -O2 && make build_programs` y strip; las opciones están en [component.txt](../../third_party/openssl/component.txt).
 
 ### Revisión de cumplimiento
 

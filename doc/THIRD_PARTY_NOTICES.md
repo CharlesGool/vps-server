@@ -43,10 +43,11 @@ metadata:
 | Lucide | main, 2026-09-27; 补充图标取自 lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | 随附 SVG 图标. | Lucide Icons and Contributors; Cole Bemis | 保留版权及完整许可. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | 终端渲染与尺寸适配. | The xterm.js authors; SourceLair; Christopher Jeffrey | 保留两份许可和版权原文. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | 原源码静态构建, TCP/UDP 测试. | The Regents of the University of California / Lawrence Berkeley National Laboratory | 保留版权及完整许可. | 2026-10-04 |
+| OpenSSL | 3.5.9 (LTS) | [OpenSSL](https://github.com/openssl/openssl) | Apache-2.0 | 原源码静态构建的命令行工具, 只用于签发控制台客户端证书. | The OpenSSL Project Authors | 保留完整许可. | 2026-11-08 |
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | 各包 copyright: GPL/LGPL/BSD 等. | 私有运行库, 只进入完整离线包;自带加载器与 glibc. | 各包上游作者, 见归档原文. | 同时分发完整对应源码, 补丁和包版权原文. | 2026-11-06 |
 
-核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Lucky, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, OpenSSL, iptables 等由系统提供, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
+核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Lucky, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, 主机 OpenSSL 库(Python TLS 使用), iptables 等由系统提供, 安装器检查最低版本, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
 
 新增的 Vue 前端使用 Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 和 tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), class-variance-authority 0.7.1 (Apache-2.0). 精确依赖及下载来源见 [npm 锁文件](../web/package-lock.json). 用途为共享界面组件和编译后的浏览器资源;版权归属以上游原文为准. 核验日期: 2026-10-06. 分发时保留版权和许可原文;构建脚本把依赖许可和带版本/源码下载地址的清单复制到 `web/dist/licenses/`, 安装及离线包均保留该目录. 构建工具的许可也一并附带, 不表示这些工具在 VPS 运行.
 
@@ -64,6 +65,7 @@ metadata:
 - [xterm.js MIT](../src/web/static/third_party/xterm/LICENSE-xterm)
 - [Fit Addon MIT](../src/web/static/third_party/xterm/LICENSE-addon-fit)
 - [iperf3](../third_party/iperf3/LICENSE)
+- [OpenSSL](../third_party/openssl/LICENSE.txt)
 - [Tailscale LICENSE](../third_party/tailscale/LICENSE)
 - [Tailscale PATENTS](../third_party/tailscale/PATENTS)
 - [Tailscale dependencies](../third_party/tailscale/DEPENDENCY_NOTICES.md)
@@ -76,11 +78,14 @@ Tailscale 的 79 份依赖许可, freetype 许可和 3 份 NOTICE 共 83 个正�
 - sing-box: [v1.13.21 源码](https://github.com/SagerNet/sing-box/tree/628cb31ffa79cffffd34c2f9cde6cae044e4fc12), [源码归档](https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.21.tar.gz).
 - LibreSpeed: [v6.2.1 源码](https://github.com/librespeed/speedtest/tree/v6.2.1).
 - iperf3: [3.22 源码归档](https://downloads.es.net/pub/iperf/iperf-3.22.tar.gz), SHA-256 `1c0d0fb02c52626111d6e132db80edfbf27bbaff8bd9245df2a371dcb0b35a92`.
+- OpenSSL: [3.5.9 源码归档](https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz), SHA-256 `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`.
 - Tailscale: [v1.104.5 源码](https://github.com/tailscale/tailscale/tree/v1.104.5).
 
 完整 Release 包同时提供 `third_party/nft/nft-runtime-trixie.tar.gz` 和 `third_party/nft/nft-sources-trixie.tar.gz`, 分别固定为 SHA-256 `fdfe2657a925c4bda0f8c7c9538180030b3fcae74ee8c457072f8b422938ec68` 与 `cd6bd6335adb81e11fa5ad66792827c36531e85b528eee309016a48f96d6d8a3`. 源码归档含 32 个二进制包对应的 25 组上游原始源码, Debian 补丁和源包描述, 各文件按 [source-manifest.json](../third_party/nft/source-manifest.json). 构建脚本从 Debian 官方仓库下载并验证, 源码检出本身不含这两个 nft 归档. 使用源包描述和补丁可恢复 Debian 对应源码树, 包含构建所需的打包文件;目标机优先使用可用的系统 nft/iptables, 不可用时才调用私有运行库, 不替换系统命令.
 
 iperf3 源码未修改, 在 Ubuntu 22.04 x86-64 以 `./configure --enable-static-bin --disable-shared --without-sctp && make -j2` 构建并 strip, 不含 SCTP/OpenSSL 认证;旧系统静态解析兼容性仍需验收.
+
+OpenSSL 源码未修改, 在 Ubuntu 22.04 x86-64 以 `./Configure linux-x86_64 no-shared no-module no-dso no-engine no-tests no-docs -static -O2 && make build_programs` 构建并 strip, 构建参数见 [component.txt](../third_party/openssl/component.txt).
 
 ### 合规审查
 

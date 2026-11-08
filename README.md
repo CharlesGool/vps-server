@@ -115,7 +115,7 @@
 
 ## 要求
 
-最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 安装器在改动任何服务前检查这些条件: Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
+最低要求: x86-64 Linux, systemd, root 权限, Python 3.9+, Bash 及可写的安装/状态目录. 安装器面向 Debian 11+ 与 Ubuntu 20.04+;其他架构不支持. 端口转发需要 iptables, Singbox 节点的流量统计和限速需要 nft;系统没有可用的版本时, 使用完整安装包随附的 Debian 13 nft/iptables, 它们自带加载器和 glibc, 断网也能用. 修改控制台端口和检测 Lucky 管理端口需要 `ss`, 安装摘要和 Tailscale 路由显示需要 `ip`(均属 iproute2). 系统组件的最低版本: Bash 4.1, systemd 240, Python 使用的 SQLite 3.24 和 OpenSSL 库 1.1.1, `/usr/bin/python3` 与 PATH 中的 `python3` 都须为 3.9+;还需要 flock, sha256sum, base64, getent, install, mktemp, systemd-run. 在线版还需要 CA 证书(ca-certificates). 主机的 `ip`/`ss` 不支持 JSON 路由或 `-H` 时改用随附的版本. 主机 iperf3 只在没有随附版本时使用, 且须为 3.1+. 安装器在改动任何服务前检查这些条件: 上述最低版本不满足或 Python 低于 3.9 时停止安装, 缺少 iptables(且没有随附运行库), `ss` 或 `ip` 只警告, nft 不可用或系统已有 Tailscale 守护进程时停止安装.
 
 推荐使用维护中的 Debian/Ubuntu, 保留备份空间并开放选用功能的端口. Debian 13 x86-64 已实机验证;Python 3.9 和其他发行版未独立验收. Release 提供两个安装包: 离线版内置全部第三方程序, 目标机只需 Python 3.9+, 不需要 curl, Git, tar 或 gzip, 也不联网; 在线版体积小, 安装时联网下载这些程序并校验 SHA-256, 缺少的 iptables, iproute2, nftables 由安装器用 apt 安装. 离线版还内置 iptables, nftables 和 iproute2(`ss`, `ip`), 主机缺少时自动改用内置的. 源码构建离线包需要联网.
 
@@ -179,7 +179,7 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 
 可以用客户端证书(公钥/私钥)代替密码登录. 在 设置 > 安全 > 客户端证书 中为每台设备生成证书, 下载 `.p12` 文件并记下只显示一次的导入密码, 导入系统或浏览器后完全重启浏览器. 再打开控制台时浏览器会询问用哪个证书, 登录页出现"使用证书登录". 服务器只保存证书序列号, 不保存设备私钥;丢失或不用的证书在同一页撤销.
 
-确认当前连接已使用证书后, 开启"要求客户端证书": 没有有效证书的设备连登录页都打不开, 密码不能再用于登录, 只用于打开 root 终端和安全设置时的二次验证. 指定 IP 免密登录同样需要证书, Clash 订阅链接不受影响. 生成证书需要主机上的 `openssl`, 安装器缺少时会用 apt 安装.
+确认当前连接已使用证书后, 开启"要求客户端证书": 没有有效证书的设备连登录页都打不开, 密码不能再用于登录, 只用于打开 root 终端和安全设置时的二次验证. 指定 IP 免密登录同样需要证书, Clash 订阅链接不受影响. 证书由安装包随附的静态 OpenSSL 3.5 LTS 签发, 使用项目自带的最小配置, 不受主机 openssl 版本和 openssl.cnf 影响. 每个证书颁发机构先在主机 TLS 库上做一次双向 TLS 自检; 旧版主机 openssl 生成的无效颁发机构会被换掉, 由它签发的证书标为已撤销, 并关闭"要求客户端证书". `client_cert.py check` 显示所用的 openssl 和自检结果.
 
 证书丢失而被挡在外面时, 在服务器上以 root 关闭证书要求, 恢复密码登录(不需要重启服务, 自定义 `PREFIX` 时替换路径):
 

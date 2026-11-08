@@ -48,6 +48,12 @@ case "$key" in
   deps_nft_unusable) fmt='The proxy module needs nftables, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
   deps_tailscale_conflict) fmt='A system Tailscale daemon (tailscaled.service) is already running. Stop it or leave tailscale out of VPSSRV_MODULES.' ;;
   deps_tun_missing) fmt='Tailscale needs /dev/net/tun, but this host has no such device. Enable TUN/TAP in the VPS control panel and try again.' ;;
+  deps_bash_old) fmt='bash 4.1 or newer is required. Upgrade the system packages first.' ;;
+  deps_systemd_old) fmt='systemd 240 or newer is required (Debian 10 / Ubuntu 20.04 and later). Upgrade the system first.' ;;
+  deps_sqlite_old) fmt='The SQLite library used by Python must be 3.24 or newer. Upgrade the system packages first.' ;;
+  deps_libssl_old) fmt='The OpenSSL library used by Python must be 1.1.1 or newer. Upgrade the system openssl/libssl packages first.' ;;
+  deps_base_tools_missing) fmt='A basic command is missing (one of flock, sha256sum, base64, getent, install, mktemp, systemd-run). Install coreutils, util-linux, libc-bin and systemd.' ;;
+  deps_ca_missing) fmt='The online package downloads components over HTTPS, but this host has no CA certificates. Install ca-certificates first, or use the full offline package.' ;;
   tailscale_install_failed) fmt='Tailscale installation failed; check the module log.\n' ;;
   web_start_failed) fmt='The Web service did not start; new public port reservations were released.\n' ;;
   proxy_protocols_head) fmt='  Which protocols? Answer each one independently.\n' ;;
@@ -62,6 +68,7 @@ case "$key" in
   ui_bundle_missing) fmt='The frontend build output web/dist/ui.js and ui.css is missing; the installation stopped before changing anything.\nUse the complete package, or first run npm ci && npm run check in web/ (Node.js 24 required).\n' ;;
   iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
   iperf_failed) fmt='Could not install iperf3 (apt output above). Installation stopped; fix the package source and rerun the script.\n' ;;
+  openssl_bundle_failed) fmt='The bundled openssl is missing or fails its checksum. Installation stopped; download the full package again.\n' ;;
   online_fetching) fmt='Downloading %s from the pinned upstream archives ...\n' ;;
   online_fetch_failed) fmt='Could not download or verify a bundled component. Nothing was changed; check the network, or use the offline package.\n' ;;
   apt_installing) fmt='Installing host tools from the distro: %s ...\n' ;;

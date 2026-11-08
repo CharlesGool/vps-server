@@ -96,4 +96,6 @@ metadata:
 
 剩余步骤: v5.6.3 已发布以下改动, 其中证书导入步骤未在 macOS, Android, iOS 实测: `Terminated` 修复(见缺陷); 证书生成页改为四步导入说明(下载不等于导入, 各系统导入方法, Firefox 单独证书库, 完全退出浏览器, 确认后再开启要求), 安全设置在有证书但当前连接未出示时提示原因; 上游二进制(sing-box, frps, frpc, Lucky, Tailscale 归档)不再提交到 Git, 构建离线版时按 `config/online-assets.json` 下载校验, `build_offline.py` 不再需要 `--tailscale-archive`; nft 运行库的 pcre2 换成 trixie-security 的 10.46-1~deb13u3(GHSA-r9hj-j2rw-4q3m, JIT 栈分配过大), 其余 31 个包与 Debian 13 当前版本一致. 历史提交中仍保留旧二进制, 未改写历史. 控制台 root 终端是否改为在 Web 沙箱外运行, 待操作员决定(见缺陷). 离线包约 167 MB, 可考虑只随附 `ip`. `tokens.css` 中的 `compat-*` 数字标记缺少语义名称. 英语/西班牙语文档尚无母语审阅. Singbox 关闭端口时不区分规则归属, systemd 环境值未加引号, 升级失败不自动回滚程序, 旧 `.py` 不清理, 待决定是否处理.
 
+未发布改动(2026-11-08, 下次发布时写入 CHANGELOG): 客户端证书改用随附的静态 OpenSSL 3.5.9 LTS(`third_party/openssl/`, 安装到 `vendor/openssl/`)和项目自带的最小配置; 起因是一台主机的 OpenSSL 1.1.1k 把系统 openssl.cnf 的 v3_ca 与 `-addext` 合并, 颁发机构写了两次 Basic Constraints, 连自验证都失败(本机用 1.1.1k 复现). 颁发机构须先通过主机 TLS 库上的双向 TLS 自检, 不通过时换新并撤销其旧证书; 新增 `client_cert.py check`. 安装器新增 core 检查: Bash 4.1, systemd 240, SQLite 3.24, Python 用的 OpenSSL 库 1.1.1, `/usr/bin/python3` 3.9+, 基础命令, 在线版 CA 证书; `ip`/`ss` 能力不足时改用随附版本, 主机 iperf3 须 3.1+. 已验证: `check_project.py` 通过; Debian 11 容器(Python 3.9.2, libssl 1.1.1w)core 检查通过, 随附和系统 openssl 签发均通过自检. 未验证: 出问题的那台主机实机; 主机 libssl 为 1.1.1k 时的握手自检; 完整安装流程. 另: Debian 11 的 security 源已移到 archive.debian.org, 未改源的主机无法 apt 更新.
+
 临时项目规则: 未发现.
