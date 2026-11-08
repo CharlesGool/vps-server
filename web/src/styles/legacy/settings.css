@@ -67,6 +67,33 @@ html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX
 .access-toggle-form button { min-width: var(--compat-size-19); border-color: var(--border); background: var(--card); color: var(--foreground); }
 .access-toggle-form button:hover { background: var(--secondary); }
 .card.access-card h2 { margin-bottom: var(--compat-size-55); }
+.security-toggle-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-23); }
+.security-badge { display: inline-flex; align-items: center; padding: var(--compat-size-58) var(--compat-size-15); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--font-weight-medium); white-space: nowrap; }
+.security-badge.is-active { border-color: var(--primary); background: var(--card); color: var(--primary); }
+.security-badge.is-danger { border-color: var(--destructive); background: var(--card); color: var(--destructive); }
+.access-card-body p > .security-badge { margin-inline-start: var(--compat-size-15); }
+.access-ip-list li.security-row { align-items: center; }
+.security-row-main { display: grid; flex: 1 1 auto; gap: var(--compat-size-20); min-width: 0; }
+.security-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-15) var(--compat-size-23); min-width: 0; overflow-wrap: anywhere; }
+.security-row-title code { font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+.security-row-meta { display: flex; flex-wrap: wrap; gap: 0 var(--compat-size-24); color: var(--muted-foreground); font-size: var(--text-sm); }
+.security-row-meta > span { min-width: 0; overflow-wrap: anywhere; }
+.security-row > form { flex: 0 0 auto; }
+.security-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-23); margin: 0 0 var(--compat-size-24); }
+.security-actions form { margin: 0; }
+.access-ip-form + .security-actions { margin-top: var(--compat-size-23); }
+.access-card-body .security-note { margin: var(--compat-size-24) 0 var(--compat-size-11); }
+.security-command { margin: 0; }
+.security-form { display: grid; gap: var(--compat-size-24); margin: 0 0 var(--compat-size-24); }
+.security-field { display: grid; gap: var(--compat-size-18); min-width: 0; }
+.security-field label, .security-field input, .security-field .password-label { margin: 0; }
+.access-card .security-field .password-field { margin: 0; }
+.security-checks { display: grid; gap: var(--compat-size-11); }
+.security-check { display: inline-flex; align-items: center; gap: var(--compat-size-11); width: fit-content; margin: 0; color: var(--foreground); font-size: var(--text-base); font-weight: var(--font-weight-normal); cursor: pointer; }
+.security-check input { width: auto; min-height: 0; margin: 0; accent-color: var(--primary); }
+.login-cert-form { margin-bottom: var(--compat-size-24); }
+.security-row .access-remove { min-height: var(--compat-size-21); padding: var(--compat-size-18) var(--compat-size-14); font-weight: var(--font-weight-semibold); }
+.security-actions .access-remove { padding: var(--compat-size-23) var(--compat-size-24); font-weight: var(--font-weight-semibold); }
 @media (max-width: 34rem) {
   .preferences-choices { grid-template-columns: 1fr; }
   .app-login-header { padding-inline: var(--compat-size-66); }

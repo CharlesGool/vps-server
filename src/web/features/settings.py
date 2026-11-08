@@ -193,13 +193,29 @@ class SettingsMixin:
             <div class="access-card-body">{body}</div>
           </section>'''
 
+    def security_badge(self, text, tone=""):
+        return f'<span class="security-badge{" is-" + tone if tone else ""}">{self.context.html.escape(text)}</span>'
+
+    def security_row(self, title, meta=(), action=""):
+        """One list row: a title line (HTML), muted details that wrap as units, an optional action."""
+        details = "".join(f'<span>{self.context.html.escape(item)}</span>' for item in meta if item)
+        details = f'<div class="security-row-meta">{details}</div>' if details else ""
+        return (f'<li class="security-row"><div class="security-row-main">'
+                f'<div class="security-row-title">{title}</div>{details}</div>{action}</li>')
+
+    def security_actions(self, *items):
+        items = "".join(item for item in items if item)
+        return f'<div class="security-actions">{items}</div>' if items else ""
+
     def security_toggle(self, t, action, csrf_action, label, enabled):
         esc = self.context.html.escape
         token = self.get_cookie("session")
+        state = self.security_badge(t["security_state_on"] if enabled else t["security_state_off"],
+                                    "active" if enabled else "")
         return (f'<form method="post" action="{action}" class="access-toggle-form">'
                 f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, csrf_action)}">'
                 f'<input type="hidden" name="enabled" value="{"0" if enabled else "1"}">'
-                f'<span>{esc(label)}</span>'
+                f'<span class="security-toggle-label">{esc(label)}{state}</span>'
                 f'<button type="submit" aria-pressed="{"true" if enabled else "false"}">'
                 f'{esc(t["access_ip_disable"] if enabled else t["access_ip_enable"])}</button></form>')
 
@@ -222,28 +238,30 @@ class SettingsMixin:
         global_rule = ""
         if limiter.global_max_attempts > 0:
             state, left = limiter.global_state()
-            status = ("" if state == "normal" else " " + (
-                t["login_global_active"] if state == "banned" else t["login_global_flagged"]
-            ).format(seconds=left))
+            status = ("" if state == "normal" else " " + self.security_badge(
+                (t["login_global_active"] if state == "banned" else t["login_global_flagged"]).format(seconds=left),
+                "danger" if state == "banned" else "active"))
             global_rule = (f'<p>{esc(t["login_global_rule"].format(window=limiter.window_seconds, count=limiter.global_max_attempts, duration=self.security_duration(t, limiter.global_lockout_seconds)))}'
-                           f'<strong>{esc(status)}</strong></p>')
+                           f'{status}</p>')
         load_warning = f'<p class="error" role="alert">{esc(t["login_ban_load_error"])}</p>' if limiter.load_error else ""
         rows = ""
         for row in limiter.snapshot():
-            state = (t["login_ban_state_banned"].format(seconds=row["remaining"]) if row["state"] == "banned" else
-                     t["login_ban_state_flagged"].format(seconds=row["remaining"]) if row["state"] == "flagged" else
-                     t["login_ban_state_normal"])
-            counts = t["login_ban_counts"].format(recent=row["recent"], total=row["total"],
-                                                  triggered=row["triggered"], last=self.security_time(row["last"]))
-            rows += (f'<li><span><code>{esc(row["ip"])}</code> <span class="muted">{esc(counts)}</span></span>'
-                     f'<span class="{"error" if row["state"] == "banned" else "muted"}">{esc(state)}</span></li>')
+            if row["state"] == "banned":
+                badge = self.security_badge(t["login_ban_state_banned"].format(seconds=row["remaining"]), "danger")
+            elif row["state"] == "flagged":
+                badge = self.security_badge(t["login_ban_state_flagged"].format(seconds=row["remaining"]), "active")
+            else:
+                badge = self.security_badge(t["login_ban_state_normal"])
+            counts = t["login_ban_counts"].format(recent=row["recent"], total=row["total"], triggered=row["triggered"])
+            rows += self.security_row(f'<code>{esc(row["ip"])}</code>{badge}',
+                                      (counts, t["login_ban_last"].format(time=self.security_time(row["last"]))))
         if not rows:
             rows = f'<li class="muted">{esc(t["login_ban_empty"])}</li>'
         body = (f'{load_warning}<p>{esc(rule)}</p>{global_rule}'
                 f'{self.security_toggle(t, "/settings/login-ban/toggle", "login-ban-toggle", t["login_ban_switch"], enabled)}'
                 f'<p class="muted">{esc(t["login_ban_observe_hint"])}</p>'
                 f'<ul class="access-ip-list">{rows}</ul>'
-                f'{self.security_button("/settings/login-ban/clear", "login-ban-clear", t["login_ban_clear"])}')
+                f'{self.security_actions(self.security_button("/settings/login-ban/clear", "login-ban-clear", t["login_ban_clear"]))}')
         return self.security_card(t, "security-login-ban", t["login_ban_heading"], body)
 
     def render_console_access_card(self, t, token):
@@ -255,8 +273,9 @@ class SettingsMixin:
             ip=current, state=t["console_access_listed"] if access.listed(current) else t["console_access_unlisted"])
         load_warning = f'<p class="error" role="alert">{esc(t["console_access_load_error"])}</p>' if access.load_error else ""
         rows = "".join(
-            f'<li><code>{esc(item)}</code>'
-            f'{self.security_button("/settings/console-access/remove", "console-access-remove", t["access_remove"], {"network": item}, "access-remove")}</li>'
+            self.security_row(f'<code>{esc(item)}</code>', (),
+                              self.security_button("/settings/console-access/remove", "console-access-remove",
+                                                   t["access_remove"], {"network": item}, "access-remove"))
             for item in access.networks())
         if not rows:
             rows = f'<li class="muted">{esc(t["console_access_empty"])}</li>'
@@ -273,8 +292,10 @@ class SettingsMixin:
                 f'<label class="sr-only" for="console-access-network">{esc(t["console_access_address"])}</label>'
                 f'<input id="console-access-network" name="network" placeholder="203.0.113.5 / 198.51.100.0/24 / 2001:db8::/48" '
                 f'required spellcheck="false" autocomplete="off">'
-                f'<button type="submit">{esc(t["console_access_add"])}</button></form>{add_current}'
-                f'<p class="muted">{esc(t["console_access_recovery"])}</p><pre class="logs-output">{esc(recovery)}</pre>')
+                f'<button type="submit">{esc(t["console_access_add"])}</button></form>'
+                f'{self.security_actions(add_current)}'
+                f'<p class="muted security-note">{esc(t["console_access_recovery"])}</p>'
+                f'<pre class="logs-output security-command">{esc(recovery)}</pre>')
         return self.security_card(t, "security-console-access", t["console_access_heading"], body)
 
     def describe_agent(self, agent):
@@ -299,19 +320,22 @@ class SettingsMixin:
         for row in sessions:
             method = t.get("sessions_method_" + row["method"], row["method"])
             device = self.describe_agent(row["agent"]) or t["sessions_unknown_device"]
-            meta = t["sessions_row"].format(ip=row["ip"] or "-", created=self.security_time(row["created"]),
-                                            seen=self.security_time(row["seen"]))
-            action = (f'<span class="muted">{esc(t["sessions_current"])}</span>' if row["current"] else
-                      self.security_button("/settings/sessions/revoke", "session-revoke", t["sessions_revoke"],
-                                           {"id": row["id"]}, "access-remove"))
-            rows += (f'<li><span><strong>{esc(device)}</strong> <span class="muted">{esc(method)}</span><br>'
-                     f'<span class="muted">{esc(meta)}</span></span>{action}</li>')
+            title = f'<strong>{esc(device)}</strong>{self.security_badge(method)}'
+            if row["current"]:
+                title += self.security_badge(t["sessions_current"], "active")
+                action = ""
+            else:
+                action = self.security_button("/settings/sessions/revoke", "session-revoke", t["sessions_revoke"],
+                                              {"id": row["id"]}, "access-remove")
+            rows += self.security_row(title, (row["ip"] or "-",
+                                              t["sessions_signed_in"].format(time=self.security_time(row["created"])),
+                                              t["sessions_seen"].format(time=self.security_time(row["seen"]))), action)
         if not rows:
             rows = f'<li class="muted">{esc(t["sessions_empty"])}</li>'
         others = (self.security_button("/settings/sessions/revoke-others", "session-revoke-others",
                                        t["sessions_revoke_others"])
                   if any(not row["current"] for row in sessions) else "")
-        body = f'<p>{esc(intro)}</p><ul class="access-ip-list">{rows}</ul>{others}'
+        body = f'<p>{esc(intro)}</p><ul class="access-ip-list">{rows}</ul>{self.security_actions(others)}'
         return self.security_card(t, "security-sessions", t["sessions_heading"], body)
 
     def render_alerts_card(self, t, token):
@@ -325,21 +349,24 @@ class SettingsMixin:
             f'placeholder="{esc(t["alerts_key_keep"] if settings["configured"] else "", quote=True)}"')
         status = t["alerts_status_on"] if settings["configured"] else t["alerts_status_off"]
         checks = "".join(
-            f'<label class="tailscale-option"><input type="checkbox" name="{name}" value="1"'
-            f'{" checked" if settings[name] else ""}> {esc(t["alerts_on_" + name])}</label>'
+            f'<label class="security-check"><input type="checkbox" name="{name}" value="1"'
+            f'{" checked" if settings[name] else ""}><span>{esc(t["alerts_on_" + name])}</span></label>'
             for name in ("new_ip", "ban"))
+        save = f'<button type="submit" form="alerts-form">{esc(t["alerts_save"])}</button>'
         extra = ""
         if settings["configured"]:
             extra = (self.security_button("/settings/alerts/test", "alerts-test", t["alerts_test"]) +
                      self.security_button("/settings/alerts/clear-key", "alerts-clear-key", t["alerts_clear_key"],
                                           css="access-remove"))
         body = (f'{load_warning}<p>{esc(t["alerts_intro"])}</p><p><strong>{esc(status)}</strong></p>'
-                f'<form method="post" action="/settings/alerts" autocomplete="off">'
+                f'<form id="alerts-form" method="post" action="/settings/alerts" autocomplete="off" class="security-form">'
                 f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, "alerts-save")}">'
-                f'<label for="alerts-server">{esc(t["alerts_server"])}</label>'
+                f'<div class="security-field"><label for="alerts-server">{esc(t["alerts_server"])}</label>'
                 f'<input id="alerts-server" name="server" value="{esc(settings["server"], quote=True)}" '
-                f'required spellcheck="false" autocomplete="off" maxlength="200">'
-                f'{key_field}{checks}<button type="submit">{esc(t["alerts_save"])}</button></form>{extra}')
+                f'required spellcheck="false" autocomplete="off" maxlength="200"></div>'
+                f'<div class="security-field">{key_field}</div>'
+                f'<div class="security-checks">{checks}</div></form>'
+                f'{self.security_actions(save, extra)}')
         return self.security_card(t, "security-alerts", t["alerts_heading"], body)
 
     def render_audit_card(self, t):
@@ -348,14 +375,16 @@ class SettingsMixin:
         for entry in self.context.AUDIT.recent(50):
             event = entry.get("event", "")
             label = t.get("audit_" + event, event)
-            detail = entry.get("detail", "")
-            detail = t.get("sessions_method_" + detail, detail)
-            rows += (f'<li><span><strong>{esc(label)}</strong> <code>{esc(entry.get("ip", ""))}</code>'
-                     f'{(" <span class=" + chr(34) + "muted" + chr(34) + ">" + esc(detail) + "</span>") if detail else ""}</span>'
-                     f'<span class="muted">{esc(self.security_time(entry.get("t", 0)))}</span></li>')
+            detail = str(entry.get("detail", ""))
+            if event in ("ban", "global_ban", "ban_observed", "global_ban_observed") and detail.isdigit():
+                detail = self.security_duration(t, int(detail))
+            else:
+                detail = t.get("sessions_method_" + detail, detail)
+            rows += self.security_row(f'<strong>{esc(label)}</strong>',
+                                      (entry.get("ip", ""), detail, self.security_time(entry.get("t", 0))))
         if not rows:
             rows = f'<li class="muted">{esc(t["audit_empty"])}</li>'
-        body = f'<p>{esc(t["audit_intro"])}</p><ul class="access-ip-list">{rows}</ul>'
+        body = f'<p>{esc(t["audit_intro"])}</p><ul class="access-ip-list security-audit-list">{rows}</ul>'
         return self.security_card(t, "security-audit", t["audit_heading"], body)
 
     def render_client_cert_card(self, t, token):
