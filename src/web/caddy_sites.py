@@ -234,6 +234,11 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
         if others and client_auth:
             policies.append({"match": {"sni": others}})  # Plain sites never ask for one.
         policies.append(catch_all)
+        # With client authentication Caddy wants Host to match SNI, and a
+        # browser sends no SNI for an address. Turning that off is safe here:
+        # the serial header comes only from a certificate verified on the same
+        # connection, and the console itself decides whether one is required.
+        https["strict_sni_host"] = False
     elif policies:
         policies.append({})
     if policies:
