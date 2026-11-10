@@ -769,5 +769,14 @@
   "domains_zones_bound": "Main domains this token manages",
   "domains_zones_checked": "read {time}",
   "domains_zone_sites": "{count} forwarded",
-  "domains_zones_none": "The token sees no main domains. Check its zone resources in Cloudflare."
+  "domains_zones_none": "The token sees no main domains. Check its zone resources in Cloudflare.",
+  "domains_ip_heading": "Console by IP address (HTTPS)",
+  "domains_ip_help": "Serves the console at https://<this host's IP>/ with a Let's Encrypt certificate (about 6 days, renewed by Caddy); client certificates still apply. The address with the port stays as it is.",
+  "domains_ip_on": "On",
+  "domains_ip_enable": "Enable IP access",
+  "domains_ip_disable": "Disable IP access",
+  "domains_ip_off_confirm": "Turn off console access by IP? The address with the port is not affected.",
+  "domains_ip_enabled": "Enabled. The certificate usually arrives within a minute; until then the browser may warn.",
+  "domains_ip_disabled": "IP access turned off.",
+  "domains_error_no_public_ip": "This host has no public IPv4 address to certify."
 }

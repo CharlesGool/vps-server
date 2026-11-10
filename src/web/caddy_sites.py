@@ -92,8 +92,9 @@ def read_sites(path=SITES_PATH):
     sites = data.get("sites") if isinstance(data, dict) else None
     if not isinstance(sites, list):
         raise ValueError("invalid sites.json")
-    return [site for site in sites if isinstance(site, dict) and valid_host(site.get("host"))
-            and (valid_port(site.get("port")) or site.get("console") is True)]
+    return [site for site in sites if isinstance(site, dict)
+            and (valid_host(site.get("host")) and (valid_port(site.get("port")) or site.get("console") is True)
+                 or site.get("ip") is True and site.get("console") is True and valid_ip(site.get("host")))]
 
 
 def write_sites(sites, path=SITES_PATH):
@@ -118,6 +119,15 @@ def read_dns(path=DNS_PATH):
 
 def valid_host(host):
     return isinstance(host, str) and HOST_RE.fullmatch(host) is not None
+
+
+def valid_ip(host):
+    """A public IPv4 address: an IP site serves the console by address."""
+    try:
+        address = ipaddress.ip_address(host)
+    except (TypeError, ValueError):
+        return False
+    return address.version == 4 and address.is_global
 
 
 def valid_port(port):
@@ -206,22 +216,42 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
                                        "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}],
                            "terminal": True})
     https = {"listen": [":443"], "routes": routes + [abort]}
-    if console_hosts and client_ca:
+    client_auth = ({"ca": {"provider": "file", "pem_files": [str(client_ca)]}, "mode": "verify_if_given"}
+                   if client_ca else None)
+    ip_hosts = [site["host"] for site in sites if site.get("ip") and site["host"] in console_hosts]
+    named = [host for host in console_hosts if host not in ip_hosts]
+    policies = []
+    if named and client_auth:
         # Ask for a certificate; whether one is required stays the console's call.
-        https["tls_connection_policies"] = [
-            {"match": {"sni": console_hosts},
-             "client_authentication": {"ca": {"provider": "file", "pem_files": [str(client_ca)]},
-                                       "mode": "verify_if_given"}},
-            {}]
+        policies.append({"match": {"sni": named}, "client_authentication": client_auth})
+    if ip_hosts:
+        # Browsers send no SNI for an address: the catch-all serves the IP
+        # certificate then, and asks for a client certificate like the console.
+        catch_all = {"default_sni": ip_hosts[0]}
+        if client_auth:
+            catch_all["client_authentication"] = client_auth
+        others = [site["host"] for site in sites if site["host"] not in console_hosts]
+        if others and client_auth:
+            policies.append({"match": {"sni": others}})  # Plain sites never ask for one.
+        policies.append(catch_all)
+    elif policies:
+        policies.append({})
+    if policies:
+        https["tls_connection_policies"] = policies
+    apps = {"http": {"servers": {
+        # Automatic HTTPS adds the HTTP-to-HTTPS redirects and the ACME
+        # HTTP challenge to the :80 server; any other host gets nothing.
+        "https": https,
+        "http": {"listen": [":80"], "routes": [abort]},
+    }}}
+    if ip_hosts:
+        # Let's Encrypt issues address certificates only on its six-day profile.
+        apps["tls"] = {"automation": {"policies": [
+            {"subjects": ip_hosts, "issuers": [{"module": "acme", "profile": "shortlived"}]}]}}
     return {
         "admin": {"listen": "unix/" + ADMIN_SOCKET},
         "storage": {"module": "file_system", "root": str(DATA_DIR)},
-        "apps": {"http": {"servers": {
-            # Automatic HTTPS adds the HTTP-to-HTTPS redirects and the ACME
-            # HTTP challenge to the :80 server; any other host gets nothing.
-            "https": https,
-            "http": {"listen": [":80"], "routes": [abort]},
-        }}},
+        "apps": apps,
     }
 
 
@@ -405,6 +435,8 @@ def sync_dns(sites, token, *, addresses=None, opener=None):
         result["error"] = "dns_no_address"
         return result
     for site in sites:
+        if site.get("ip"):
+            continue  # An address needs no DNS record.
         host = site["host"]
         try:
             zone = find_zone(token, host, opener=opener)
@@ -476,14 +508,15 @@ def apply(request):
             _merge_dns(dns, sites)
             warning = dns.get("error") or (dns["sites"].get(host) or {}).get("error")
         elif action == "remove":
-            host = normalize_host(request.get("host"))
+            raw = str(request.get("host") or "").strip()
+            host = raw if valid_ip(raw) else normalize_host(raw)
             if not any(site["host"] == host for site in sites):
                 raise SiteError("host_missing")
             sites = [site for site in sites if site["host"] != host]
             write_sites(sites)
             render(sites)
             reload_caddy()
-            if request.get("remove_dns") and token:
+            if request.get("remove_dns") and token and valid_host(host):
                 try:
                     remove_records(token, host)
                 except CloudflareError as exc:
@@ -491,6 +524,25 @@ def apply(request):
             state = read_dns()
             state.get("sites", {}).pop(host, None)
             _write(DNS_PATH, json.dumps(state) + "\n")
+        elif action == "ip":
+            # HTTPS for the console at this host's own public IPv4 address.
+            previous = list(sites)
+            sites = [site for site in sites if not site.get("ip")]
+            if request.get("enable"):
+                address = public_address(socket.AF_INET)
+                if address is None:
+                    raise SiteError("no_public_ip")
+                if console_port() is None:
+                    raise SiteError("port_invalid")
+                sites.append({"host": address, "console": True, "ip": True, "added_at": int(time.time())})
+            write_sites(sites)
+            render(sites)
+            try:
+                reload_caddy()
+            except RuntimeError:
+                write_sites(previous)
+                render(previous)
+                raise SiteError("caddy_rejected")
         elif action == "token":
             value = str(request.get("token") or "").strip()
             if value and not TOKEN_RE.fullmatch(value):
@@ -532,6 +584,12 @@ def ddns():
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
             and all((previous.get("sites", {}).get(site["host"]) or {}).get("ok") for site in sites)
+        # Follow a new public address for the IP site.
+        address = public_address(socket.AF_INET)
+        for site in sites:
+            if site.get("ip") and address and site["host"] != address:
+                site["host"] = address
+                write_sites(sites)
         # Follow a new console port or client CA.
         if render(sites):
             try:

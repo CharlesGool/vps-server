@@ -769,5 +769,14 @@
   "domains_zones_bound": "Dominios principales que gestiona el token",
   "domains_zones_checked": "leído {time}",
   "domains_zone_sites": "{count} reenviados",
-  "domains_zones_none": "El token no ve ningún dominio principal. Revisa sus recursos de zona en Cloudflare."
+  "domains_zones_none": "El token no ve ningún dominio principal. Revisa sus recursos de zona en Cloudflare.",
+  "domains_ip_heading": "Consola por dirección IP (HTTPS)",
+  "domains_ip_help": "Sirve la consola en https://<IP de este servidor>/ con un certificado de Let's Encrypt (unos 6 días, Caddy lo renueva); se siguen exigiendo certificados de cliente. La dirección con puerto no cambia.",
+  "domains_ip_on": "Activado",
+  "domains_ip_enable": "Activar acceso por IP",
+  "domains_ip_disable": "Desactivar acceso por IP",
+  "domains_ip_off_confirm": "¿Desactivar el acceso a la consola por IP? La dirección con puerto no se ve afectada.",
+  "domains_ip_enabled": "Activado. El certificado suele llegar en un minuto; hasta entonces el navegador puede avisar.",
+  "domains_ip_disabled": "Acceso por IP desactivado.",
+  "domains_error_no_public_ip": "Este servidor no tiene una dirección IPv4 pública que certificar."
 }

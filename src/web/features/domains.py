@@ -11,8 +11,9 @@ import time
 from datetime import datetime, timezone
 
 from caddy_sites import CONFIG_DIR, DATA_DIR, SERVICE, console_port, read_sites, read_zones, zone_of
-NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared")
-ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown",
+NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
+           "domains_ip_enabled", "domains_ip_disabled")
+ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip",
           "caddy_rejected", "token_invalid", "invalid", "failed")
 WARNINGS = ("dns_auth", "dns_zone", "dns_unreachable", "dns_api", "dns_no_token", "dns_no_address")
 
@@ -113,6 +114,27 @@ class DomainsMixin:
         checked_text = (time.strftime("%Y-%m-%d %H:%M", time.localtime(checked))
                         if isinstance(checked, (int, float)) else "—")
         dns_error = dns.get("error") if dns.get("error") in WARNINGS and dns.get("error") != "dns_no_token" else None
+        # HTTPS for the console at the bare public address (Let's Encrypt six-day certificates).
+        ip_site = next((site for site in sites if site.get("ip")), None)
+        sites = [site for site in sites if not site.get("ip")]
+        if ip_site:
+            cert = certificate_info(ip_site["host"])
+            ip_cert = (t["domains_cert_detail"].format(issuer=cert[1], date=cert[0].strftime("%Y-%m-%d %H:%M"),
+                                                       days=(cert[0] - datetime.now(timezone.utc)).days)
+                       if cert else t["domains_cert_pending_detail"])
+            ip_state = (f'<p>{pill(t["domains_ip_on"], "is-open")} '
+                        f'<a href="https://{esc(ip_site["host"], quote=True)}/" target="_blank" rel="noopener noreferrer">'
+                        f'https://{esc(ip_site["host"])}/</a></p>'
+                        f'<p class="muted">{esc(t["domains_certificate_label"])}: {esc(ip_cert)}</p>')
+        else:
+            ip_state = f'<p class="muted">{esc(t["domains_ip_help"])}</p>'
+        ip_section = (f'<div class="domains-ip"><h3 class="domains-zones-heading">{esc(t["domains_ip_heading"])}</h3>'
+                      f'{ip_state}<form method="post" action="/domains/ip" '
+                      + (f'data-confirm="{esc(t["domains_ip_off_confirm"], quote=True)}"' if ip_site else '') + '>'
+                      f'<input type="hidden" name="csrf" value="{csrf}">'
+                      f'<input type="hidden" name="enable" value="{"0" if ip_site else "1"}">'
+                      f'<button type="submit" class="{"node-action-danger " if ip_site else ""}frp-card-edit">'
+                      f'{esc(t["domains_ip_disable"] if ip_site else t["domains_ip_enable"])}</button></form></div>')
         overview = (f'<section class="card frp-card">'
                     f'<div class="frp-status-line">'
                     f'{pill(t["node_active"] if running else t["node_stopped"], "is-open" if running else "is-closed")}</div>'
@@ -122,7 +144,7 @@ class DomainsMixin:
                     f'<div><dt>{esc(t["domains_dns_checked"])}</dt><dd><code>{esc(checked_text)}</code></dd></div>'
                     f'</dl>'
                     + (f'<p class="error" role="status">{esc(t["domains_" + dns_error])}</p>' if dns_error else '')
-                    + '</section>')
+                    + ip_section + '</section>')
 
         zones = read_zones()
         listening = listening_ports()
@@ -342,6 +364,14 @@ class DomainsMixin:
                                     "remove_dns": form.get("remove_dns", [""])[0] == "1"})
         return self.domains_finish(reply, "domains_removed")
 
+    def handle_domains_ip(self):
+        form = self.domains_form()
+        if form is None:
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        enable = form.get("enable", [""])[0] == "1"
+        reply = self.domains_apply({"action": "ip", "enable": enable})
+        return self.domains_finish(reply, "domains_ip_enabled" if enable else "domains_ip_disabled")
+
     def handle_domains_token(self):
         form = self.domains_form()
         if form is None:
@@ -360,11 +390,12 @@ class DomainsMixin:
         if method == "GET" and path == "/domains/value":
             self.handle_domains_value(parsed)
             return True
-        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token"):
+        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token", "/domains/ip"):
             if not self.context.module_states()["caddy"]:
                 self.send_html(404, "Not found", {"Cache-Control": "no-store"})
                 return True
             {"/domains/add": self.handle_domains_add, "/domains/remove": self.handle_domains_remove,
+             "/domains/ip": self.handle_domains_ip,
              "/domains/token": self.handle_domains_token}[path]()
             return True
         return False

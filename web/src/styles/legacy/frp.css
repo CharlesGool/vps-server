@@ -118,3 +118,6 @@
 .domains-zones-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--compat-size-11); margin: 0 0 var(--compat-size-11); font-size: var(--text-sm); }
 .domains-zones-heading .muted { font-weight: var(--font-weight-normal); }
 .domains-zones { margin-bottom: var(--compat-size-24); }
+.domains-ip { display: grid; gap: var(--compat-size-11); margin-top: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
+.domains-ip p { margin: 0; overflow-wrap: anywhere; }
+.domains-ip form { margin: 0; }
