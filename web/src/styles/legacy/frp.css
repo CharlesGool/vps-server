@@ -91,3 +91,26 @@
 .lucky-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; text-align: end; }
 .lucky-actions { display: flex; }
 .lucky-page .error { margin: 0; }
+
+/* Domain forwarding: the FRP card patterns, with a few page-level adjustments. */
+.domains-page { display: grid; gap: var(--compat-size-24); }
+.domains-page > :is(.notice, .error) { margin: 0; }
+.domains-page .node-inline-edit { margin: 0 0 var(--compat-size-24); }
+.domains-page .node-inline-edit > p { margin: 0 0 var(--compat-size-33); }
+.domains-page .node-inline-edit form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--compat-size-24); }
+.domains-page .node-inline-edit form > button[type="submit"] { grid-column: 1 / -1; justify-self: start; }
+.domains-page .node-inline-edit .frp-password-field { grid-column: 1 / -1; margin-bottom: var(--compat-size-24); }
+.domain-card .frp-target-meta { flex-wrap: wrap; color: var(--muted-foreground); font-size: var(--text-sm); }
+.domain-card .frp-target-meta code { color: var(--foreground); }
+.domain-badges { display: flex; flex-wrap: wrap; gap: var(--compat-size-11); }
+.domain-badges .proxy-node-status { max-width: 100%; }
+.domain-remove { flex-wrap: wrap; margin: 0; }
+.domain-remove .checkline { display: flex; margin: 0; color: var(--muted-foreground); font-weight: var(--font-weight-normal); }
+.domains-token-actions { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: var(--compat-size-24); }
+.domains-token-actions > .node-inline-edit { flex: 1 1 min(100%, var(--compat-size-104)); margin: 0; }
+.domains-token-actions > form { margin: 0; }
+@media (max-width: 42rem) {
+  .domains-page .node-inline-edit form { grid-template-columns: 1fr; }
+}
+.domain-badges .proxy-node-status:not(.is-open, .is-closed) { border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); }
+.domains-page .frp-card > p.muted { margin: 0 0 var(--compat-size-24); }

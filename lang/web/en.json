@@ -737,14 +737,11 @@
   "domains_dns_checked": "DNS last checked",
   "domains_cloudflare": "Cloudflare DNS",
   "domains_token_help": "Create an API token in Cloudflare with Zone > DNS > Edit for your domain. Records are DNS only, and this host's IP is checked every 5 minutes.",
-  "domains_token_set": "A token is set.",
-  "domains_token_missing": "No token set.",
   "domains_token": "API token",
   "domains_token_save": "Save token",
   "domains_token_clear": "Clear token",
-  "domains_certificate": "Certificate",
-  "domains_cert_valid": "valid until {date}",
-  "domains_cert_pending": "pending",
+  "domains_cert_valid": "Certificate valid until {date}",
+  "domains_cert_pending": "Certificate pending",
   "domains_dns_ok": "synced",
   "domains_dns_pending": "not synced",
   "domains_remove": "Remove",
@@ -754,5 +751,10 @@
   "domains_add": "Add domain",
   "domains_add_help": "Forward HTTPS for a domain to a port on this host, such as an frps port.",
   "domains_host": "Domain",
-  "domains_port": "Local port"
+  "domains_port": "Local port",
+  "domains_sites": "Forwarded domains",
+  "domains_token_state_set": "Token set",
+  "domains_token_state_missing": "No token",
+  "domains_token_change": "Replace token",
+  "domains_token_clear_confirm": "Clear the Cloudflare token? DNS records stop updating automatically; existing records stay as they are."
 }

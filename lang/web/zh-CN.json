@@ -737,14 +737,11 @@
   "domains_dns_checked": "DNS 最近检查",
   "domains_cloudflare": "Cloudflare DNS",
   "domains_token_help": "在 Cloudflare 创建 API 令牌, 权限选 区域 > DNS > 编辑, 范围选你的域名。记录设为仅 DNS, 每 5 分钟检查一次本机 IP。",
-  "domains_token_set": "令牌已设置。",
-  "domains_token_missing": "尚未设置令牌。",
   "domains_token": "API 令牌",
   "domains_token_save": "保存令牌",
   "domains_token_clear": "清除令牌",
-  "domains_certificate": "证书",
-  "domains_cert_valid": "有效期至 {date}",
-  "domains_cert_pending": "申请中",
+  "domains_cert_valid": "证书有效至 {date}",
+  "domains_cert_pending": "证书申请中",
   "domains_dns_ok": "已同步",
   "domains_dns_pending": "未同步",
   "domains_remove": "删除",
@@ -754,5 +751,10 @@
   "domains_add": "添加域名",
   "domains_add_help": "把 HTTPS 访问的域名转发到本机端口, 例如 frps 的端口。",
   "domains_host": "域名",
-  "domains_port": "本机端口"
+  "domains_port": "本机端口",
+  "domains_sites": "转发的域名",
+  "domains_token_state_set": "令牌已设置",
+  "domains_token_state_missing": "未设置令牌",
+  "domains_token_change": "更换令牌",
+  "domains_token_clear_confirm": "清除 Cloudflare 令牌? 之后 DNS 记录不再自动更新, 现有记录保持不变。"
 }
