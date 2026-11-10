@@ -15,7 +15,7 @@ from caddy_sites import (ACCESS_LOG, CONFIG_DIR, SERVICE, certificate_info, cons
 NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
            "domains_ip_enabled", "domains_ip_disabled", "domains_site_enabled", "domains_site_disabled",
            "domains_site_saved")
-ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip",
+ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip", "allow_invalid", "auth_invalid",
           "caddy_rejected", "token_invalid", "invalid", "failed")
 WARNINGS = ("dns_auth", "dns_zone", "dns_unreachable", "dns_api", "dns_no_token", "dns_no_address")
 
@@ -191,7 +191,29 @@ class DomainsMixin:
                       f'{"checked" if site.get("backend_tls") else ""}><span>{esc(t["domains_backend_tls"])}</span></label>'
                       f'<label class="checkline"><input type="checkbox" name="upstream_host" value="1" '
                       f'{"checked" if site.get("upstream_host") else ""}><span>{esc(t["domains_upstream_host"])}</span></label>'
-                      f'</div>')
+                      f'</div>'
+                    + f'<label class="domain-wide">{esc(t["domains_aliases"])}<textarea name="aliases" rows="2" '
+                      f'spellcheck="false" autocapitalize="none" placeholder="www.example.com">'
+                      f'{esc(chr(10).join(site.get("aliases", [])))}</textarea></label>'
+                    + f'<label class="domain-wide">{esc(t["domains_allow_ips"])}<textarea name="allow_ips" rows="2" '
+                      f'spellcheck="false" placeholder="203.0.113.7&#10;198.51.100.0/24">'
+                      f'{esc(chr(10).join(site.get("allow_ips", [])))}</textarea></label>'
+                    + auth_fields(site))
+
+        def auth_fields(site):
+            auth = site.get("auth") or {}
+            password = self.context.render_password_field(
+                t, "domains-auth-" + str(abs(hash(site.get("host", "new")))), t["domains_auth_password"], "auth_password",
+                f'maxlength="128" autocomplete="new-password" '
+                f'placeholder="{esc(t["domains_auth_keep"] if auth else "", quote=True)}"')
+            return (f'<fieldset class="domain-port domain-wide domain-auth"><legend>{esc(t["domains_auth"])}</legend>'
+                    f'<p class="muted">{esc(t["domains_auth_help"])}</p>'
+                    f'<label>{esc(t["domains_auth_user"])}<input type="text" name="auth_user" maxlength="64" '
+                    f'autocomplete="off" value="{esc(auth.get("user", ""), quote=True)}"></label>'
+                    f'<div class="frp-password-field">{password}</div>'
+                    + (f'<label class="checkline"><input type="checkbox" name="auth_clear" value="1">'
+                       f'<span>{esc(t["domains_auth_clear"])}</span></label>' if auth else '')
+                    + '</fieldset>')
 
         def site_card(site):
             host = site["host"]
@@ -237,11 +259,28 @@ class DomainsMixin:
             else:
                 dns_text = t["domains_dns_manual"] if not token_set else t["domains_dns_pending"]
                 badges.append(pill("DNS " + t["domains_dns_pending"]))
+            if site.get("allow_ips"):
+                badges.append(pill(t["domains_allow_badge"].format(count=len(site["allow_ips"]))))
+            if (site.get("auth") or {}).get("user") and not site.get("console"):
+                badges.append(pill(t["domains_auth_badge"]))
+            access_parts = []
+            if site.get("allow_ips"):
+                access_parts.append(t["domains_allow_detail"].format(list=", ".join(site["allow_ips"])))
+            if (site.get("auth") or {}).get("user") and not site.get("console"):
+                access_parts.append(t["domains_auth_detail"].format(user=site["auth"]["user"]))
+            access_text = " · ".join(access_parts) or t["domains_access_open"]
+            alias_states = [dns_sites.get(name) or {} for name in site.get("aliases", [])]
+            aliases_text = (", ".join(site.get("aliases", [])) +
+                            (" · DNS " + (t["domains_dns_ok"] if all(st.get("ok") for st in alias_states)
+                                          else t["domains_dns_failed"] if any(st.get("error") for st in alias_states)
+                                          else t["domains_dns_pending"]))) if site.get("aliases") else ""
             facts = (f'<dl class="frp-proxy-fields domain-facts">'
                      f'<div><dt>{esc(t["domains_target"])}</dt><dd class="frp-target-meta">{target}</dd></div>'
                      f'<div><dt>{esc(t["domains_added_at"])}</dt><dd>{esc(date(site.get("added_at")))}</dd></div>'
                      f'<div><dt>{esc(t["domains_certificate_label"])}</dt><dd>{esc(cert_text)}</dd></div>'
-                     f'<div><dt>DNS</dt><dd>{esc(dns_text)}</dd></div></dl>')
+                     f'<div><dt>DNS</dt><dd>{esc(dns_text)}</dd></div>'
+                     + (f'<div><dt>{esc(t["domains_aliases_short"])}</dt><dd>{esc(aliases_text)}</dd></div>' if aliases_text else '')
+                     + f'<div><dt>{esc(t["domains_access"])}</dt><dd>{esc(access_text)}</dd></div></dl>')
             toggle = (f'<form method="post" action="/domains/toggle" class="node-toggle-form">'
                       f'<input type="hidden" name="csrf" value="{csrf}">'
                       f'<input type="hidden" name="host" value="{esc(host, quote=True)}">'
@@ -417,7 +456,12 @@ class DomainsMixin:
         return self.domains_finish(reply, "domains_removed")
 
     def domains_target_request(self, form):
-        request = {"target": "console" if form.get("target", [""])[0] == "console" else "port"}
+        lines = lambda name: [line.strip() for line in form.get(name, [""])[0][:4000].splitlines() if line.strip()]
+        request = {"target": "console" if form.get("target", [""])[0] == "console" else "port",
+                   "aliases": lines("aliases")[:16], "allow_ips": lines("allow_ips")[:64],
+                   "auth_user": form.get("auth_user", [""])[0][:64],
+                   "auth_password": form.get("auth_password", [""])[0][:128],
+                   "auth_clear": form.get("auth_clear", [""])[0] == "1"}
         if request["target"] == "port":
             port = form.get("port", [""])[0].strip()
             if not port.isascii() or not port.isdecimal():

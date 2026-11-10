@@ -815,5 +815,22 @@
   "domains_alert_dns_title": "{server}: DNS sync failed",
   "domains_alert_dns_body": "Cloudflare records for {host} could not be updated; see the domain forwarding page.",
   "domains_alert_cert_title": "{server}: certificate expiring",
-  "domains_alert_cert_body": "The certificate for {host} expires {date} and has not been renewed; check ports 80/443 and DNS."
+  "domains_alert_cert_body": "The certificate for {host} expires {date} and has not been renewed; check ports 80/443 and DNS.",
+  "domains_aliases": "Other names (optional, one per line, same target)",
+  "domains_aliases_short": "Other names",
+  "domains_allow_ips": "Only these addresses or networks may connect (optional, one per line; empty means anyone)",
+  "domains_auth": "Password (basic auth)",
+  "domains_auth_help": "Browsers ask for this user name and password first. Leave the user name empty for none.",
+  "domains_auth_user": "User name",
+  "domains_auth_password": "Password (8 or more characters)",
+  "domains_auth_keep": "Leave empty to keep the current one",
+  "domains_auth_clear": "Remove the password",
+  "domains_allow_badge": "Only {count} address(es)",
+  "domains_auth_badge": "Password required",
+  "domains_allow_detail": "only {list}",
+  "domains_auth_detail": "password (user {user})",
+  "domains_access_open": "anyone",
+  "domains_access": "Access",
+  "domains_error_allow_invalid": "Invalid address or network (at most 32), e.g. 203.0.113.7 or 198.51.100.0/24.",
+  "domains_error_auth_invalid": "The user name may use letters, digits and . _ -; a new password needs 8 to 128 characters."
 }

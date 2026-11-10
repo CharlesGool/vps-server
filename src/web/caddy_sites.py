@@ -184,8 +184,45 @@ def proxy_key():
     return key
 
 
+MAX_ALIASES = 8
+MAX_ALLOW = 32
+AUTH_USER_RE = re.compile(r"[A-Za-z0-9._-]{1,64}")
+
+
+def names(site):
+    """Every host name a site answers: its own and its extra names."""
+    return [site["host"], *[alias for alias in site.get("aliases", []) if valid_host(alias)]]
+
+
+def _guarded(site, route):
+    """Wrap a site's route with its access rules: allowed addresses first,
+    then a password (never on the console, which has its own login)."""
+    routes = []
+    allow = [entry for entry in site.get("allow_ips", []) if isinstance(entry, str)]
+    if allow:
+        routes.append({"match": [{"host": names(site), "not": [{"remote_ip": {"ranges": allow}}]}],
+                       "handle": [{"handler": "static_response", "status_code": 403, "body": "Forbidden"}],
+                       "terminal": True})
+    auth = site.get("auth")
+    if isinstance(auth, dict) and auth.get("user") and auth.get("hash") and not site.get("console"):
+        route["handle"].insert(0, {"handler": "authentication", "providers": {"http_basic": {
+            "accounts": [{"username": auth["user"], "password": auth["hash"]}],
+            "hash": {"algorithm": "bcrypt"}, "hash_cache": {}, "realm": site["host"]}}})
+    return routes + [route]
+
+
+def hash_password(password):
+    """bcrypt hash from Caddy itself; the password goes through stdin only."""
+    result = subprocess.run(["/usr/local/bin/caddy-vps-server", "hash-password"], input=password + "\n",
+                            capture_output=True, text=True, timeout=60, check=False)
+    value = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ""
+    if result.returncode or not value.startswith("$2"):
+        raise RuntimeError("cannot hash the password")
+    return value
+
+
 def _console_route(site, port, key):
-    return {"match": [{"host": [site["host"]]}],
+    return {"match": [{"host": names(site)}],
             "handle": [{"handler": "reverse_proxy",
                         # Overwrite whatever the visitor sent under these names.
                         "headers": {"request": {"set": {
@@ -215,8 +252,8 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
         if site.get("console"):
             if console is None or not key:
                 continue  # No console to reach: leave the name unanswered.
-            routes.append(_console_route(site, console, key))
-            console_hosts.append(site["host"])
+            routes += _guarded(site, _console_route(site, console, key))
+            console_hosts += names(site)
         else:
             proxy = {"handler": "reverse_proxy", "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}
             if site.get("backend_tls"):
@@ -228,7 +265,7 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
                 proxy["headers"] = {"request": {"set": {"Host": ["{http.reverse_proxy.upstream.hostport}"]}}}
             elif site.get("backend_tls"):
                 proxy["headers"] = {"request": {"set": {"Host": ["{http.request.hostport}"]}}}
-            routes.append({"match": [{"host": [site["host"]]}], "handle": [proxy], "terminal": True})
+            routes += _guarded(site, {"match": [{"host": names(site)}], "handle": [proxy], "terminal": True})
     # Access log for every site, read back by the console page.
     https = {"listen": [":443"], "routes": routes + [abort], "logs": {}}
     client_auth = ({"ca": {"provider": "file", "pem_files": [str(client_ca)]}, "mode": "verify_if_given"}
@@ -245,7 +282,7 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
         catch_all = {"default_sni": ip_hosts[0]}
         if client_auth:
             catch_all["client_authentication"] = client_auth
-        others = [site["host"] for site in sites if site["host"] not in console_hosts]
+        others = [name for site in sites for name in names(site) if name not in console_hosts]
         if others and client_auth:
             policies.append({"match": {"sni": others}})  # Plain sites never ask for one.
         policies.append(catch_all)
@@ -459,10 +496,7 @@ def sync_dns(sites, token, *, addresses=None, opener=None):
     if ipv4 is None and ipv6 is None:
         result["error"] = "dns_no_address"
         return result
-    for site in sites:
-        if site.get("ip"):
-            continue  # An address needs no DNS record.
-        host = site["host"]
+    for host in [name for site in sites if not site.get("ip") for name in names(site)]:
         try:
             zone = find_zone(token, host, opener=opener)
             states = [sync_record(token, zone, host, "A", ipv4, opener=opener),
@@ -598,6 +632,56 @@ def _target(request):
             "upstream_host": request.get("upstream_host") is True}
 
 
+def _access(request, current=None):
+    """Allowed addresses and basic auth from a request; current keeps a stored password."""
+    current = current or {}
+    allow = []
+    for entry in request.get("allow_ips") or []:
+        entry = str(entry).strip()
+        if not entry:
+            continue
+        try:
+            allow.append(str(ipaddress.ip_network(entry, strict=False)))
+        except ValueError as exc:
+            raise SiteError("allow_invalid") from exc
+    if len(allow) > MAX_ALLOW:
+        raise SiteError("allow_invalid")
+    result = {"allow_ips": sorted(set(allow), key=allow.index)} if allow else {}
+    user = str(request.get("auth_user") or "").strip()
+    if user and not request.get("auth_clear"):
+        if not AUTH_USER_RE.fullmatch(user):
+            raise SiteError("auth_invalid")
+        password = str(request.get("auth_password") or "")
+        stored = current.get("auth") or {}
+        if password:
+            if not 8 <= len(password) <= 128:
+                raise SiteError("auth_invalid")
+            result["auth"] = {"user": user, "hash": hash_password(password)}
+        elif stored.get("user") == user and stored.get("hash"):
+            result["auth"] = stored
+        else:
+            raise SiteError("auth_invalid")
+    return result
+
+
+def _aliases(request, sites, host):
+    """Extra names for a site: valid, not the site's own, not used by another site."""
+    taken = {name for site in sites if site["host"] != host for name in names(site)}
+    result = []
+    for raw in request.get("aliases") or []:
+        if not str(raw).strip():
+            continue
+        name = normalize_host(raw)
+        if name == host or name in result:
+            continue
+        if name in taken:
+            raise SiteError("host_exists")
+        result.append(name)
+    if len(result) > MAX_ALIASES:
+        raise SiteError("too_many")
+    return result
+
+
 def _replace_site(sites, host, change):
     """Apply change(site) -> new site to host, reload Caddy, roll back on refusal."""
     index = next((i for i, site in enumerate(sites) if site["host"] == host), None)
@@ -633,9 +717,14 @@ def apply(request):
             else:
                 host = normalize_host(request.get("host"))
                 zone = zone_of(host, read_zones())
-            site = {"host": host, **_target(request)}
+            target = _target(request)
+            site = {"host": host, **target,
+                    **_access(request if not target.get("console") else {**request, "auth_user": ""})}
+            aliases = _aliases(request, sites, host)
+            if aliases:
+                site["aliases"] = aliases
             site.update({"zone": zone, "added_at": int(time.time())} if zone else {"added_at": int(time.time())})
-            if any(site["host"] == host for site in sites):
+            if any(host in names(other) for other in sites):
                 raise SiteError("host_exists")
             if len(sites) >= MAX_SITES:
                 raise SiteError("too_many")
@@ -656,20 +745,23 @@ def apply(request):
         elif action == "remove":
             raw = str(request.get("host") or "").strip()
             host = raw if valid_ip(raw) else normalize_host(raw)
-            if not any(site["host"] == host for site in sites):
+            removed = next((site for site in sites if site["host"] == host), None)
+            if removed is None:
                 raise SiteError("host_missing")
             sites = [site for site in sites if site["host"] != host]
             write_sites(sites)
             render(sites)
             reload_caddy()
             if request.get("remove_dns") and token and valid_host(host):
-                try:
-                    remove_records(token, host)
-                except CloudflareError as exc:
-                    warning = exc.code
+                for name in names(removed):
+                    try:
+                        remove_records(token, name)
+                    except CloudflareError as exc:
+                        warning = exc.code
             record_history([{"event": "site_removed", "host": host}])
             state = read_dns()
-            state.get("sites", {}).pop(host, None)
+            for name in names(removed):
+                state.get("sites", {}).pop(name, None)
             _write(DNS_PATH, json.dumps(state) + "\n")
         elif action in ("enable", "disable"):
             host = normalize_host(request.get("host"))
@@ -677,10 +769,32 @@ def apply(request):
             record_history([{"event": "site_" + action + "d", "host": host}])
         elif action == "edit":
             host = normalize_host(request.get("host"))
+            current = next((site for site in sites if site["host"] == host), None)
+            if current is None:
+                raise SiteError("host_missing")
             target = _target(request)
+            # The console has its own login: a site in front of it takes no password.
+            access = _access(request if not target.get("console") else {**request, "auth_user": ""}, current)
+            aliases = _aliases(request, sites, host)
             keep = ("host", "zone", "added_at", "enabled")
-            _replace_site(sites, host, lambda site: {**{k: site[k] for k in keep if k in site}, **target})
+            updated = _replace_site(sites, host, lambda site: {
+                **{k: site[k] for k in keep if k in site}, **target, **access,
+                **({"aliases": aliases} if aliases else {})})
             record_history([{"event": "site_edited", "host": host}])
+            old_names, new_names = set(names(current)), set(names({"host": host, "aliases": aliases}))
+            if token:
+                for name in sorted(old_names - new_names):
+                    try:
+                        remove_records(token, name)
+                    except CloudflareError:
+                        pass
+                added = [{"host": name} for name in sorted(new_names - old_names)]
+                if added:
+                    dns = sync_dns(added, token)
+                    record_history(dns.pop("events", []))
+                    _merge_dns(dns, [{"host": n} for site in updated for n in names(site)])
+                    warning = dns.get("error") or next((v.get("error") for v in dns["sites"].values()
+                                                        if not v.get("ok")), None)
         elif action == "ip":
             # HTTPS for the console at this host's own public IPv4 address.
             previous = list(sites)
@@ -722,7 +836,7 @@ def apply(request):
 def _merge_dns(update, sites):
     state = read_dns()
     merged = {host: value for host, value in state.get("sites", {}).items()
-              if any(site["host"] == host for site in sites)}
+              if any(host in names(site) for site in sites)}
     merged.update(update.get("sites", {}))
     state.update({key: update[key] for key in ("checked_at", "ipv4", "ipv6") if key in update})
     if update.get("error"):
@@ -740,8 +854,8 @@ def ddns():
         previous = read_dns()
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
-            and all((previous.get("sites", {}).get(site["host"]) or {}).get("ok")
-                    for site in sites if not site.get("ip"))
+            and all((previous.get("sites", {}).get(name) or {}).get("ok")
+                    for site in sites if not site.get("ip") for name in names(site))
         events, alerts = [], []
         # No address at all is a routing hiccup, not a move: report nothing.
         if previous.get("checked_at") and any(addresses) and (previous.get("ipv4"), previous.get("ipv6")) != addresses:

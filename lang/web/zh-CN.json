@@ -815,5 +815,22 @@
   "domains_alert_dns_title": "{server}: DNS 同步失败",
   "domains_alert_dns_body": "{host} 的 Cloudflare 记录没能更新, 请到域名转发页面查看原因。",
   "domains_alert_cert_title": "{server}: 证书即将过期",
-  "domains_alert_cert_body": "{host} 的证书 {date} 到期且尚未续期, 请检查 80/443 端口和 DNS。"
+  "domains_alert_cert_body": "{host} 的证书 {date} 到期且尚未续期, 请检查 80/443 端口和 DNS。",
+  "domains_aliases": "其他域名(可选, 每行一个, 同样指向这个目标)",
+  "domains_aliases_short": "其他域名",
+  "domains_allow_ips": "只允许这些 IP 或网段访问(可选, 每行一个, 留空不限制)",
+  "domains_auth": "访问密码(基本认证)",
+  "domains_auth_help": "访问前浏览器会弹窗要求输入用户名和密码。留空用户名表示不需要。",
+  "domains_auth_user": "用户名",
+  "domains_auth_password": "密码(至少 8 位)",
+  "domains_auth_keep": "留空保持原密码",
+  "domains_auth_clear": "取消访问密码",
+  "domains_allow_badge": "仅限 {count} 个地址",
+  "domains_auth_badge": "需要密码",
+  "domains_allow_detail": "仅允许 {list}",
+  "domains_auth_detail": "需要密码(用户 {user})",
+  "domains_access_open": "不限制",
+  "domains_access": "访问限制",
+  "domains_error_allow_invalid": "IP 或网段格式不正确(最多 32 条), 例如 203.0.113.7 或 198.51.100.0/24。",
+  "domains_error_auth_invalid": "用户名只能用字母, 数字和 . _ -; 新设置密码时需要 8 到 128 位。"
 }

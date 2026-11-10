@@ -142,3 +142,10 @@
 .domains-log th { color: var(--muted-foreground); font-weight: var(--font-weight-semibold); }
 .domains-log .domains-log-uri { max-width: var(--compat-size-104); overflow: hidden; text-overflow: ellipsis; }
 .domains-log .domains-log-bad { color: var(--destructive); }
+.domains-page textarea { width: 100%; min-height: var(--compat-size-38); padding: var(--compat-size-14); resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font-family: var(--font-mono); font-size: var(--text-sm); }
+.domain-auth { display: grid; gap: var(--compat-size-14); margin: 0 0 var(--compat-size-24); padding: 0; border: 0; }
+.domain-auth legend { margin-bottom: var(--compat-size-11); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+.domain-auth p, .domain-auth label { margin: 0; }
+.domains-page form .checkline { display: flex; flex-direction: row; align-items: center; gap: var(--compat-size-13); margin: 0; font-weight: var(--font-weight-normal); }
+.domains-page form .checkline input { margin: 0; }
+.domain-options { margin-bottom: var(--compat-size-24); }
