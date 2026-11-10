@@ -42,7 +42,7 @@ case "$key" in
   module_only_invalid) fmt='Una instalación de un solo módulo requiere una instalación existente y no puede incluir web' ;;
   python_too_old) fmt='Se requiere Python 3.9 o posterior; este equipo tiene %s.' ;;
   deps_iptables_missing) fmt='Aviso: iptables no está instalado, por lo que las reglas de reenvío de puertos no pueden aplicarse. Instálalo (Debian/Ubuntu: apt install iptables) y reinicia la consola para usar el reenvío de puertos.\n' ;;
-  deps_ss_missing) fmt='Aviso: ss (iproute2) no está instalado, por lo que fallarán el cambio del puerto de la consola y la detección del puerto de administración de Lucky. Instálalo con apt install iproute2.\n' ;;
+  deps_ss_missing) fmt='Aviso: ss (iproute2) no está instalado, por lo que fallará el cambio del puerto de la consola. Instálalo con apt install iproute2.\n' ;;
   deps_ip_missing) fmt='Aviso: ip (iproute2) no está instalado, por lo que el resumen no puede listar direcciones y Tailscale no puede mostrar las rutas locales. Instálalo con apt install iproute2.\n' ;;
   deps_nft_missing) fmt='Los módulos proxy y FRPS necesitan nftables para contar y limitar el tráfico, pero este equipo no tiene un nft utilizable y falta el entorno incluido. Instala nftables (apt install nftables) o usa el paquete completo.' ;;
   deps_nft_unusable) fmt='Los módulos proxy y FRPS necesitan nftables para contar y limitar el tráfico, pero ni el nft del sistema ni el entorno incluido funcionan en este equipo. Instala nftables (apt install nftables) e inténtalo de nuevo.' ;;
@@ -105,25 +105,14 @@ case "$key" in
   host_placeholder) fmt='<este-servidor>' ;;
   error_prefix) fmt='error: ' ;;
   public_requires_openssl) fmt='La configuración pública requiere openssl\n' ;;
-  lucky_public_warning) fmt='ADVERTENCIA: la administración pública de Lucky envía credenciales por HTTP sin cifrar.\n' ;;
-  lucky_public_confirm_prompt) fmt='Escribe I ACCEPT PUBLIC HTTP en la terminal del servidor para continuar: ' ;;
-  lucky_public_confirm_required) fmt='Se requiere confirmación para habilitar la administración pública de Lucky\n' ;;
-  ask_lucky_port) fmt='  Puerto de administración de Lucky [16601]: ' ;;
-  ask_lucky_public) fmt='  ¿Exponer públicamente la administración de Lucky por HTTP sin cifrar? [y/N] ' ;;
-  lucky_http_warning) fmt='ADVERTENCIA: las credenciales de administración de Lucky viajan sin cifrar por HTTP. Prefiere el acceso privado o un proxy TLS.\n' ;;
-  lucky_http_confirm_prompt) fmt='Escribe I ACCEPT PUBLIC HTTP para confirmar: ' ;;
-  lucky_explicit_confirm) fmt='La administración pública de Lucky requiere confirmación explícita\n' ;;
   frps_arch) fmt='frps requiere linux amd64\n' ;;
-  lucky_arch) fmt='Lucky requiere linux amd64\n' ;;
   frps_port_verify) fmt='No se pudo verificar el puerto frps existente; se rechazó la instalación web\n' ;;
   frps_console_conflict) fmt='El puerto de consola %s entra en conflicto con el bindPort de frps existente\n' ;;
   node_meter_failed) fmt='No se pudo iniciar el servicio de tráfico o límites de nodos; los servicios proxy permanecen detenidos. Comprueba: journalctl -u vps-server-node-meter.service -e\n' ;;
   proxy_migration_failed) fmt='No se pudo integrar el servicio AnyTLS anterior en el proxy unificado; la instalación se detuvo. Conserva la copia de migración y comprueba el estado del servicio original.\n' ;;
   frpc_refresh_failed) fmt='Falló la actualización del cliente FRPC\n' ;;
   frps_install_failed) fmt='Falló la instalación de frps\n' ;;
+  lucky_remove_failed) fmt='Aviso: falló la eliminación del antiguo módulo Lucky; consulta el registro de instalación\n' ;;
   caddy_install_failed) fmt='Falló la instalación del reenvío de dominios\n' ;;
-  lucky_install_failed) fmt='Falló la instalación de Lucky\n' ;;
-  lucky_port_verify) fmt='No se pudo verificar el puerto de administración de Lucky existente; se rechazó la instalación web\n' ;;
-  lucky_console_conflict) fmt='El puerto de consola %s entra en conflicto con el puerto de administración de Lucky existente\n' ;;
   *) fmt="$key\n" ;;
 esac

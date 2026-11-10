@@ -14,7 +14,7 @@ LOG_LEVELS = (("all", "logs_level_all"), ("err", "logs_level_error"),
               ("debug", "logs_level_debug"))
 
 
-LOG_SOURCES = ("modules", "web", "proxy", "frps", "frpc", "lucky", "tailscale", "caddy")
+LOG_SOURCES = ("modules", "web", "proxy", "frps", "frpc", "tailscale", "caddy")
 
 
 def log_cutoffs(context):
@@ -83,7 +83,7 @@ def module_job_text(t, job, names):
 
 # Feature pages that offer their own install button, and where the job reports.
 INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
-                 "lucky": "/lucky", "tailscale": "/tailscale", "caddy": "/domains"}
+                 "tailscale": "/tailscale", "caddy": "/domains"}
 
 
 _HOST_FINDINGS = {}
@@ -171,7 +171,6 @@ class ModulesMixin:
             ("proxy", t["logs_source_proxy"], ("vps-server-proxy.service", "vps-server-node-meter.service")),
             ("frps", "FRPS", ("vps-server-frps.service",)),
             ("frpc", "FRPC", tuple(self.context.frpc_unit(name) for name in self.context.frpc_names())),
-            ("lucky", "Lucky", ("vps-server-lucky.service",)),
             ("tailscale", "Tailscale", ("vps-server-tailscale.service",)),
             ("caddy", t["domains"], ("vps-server-caddy.service", "vps-server-caddy-dns.service")),
         )
@@ -263,7 +262,7 @@ class ModulesMixin:
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
                 f'{self.module_install_control(lang, module, module_name)}</div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc",
-                 "lucky": "lucky", "tailscale": "tailscale", "caddy": "domains"}
+                 "tailscale": "tailscale", "caddy": "domains"}
         return self.send_html(200, self.render_page(title, body, lang, active=active, icon=icons.get(module)),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -300,7 +299,6 @@ class ModulesMixin:
             ("proxy_nodes", t["proxy"], "proxy_nodes"),
             ("frps", "FRPS", "frps"),
             ("frpc", "FRPC", "frpc"),
-            ("lucky", "Lucky", "lucky"),
             ("tailscale", "Tailscale", "tailscale"),
             ("caddy", t["domains"], "caddy"),
         )
@@ -316,7 +314,7 @@ class ModulesMixin:
             elif module == "iperf3":
                 present = module in installed
                 enabled = present and self.context.IPERF_ENABLED
-            elif module in ("frps", "lucky", "tailscale", "caddy"):
+            elif module in ("frps", "tailscale", "caddy"):
                 present = module in installed
                 enabled = present and self.context._run_quiet(["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS[module]])
             status = (t["module_not_installed"] if not present else
@@ -382,8 +380,8 @@ class ModulesMixin:
         except (UnicodeError, ValueError):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
-        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale", "caddy") if action in ("install", "uninstall") else (
-            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale", "caddy") + self.context.MANAGED_FEATURES
+        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") if action in ("install", "uninstall") else (
+            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
@@ -445,7 +443,7 @@ class ModulesMixin:
         module = self.context.parse_qs(parsed.query).get("module", [""])[0]
         destinations = {"web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
-                        "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "lucky": "/lucky", "tailscale": "/tailscale", "portfwd": "/portfwd",
+                        "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
                         "caddy": "/domains",
                         "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
@@ -455,7 +453,7 @@ class ModulesMixin:
         t = self.context.STRINGS[lang]
         names = {"web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
-                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
+                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
                  "caddy": t["domains"],
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
@@ -463,7 +461,7 @@ class ModulesMixin:
         body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
                 f'<div class="card access-card"><p>{closed}</p></div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc", "frp": "frp",
-                 "lucky": "lucky", "tailscale": "tailscale", "caddy": "domains", "speedtest": "speedtest",
+                 "tailscale": "tailscale", "caddy": "domains", "speedtest": "speedtest",
                  "portfwd": "portfwd", "visitors": "visitors", "changelog": "changelog"}
         return self.send_html(200, self.render_page(f"{names[module]}: {t['module_closed_title']}", body, lang,
                                                     back_href="/", icon=icons.get(module, "modules")),
@@ -482,7 +480,6 @@ class ModulesMixin:
             ("proxy_nodes", t["proxy"], "/proxy", "network", states["proxy_nodes"]),
             ("frps", "FRPS", "/frps", "radio", states["frps"]),
             ("frpc", "FRPC", "/frpc", "cable", states["frpc"]),
-            ("lucky", "Lucky", "/lucky", "clover", states["lucky"]),
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("caddy", t["domains"], "/domains", "earth", states["caddy"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
@@ -530,7 +527,7 @@ class ModulesMixin:
             closed = not enabled and (module in self.context.MANAGED_FEATURES or
                                       module == "iperf3" and "iperf3" in installed or
                                       module == "proxy_nodes" and "proxy" in installed or
-                                      module in ("frps", "frpc", "lucky", "tailscale", "caddy") and module in installed)
+                                      module in ("frps", "frpc", "tailscale", "caddy") and module in installed)
             occupied_port = public_listener_occupied(self.context, module, job)
             detail = (f'<span class="tile-error" role="status">'
                       f'{esc(t["module_port_occupied"].format(port=occupied_port))}</span>'
@@ -627,8 +624,6 @@ def module_states(context, installed=None):
         "frps": "frps" in installed and context._run_quiet(
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["frps"]]),
         "frpc": "frpc" in installed and context.frpc_group_enabled(context.BASE_DIR),
-        "lucky": "lucky" in installed and context._run_quiet(
-            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["lucky"]]),
         "tailscale": "tailscale" in installed and context._run_quiet(
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["tailscale"]]),
         "caddy": "caddy" in installed and context._run_quiet(

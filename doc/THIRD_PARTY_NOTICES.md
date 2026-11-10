@@ -35,7 +35,6 @@ metadata:
 | frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | 独立服务二进制. | fatedier/frp contributors | 保留许可;官方归档没有 NOTICE. | 2026-11-06 |
 | frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | 实例客户端二进制. | fatedier/frp contributors | 保留版权及完整许可. | 2026-11-06 |
 | Caddy | 2.11.9 | [Caddy](https://github.com/caddyserver/caddy) | Apache-2.0 | 域名转发的独立服务二进制. | Matthew Holt and The Caddy Authors | 保留许可;官方归档没有 NOTICE. | 2026-11-10 |
-| Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | 独立管理服务. | gdy (2022) | 保留版权及完整许可. | 2026-09-27 |
 | sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | 独立代理核心. | nekohasekai (2022) | 保留源码获取方式及上游名称/关联条件. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | 浏览器测速引擎. | LibreSpeed contributors | 保留 LGPL/GPL 原文, 提供对应源码, 可替换客户端文件. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | 客户端二维码库. | Kazuhiko Arase (2009) | 保留版权及完整许可. | 2026-09-27 |
@@ -48,14 +47,13 @@ metadata:
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | 官方静态客户端/守护进程归档. | Tailscale Inc & contributors (2020) | 保留 LICENSE, PATENTS 和依赖原始声明/许可. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | 各包 copyright: GPL/LGPL/BSD 等. | 私有运行库, 只进入完整离线包;自带加载器与 glibc. | 各包上游作者, 见归档原文. | 同时分发完整对应源码, 补丁和包版权原文. | 2026-11-06 |
 
-核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Lucky, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, 主机 OpenSSL 库(Python TLS 使用), iptables 等由系统提供, 安装器检查最低版本, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
+核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Caddy, Singbox, LibreSpeed 和二维码库的上游构件. Inter/Noto 使用 Fontsource 包版本, 不冒充字体内部版本. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, 主机 OpenSSL 库(Python TLS 使用), iptables 等由系统提供, 安装器检查最低版本, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
 
 新增的 Vue 前端使用 Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 和 tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), class-variance-authority 0.7.1 (Apache-2.0). 精确依赖及下载来源见 [npm 锁文件](../web/package-lock.json). 用途为共享界面组件和编译后的浏览器资源;版权归属以上游原文为准. 核验日期: 2026-10-06. 分发时保留版权和许可原文;构建脚本把依赖许可和带版本/源码下载地址的清单复制到 `web/dist/licenses/`, 安装及离线包均保留该目录. 构建工具的许可也一并附带, 不表示这些工具在 VPS 运行.
 
 ### 许可证文本
 
 - [frp](../third_party/frp/LICENSE)
-- [Lucky](../third_party/lucky/LICENSE)
 - [Caddy](../third_party/caddy/LICENSE)
 - [sing-box](../third_party/sing-box/LICENSE)
 - [GPL-3.0](../LICENSE)

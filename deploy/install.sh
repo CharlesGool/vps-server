@@ -6,7 +6,6 @@
 #   iperf3   bundled on amd64, so the console can open a test window
 #   proxy    sing-box anytls/vmess/vless/trojan/shadowsocks (amd64 only)
 #   frps     offline FRP server (amd64 only)
-#   lucky    offline DDNS and reverse-proxy admin (amd64 only)
 #   tailscale  offline-installed Tailscale client (amd64 only)
 #   caddy    domain forwarding: Caddy on 80/443, Cloudflare DNS (amd64 only)
 #
@@ -80,7 +79,6 @@ ANYTLS_CONFIG_PATH="/etc/vps-server-anytls/config.json"
 PROXY_UNIT="/etc/systemd/system/vps-server-proxy.service"
 PROXY_CONFIG_PATH="/etc/vps-server-proxy/config.json"
 FRPS_UNIT="/etc/systemd/system/vps-server-frps.service"
-LUCKY_UNIT="/etc/systemd/system/vps-server-lucky.service"
 TAILSCALE_UNIT="/etc/systemd/system/vps-server-tailscale.service"
 CADDY_UNIT="/etc/systemd/system/vps-server-caddy.service"
 
@@ -157,7 +155,6 @@ load_previous() {
     [ -f "$ANYTLS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}anytls"
     [ -f "$PROXY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}proxy"
     [ -f "$FRPS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}frps"
-    [ -f "$LUCKY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}lucky"
     [ -f "$TAILSCALE_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}tailscale"
     [ -f "$CADDY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}caddy"
   fi
@@ -165,7 +162,7 @@ load_previous() {
   # An earlier run with a shorter VPSSRV_MODULES may have dropped modules from
   # the record while their units stayed. What is installed on disk still counts.
   local unit module
-  for unit in "$PROXY_UNIT:proxy" "$ANYTLS_UNIT:proxy" "$FRPS_UNIT:frps" "$LUCKY_UNIT:lucky" "$TAILSCALE_UNIT:tailscale" "$CADDY_UNIT:caddy" "$PREFIX/vendor/iperf3/iperf3:iperf3"; do
+  for unit in "$PROXY_UNIT:proxy" "$ANYTLS_UNIT:proxy" "$FRPS_UNIT:frps" "$TAILSCALE_UNIT:tailscale" "$CADDY_UNIT:caddy" "$PREFIX/vendor/iperf3/iperf3:iperf3"; do
     module="${unit##*:}"
     if [ -e "${unit%:*}" ]; then
       case ",$PREV_MODULES," in *",$module,"*) ;; *) PREV_MODULES="$PREV_MODULES,$module" ;; esac
@@ -270,7 +267,7 @@ import sys
 modules = []
 for module in sys.argv[1].split(','):
     module = 'proxy' if module == 'anytls' else module
-    if module and module not in modules:
+    if module and module != 'lucky' and module not in modules:
         modules.append(module)
 print(','.join(modules))
 PY
@@ -665,6 +662,8 @@ modules = []
 for module in sys.argv[1].split(','):
     if module == 'anytls':
         module = 'proxy'
+    if module == 'lucky':
+        continue  # No longer shipped; remove_legacy_lucky cleans it up.
     if module and module not in modules:
         modules.append(module)
 print(','.join(modules))
@@ -749,7 +748,6 @@ fetch_online_assets() {
   for module in ${MODULES//,/ }; do
     case "$module" in
       web|proxy) components="$components sing-box" ;;
-      lucky) components="$components lucky" ;;
       caddy) components="$components caddy" ;;
       tailscale) components="$components tailscale" ;;
       frps) components="$components frp" ;;
@@ -1045,7 +1043,7 @@ copy_selected_files() {
     # Module setup and uninstall paths use PREFIX/<module> even when the
     # checkout itself is PREFIX. Keep deploy/<module> as tracked source.
     local module
-    for module in proxy frps lucky tailscale caddy; do
+    for module in proxy frps tailscale caddy; do
       has_module "$module" || continue
       [ -d "$SRC_DIR/deploy/$module" ] || continue
       mkdir -p "$PREFIX/$module"
@@ -1059,18 +1057,17 @@ copy_selected_files() {
     fi
     has_module proxy && copy_items="$copy_items proxy"
     has_module frps && copy_items="$copy_items frps"
-    has_module lucky && copy_items="$copy_items lucky"
     has_module tailscale && copy_items="$copy_items tailscale"
     has_module caddy && copy_items="$copy_items caddy"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in systemd|proxy|frps|lucky|tailscale|caddy) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in systemd|proxy|frps|tailscale|caddy) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web || has_module proxy || has_module tailscale || has_module frps || has_module lucky || has_module caddy || \
+  if has_module web || has_module proxy || has_module tailscale || has_module frps || has_module caddy || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     if [ "$SRC_DIR" != "$prefix_abs" ]; then
       mkdir -p "$PREFIX/src/web"
@@ -1109,10 +1106,6 @@ copy_selected_files() {
   if has_module web || has_module proxy || [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     copy_singbox_binary
   fi
-  if has_module lucky; then
-    mkdir -p "$PREFIX/vendor/lucky"
-    cp "$SRC_DIR/third_party/lucky/lucky" "$SRC_DIR/third_party/lucky/LICENSE" "$SRC_DIR/third_party/lucky/component.txt" "$PREFIX/vendor/lucky/"
-  fi
   if has_module caddy; then
     mkdir -p "$PREFIX/vendor/caddy"
     cp "$SRC_DIR/third_party/caddy/caddy" "$SRC_DIR/third_party/caddy/LICENSE" "$SRC_DIR/third_party/caddy/component.txt" "$PREFIX/vendor/caddy/"
@@ -1132,7 +1125,6 @@ register_optional_listener() {
   local module="$1" unit
   case "$module" in
     frps) unit=vps-server-frps.service ;;
-    lucky) unit=vps-server-lucky.service ;;
     *) return 2 ;;
   esac
   python3 - "$PREFIX" "$module" <<'PY' || {
@@ -1146,6 +1138,20 @@ PY
     systemctl disable --now "$unit" >/dev/null 2>&1 || true
     die "$(msg port_registration_failed "$module")"
   }
+}
+
+# Lucky was an optional module until domain forwarding replaced it. Remove
+# it on upgrade, after archiving its settings to the state directory.
+remove_legacy_lucky() {
+  [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -d /etc/vps-server-lucky ] ||
+    [ -e /usr/local/bin/lucky-vps-server ] || return 0
+  VPSSRV_STATE_DIR="$STATE_DIR" python3 - "$PREFIX" <<'PY' || msg lucky_remove_failed >&2
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from module_manager import remove_legacy_lucky
+remove_legacy_lucky(sys.argv[1])
+PY
 }
 
 # Domain forwarding takes 80/443 from the public page, also in PORTS.md.
@@ -1217,10 +1223,7 @@ msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME"
     die "$(msg node_meter_failed)"
   }
   [ "$FRPS_FAILED" = "0" ] || die "$(msg frps_install_failed)"
-  if has_module lucky; then
-    PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
-    register_optional_listener lucky
-  fi
+  remove_legacy_lucky
   if has_module frps; then register_optional_listener frps; fi
   if has_module caddy; then install_caddy; fi
   if has_module tailscale; then
@@ -1243,37 +1246,6 @@ if [ "$VPSSRV_AUTH" = "0" ]; then
 fi
 
 check_frps_console_collision
-
-# Preserve the installed Lucky admin listener even on a web-only rerun.
-# Resolve the console choice after the prompt and before probing/stopping web.
-if has_module web && [ -f /etc/vps-server-lucky/config.json ]; then
-  console_candidate="${VPSSRV_CONSOLE_PORT:-}"
-  if [ -f "$VPSSRV_DATA_DIR/console-port-override" ]; then
-    console_candidate="$(tr -d '[:space:]' < "$VPSSRV_DATA_DIR/console-port-override")"
-  fi
-  console_file="$VPSSRV_CONSOLE_PORT_FILE"
-  if [ -z "$console_candidate" ] && [ -f "$console_file" ]; then
-    console_candidate="$(tr -d '[:space:]' < "$console_file")"
-  fi
-  if [ -n "$console_candidate" ]; then
-    lucky_port="$(python3 - <<'PYLUCKY'
-import json, sys
-try:
-    base = json.load(open('/etc/vps-server-lucky/config.json'))['BaseConfigure']
-    port = base['AdminWebListenPort']
-    if type(port) is not int or not 1 <= port <= 65535:
-        raise ValueError('invalid admin port')
-    print(port)
-except (OSError, ValueError, KeyError, TypeError) as exc:
-    print(f'Cannot verify Lucky admin port: {exc}', file=sys.stderr)
-    sys.exit(2)
-PYLUCKY
-)" || die "$(msg lucky_port_verify)"
-    if python3 -c 'import sys; p = sys.argv[1]; sys.exit(0 if p.isascii() and p.isdecimal() and int(p) == int(sys.argv[2]) else 1)' "$console_candidate" "$lucky_port"; then
-      die "$(msg lucky_console_conflict "$console_candidate")"
-    fi
-  fi
-fi
 
 # Check before stopping anything, and put the service back if stopping it did
 # not help. A console/frps conflict must be rejected before this block can
@@ -1329,10 +1301,7 @@ if [ -f "$ANYTLS_CONFIG_PATH" ]; then
 fi
 copy_selected_files
 prepare_module_source
-if has_module lucky; then
-  PREFIX="$PREFIX" bash "$PREFIX/lucky/setup-lucky.sh" || die "$(msg lucky_install_failed)"
-  register_optional_listener lucky
-fi
+remove_legacy_lucky
 if has_module tailscale; then
   PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
 fi

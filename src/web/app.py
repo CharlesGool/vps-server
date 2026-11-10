@@ -92,7 +92,6 @@ from module_manager import iperf_binary
 from module_manager import snapshot_tailscale_ports
 from module_manager import status_path as module_status_path, public_listener_enabled, frpc_group_enabled
 from console_port import available as console_port_available, read_rows as console_port_rows
-from console_port import lucky_listener_active, detect_lucky_admin
 from frp_control import (client_names as frpc_names, client_path as frpc_path,
                          client_unit as frpc_unit,
                          client_summary as frpc_summary, structured_client as frpc_structured,
@@ -131,7 +130,6 @@ import features.iperf as _feature_iperf
 from features.iperf_client import IperfClient
 import features.portfwd as _feature_portfwd
 import features.proxy_service as _feature_proxy
-import features.lucky as _feature_lucky
 import features.tailscale as _feature_tailscale
 import features.frp as _feature_frp
 import features.visitors as _feature_visitors
@@ -658,53 +656,6 @@ FRPS_TRAFFIC_PATH = FRPS_CONFIG.parent / 'traffic.json'
 FRPS_METER_PATH = FRPS_CONFIG.parent / 'traffic-meter.json'
 FRPC_BINARY = Path(os.environ.get('VPSSRV_FRPC_BIN', '/usr/local/bin/frpc'))
 FRP_CONTROL_HELPER = WEB_CODE_DIR / 'frp_control.py'
-LUCKY_CONFIG = Path(os.environ.get('VPSSRV_LUCKY_CONFIG', '/etc/vps-server-lucky/config.json'))
-LUCKY_SERVICE = 'vps-server-lucky.service'
-
-
-def lucky_admin(*args, **kwargs):
-    return _feature_lucky.lucky_admin(sys.modules[__name__], *args, **kwargs)
-
-
-def sync_lucky_guard():
-    """Close Lucky's admin port to all but loopback (outside Web's sandbox)."""
-    unit = "vps-server-lucky-guard-" + secrets.token_hex(6)
-    subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
-                    "--unit=" + unit, "/usr/bin/python3",
-                    str(WEB_CODE_DIR / "lucky_guard.py"), "sync"],
-                   capture_output=True, text=True, timeout=60, check=True)
-
-
-def watch_lucky_port(stop_event):
-    owner = "vps-server Lucky"
-    guarded, guarded_at = None, 0.0
-    while not stop_event.is_set():
-        try:
-            data = lucky_admin()
-            # Follow a port change at once; otherwise re-check every minute in
-            # case something flushed the ruleset.
-            port = data["AdminWebListenPort"] if data else None
-            if data and (port != guarded or time.monotonic() - guarded_at > 60):
-                guarded, guarded_at = port, time.monotonic()
-                try:
-                    sync_lucky_guard()
-                except (OSError, subprocess.SubprocessError):
-                    pass  # No nft on this host, or a transient failure; retried in a minute.
-            active = (bool(data) and _run_quiet(["systemctl", "is-active", "--quiet", LUCKY_SERVICE])
-                      and lucky_listener_active(data["AdminWebListenPort"]))
-            desired = data["AdminWebListenPort"] if active else None
-            rows, _ = console_port_rows(BASE_DIR.parent / "PORTS.md")
-            recorded = [row[0] for row in rows if row[1] == owner]
-            if recorded != ([desired] if desired else []):
-                unit = "vps-server-lucky-port-" + secrets.token_hex(6)
-                subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
-                                "--unit=" + unit, "/usr/bin/python3",
-                                str(WEB_CODE_DIR / "console_port.py"), "sync-lucky", str(BASE_DIR)],
-                               capture_output=True, text=True, timeout=30, check=True)
-        except (OSError, ValueError, subprocess.SubprocessError):
-            pass  # The next poll retries without modifying Lucky's own configuration.
-        stop_event.wait(5)
-
 
 
 def frps_node(*args, **kwargs):
@@ -1002,7 +953,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "clover", "terminal", "earth"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth"})
 _UI_ICON_CACHE = {}
 
 
@@ -1041,7 +992,6 @@ STATIC_FILES = {
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
     "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
     "/static/confirm-dialog.js": ("application/javascript", STATIC_DIR / "confirm-dialog.js"),
-    "/static/lucky.js": ("application/javascript", STATIC_DIR / "lucky.js"),
     "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
     "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),
     "/static/third_party/xterm/xterm.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "xterm.js"),
@@ -1054,7 +1004,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "lucky", "tailscale", "terminal", "login", "domains")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -1089,7 +1039,6 @@ from features.modules import ModulesMixin
 from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
-from features.lucky import LuckyMixin
 from features.domains import DomainsMixin
 from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
@@ -1119,7 +1068,7 @@ SECURITY_HEADERS = (
 
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, LuckyMixin, DomainsMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, DomainsMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1294,16 +1243,6 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def do_POST(self):
         self._dispatch("POST")
 
-    # Lucky's own admin page (proxied under /lucky/) also uses these.
-    def do_PUT(self):
-        self._dispatch("PUT")
-
-    def do_DELETE(self):
-        self._dispatch("DELETE")
-
-    def do_PATCH(self):
-        self._dispatch("PATCH")
-
     def _dispatch(self, method):
         parsed = urlsplit(self.path)
         path = parsed.path
@@ -1311,8 +1250,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._body_started = False
         # A rejected form can leave its POST body unread. Never parse those
         # bytes as the next HTTP/1.1 request on the same connection.
-        # The Lucky proxy clears this once it has read the whole body.
-        self._close_after_response = method != "GET" and path != "/speedtest/empty"
+        self._close_after_response = method == "POST" and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
         if ((TRUST_PROXY or is_loopback(self.client_address[0]))
@@ -1386,9 +1324,6 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
 
-        if method not in ("GET", "POST") and not path.startswith("/lucky/"):
-            return self.send_html(405, "Method Not Allowed", {"Allow": "GET, POST", "Cache-Control": "no-store"})
-
         page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
                         "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
                         "/changelog": "changelog"}
@@ -1414,7 +1349,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
-                      self.route_lucky, self.route_domains, self.route_tailscale, self.route_frp, self.route_iperf,
+                      self.route_domains, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return
@@ -1638,7 +1573,6 @@ def main():
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
-        threading.Thread(target=watch_lucky_port, args=(stop_event,), daemon=True).start()
 
         console.serve_forever()
     except KeyboardInterrupt:

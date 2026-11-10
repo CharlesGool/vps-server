@@ -169,7 +169,7 @@ def render_page(context, title, body, lang, active=None, show_nav=True, password
                active if active in ('home', 'speedtest', 'iperf', 'proxy', 'portfwd',
                                     'visitors', 'changelog', 'settings') else
                'frpc' if title == t['frp_client_heading'] or back_href == '/frpc' else
-               'frp' if title in (t['frp_heading'], t['frps_heading']) or back_href == '/frps' else 'lucky' if title == 'Lucky' else
+               'frp' if title in (t['frp_heading'], t['frps_heading']) or back_href == '/frps' else
                'tailscale' if title == 'Tailscale' else
                'terminal' if title == t['terminal_title'] else 'home')
     version_tag = f'<a class="version" href="/changelog">{context.html.escape(context.VERSION_LABEL)}</a>'

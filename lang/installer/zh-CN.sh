@@ -42,7 +42,7 @@ case "$key" in
   module_only_invalid) fmt='单模块安装需要已有安装，且不能包含 web' ;;
   python_too_old) fmt='需要 Python 3.9 或更高版本；本机为 %s。' ;;
   deps_iptables_missing) fmt='警告：未安装 iptables，端口转发规则无法生效。需要端口转发时请安装（Debian/Ubuntu：apt install iptables）后重启控制台。\n' ;;
-  deps_ss_missing) fmt='警告：未安装 ss（iproute2），修改控制台端口和检测 Lucky 管理端口会失败。请用 apt install iproute2 安装。\n' ;;
+  deps_ss_missing) fmt='警告：未安装 ss（iproute2），修改控制台端口会失败。请用 apt install iproute2 安装。\n' ;;
   deps_ip_missing) fmt='警告：未安装 ip（iproute2），安装摘要无法列出地址，Tailscale 也无法显示本机路由。请用 apt install iproute2 安装。\n' ;;
   deps_nft_missing) fmt='代理和 FRPS 模块需要 nftables（流量统计和限速），但本机没有可用的 nft，也缺少随附的运行时。请安装 nftables（apt install nftables）或使用完整安装包。' ;;
   deps_nft_unusable) fmt='代理和 FRPS 模块需要 nftables（流量统计和限速），但本机的 nft 和随附的运行时都无法运行。请安装 nftables（apt install nftables）后重试。' ;;
@@ -105,25 +105,14 @@ case "$key" in
   host_placeholder) fmt='<本机地址>' ;;
   error_prefix) fmt='错误：' ;;
   public_requires_openssl) fmt='公开页面的设置需要 openssl\n' ;;
-  lucky_public_warning) fmt='警告:公开的 Lucky 管理界面会通过未加密的 HTTP 传输凭据.\n' ;;
-  lucky_public_confirm_prompt) fmt='在服务器终端输入 I ACCEPT PUBLIC HTTP 以继续: ' ;;
-  lucky_public_confirm_required) fmt='公开 Lucky 管理界面需要确认\n' ;;
-  ask_lucky_port) fmt='  Lucky 管理端口 [16601]: ' ;;
-  ask_lucky_public) fmt='  通过未加密的 HTTP 向公网开放 Lucky 管理界面? [y/N] ' ;;
-  lucky_http_warning) fmt='警告:Lucky HTTP 管理凭据会以明文传输.建议使用私有网络访问或 TLS 代理.\n' ;;
-  lucky_http_confirm_prompt) fmt='输入 I ACCEPT PUBLIC HTTP 以确认: ' ;;
-  lucky_explicit_confirm) fmt='公开 Lucky 管理界面需要明确确认\n' ;;
   frps_arch) fmt='frps 需要 linux amd64 架构\n' ;;
-  lucky_arch) fmt='Lucky 需要 linux amd64 架构\n' ;;
   frps_port_verify) fmt='无法核实已有 frps 端口;拒绝安装 web 模块\n' ;;
   frps_console_conflict) fmt='控制台端口 %s 与已有 frps 的 bindPort 冲突\n' ;;
   node_meter_failed) fmt='节点流量统计或限速服务启动失败；代理服务保持停止。检查：journalctl -u vps-server-node-meter.service -e\n' ;;
   proxy_migration_failed) fmt='旧 AnyTLS 合并到统一代理服务失败；安装已停止。请检查上方错误,保留迁移备份并核对原服务状态.\n' ;;
   frpc_refresh_failed) fmt='FRPC 客户端更新失败\n' ;;
   frps_install_failed) fmt='frps 安装失败\n' ;;
+  lucky_remove_failed) fmt='警告:移除旧的 Lucky 模块失败;请查看安装日志\n' ;;
   caddy_install_failed) fmt='域名转发安装失败\n' ;;
-  lucky_install_failed) fmt='Lucky 安装失败\n' ;;
-  lucky_port_verify) fmt='无法核实已有 Lucky 管理端口;拒绝安装 web 模块\n' ;;
-  lucky_console_conflict) fmt='控制台端口 %s 与已有 Lucky 管理端口冲突\n' ;;
   *) fmt="$key\n" ;;
 esac

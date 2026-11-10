@@ -1,15 +1,7 @@
 {
   "schema_version": 1,
-  "coverage": "Seventeen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
+  "coverage": "Sixteen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
   "artifacts": [
-    {
-      "component": "Lucky",
-      "version": "v2.27.2 Linux x86_64",
-      "upstream": "https://github.com/gdy666/lucky",
-      "recorded_upstream_revision": null,
-      "path": "third_party/lucky/lucky",
-      "sha256": "7d3193cf969e8ed041761544b41786bcc368d46b9cf4d4d679a5bc215bd3357a"
-    },
     {
       "component": "frps",
       "version": "v0.72.0 linux amd64",

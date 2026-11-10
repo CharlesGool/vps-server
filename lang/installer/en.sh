@@ -42,7 +42,7 @@ case "$key" in
   module_only_invalid) fmt='A module-only install needs an existing installation and must not include web' ;;
   python_too_old) fmt='Python 3.9 or newer is required; this host has %s.' ;;
   deps_iptables_missing) fmt='Warning: iptables is not installed, so port forwarding rules cannot be applied. Install it (Debian/Ubuntu: apt install iptables) and restart the console to use port forwarding.\n' ;;
-  deps_ss_missing) fmt='Warning: ss (iproute2) is not installed, so changing the console port and detecting the Lucky admin port will fail. Install it with apt install iproute2.\n' ;;
+  deps_ss_missing) fmt='Warning: ss (iproute2) is not installed, so changing the console port will fail. Install it with apt install iproute2.\n' ;;
   deps_ip_missing) fmt='Warning: ip (iproute2) is not installed, so the install summary cannot list addresses and Tailscale cannot show local routes. Install it with apt install iproute2.\n' ;;
   deps_nft_missing) fmt='The proxy and FRPS modules need nftables for traffic accounting and limits, but this host has no usable nft and the bundled runtime is missing. Install nftables (apt install nftables) or use the full release package.' ;;
   deps_nft_unusable) fmt='The proxy and FRPS modules need nftables for traffic accounting and limits, but neither the system nft nor the bundled runtime works on this host. Install nftables (apt install nftables) and try again.' ;;
@@ -105,25 +105,14 @@ case "$key" in
   host_placeholder) fmt='<this-server>' ;;
   error_prefix) fmt='error: ' ;;
   public_requires_openssl) fmt='Public setup requires openssl\n' ;;
-  lucky_public_warning) fmt='WARNING: Lucky public admin sends credentials over unencrypted HTTP.\n' ;;
-  lucky_public_confirm_prompt) fmt='Type I ACCEPT PUBLIC HTTP on the server terminal to proceed: ' ;;
-  lucky_public_confirm_required) fmt='Public Lucky admin confirmation required\n' ;;
-  ask_lucky_port) fmt='  Lucky admin port [16601]: ' ;;
-  ask_lucky_public) fmt='  Expose Lucky admin publicly over unencrypted HTTP? [y/N] ' ;;
-  lucky_http_warning) fmt='WARNING: Lucky HTTP admin credentials travel unencrypted. Prefer private access or TLS proxy.\n' ;;
-  lucky_http_confirm_prompt) fmt='Type I ACCEPT PUBLIC HTTP to confirm: ' ;;
-  lucky_explicit_confirm) fmt='Lucky public admin requires explicit confirmation\n' ;;
   frps_arch) fmt='frps requires linux amd64\n' ;;
-  lucky_arch) fmt='Lucky requires linux amd64\n' ;;
   frps_port_verify) fmt='Cannot verify existing frps port; web install refused\n' ;;
   frps_console_conflict) fmt='Console port %s conflicts with existing frps bindPort\n' ;;
   node_meter_failed) fmt='Node traffic accounting or limit service failed to start; proxy services remain stopped. Check: journalctl -u vps-server-node-meter.service -e\n' ;;
   proxy_migration_failed) fmt='Could not merge the legacy AnyTLS service into the unified proxy; installation stopped. Keep the migration backup and check the original service state.\n' ;;
   frpc_refresh_failed) fmt='FRPC client update failed\n' ;;
   frps_install_failed) fmt='frps installation failed\n' ;;
+  lucky_remove_failed) fmt='Warning: removing the old Lucky module failed; see the install log\n' ;;
   caddy_install_failed) fmt='Domain forwarding installation failed\n' ;;
-  lucky_install_failed) fmt='Lucky installation failed\n' ;;
-  lucky_port_verify) fmt='Cannot verify existing Lucky admin port; web install refused\n' ;;
-  lucky_console_conflict) fmt='Console port %s conflicts with existing Lucky admin port\n' ;;
   *) fmt="$key\n" ;;
 esac

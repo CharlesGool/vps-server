@@ -83,14 +83,6 @@
 .frp-target-head .node-toggle-form { margin-inline-start: auto; margin-inline-end: 0; }
 .frp-target-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--compat-size-11); width: 100%; }
 .frp-target-actions .proxy-node-status { margin-inline-start: 0; margin-inline-end: auto; }
-.card.lucky-page { max-width: none; display: grid; gap: var(--compat-size-24); }
-.lucky-facts { display: grid; gap: 0; margin: 0; }
-.lucky-facts > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--compat-size-15) var(--compat-size-24); padding: var(--compat-size-33) 0; border-top: 1px solid var(--border); }
-.lucky-facts > div:first-child { border-top: 0; padding-top: 0; }
-.lucky-facts dt { color: var(--muted-foreground); font-size: var(--text-sm); }
-.lucky-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; text-align: end; }
-.lucky-actions { display: flex; }
-.lucky-page .error { margin: 0; }
 
 /* Domain forwarding: the FRP card patterns, with a few page-level adjustments. */
 .domains-page { display: grid; gap: var(--compat-size-24); }
@@ -123,3 +115,6 @@
 .domain-facts dd { font-size: var(--text-sm); }
 .domains-page .node-inline-edit .domain-wide { grid-column: 1 / -1; margin-bottom: var(--compat-size-24); }
 .domains-page .node-inline-edit form:has(input[value="console"]:checked) .domain-port { display: none; }
+.domains-zones-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--compat-size-11); margin: 0 0 var(--compat-size-11); font-size: var(--text-sm); }
+.domains-zones-heading .muted { font-weight: var(--font-weight-normal); }
+.domains-zones { margin-bottom: var(--compat-size-24); }

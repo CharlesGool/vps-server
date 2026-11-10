@@ -34,7 +34,7 @@ This inventory records distributed component identity and obligations, preserves
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | Independent server binary. | fatedier/frp contributors | Retain license; official archive has no NOTICE. | 2026-11-06 |
 | frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | Instance client binary. | fatedier/frp contributors | Retain attribution and full license. | 2026-11-06 |
-| Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | Independent management service. | gdy (2022) | Retain attribution and full license. | 2026-09-27 |
+| Caddy | 2.11.9 | [Caddy](https://github.com/caddyserver/caddy) | Apache-2.0 | Independent service binary for domain forwarding. | Matthew Holt and The Caddy Authors | Retain the license; the official archive has no NOTICE. | 2026-11-10 |
 | sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Independent proxy core. | nekohasekai (2022) | Retain source access and upstream naming/affiliation conditions. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | Browser speed-test engine. | LibreSpeed contributors | Retain LGPL/GPL texts, provide corresponding source and replaceable client files. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | Client QR library. | Kazuhiko Arase (2009) | Retain attribution and full license. | 2026-09-27 |
@@ -47,14 +47,14 @@ This inventory records distributed component identity and obligations, preserves
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Official static client/daemon archive. | Tailscale Inc & contributors (2020) | Retain LICENSE, PATENTS and original dependency notices/licenses. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | Per-package copyright: GPL/LGPL/BSD and others. | Private runtime with its own loader and glibc, supplied only in complete offline packages. | Upstream package authors; see original archive notices. | Distribute complete corresponding sources, patches and package notices together. | 2026-11-06 |
 
-Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Lucky, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, the host OpenSSL library (used by Python TLS), iptables and similar OS components are not pinned by this lock (the installer checks minimum versions); their licenses/security updates follow distribution channels.
+Verification dates are the original provenance-check dates; publication on 2026-10-05 rechecked artifact hashes, not every upstream provenance claim. Upstream frp, Caddy, Singbox, LibreSpeed and QR artifacts are unchanged. Inter/Noto versions identify Fontsource packages, not internal font versions. No third-party Python packages, image datasets or model weights are included. Python, systemd, the host OpenSSL library (used by Python TLS), iptables and similar OS components are not pinned by this lock (the installer checks minimum versions); their licenses/security updates follow distribution channels.
 
 The Vue frontend adds Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 and tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), and class-variance-authority 0.7.1 (Apache-2.0). Exact identities and download sources are in the [npm lock file](../../web/package-lock.json). They provide shared components and compiled browser resources; copyright ownership follows upstream texts. Verified on 2026-10-06. Distribution retains original copyrights and license texts. The build copies them and a version/source-download manifest to `web/dist/licenses/`, retained by installation and offline packages. Build-tool notices are included as well; this does not imply those tools run on the VPS.
 
 ### License Texts
 
 - [frp](../../third_party/frp/LICENSE)
-- [Lucky](../../third_party/lucky/LICENSE)
+- [Caddy](../../third_party/caddy/LICENSE)
 - [sing-box](../../third_party/sing-box/LICENSE)
 - [GPL-3.0](../../LICENSE)
 - [LibreSpeed LGPL-3.0](../../src/web/static/licenses/LGPL-3.0.txt)

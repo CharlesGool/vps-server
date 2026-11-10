@@ -247,10 +247,22 @@ class DomainsMixin:
                  f'<input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="clear" value="1">'
                  f'<button type="submit" class="node-action-danger frp-card-edit">{esc(t["domains_token_clear"])}</button></form>'
                  if token_set else '')
+        # The main domains the token can manage, with how many sites use each.
+        zone_rows = "".join(
+            f'<div><dt>{esc(zone)}</dt><dd>{esc(t["domains_zone_sites"].format(count=len(groups.get(zone, []))))}</dd></div>'
+            for zone in zones)
+        zones_checked = _read_json(CONFIG_DIR / "zones.json").get("checked_at")
+        zone_list = ((f'<h3 class="domains-zones-heading">{esc(t["domains_zones_bound"])}'
+                      f'<span class="muted">{esc(t["domains_zones_checked"].format(time=time.strftime("%Y-%m-%d %H:%M", time.localtime(zones_checked))))}</span></h3>'
+                      if isinstance(zones_checked, (int, float)) else
+                      f'<h3 class="domains-zones-heading">{esc(t["domains_zones_bound"])}</h3>')
+                     + f'<dl class="frp-facts domains-zones">{zone_rows}</dl>' if zones else
+                     f'<p class="error">{esc(t["domains_zones_none"])}</p>' if token_set else '')
         token_card = (f'<section class="card frp-card">'
                       f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["domains_cloudflare"])}</h2>'
                       f'{pill(t["domains_token_state_set"] if token_set else t["domains_token_state_missing"], "is-open" if token_set else "is-closed")}</div>'
                       f'<p class="muted">{esc(t["domains_token_help"])}</p>'
+                      + zone_list +
                       f'<div class="domains-token-actions">'
                       + (f'<details class="node-inline-edit"><summary><span>{esc(t["domains_token_change"])}</span>'
                          f'<span>{esc(t["node_cancel"])}</span></summary>{token_form}</details>'

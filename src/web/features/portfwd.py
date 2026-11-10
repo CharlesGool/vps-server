@@ -294,9 +294,6 @@ class PortForwardManager:
         frps = self.context.frps_node()
         if frps:
             reserved.add(frps['port'])
-        lucky = self.context.lucky_admin()
-        if lucky:
-            reserved.add(lucky['AdminWebListenPort'])
         for pnode in self.context.proxy_nodes():
             if pnode.get("port"):
                 try:

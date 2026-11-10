@@ -46,7 +46,7 @@ except ImportError:
     from host_checks import NFT_CODES, check as host_check, install_nft
 
 
-MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale", "caddy")
+MODULES = ("web", "iperf3", "proxy", "frps", "tailscale", "caddy")
 STANDALONE_MODULES = ("frpc",)
 FEATURES = ("speedtest", "portfwd", "visitors", "terminal")
 GROUPS = ("proxy_nodes", "frpc")
@@ -54,7 +54,6 @@ PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {
     "proxy": "vps-server-proxy.service",
     "frps": "vps-server-frps.service",
-    "lucky": "vps-server-lucky.service",
     "tailscale": "vps-server-tailscale.service",
     "caddy": "vps-server-caddy.service",
 }
@@ -117,7 +116,7 @@ def installed_modules(prefix):
                 present.add("web")
             if "iperf3" in recorded and iperf_binary(prefix):
                 present.add("iperf3")
-            for module in ("proxy", "frps", "lucky", "tailscale", "caddy"):
+            for module in ("proxy", "frps", "tailscale", "caddy"):
                 if module in recorded and Path(f"/etc/systemd/system/{UNITS[module]}").is_file():
                     present.add(module)
             if frpc_installed():
@@ -743,7 +742,7 @@ def run_toggle(prefix, module, enabled):
                      if node.get("enabled", True)]
     registered = []
     optional_registered = []
-    listener = managed_listener(module) if module in ("frps", "lucky", "tailscale") else None
+    listener = managed_listener(module) if module in ("frps", "tailscale") else None
     listener_registered = False
     if enabled:
         if listener:
@@ -868,6 +867,60 @@ def switch_caddy(prefix, enabled):
         subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
 
 
+LUCKY_DIR = Path("/etc/vps-server-lucky")
+LUCKY_UNIT = Path("/etc/systemd/system/vps-server-lucky.service")
+
+
+def remove_legacy_lucky(prefix):
+    """Remove the Lucky module, which this project no longer ships.
+
+    Its settings are archived to the state directory first. Returns True when
+    anything was removed.
+    """
+    if not (LUCKY_UNIT.exists() or LUCKY_DIR.exists() or Path("/usr/local/bin/lucky-vps-server").exists()):
+        return False
+    subprocess.run(["systemctl", "disable", "--now", "vps-server-lucky.service"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=60)
+    try:
+        from nft_runtime import command
+        binary, env = command()
+        subprocess.run([binary, "delete", "table", "inet", "vps_server_lucky"],
+                       capture_output=True, env=env, check=False, timeout=20)
+    except (ImportError, OSError, subprocess.SubprocessError):
+        pass
+    if LUCKY_DIR.is_dir():
+        archive = state_data_dir() / f"module-backup-lucky-{int(time.time())}.tar.gz"
+        with tarfile.open(archive, "w:gz") as output:
+            output.add(LUCKY_DIR, arcname=f"etc/{LUCKY_DIR.name}")
+        os.chmod(archive, 0o600)
+        print(f"Lucky settings archived: {archive}", flush=True)
+        try:
+            remove_owned_firewall_rule(LUCKY_DIR / "firewall-owned")
+        except (OSError, subprocess.SubprocessError):
+            pass
+        shutil.rmtree(LUCKY_DIR, ignore_errors=True)
+    from console_port import read_rows, write_rows
+    registry = Path(prefix).parent / "PORTS.md"
+    if registry.is_file():
+        with (Path(prefix).parent / ".ports.lock").open("a+b") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            rows, _ = read_rows(registry)
+            kept = [row for row in rows if row[1] != "vps-server Lucky"]
+            if len(kept) != len(rows):
+                write_rows(registry, kept)
+    for path in (LUCKY_UNIT, Path("/usr/local/bin/lucky-vps-server")):
+        path.unlink(missing_ok=True)
+    for path in (Path(prefix) / "lucky", Path(prefix) / "vendor" / "lucky"):
+        shutil.rmtree(path, ignore_errors=True)
+    web = Path(prefix) / "src" / "web"
+    for path in (web / "lucky_proxy.py", web / "lucky_guard.py", web / "features" / "lucky.py",
+                 web / "static" / "lucky.js", web / "static" / "favicon-lucky.svg"):
+        path.unlink(missing_ok=True)
+    subprocess.run(["systemctl", "daemon-reload"], check=False, timeout=30)
+    print("Lucky removed.", flush=True)
+    return True
+
+
 def remove_owned_firewall_rule(owner):
     if not owner.is_file():
         return
@@ -896,9 +949,6 @@ def managed_listener(module):
         if match is None:
             raise ValueError("invalid FRPS bind port")
         return int(match.group(1)), "vps-server frps"
-    if module == "lucky":
-        data = json.loads(Path("/etc/vps-server-lucky/config.json").read_text())["BaseConfigure"]
-        return int(data["AdminWebListenPort"]), "vps-server Lucky"
     return None
 
 
@@ -993,7 +1043,7 @@ def run_uninstall(prefix, module):
     """Remove an optional module after retaining its configuration locally."""
     if module == "frpc":
         return uninstall_frpc(prefix)
-    if module not in ("iperf3", "proxy_nodes", "frps", "lucky", "tailscale", "caddy"):
+    if module not in ("iperf3", "proxy_nodes", "frps", "tailscale", "caddy"):
         raise ValueError("module cannot be uninstalled separately")
     present = installed_modules(prefix)
     targets = ({"proxy"} & present) if module == "proxy_nodes" else {module} & present
@@ -1002,7 +1052,7 @@ def run_uninstall(prefix, module):
     archive = state_data_dir() / f"module-backup-{module}-{int(time.time())}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         paths = {"proxy": "/etc/vps-server-proxy",
-                 "frps": "/etc/vps-server-frps", "lucky": "/etc/vps-server-lucky",
+                 "frps": "/etc/vps-server-frps",
                  "caddy": "/etc/vps-server-caddy",
                  "tailscale": str(state_dir() / "tailscale")}
         for item in targets:
@@ -1059,17 +1109,6 @@ def run_uninstall(prefix, module):
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
         # Keep bind port and token so a later reinstall can restore clients.
         Path("/usr/local/bin/frps-vps-server").unlink(missing_ok=True)
-    elif module == "lucky":
-        subprocess.run(["systemctl", "disable", "--now", UNITS["lucky"]], check=True, timeout=60)
-        subprocess.run([sys.executable, str(Path(prefix) / "src" / "web" / "lucky_guard.py"),
-                        "delete-table"], check=False, timeout=30)
-        from console_port import release_owned_port
-        release_owned_port(prefix, *managed_listener("lucky"))
-        remove_owned_firewall_rule(Path("/etc/vps-server-lucky/firewall-owned"))
-        Path(f"/etc/systemd/system/{UNITS['lucky']}").unlink(missing_ok=True)
-        subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
-        # Lucky owns DDNS and proxy settings; leave its config in place.
-        Path("/usr/local/bin/lucky-vps-server").unlink(missing_ok=True)
     elif module == "caddy":
         subprocess.run(["systemctl", "disable", "--now", UNITS["caddy"], CADDY_TIMER], check=True, timeout=60)
         release_caddy_ports(prefix)
