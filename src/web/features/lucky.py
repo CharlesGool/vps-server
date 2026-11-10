@@ -1,8 +1,12 @@
 """Lucky pages and actions for the operator console.
 
 Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
-can be reused with another application context.
+can be reused with another application context. ``/lucky/`` shows Lucky's
+own admin page through ``lucky_proxy``; ``/lucky`` shows its state while it
+is stopped.
 """
+
+import lucky_proxy
 
 
 class LuckyMixin:
@@ -31,17 +35,33 @@ class LuckyMixin:
                               {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
 
     def route_lucky(self, method, path, parsed, lang, query_lang):
-        if method == "GET" and path == "/lucky" and self.context.AUTH_ENABLED:
-            self.page_lucky(lang, query_lang)
+        if not self.context.AUTH_ENABLED:
+            return False
+        if path.startswith("/lucky/"):
+            try:
+                lucky_proxy.forward(self, self.context, method)
+            except lucky_proxy.Unavailable:
+                if method == "GET" and path == "/lucky/":
+                    self.page_lucky(lang, query_lang)
+                else:
+                    self.send_json(502, {"error": "Lucky is not running"}, {"Cache-Control": "no-store"})
             return True
-        if method == "GET" and path == "/lucky/status" and self.context.AUTH_ENABLED:
+        if method == "GET" and path == "/lucky":
+            data = self.context.lucky_admin()
+            if (data and self.context._run_quiet(['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
+                    and self.context.lucky_listener_active(data['AdminWebListenPort'])
+                    and not (self.context.STATE_FILE.is_file() and
+                             "lucky" not in self.context.installed_modules(self.context.BASE_DIR))):
+                self.redirect("/lucky/", {"Cache-Control": "no-store"})
+            else:
+                self.page_lucky(lang, query_lang)
+            return True
+        if method == "GET" and path == "/lucky-status":
             data = self.context.lucky_admin()
             running = (bool(data) and self.context._run_quiet(
                 ['systemctl', 'is-active', '--quiet', self.context.LUCKY_SERVICE])
                        and self.context.lucky_listener_active(data['AdminWebListenPort']))
-            self.send_json(200, {"port": data['AdminWebListenPort'] if data else None,
-                                 "scheme": data.get('_scheme', 'http') if data else 'http',
-                                 "running": running}, {"Cache-Control": "no-store"})
+            self.send_json(200, {"running": running}, {"Cache-Control": "no-store"})
             return True
         return False
 

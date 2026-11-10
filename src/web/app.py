@@ -1205,6 +1205,16 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def do_POST(self):
         self._dispatch("POST")
 
+    # Lucky's own admin page (proxied under /lucky/) also uses these.
+    def do_PUT(self):
+        self._dispatch("PUT")
+
+    def do_DELETE(self):
+        self._dispatch("DELETE")
+
+    def do_PATCH(self):
+        self._dispatch("PATCH")
+
     def _dispatch(self, method):
         parsed = urlsplit(self.path)
         path = parsed.path
@@ -1212,7 +1222,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._body_started = False
         # A rejected form can leave its POST body unread. Never parse those
         # bytes as the next HTTP/1.1 request on the same connection.
-        self._close_after_response = method == "POST" and path != "/speedtest/empty"
+        # The Lucky proxy clears this once it has read the whole body.
+        self._close_after_response = method != "GET" and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
         if TRUST_PROXY and not CONSOLE_ACCESS.allows(self.client_ip()):
@@ -1284,6 +1295,9 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                            "/login?next=terminal" if path == "/terminal" else
                            "/login?next=settings" if path.startswith("/settings") else "/login")
             return self.redirect(destination)
+
+        if method not in ("GET", "POST") and not path.startswith("/lucky/"):
+            return self.send_html(405, "Method Not Allowed", {"Allow": "GET, POST", "Cache-Control": "no-store"})
 
         page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
                         "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",

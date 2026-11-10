@@ -105,5 +105,6 @@ metadata:
 - LibreSpeed 客户端使用 `/speedtest/garbage`, `/speedtest/empty`, `/speedtest/getip` 与原创 Python 后端交互;结果反映当前客户端到服务器的链路.
 - 权限辅助程序通过白名单动作调用 systemd, FRP 验证器, nft/iptables 与安装器;不提供任意命令执行 API. root PTY 仅供经过密码复验的终端会话.
 - FRPC 连接用户指定的服务器, 结构化编辑只支持简单 token 认证 TCP/UDP 代理.
-- Tailscale CLI 与本机守护进程通信, 登录和路由审批由控制服务器/Tailnet 处理. Lucky 使用独立的原生管理端口.
+- Tailscale CLI 与本机守护进程通信, 登录和路由审批由控制服务器/Tailnet 处理.
+- Lucky 管理页经控制台的 `/lucky/` 显示: `src/web/lucky_proxy.py` 在控制台登录之后把请求(含 WebSocket)去掉前缀转发到 `127.0.0.1` 上的 Lucky 管理端口, 不转发 `X-Forwarded-For` 等来源地址头和控制台 Cookie, 响应分块转发. Lucky 因此看到的是本机地址, `AllowInternetaccess` 保持关闭, 管理端口不必对公网开放. Lucky 页面与控制台同源, 使用单独的 CSP: 脚本仍只来自本站, 但允许运行时编译(protobufjs), 以及访问和内嵌 Lucky 官网的 https 地址. `/lucky` 在 Lucky 运行时跳到 `/lucky/`, 未运行时显示状态页.
 - 地址来自本机网卡及已配置的 FRPC 服务器地址, 安装器不请求外部服务查询公网 IP.
