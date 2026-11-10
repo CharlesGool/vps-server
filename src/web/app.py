@@ -622,11 +622,30 @@ def lucky_admin(*args, **kwargs):
     return _feature_lucky.lucky_admin(sys.modules[__name__], *args, **kwargs)
 
 
+def sync_lucky_guard():
+    """Close Lucky's admin port to all but loopback (outside Web's sandbox)."""
+    unit = "vps-server-lucky-guard-" + secrets.token_hex(6)
+    subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect",
+                    "--unit=" + unit, "/usr/bin/python3",
+                    str(WEB_CODE_DIR / "lucky_guard.py"), "sync"],
+                   capture_output=True, text=True, timeout=60, check=True)
+
+
 def watch_lucky_port(stop_event):
     owner = "vps-server Lucky"
+    guarded, guarded_at = None, 0.0
     while not stop_event.is_set():
         try:
             data = lucky_admin()
+            # Follow a port change at once; otherwise re-check every minute in
+            # case something flushed the ruleset.
+            port = data["AdminWebListenPort"] if data else None
+            if data and (port != guarded or time.monotonic() - guarded_at > 60):
+                guarded, guarded_at = port, time.monotonic()
+                try:
+                    sync_lucky_guard()
+                except (OSError, subprocess.SubprocessError):
+                    pass  # No nft on this host, or a transient failure; retried in a minute.
             active = (bool(data) and _run_quiet(["systemctl", "is-active", "--quiet", LUCKY_SERVICE])
                       and lucky_listener_active(data["AdminWebListenPort"]))
             desired = data["AdminWebListenPort"] if active else None

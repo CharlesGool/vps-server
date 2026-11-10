@@ -185,13 +185,17 @@ trap rollback EXIT
 mkdir -p "$(dirname "$CONFIG")"
 install -m 0600 "$STAGE/config" "$CONFIG"
 install -m 0755 "$BIN" "$TARGET"
-cat > "$UNIT" <<'EOF'
+GUARD="${PREFIX_DIR:-${PREFIX:-/root/apps/vps-server}}/src/web/lucky_guard.py"
+cat > "$UNIT" <<EOF
 [Unit]
 Description=vps-server Lucky DDNS and reverse proxy
 After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/lucky-vps-server -c /etc/vps-server-lucky/config.json
+# Only this host may reach the admin port; the console shows it at /lucky/.
+# Without nft the rule is skipped and Lucky still starts.
+ExecStartPost=-/usr/bin/python3 $GUARD sync
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

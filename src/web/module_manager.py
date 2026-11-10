@@ -995,6 +995,8 @@ def run_uninstall(prefix, module):
         Path("/usr/local/bin/frps-vps-server").unlink(missing_ok=True)
     elif module == "lucky":
         subprocess.run(["systemctl", "disable", "--now", UNITS["lucky"]], check=True, timeout=60)
+        subprocess.run([sys.executable, str(Path(prefix) / "src" / "web" / "lucky_guard.py"),
+                        "delete-table"], check=False, timeout=30)
         from console_port import release_owned_port
         release_owned_port(prefix, *managed_listener("lucky"))
         remove_owned_firewall_rule(Path("/etc/vps-server-lucky/firewall-owned"))

@@ -106,5 +106,5 @@ metadata:
 - 权限辅助程序通过白名单动作调用 systemd, FRP 验证器, nft/iptables 与安装器;不提供任意命令执行 API. root PTY 仅供经过密码复验的终端会话.
 - FRPC 连接用户指定的服务器, 结构化编辑只支持简单 token 认证 TCP/UDP 代理.
 - Tailscale CLI 与本机守护进程通信, 登录和路由审批由控制服务器/Tailnet 处理.
-- Lucky 管理页经控制台的 `/lucky/` 显示: `src/web/lucky_proxy.py` 在控制台登录之后把请求(含 WebSocket)去掉前缀转发到 `127.0.0.1` 上的 Lucky 管理端口, 不转发 `X-Forwarded-For` 等来源地址头和控制台 Cookie, 响应分块转发. Lucky 因此看到的是本机地址, `AllowInternetaccess` 保持关闭, 管理端口不必对公网开放. Lucky 页面与控制台同源, 使用单独的 CSP: 脚本仍只来自本站, 但允许运行时编译(protobufjs), 以及访问和内嵌 Lucky 官网的 https 地址. `/lucky` 在 Lucky 运行时跳到 `/lucky/`, 未运行时显示状态页.
+- Lucky 管理页经控制台的 `/lucky/` 显示: `src/web/lucky_proxy.py` 在控制台登录之后把请求(含 WebSocket)去掉前缀转发到 `127.0.0.1` 上的 Lucky 管理端口, 不转发 `X-Forwarded-For` 等来源地址头和控制台 Cookie, 响应分块转发. Lucky 因此看到的是本机地址, `AllowInternetaccess` 保持关闭. Lucky 不能只监听本机, 所以 `src/web/lucky_guard.py` 用独立 nft 表 `vps_server_lucky` 丢弃不是从 `lo` 进入的管理端口 TCP 连接(公网, 内网和 Tailscale 都只能经控制台进入); Lucky 服务启动后和控制台每次发现端口变化(另每分钟一次)时同步规则, 卸载时删除. 以公开管理页安装(`LUCKY_PUBLIC_ADMIN=1`)时不加规则, 主机没有 nft 时跳过规则. 开启 Lucky 的 HTTPS 后, 同一端口的 HTTP 请求会被重定向到 HTTPS; 端口探测不跟随重定向, 代理遇到这种重定向时改用 HTTPS. Lucky 页面与控制台同源, 使用单独的 CSP: 脚本仍只来自本站, 但允许运行时编译(protobufjs), 以及访问和内嵌 Lucky 官网的 https 地址. `/lucky` 在 Lucky 运行时跳到 `/lucky/`, 未运行时显示状态页.
 - 地址来自本机网卡及已配置的 FRPC 服务器地址, 安装器不请求外部服务查询公网 IP.

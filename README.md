@@ -22,7 +22,7 @@
 
 - 浏览器上传/下载测速, 访客记录, 限时 iperf3 服务端与客户端测试.
 - Singbox 托管 AnyTLS, VMess, VLESS, Trojan 和 Shadowsocks 节点, 支持分享, 配额, 限速与到期策略.
-- FRPS 服务端(与 Singbox 节点相同的流量统计, 配额, 限速与到期策略, 按 bindPort 计量), FRPC 实例及 TCP/UDP 代理管理, Lucky 管理页(经控制台 HTTPS 的 `/lucky/` 打开, 管理端口不对公网开放), Tailscale 状态与设备管理.
+- FRPS 服务端(与 Singbox 节点相同的流量统计, 配额, 限速与到期策略, 按 bindPort 计量), FRPC 实例及 TCP/UDP 代理管理, Lucky 管理页(经控制台 HTTPS 的 `/lucky/` 打开, 管理端口只允许本机连接), Tailscale 状态与设备管理.
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
 - 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).

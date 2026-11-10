@@ -1063,7 +1063,7 @@ copy_selected_files() {
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web || has_module proxy || has_module tailscale || has_module frps || \
+  if has_module web || has_module proxy || has_module tailscale || has_module frps || has_module lucky || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     if [ "$SRC_DIR" != "$prefix_abs" ]; then
       mkdir -p "$PREFIX/src/web"

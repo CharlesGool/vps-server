@@ -97,6 +97,12 @@ if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-l
   if [ -f /etc/systemd/system/vps-server-lucky.service ]; then
     systemctl disable --now vps-server-lucky.service || die "$(msg cleanup_failed)"
   fi
+  # The loopback-only rule on the admin port goes with the service.
+  if [ -f "$PREFIX/src/web/lucky_guard.py" ]; then
+    /usr/bin/python3 "$PREFIX/src/web/lucky_guard.py" delete-table >/dev/null 2>&1 || true
+  elif command -v nft >/dev/null 2>&1; then
+    nft delete table inet vps_server_lucky 2>/dev/null || true
+  fi
   lucky_owner=/etc/vps-server-lucky/firewall-owned
   if [ -f "$lucky_owner" ]; then
     read -r backend port < "$lucky_owner" || true
