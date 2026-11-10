@@ -181,7 +181,8 @@ class AuthMixin:
                               {"Cache-Control": "no-store"})
 
     def handle_ip_login(self, lang):
-        if self.context.TRUST_PROXY or not self.context.IP_ALLOWLIST.contains(self.client_address[0]):
+        if (self.context.TRUST_PROXY or self.caddy_proxied()
+                or not self.context.IP_ALLOWLIST.contains(self.client_address[0])):
             return self.redirect("/login?ip=unavailable&next=settings",
                                  {"Cache-Control": "no-store"})
         self.login_succeeded("ip")

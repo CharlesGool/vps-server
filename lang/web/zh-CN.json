@@ -749,12 +749,14 @@
   "domains_remove_confirm": "删除 {host} 的转发?",
   "domains_none": "还没有转发的域名。",
   "domains_add": "添加域名",
-  "domains_add_help": "把 HTTPS 访问的域名转发到本机端口, 例如 frps 的端口。",
+  "domains_add_help": "把 HTTPS 访问的域名转发到本机端口, 例如 frps 的端口。填控制台端口会把本控制台挂到这个域名上, 客户端证书照常要求。",
   "domains_host": "域名",
   "domains_port": "本机端口",
   "domains_sites": "转发的域名",
   "domains_token_state_set": "令牌已设置",
   "domains_token_state_missing": "未设置令牌",
   "domains_token_change": "更换令牌",
-  "domains_token_clear_confirm": "清除 Cloudflare 令牌? 之后 DNS 记录不再自动更新, 现有记录保持不变。"
+  "domains_token_clear_confirm": "清除 Cloudflare 令牌? 之后 DNS 记录不再自动更新, 现有记录保持不变。",
+  "domains_target": "目标",
+  "domains_target_console": "本控制台(需要客户端证书时由 Caddy 校验)"
 }

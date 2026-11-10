@@ -251,7 +251,7 @@ class ProxyMixin:
 
     def handle_clash_subscription(self, path):
         parts = path.split("/")
-        peer = self.context.ipaddress.ip_address(self.client_address[0])
+        peer = self.context.ipaddress.ip_address(self.peer_ip())
         if (not self.context.AUTH_ENABLED or len(parts) != 5 or parts[:3] != ["", "clash", "sub"] or
                 not self.context.re.fullmatch(r"[0-9a-f]{64}", parts[4]) or
                 not (self.context.is_lan_address(str(peer)) or peer.is_loopback)):

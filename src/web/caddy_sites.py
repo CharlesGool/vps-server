@@ -8,11 +8,20 @@ console keeps an A record, and an AAAA record when the host has a public
 IPv6 address, for every site on Cloudflare, "DNS only", pointing at this
 host's own public address. Nothing asks an outside service for that address.
 
+A site whose port is the console's own port puts the console behind Caddy:
+Caddy asks for a client certificate signed by the console's client CA,
+connects to the console over loopback TLS and passes the certificate serial
+and the visitor's address in headers, with a secret from proxy-key. The
+console trusts those headers only on loopback with that secret, and still
+decides revocation and whether a certificate is required.
+
 Files (all root-owned):
     /etc/vps-server-caddy/sites.json        sites                       0600
     /etc/vps-server-caddy/cloudflare-token  Cloudflare API token        0600
     /etc/vps-server-caddy/dns.json          last DNS sync result        0600
     /etc/vps-server-caddy/caddy.json        generated Caddy config      0640 root:vps-server-caddy
+    /etc/vps-server-caddy/proxy-key         console proxy secret        0600
+    /etc/vps-server-caddy/client-ca.pem     copy of the console client CA 0640 root:vps-server-caddy
     /var/lib/vps-server-caddy               Caddy certificates and ACME accounts
 
     caddy_sites.py apply    one request as JSON on stdin (root)
@@ -22,6 +31,7 @@ Files (all root-owned):
 
 import fcntl
 import grp
+import secrets
 import ipaddress
 import json
 import os
@@ -40,6 +50,8 @@ TOKEN_PATH = CONFIG_DIR / "cloudflare-token"
 DNS_PATH = CONFIG_DIR / "dns.json"
 CADDY_CONFIG = CONFIG_DIR / "caddy.json"
 LOCK_PATH = CONFIG_DIR / "sites.lock"
+PROXY_KEY_PATH = CONFIG_DIR / "proxy-key"
+CLIENT_CA_COPY = CONFIG_DIR / "client-ca.pem"
 DATA_DIR = Path(os.environ.get("VPSSRV_CADDY_DATA", "/var/lib/vps-server-caddy"))
 ADMIN_SOCKET = "/run/vps-server-caddy/admin.sock"
 SERVICE = "vps-server-caddy.service"
@@ -79,7 +91,7 @@ def read_sites(path=SITES_PATH):
     if not isinstance(sites, list):
         raise ValueError("invalid sites.json")
     return [site for site in sites if isinstance(site, dict) and valid_host(site.get("host"))
-            and valid_port(site.get("port"))]
+            and (valid_port(site.get("port")) or site.get("console") is True)]
 
 
 def write_sites(sites, path=SITES_PATH):
@@ -121,36 +133,133 @@ def normalize_host(raw):
     return host
 
 
+# -- console ----------------------------------------------------------------
+
+def console_port():
+    """The console's current port, or None."""
+    try:
+        from state_paths import console_port_file
+        value = console_port_file().read_text().strip()
+        return int(value) if value.isascii() and value.isdecimal() and 1 <= int(value) <= 65535 else None
+    except (ImportError, OSError, ValueError):
+        return None
+
+
+def console_client_ca():
+    try:
+        from state_paths import cert_dir
+        return cert_dir() / "client-ca.pem"
+    except (ImportError, OSError, ValueError):
+        return None
+
+
+def proxy_key():
+    """The secret Caddy shows the console; created on first use."""
+    try:
+        key = PROXY_KEY_PATH.read_text().strip()
+        if len(key) >= 32:
+            return key
+    except FileNotFoundError:
+        pass
+    key = secrets.token_urlsafe(32)
+    _write(PROXY_KEY_PATH, key + "\n")
+    return key
+
+
+def _console_route(site, port, key):
+    return {"match": [{"host": [site["host"]]}],
+            "handle": [{"handler": "reverse_proxy",
+                        # Overwrite whatever the visitor sent under these names.
+                        "headers": {"request": {"set": {
+                            "X-Vps-Server-Proxy": [key],
+                            "X-Vps-Server-Client-Serial": ["{http.request.tls.client.serial}"],
+                            "X-Vps-Server-Client-IP": ["{http.request.remote.host}"]}}},
+                        # The console's own certificate is self-signed; this hop stays on loopback.
+                        "transport": {"protocol": "http", "tls": {"insecure_skip_verify": True}},
+                        "upstreams": [{"dial": f"127.0.0.1:{port}"}]}],
+            "terminal": True}
+
+
 # -- Caddy ------------------------------------------------------------------
 
-def caddy_config(sites):
-    """Caddy's native JSON: one route per host, everything else is dropped."""
+def caddy_config(sites, *, console=None, key="", client_ca=None):
+    """Caddy's native JSON: one route per host, everything else is dropped.
+
+    console is the console's port; sites marked "console" forward there.
+    client_ca, when given, is the PEM file Caddy checks client certificates
+    against for those sites.
+    """
     abort = {"handle": [{"handler": "static_response", "abort": True}]}
-    routes = [{"match": [{"host": [site["host"]]}],
-               "handle": [{"handler": "reverse_proxy",
-                           "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}],
-               "terminal": True}
-              for site in sites]
+    routes = []
+    console_hosts = []
+    for site in sites:
+        if site.get("console"):
+            if console is None or not key:
+                continue  # No console to reach: leave the name unanswered.
+            routes.append(_console_route(site, console, key))
+            console_hosts.append(site["host"])
+        else:
+            routes.append({"match": [{"host": [site["host"]]}],
+                           "handle": [{"handler": "reverse_proxy",
+                                       "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}],
+                           "terminal": True})
+    https = {"listen": [":443"], "routes": routes + [abort]}
+    if console_hosts and client_ca:
+        # Ask for a certificate; whether one is required stays the console's call.
+        https["tls_connection_policies"] = [
+            {"match": {"sni": console_hosts},
+             "client_authentication": {"ca": {"provider": "file", "pem_files": [str(client_ca)]},
+                                       "mode": "verify_if_given"}},
+            {}]
     return {
         "admin": {"listen": "unix/" + ADMIN_SOCKET},
         "storage": {"module": "file_system", "root": str(DATA_DIR)},
         "apps": {"http": {"servers": {
             # Automatic HTTPS adds the HTTP-to-HTTPS redirects and the ACME
             # HTTP challenge to the :80 server; any other host gets nothing.
-            "https": {"listen": [":443"], "routes": routes + [abort]},
+            "https": https,
             "http": {"listen": [":80"], "routes": [abort]},
         }}},
     }
 
 
 def render(sites=None):
+    """Write caddy.json (and the client CA copy); True when either changed."""
     sites = read_sites() if sites is None else sites
     try:
         group = grp.getgrnam(GROUP).gr_gid
     except KeyError:
         group = None
-    _write(CADDY_CONFIG, json.dumps(caddy_config(sites), indent=2) + "\n",
-           0o640 if group is not None else 0o600, group)
+    mode = 0o640 if group is not None else 0o600
+    changed = False
+    client_ca = None
+    has_console = any(site.get("console") for site in sites)
+    if has_console:
+        source = console_client_ca()
+        try:
+            pem = source.read_text() if source else ""
+        except OSError:
+            pem = ""
+        if pem:
+            try:
+                current = CLIENT_CA_COPY.read_text()
+            except OSError:
+                current = None
+            if current != pem:
+                _write(CLIENT_CA_COPY, pem, mode, group)
+                changed = True
+            client_ca = CLIENT_CA_COPY
+    text = json.dumps(caddy_config(sites, console=console_port() if has_console else None,
+                                   key=proxy_key() if has_console else "", client_ca=client_ca),
+                      indent=2) + "\n"
+    try:
+        current = CADDY_CONFIG.read_text()
+    except OSError:
+        current = None
+    if current != text:
+        _write(CADDY_CONFIG, text, mode, group)
+        changed = True
+    return changed
 
 
 def reload_caddy():
@@ -303,12 +412,15 @@ def apply(request):
             port = request.get("port")
             if not valid_port(port) or port in reserved_ports():
                 raise SiteError("port_invalid")
+            site = {"host": host, "port": port}
+            if port == console_port():
+                site = {"host": host, "console": True}
             if any(site["host"] == host for site in sites):
                 raise SiteError("host_exists")
             if len(sites) >= MAX_SITES:
                 raise SiteError("too_many")
             previous = list(sites)
-            sites.append({"host": host, "port": port})
+            sites.append(site)
             write_sites(sites)
             render(sites)
             try:
@@ -375,6 +487,12 @@ def ddns():
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
             and all((previous.get("sites", {}).get(site["host"]) or {}).get("ok") for site in sites)
+        # Follow a new console port or client CA.
+        if render(sites):
+            try:
+                reload_caddy()
+            except RuntimeError:
+                pass
         # Ask Cloudflare only when the address moved, something failed, or
         # every hour as a check against edits made outside the console.
         if unchanged and time.time() - previous.get("checked_at", 0) < 3600:

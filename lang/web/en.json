@@ -749,12 +749,14 @@
   "domains_remove_confirm": "Remove forwarding for {host}?",
   "domains_none": "No domains are forwarded yet.",
   "domains_add": "Add domain",
-  "domains_add_help": "Forward HTTPS for a domain to a port on this host, such as an frps port.",
+  "domains_add_help": "Forward HTTPS for a domain to a port on this host, such as an frps port. The console's own port puts this console on the domain; client certificates are still required.",
   "domains_host": "Domain",
   "domains_port": "Local port",
   "domains_sites": "Forwarded domains",
   "domains_token_state_set": "Token set",
   "domains_token_state_missing": "No token",
   "domains_token_change": "Replace token",
-  "domains_token_clear_confirm": "Clear the Cloudflare token? DNS records stop updating automatically; existing records stay as they are."
+  "domains_token_clear_confirm": "Clear the Cloudflare token? DNS records stop updating automatically; existing records stay as they are.",
+  "domains_target": "Target",
+  "domains_target_console": "This console (Caddy checks the client certificate when one is required)"
 }

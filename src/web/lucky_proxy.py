@@ -33,7 +33,8 @@ _HOP = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
         "te", "trailer", "trailers", "transfer-encoding", "upgrade"}
 _DROP_REQUEST = _HOP | {"host", "content-length", "cookie", "origin", "referer", "forwarded",
                         "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port",
-                        "x-real-ip", "x-client-ip", "true-client-ip", "cf-connecting-ip"}
+                        "x-real-ip", "x-client-ip", "true-client-ip", "cf-connecting-ip",
+                        "x-vps-server-proxy", "x-vps-server-client-serial", "x-vps-server-client-ip"}
 _DROP_RESPONSE = _HOP | {"content-length", "server", "date"}
 _CONSOLE_COOKIES = {"session", "lang"}
 # Lucky's page checks its author's sites for updates and shows them in an

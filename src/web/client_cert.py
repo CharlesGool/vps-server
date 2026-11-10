@@ -193,6 +193,22 @@ class ClientAuth:
                 return item
         return None
 
+    def by_serial(self, serial):
+        """The active certificate entry with this serial (decimal or hex), or None.
+
+        Used when Caddy verified the certificate for a domain in front of the
+        console; revocation is still decided here.
+        """
+        text = str(serial or "").strip().lower().replace(":", "")
+        try:
+            value = int(text, 10) if text.isdecimal() else int(text, 16)
+        except ValueError:
+            return None
+        for item in self.state()["certs"]:
+            if not item.get("revoked") and int(item["serial"], 16) == value:
+                return item
+        return None
+
     # -- operations --------------------------------------------------------
 
     def _openssl(self, work, *args, env=None):

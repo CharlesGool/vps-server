@@ -117,9 +117,11 @@ class DomainsMixin:
                 f'<article class="frp-target-card domain-card">'
                 f'<div class="frp-target-head"><a class="frp-target-name" href="https://{esc(host, quote=True)}/" '
                 f'target="_blank" rel="noopener noreferrer">{esc(host)}</a></div>'
-                f'<div class="frp-target-meta"><span class="muted">{esc(t["domains_port"])}</span>'
-                f'<code>127.0.0.1</code>{self.private_value_control("site:" + host, "target-port", t, endpoint="/domains/value")}</div>'
-                f'<div class="domain-badges">{cert}{dns_pill}</div>'
+                + (f'<div class="frp-target-meta"><span class="muted">{esc(t["domains_target"])}</span>'
+                   f'<span>{esc(t["domains_target_console"])}</span></div>' if site.get("console") else
+                   f'<div class="frp-target-meta"><span class="muted">{esc(t["domains_port"])}</span>'
+                   f'<code>127.0.0.1</code>{self.private_value_control("site:" + host, "target-port", t, endpoint="/domains/value")}</div>')
+                + f'<div class="domain-badges">{cert}{dns_pill}</div>'
                 f'<form method="post" action="/domains/remove" class="frp-target-foot domain-remove" '
                 f'data-confirm="{esc(t["domains_remove_confirm"].format(host=host), quote=True)}">'
                 f'<input type="hidden" name="csrf" value="{csrf}">'
@@ -184,7 +186,8 @@ class DomainsMixin:
                 value = _read_json(CONFIG_DIR / "dns.json").get(identifier)
             elif identifier.startswith("site:") and field == "target-port":
                 try:
-                    value = next((str(site["port"]) for site in read_sites() if site["host"] == identifier[5:]), None)
+                    value = next((str(site["port"]) for site in read_sites()
+                              if site["host"] == identifier[5:] and "port" in site), None)
                 except (OSError, ValueError):
                     value = None
         if not value:

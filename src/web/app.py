@@ -223,6 +223,44 @@ STATE_FILE = install_state_file()
 TRUST_PROXY = os.environ.get("VPSSRV_TRUST_PROXY", "0") == "1"
 
 
+# Domain forwarding can put the console behind Caddy on this host. Caddy
+# verifies the client certificate and passes the result in these headers,
+# together with a secret only root and Caddy can read. They count only on a
+# loopback connection carrying that secret.
+CADDY_PROXY_KEY_FILE = Path(os.environ.get("VPSSRV_CADDY_DIR", "/etc/vps-server-caddy")) / "proxy-key"
+CADDY_PROXY_HEADER = "X-Vps-Server-Proxy"
+CADDY_SERIAL_HEADER = "X-Vps-Server-Client-Serial"
+CADDY_IP_HEADER = "X-Vps-Server-Client-IP"
+_caddy_key_cache = [None, b""]
+
+
+def caddy_proxy_key():
+    try:
+        stamp = CADDY_PROXY_KEY_FILE.stat().st_mtime_ns
+    except OSError:
+        return b""
+    if stamp != _caddy_key_cache[0]:
+        try:
+            key = CADDY_PROXY_KEY_FILE.read_bytes().strip()
+        except OSError:
+            key = b""
+        _caddy_key_cache[:] = [stamp, key if len(key) >= 32 else b""]
+    return _caddy_key_cache[1]
+
+
+def is_loopback(address):
+    try:
+        return ipaddress.ip_address(address).is_loopback
+    except ValueError:
+        return False
+
+
+def console_access_allows(address):
+    """Connection-level check. Loopback is checked per request instead,
+    because Caddy connects from there on behalf of outside visitors."""
+    return is_loopback(address) or CONSOLE_ACCESS.allows(address)
+
+
 def forwarded_client_ip(headers, peer):
     """The client's address.
 
@@ -1152,13 +1190,36 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if not AUTH_ENABLED:
             return True
         token = self.get_cookie("session")
-        if session_valid(token) or ip_session_valid(token, self.client_address[0]):
+        if session_valid(token) or ip_session_valid(token, self.peer_ip()):
             touch_session(token)
             return True
         return False
 
+    def caddy_proxied(self):
+        """True for a request Caddy forwarded for a console domain."""
+        if not is_loopback(self.client_address[0]):
+            return False
+        key = caddy_proxy_key()
+        presented = (self.headers.get(CADDY_PROXY_HEADER) or "").encode("utf-8", "replace")
+        return bool(key) and hmac.compare_digest(presented, key)
+
+    def peer_ip(self):
+        """The connection's own address, or the visitor's when Caddy forwarded it.
+
+        Unlike client_ip() this ignores X-Forwarded-For: it is for checks
+        that must never trust a generic proxy (LAN-only and IP sessions).
+        """
+        if self.caddy_proxied():
+            try:
+                return str(ipaddress.ip_address((self.headers.get(CADDY_IP_HEADER) or "").strip()))
+            except ValueError:
+                return "0.0.0.0"  # Nothing a LAN or allowlist check accepts.
+        return self.client_address[0]
+
     def client_certificate(self):
         """The active client certificate this connection presented, or None."""
+        if self.caddy_proxied():
+            return CLIENT_AUTH.by_serial(self.headers.get(CADDY_SERIAL_HEADER))
         return CLIENT_AUTH.peer(self.connection)
 
     def is_password_authenticated(self):
@@ -1169,10 +1230,12 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         return render_page(title, body, lang, active, show_nav,
                            password_authenticated=self.is_password_authenticated(),
                            ip_authenticated=ip_session_valid(self.get_cookie("session"),
-                                                             self.client_address[0]), bare=bare,
+                                                             self.peer_ip()), bare=bare,
                            back_href=back_href, icon=icon)
 
     def client_ip(self):
+        if self.caddy_proxied():
+            return self.peer_ip()
         return forwarded_client_ip(self.headers, self.client_address[0])
 
     def resolve_lang(self, parsed):
@@ -1252,7 +1315,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._close_after_response = method != "GET" and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
-        if TRUST_PROXY and not CONSOLE_ACCESS.allows(self.client_ip()):
+        if ((TRUST_PROXY or is_loopback(self.client_address[0]))
+                and not CONSOLE_ACCESS.allows(self.client_ip())):
             self.close_connection = True
             self._close_after_response = True
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
@@ -1544,7 +1608,7 @@ def main():
         if not TRUST_PROXY:
             # Behind a proxy every connection comes from the proxy; the
             # forwarded address is checked per request in _dispatch instead.
-            console.access_check = CONSOLE_ACCESS.allows
+            console.access_check = console_access_allows
         servers.append(console)
         print(_log_text('log_console', scheme='https' if CONSOLE_TLS else 'http', host=HOST, port=CONSOLE_PORT), file=sys.stderr)
 

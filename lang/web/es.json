@@ -749,12 +749,14 @@
   "domains_remove_confirm": "¿Eliminar el reenvío de {host}?",
   "domains_none": "Aún no se reenvía ningún dominio.",
   "domains_add": "Añadir dominio",
-  "domains_add_help": "Reenvía el HTTPS de un dominio a un puerto de este servidor, como un puerto de frps.",
+  "domains_add_help": "Reenvía el HTTPS de un dominio a un puerto de este servidor, como un puerto de frps. El puerto de la consola la publica en el dominio; se siguen exigiendo certificados de cliente.",
   "domains_host": "Dominio",
   "domains_port": "Puerto local",
   "domains_sites": "Dominios reenviados",
   "domains_token_state_set": "Token configurado",
   "domains_token_state_missing": "Sin token",
   "domains_token_change": "Reemplazar token",
-  "domains_token_clear_confirm": "¿Eliminar el token de Cloudflare? Los registros DNS dejan de actualizarse automáticamente; los existentes no cambian."
+  "domains_token_clear_confirm": "¿Eliminar el token de Cloudflare? Los registros DNS dejan de actualizarse automáticamente; los existentes no cambian.",
+  "domains_target": "Destino",
+  "domains_target_console": "Esta consola (Caddy comprueba el certificado de cliente cuando se exige)"
 }
