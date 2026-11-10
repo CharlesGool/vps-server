@@ -23,7 +23,7 @@
 - 浏览器上传/下载测速, 访客记录, 限时 iperf3 服务端与客户端测试.
 - Singbox 托管 AnyTLS, VMess, VLESS, Trojan 和 Shadowsocks 节点, 支持分享, 配额, 限速与到期策略.
 - FRPS 服务端(与 Singbox 节点相同的流量统计, 配额, 限速与到期策略, 按 bindPort 计量), FRPC 实例及 TCP/UDP 代理管理, Tailscale 状态与设备管理.
-- 域名转发: 按子域名把 HTTPS 转发到本机端口(例如 frps 端口), 随附 Caddy 自动申请 Let's Encrypt 证书, 用 Cloudflare API 自动维护 DNS 记录(仅 DNS, 每 5 分钟检查本机公网 IP). 开启后 Caddy 占用 80/443, 公开可达性页面停用.
+- 域名转发: 按子域名把 HTTPS 转发到本机端口(例如 frps 端口)或控制台本身, 随附 Caddy 自动申请 Let's Encrypt 证书(也可为本机 IP 申请), 用 Cloudflare API 自动维护 DNS 记录(仅 DNS, 每 5 分钟检查本机公网 IP). 每个站点可启停, 编辑, 绑定多个域名, 限制来源 IP 或设访问密码, 后端可为 HTTPS; 提供访问日志, 变更记录和 Bark 通知(IP 变化, DNS 失败, 证书将过期). 开启后 Caddy 占用 80/443, 公开可达性页面停用.
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
 - 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).

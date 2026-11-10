@@ -102,6 +102,8 @@ v5.8.0 同时发布 FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`
 
 真机验证(2026-11-08): 操作员在 vmshell 主机 `KVM11553`(主机 TLS 库 OpenSSL 3.5.7)用 `v5.8.0-test.1` 离线包从控制台终端原地升级, `client_cert.py check` 显示随附 openssl 且原 CA 自检通过; 证书签发与登录, FRPS 流量卡片与配额限制等测试操作员确认一切正常. 仍未验证: 主机 TLS 库为 OpenSSL 1.1.1k 的那台主机.
 
-域名转发(未发布, 2026-11-10, `bafc692` 起): 新增 `caddy` 模块, 按子域名把 HTTPS 转发到本机端口, 随附 Caddy 2.11.9 占用 80/443 并自动申请证书, Cloudflare API 维护 A/AAAA 记录; 开启时公开可达性页面让出 80/443. 同期: Lucky 管理页经控制台 `/lucky/` 显示, 管理端口只允许本机连接(`lucky_guard.py`), 修复 Lucky 开启 HTTPS 后的循环跳转, 修复在线版把按目录存放的 CA 误判为缺失(`0e52e3b`). 已验证: `check_project.py` 通过; 一次性 Ubuntu 24.04 系统容器中安装, 转发(`*.localhost` 内部证书), HTTP 跳转, 未知域名断开, 删除, 开关模块时探测页和 `PORTS.md` 交接, 控制台卸载/重装, 安装器重跑, 完整卸载无残留; Cloudflare 同步逻辑用模拟接口验证. 测试版 `test-0e52e3b` 已用在线包升级部署到一台 VPS, 全部模块运行. 未验证: 真实域名的 Let's Encrypt 签发, 真实 Cloudflare 令牌与记录, IPv6 记录, ufw/firewalld 开启时放行 80/443.
+域名转发(未发布, 2026-11-10, `bafc692` 起): 新增 `caddy` 模块, 按子域名把 HTTPS 转发到本机端口, 随附 Caddy 2.11.9 占用 80/443 并自动申请证书, Cloudflare API 维护 A/AAAA 记录; 开启时公开可达性页面让出 80/443. 同期: Lucky 管理页经控制台 `/lucky/` 显示, 管理端口只允许本机连接(`lucky_guard.py`), 修复 Lucky 开启 HTTPS 后的循环跳转, 修复在线版把按目录存放的 CA 误判为缺失(`0e52e3b`). 已验证: `check_project.py` 通过; 一次性 Ubuntu 24.04 系统容器中安装, 转发(`*.localhost` 内部证书), HTTP 跳转, 未知域名断开, 删除, 开关模块时探测页和 `PORTS.md` 交接, 控制台卸载/重装, 安装器重跑, 完整卸载无残留; Cloudflare 同步逻辑用模拟接口验证. 测试版 `test-0e52e3b` 已用在线包升级部署到一台 VPS, 全部模块运行. 未验证: IPv6 记录, ufw/firewalld 开启时放行 80/443.
+
+后续(2026-11-10, 至 `1a708d4`): Lucky 模块移除(升级时归档并清理); 控制台可挂到域名和本机 IP(Caddy 校验客户端证书, IP 证书为 Let's Encrypt 6 天证书); 站点启停, 编辑, 后端 HTTPS 与 Host 选择, 访问日志, 变更记录, Bark 通知, 其他域名, IP 白名单, 基本认证. 已验证: 一次性容器中各项功能与从 `c6356ea` 升级; 测试主机上用真实 Cloudflare 区域和 Let's Encrypt 签发验证了子域名, 其他域名, 基本认证, 白名单, 启停, 访问日志和删除时清理 DNS, IP 证书与客户端证书访问. 未验证: 6 天 IP 证书的自动续期, Bark 通知的真实推送(只用模拟发送验证), 泛域名证书与证书导出(未实现, 需要带 DNS 插件的 Caddy 或自行实现 ACME DNS 验证).
 
 临时项目规则: 未发现.
