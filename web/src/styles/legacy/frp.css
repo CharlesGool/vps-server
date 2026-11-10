@@ -94,7 +94,7 @@
 .domains-page .node-inline-edit .frp-password-field { grid-column: 1 / -1; margin-bottom: var(--compat-size-24); }
 .domain-card .frp-target-meta { flex-wrap: wrap; color: var(--muted-foreground); font-size: var(--text-sm); }
 .domain-card .frp-target-meta code { color: var(--foreground); }
-.domain-badges { display: flex; flex-wrap: wrap; gap: var(--compat-size-11); }
+.domain-badges { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--compat-size-11); }
 .domain-badges .proxy-node-status { max-width: 100%; }
 .domain-remove { flex-wrap: wrap; margin: 0; }
 .domain-remove .checkline { display: flex; margin: 0; color: var(--muted-foreground); font-weight: var(--font-weight-normal); }
@@ -121,3 +121,24 @@
 .domains-ip { display: grid; gap: var(--compat-size-11); margin-top: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
 .domains-ip p { margin: 0; overflow-wrap: anywhere; }
 .domains-ip form { margin: 0; }
+.domain-card.is-off { opacity: .75; }
+.domain-card .frp-target-head .node-toggle-form { margin-inline-start: auto; }
+.domain-actions { display: flex; align-items: start; flex-wrap: wrap; gap: var(--compat-size-11); }
+.domain-actions > .node-inline-edit { flex: 1 1 100%; margin: 0; }
+.domain-actions > .node-inline-edit:not([open]) { flex: 0 0 auto; }
+.domain-actions > .node-inline-edit > summary { margin-bottom: 0; }
+.domain-actions .node-inline-edit[open] form { margin-top: var(--compat-size-24); }
+.domain-actions .node-inline-edit[open] ~ .button-link { display: none; }
+.domain-options { display: grid; gap: var(--compat-size-11); }
+.domains-page .node-inline-edit form:has(input[value="console"]:checked) .domain-port { display: none; }
+.domains-history { margin-top: var(--compat-size-24); }
+.domains-history summary { cursor: pointer; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+.domains-history ol { display: grid; gap: var(--compat-size-11); margin: var(--compat-size-14) 0 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.domains-history li { display: flex; gap: var(--compat-size-14); overflow-wrap: anywhere; }
+.domains-history time { flex: none; color: var(--muted-foreground); font-family: var(--font-mono); }
+.domains-log-wrap { overflow-x: auto; }
+.domains-log { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.domains-log th, .domains-log td { padding: var(--compat-size-11) var(--compat-size-14); border-bottom: 1px solid var(--border); text-align: start; white-space: nowrap; }
+.domains-log th { color: var(--muted-foreground); font-weight: var(--font-weight-semibold); }
+.domains-log .domains-log-uri { max-width: var(--compat-size-104); overflow: hidden; text-overflow: ellipsis; }
+.domains-log .domains-log-bad { color: var(--destructive); }

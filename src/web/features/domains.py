@@ -10,9 +10,11 @@ import subprocess
 import time
 from datetime import datetime, timezone
 
-from caddy_sites import CONFIG_DIR, DATA_DIR, SERVICE, console_port, read_sites, read_zones, zone_of
+from caddy_sites import (ACCESS_LOG, CONFIG_DIR, SERVICE, certificate_info, console_port, read_history,
+                         read_sites, read_zones, zone_of)
 NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
-           "domains_ip_enabled", "domains_ip_disabled")
+           "domains_ip_enabled", "domains_ip_disabled", "domains_site_enabled", "domains_site_disabled",
+           "domains_site_saved")
 ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip",
           "caddy_rejected", "token_invalid", "invalid", "failed")
 WARNINGS = ("dns_auth", "dns_zone", "dns_unreachable", "dns_api", "dns_no_token", "dns_no_address")
@@ -26,20 +28,28 @@ def _read_json(path):
         return {}
 
 
-ISSUERS = (("letsencrypt", "Let's Encrypt"), ("zerossl", "ZeroSSL"), ("local", "Caddy"))
-
-
-def certificate_info(host):
-    """(expiry, issuer name) of the certificate Caddy holds for host, or None."""
-    for path in sorted((DATA_DIR / "certificates").glob(f"*/{host}/{host}.crt")):
+def access_entries(host, limit):
+    """The newest access-log entries for host, read from the end of Caddy's log."""
+    entries = []
+    for path in (ACCESS_LOG, *sorted(ACCESS_LOG.parent.glob(ACCESS_LOG.stem + "-*.log"), reverse=True)):
         try:
-            not_after = ssl._ssl._test_decode_cert(str(path))["notAfter"]
-        except (OSError, ValueError, KeyError, AttributeError):
+            with open(path, "rb") as handle:
+                handle.seek(0, 2)
+                size = handle.tell()
+                handle.seek(max(0, size - 2 * 1024 * 1024))
+                lines = handle.read().splitlines()
+        except OSError:
             continue
-        source = path.parent.parent.name
-        issuer = next((name for key, name in ISSUERS if key in source), source)
-        return datetime.fromtimestamp(ssl.cert_time_to_seconds(not_after), timezone.utc), issuer
-    return None
+        for line in reversed(lines):
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(entry, dict) and (entry.get("request") or {}).get("host", "").split(":")[0] == host:
+                entries.append(entry)
+                if len(entries) >= limit:
+                    return entries
+    return entries
 
 
 def listening_ports():
@@ -135,6 +145,14 @@ class DomainsMixin:
                       f'<input type="hidden" name="enable" value="{"0" if ip_site else "1"}">'
                       f'<button type="submit" class="{"node-action-danger " if ip_site else ""}frp-card-edit">'
                       f'{esc(t["domains_ip_disable"] if ip_site else t["domains_ip_enable"])}</button></form></div>')
+        history = read_history(30)
+        history_rows = "".join(
+            f'<li><time>{esc(time.strftime("%m-%d %H:%M", time.localtime(item.get("t", 0))))}</time>'
+            f'<span>{esc(t.get("domains_event_" + item["event"], item["event"]).format(host=item.get("host", ""), kind=item.get("kind", ""), value=item.get("value", ""), old=item.get("old", "")))}</span></li>'
+            for item in history)
+        history_section = (f'<details class="domains-history"><summary>{esc(t["domains_history"])} '
+                           f'<span class="muted">{esc(t["domains_zone_count"].format(count=len(history)))}</span></summary>'
+                           f'<ol>{history_rows}</ol></details>' if history else '')
         overview = (f'<section class="card frp-card">'
                     f'<div class="frp-status-line">'
                     f'{pill(t["node_active"] if running else t["node_stopped"], "is-open" if running else "is-closed")}</div>'
@@ -144,7 +162,7 @@ class DomainsMixin:
                     f'<div><dt>{esc(t["domains_dns_checked"])}</dt><dd><code>{esc(checked_text)}</code></dd></div>'
                     f'</dl>'
                     + (f'<p class="error" role="status">{esc(t["domains_" + dns_error])}</p>' if dns_error else '')
-                    + ip_section + '</section>')
+                    + ip_section + history_section + '</section>')
 
         zones = read_zones()
         listening = listening_ports()
@@ -155,21 +173,46 @@ class DomainsMixin:
             return (time.strftime("%Y-%m-%d", time.localtime(stamp))
                     if isinstance(stamp, (int, float)) else "—")
 
+        def target_fields(site=None):
+            """Target choice, port and backend options, for adding and editing."""
+            site = site or {}
+            console_on = bool(site.get("console"))
+            radios = (f'<fieldset class="protocol-choice domain-wide"><legend>{esc(t["domains_target"])}</legend>'
+                      f'<label><input type="radio" name="target" value="port" {"" if console_on else "checked"}> '
+                      f'{esc(t["domains_target_port"])}</label>'
+                      + (f'<label><input type="radio" name="target" value="console" {"checked" if console_on else ""}> '
+                         f'{esc(t["domains_target_console_short"])}</label>' if console else '') + '</fieldset>')
+            port_value = f' value="{site["port"]}"' if site.get("port") else ''
+            return (radios
+                    + f'<label class="domain-port">{esc(t["domains_port"])}<input type="number" name="port" min="1" '
+                      f'max="65535" placeholder="5000"{port_value}></label>'
+                    + f'<div class="domain-port domain-options domain-wide">'
+                      f'<label class="checkline"><input type="checkbox" name="backend_tls" value="1" '
+                      f'{"checked" if site.get("backend_tls") else ""}><span>{esc(t["domains_backend_tls"])}</span></label>'
+                      f'<label class="checkline"><input type="checkbox" name="upstream_host" value="1" '
+                      f'{"checked" if site.get("upstream_host") else ""}><span>{esc(t["domains_upstream_host"])}</span></label>'
+                      f'</div>')
+
         def site_card(site):
             host = site["host"]
             zone = site.get("zone") or zone_of(host, zones)
             prefix = host[:-len(zone) - 1] if zone and host != zone else ("@" if zone else "")
             title = (f'<strong>{esc(prefix)}</strong><span class="muted">.{esc(zone)}</span>' if zone and prefix != "@"
                      else esc(host))
-            badges = []
+            enabled = site.get("enabled", True)
+            badges = [] if enabled else [pill(t["domains_site_off"], "is-closed")]
             # Target
             if site.get("console"):
                 target = f'<span>{esc(t["domains_target_console"])}</span>'
             else:
                 port = site.get("port")
-                target = (f'<code>127.0.0.1</code>'
+                target = (f'<code>{"https" if site.get("backend_tls") else "http"}://127.0.0.1</code>'
                           f'{self.private_value_control("site:" + host, "target-port", t, endpoint="/domains/value")}')
-                if listening is not None and port not in listening:
+                options = [t[key] for key, on in (("domains_backend_tls_short", site.get("backend_tls")),
+                                                   ("domains_upstream_host_short", site.get("upstream_host"))) if on]
+                if options:
+                    target += f'<span class="muted">{esc(" · ".join(options))}</span>'
+                if enabled and listening is not None and port not in listening:
                     badges.append(pill(t["domains_port_idle"], "is-closed"))
             # Certificate
             cert = certificate_info(host)
@@ -177,32 +220,49 @@ class DomainsMixin:
                 expiry, issuer = cert
                 days = (expiry - datetime.now(timezone.utc)).days
                 cert_text = t["domains_cert_detail"].format(issuer=issuer, date=expiry.strftime("%Y-%m-%d"), days=days)
-                badges.insert(0, pill(t["domains_cert_ok"], "is-open" if days >= 14 else "is-closed"))
+                badges.append(pill(t["domains_cert_ok"], "is-open" if days >= (1 if site.get("ip") else 14) else "is-closed"))
             else:
                 cert_text = t["domains_cert_pending_detail"]
-                badges.insert(0, pill(t["domains_cert_pending"]))
+                badges.append(pill(t["domains_cert_pending"]))
             # DNS
             state = dns_sites.get(host) or {}
             if state.get("ok"):
                 kinds = " + ".join(kind for kind, key in (("A", "a"), ("AAAA", "aaaa")) if state.get(key)) or "A"
                 dns_text = t["domains_dns_detail"].format(kinds=kinds, time=time.strftime(
                     "%Y-%m-%d %H:%M", time.localtime(state.get("checked_at") or dns.get("checked_at") or 0)))
-                badges.insert(1, pill("DNS " + t["domains_dns_ok"], "is-open"))
+                badges.append(pill("DNS " + t["domains_dns_ok"], "is-open"))
             elif state.get("error"):
                 dns_text = t.get("domains_" + str(state["error"]), t["domains_dns_pending"])
-                badges.insert(1, pill("DNS " + t["domains_dns_failed"], "is-closed"))
+                badges.append(pill("DNS " + t["domains_dns_failed"], "is-closed"))
             else:
                 dns_text = t["domains_dns_manual"] if not token_set else t["domains_dns_pending"]
-                badges.insert(1, pill("DNS " + t["domains_dns_pending"]))
+                badges.append(pill("DNS " + t["domains_dns_pending"]))
             facts = (f'<dl class="frp-proxy-fields domain-facts">'
                      f'<div><dt>{esc(t["domains_target"])}</dt><dd class="frp-target-meta">{target}</dd></div>'
                      f'<div><dt>{esc(t["domains_added_at"])}</dt><dd>{esc(date(site.get("added_at")))}</dd></div>'
                      f'<div><dt>{esc(t["domains_certificate_label"])}</dt><dd>{esc(cert_text)}</dd></div>'
                      f'<div><dt>DNS</dt><dd>{esc(dns_text)}</dd></div></dl>')
-            return (f'<article class="frp-target-card domain-card">'
+            toggle = (f'<form method="post" action="/domains/toggle" class="node-toggle-form">'
+                      f'<input type="hidden" name="csrf" value="{csrf}">'
+                      f'<input type="hidden" name="host" value="{esc(host, quote=True)}">'
+                      f'<input type="hidden" name="enable" value="{"0" if enabled else "1"}">'
+                      f'<button type="submit" class="node-toggle" role="switch" aria-checked="{str(enabled).lower()}" '
+                      f'aria-label="{esc((t["domains_site_disable"] if enabled else t["domains_site_enable"]) + " " + host, quote=True)}">'
+                      f'<span></span></button></form>')
+            edit = (f'<details class="node-inline-edit domain-edit"><summary><span>{esc(t["domains_edit"])}</span>'
+                    f'<span>{esc(t["node_cancel"])}</span></summary>'
+                    f'<form method="post" action="/domains/edit" autocomplete="off">'
+                    f'<input type="hidden" name="csrf" value="{csrf}">'
+                    f'<input type="hidden" name="host" value="{esc(host, quote=True)}">'
+                    + target_fields(site) +
+                    f'<button type="submit">{esc(t["frp_save"])}</button></form></details>')
+            log_link = (f'<a class="button-link frp-card-edit" href="/domains/log?host={esc(host, quote=True)}">'
+                        f'{esc(t["domains_access_log"])}</a>')
+            return (f'<article class="frp-target-card domain-card{"" if enabled else " is-off"}">'
                     f'<div class="frp-target-head"><a class="frp-target-name" href="https://{esc(host, quote=True)}/" '
-                    f'target="_blank" rel="noopener noreferrer">{title}</a></div>'
+                    f'target="_blank" rel="noopener noreferrer">{title}</a>{toggle}</div>'
                     f'<div class="domain-badges">{"".join(badges)}</div>{facts}'
+                    f'<div class="domain-actions">{edit}{log_link}</div>'
                     f'<form method="post" action="/domains/remove" class="frp-target-foot domain-remove" '
                     f'data-confirm="{esc(t["domains_remove_confirm"].format(host=host), quote=True)}">'
                     f'<input type="hidden" name="csrf" value="{csrf}">'
@@ -236,16 +296,10 @@ class DomainsMixin:
             name_fields = (f'<label class="domain-wide">{esc(t["domains_host"])}<input type="text" name="host" '
                            f'placeholder="nas.example.com" maxlength="253" autocapitalize="none" spellcheck="false" required></label>')
             help_text = t["domains_add_help_manual"]
-        target_choice = (f'<fieldset class="protocol-choice domain-wide"><legend>{esc(t["domains_target"])}</legend>'
-                         f'<label><input type="radio" name="target" value="port" checked> {esc(t["domains_target_port"])}</label>'
-                         + (f'<label><input type="radio" name="target" value="console"> {esc(t["domains_target_console_short"])}</label>'
-                            if console else '') + '</fieldset>')
         add_form = (f'<p class="muted">{esc(help_text)}</p>'
                     f'<form method="post" action="/domains/add" autocomplete="off">'
                     f'<input type="hidden" name="csrf" value="{csrf}">'
-                    f'{name_fields}{target_choice}'
-                    f'<label class="domain-port">{esc(t["domains_port"])}<input type="number" name="port" min="1" max="65535" '
-                    f'placeholder="5000"></label>'
+                    f'{name_fields}{target_fields()}'
                     f'<button type="submit">{esc(t["domains_add"])}</button></form>')
         # With nothing listed yet the form is the page's purpose: show it, no toggle.
         add = (f'<div class="node-inline-edit domain-add">{add_form}</div>' if not sites else
@@ -344,12 +398,10 @@ class DomainsMixin:
         form = self.domains_form()
         if form is None:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        request = {"action": "add", "target": "console" if form.get("target", [""])[0] == "console" else "port"}
-        if request["target"] == "port":
-            port = form.get("port", [""])[0].strip()
-            if not port.isascii() or not port.isdecimal():
-                return self.domains_finish({"ok": False, "error": "port_invalid"}, "")
-            request["port"] = int(port)
+        request = self.domains_target_request(form)
+        if request is None:
+            return self.domains_finish({"ok": False, "error": "port_invalid"}, "")
+        request["action"] = "add"
         if form.get("zone", [""])[0]:
             request.update(zone=form["zone"][0][:253], name=form.get("name", [""])[0][:200])
         else:
@@ -363,6 +415,68 @@ class DomainsMixin:
         reply = self.domains_apply({"action": "remove", "host": form.get("host", [""])[0][:253],
                                     "remove_dns": form.get("remove_dns", [""])[0] == "1"})
         return self.domains_finish(reply, "domains_removed")
+
+    def domains_target_request(self, form):
+        request = {"target": "console" if form.get("target", [""])[0] == "console" else "port"}
+        if request["target"] == "port":
+            port = form.get("port", [""])[0].strip()
+            if not port.isascii() or not port.isdecimal():
+                return None
+            request.update(port=int(port), backend_tls=form.get("backend_tls", [""])[0] == "1",
+                           upstream_host=form.get("upstream_host", [""])[0] == "1")
+        return request
+
+    def handle_domains_toggle(self):
+        form = self.domains_form()
+        if form is None:
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        enable = form.get("enable", [""])[0] == "1"
+        reply = self.domains_apply({"action": "enable" if enable else "disable",
+                                    "host": form.get("host", [""])[0][:253]})
+        return self.domains_finish(reply, "domains_site_enabled" if enable else "domains_site_disabled")
+
+    def handle_domains_edit(self):
+        form = self.domains_form()
+        if form is None:
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        request = self.domains_target_request(form)
+        if request is None:
+            return self.domains_finish({"ok": False, "error": "port_invalid"}, "")
+        request.update(action="edit", host=form.get("host", [""])[0][:253])
+        return self.domains_finish(self.domains_apply(request), "domains_site_saved")
+
+    def page_domains_log(self, lang, query_lang, parsed):
+        """The last requests Caddy logged for one site, newest first."""
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        host = self.context.parse_qs(parsed.query).get("host", [""])[0]
+        try:
+            known = {site["host"] for site in read_sites()}
+        except (OSError, ValueError):
+            known = set()
+        if host not in known:
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        rows = []
+        for entry in access_entries(host, 200):
+            request = entry.get("request") or {}
+            stamp = entry.get("ts")
+            when = time.strftime("%m-%d %H:%M:%S", time.localtime(stamp)) if isinstance(stamp, (int, float)) else "—"
+            status = entry.get("status", "")
+            duration = entry.get("duration")
+            rows.append(f'<tr><td>{esc(when)}</td><td><code>{esc(str(request.get("client_ip") or request.get("remote_ip") or ""))}</code></td>'
+                        f'<td>{esc(str(request.get("method", "")))}</td><td class="domains-log-uri">{esc(str(request.get("uri", ""))[:200])}</td>'
+                        f'<td class="{"domains-log-bad" if isinstance(status, int) and status >= 400 else ""}">{esc(str(status))}</td>'
+                        f'<td>{esc(f"{duration * 1000:.0f} ms" if isinstance(duration, (int, float)) else "")}</td></tr>')
+        table = (f'<div class="domains-log-wrap"><table class="domains-log"><thead><tr><th>{esc(t["domains_log_time"])}</th>'
+                 f'<th>{esc(t["domains_log_client"])}</th><th>{esc(t["domains_log_method"])}</th><th>{esc(t["domains_log_path"])}</th>'
+                 f'<th>{esc(t["domains_log_status"])}</th><th>{esc(t["domains_log_duration"])}</th></tr></thead>'
+                 f'<tbody>{"".join(rows)}</tbody></table></div>' if rows else
+                 f'<p class="muted">{esc(t["domains_log_empty"])}</p>')
+        body = (f'<h1>{esc(t["domains_access_log"])}</h1><div class="frp-workspace domains-page">'
+                f'<section class="card frp-card"><div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(host)}</h2>'
+                f'<span class="muted">{esc(t["domains_log_note"])}</span></div>{table}</section></div>')
+        return self.send_html(200, self.render_page(t["domains_access_log"], body, lang, icon="domains", back_href="/domains"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def handle_domains_ip(self):
         form = self.domains_form()
@@ -387,15 +501,20 @@ class DomainsMixin:
         if method == "GET" and path == "/domains":
             self.page_domains(lang, query_lang, parsed)
             return True
+        if method == "GET" and path == "/domains/log":
+            self.page_domains_log(lang, query_lang, parsed)
+            return True
         if method == "GET" and path == "/domains/value":
             self.handle_domains_value(parsed)
             return True
-        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token", "/domains/ip"):
+        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token", "/domains/ip",
+                                         "/domains/toggle", "/domains/edit"):
             if not self.context.module_states()["caddy"]:
                 self.send_html(404, "Not found", {"Cache-Control": "no-store"})
                 return True
             {"/domains/add": self.handle_domains_add, "/domains/remove": self.handle_domains_remove,
-             "/domains/ip": self.handle_domains_ip,
+             "/domains/ip": self.handle_domains_ip, "/domains/toggle": self.handle_domains_toggle,
+             "/domains/edit": self.handle_domains_edit,
              "/domains/token": self.handle_domains_token}[path]()
             return True
         return False

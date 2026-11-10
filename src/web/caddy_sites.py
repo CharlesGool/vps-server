@@ -31,6 +31,8 @@ Files (all root-owned):
 """
 
 import fcntl
+import ssl
+from datetime import datetime, timezone
 import grp
 import secrets
 import ipaddress
@@ -50,11 +52,15 @@ SITES_PATH = CONFIG_DIR / "sites.json"
 TOKEN_PATH = CONFIG_DIR / "cloudflare-token"
 DNS_PATH = CONFIG_DIR / "dns.json"
 ZONES_PATH = CONFIG_DIR / "zones.json"
+HISTORY_PATH = CONFIG_DIR / "dns-history.jsonl"
+ALERTED_PATH = CONFIG_DIR / "alerts-sent.json"
+HISTORY_LIMIT = 200
 CADDY_CONFIG = CONFIG_DIR / "caddy.json"
 LOCK_PATH = CONFIG_DIR / "sites.lock"
 PROXY_KEY_PATH = CONFIG_DIR / "proxy-key"
 CLIENT_CA_COPY = CONFIG_DIR / "client-ca.pem"
 DATA_DIR = Path(os.environ.get("VPSSRV_CADDY_DATA", "/var/lib/vps-server-caddy"))
+ACCESS_LOG = DATA_DIR / "logs" / "access.log"
 ADMIN_SOCKET = "/run/vps-server-caddy/admin.sock"
 SERVICE = "vps-server-caddy.service"
 GROUP = "vps-server-caddy"
@@ -204,6 +210,7 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
     abort = {"handle": [{"handler": "static_response", "abort": True}]}
     routes = []
     console_hosts = []
+    sites = [site for site in sites if site.get("enabled", True)]
     for site in sites:
         if site.get("console"):
             if console is None or not key:
@@ -211,11 +218,19 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
             routes.append(_console_route(site, console, key))
             console_hosts.append(site["host"])
         else:
-            routes.append({"match": [{"host": [site["host"]]}],
-                           "handle": [{"handler": "reverse_proxy",
-                                       "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}],
-                           "terminal": True})
-    https = {"listen": [":443"], "routes": routes + [abort]}
+            proxy = {"handler": "reverse_proxy", "upstreams": [{"dial": f"127.0.0.1:{site['port']}"}]}
+            if site.get("backend_tls"):
+                # A local HTTPS backend (a NAS, a router) usually has a self-signed certificate.
+                proxy["transport"] = {"protocol": "http", "tls": {"insecure_skip_verify": True}}
+            # Caddy keeps the visitor's Host for HTTP backends but sends the
+            # backend's own address to HTTPS ones; make the choice explicit.
+            if site.get("upstream_host"):
+                proxy["headers"] = {"request": {"set": {"Host": ["{http.reverse_proxy.upstream.hostport}"]}}}
+            elif site.get("backend_tls"):
+                proxy["headers"] = {"request": {"set": {"Host": ["{http.request.hostport}"]}}}
+            routes.append({"match": [{"host": [site["host"]]}], "handle": [proxy], "terminal": True})
+    # Access log for every site, read back by the console page.
+    https = {"listen": [":443"], "routes": routes + [abort], "logs": {}}
     client_auth = ({"ca": {"provider": "file", "pem_files": [str(client_ca)]}, "mode": "verify_if_given"}
                    if client_ca else None)
     ip_hosts = [site["host"] for site in sites if site.get("ip") and site["host"] in console_hosts]
@@ -254,6 +269,11 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
         apps["tls"] = {"automation": {"policies": [
             {"subjects": ip_hosts, "issuers": [{"module": "acme", "profile": "shortlived"}]}]}}
     return {
+        "logging": {"logs": {
+            "default": {"exclude": ["http.log.access"]},
+            "access": {"include": ["http.log.access"], "encoder": {"format": "json"},
+                       "writer": {"output": "file", "filename": str(ACCESS_LOG),
+                                  "roll_size_mb": 5, "roll_keep": 2}}}},
         "admin": {"listen": "unix/" + ADMIN_SOCKET},
         "storage": {"module": "file_system", "root": str(DATA_DIR)},
         "apps": apps,
@@ -447,11 +467,108 @@ def sync_dns(sites, token, *, addresses=None, opener=None):
             zone = find_zone(token, host, opener=opener)
             states = [sync_record(token, zone, host, "A", ipv4, opener=opener),
                       sync_record(token, zone, host, "AAAA", ipv6, opener=opener)]
+            for kind, state, value in (("A", states[0], ipv4), ("AAAA", states[1], ipv6)):
+                if state in ("created", "updated", "removed"):
+                    result.setdefault("events", []).append(
+                        {"event": "record_" + state, "host": host, "kind": kind, "value": value or ""})
             result["sites"][host] = {"ok": True, "changed": any(s not in ("unchanged", "none") for s in states),
                                      "a": ipv4, "aaaa": ipv6, "checked_at": result["checked_at"]}
         except CloudflareError as exc:
             result["sites"][host] = {"ok": False, "error": exc.code}
     return result
+
+
+# -- history and alerts -------------------------------------------------------
+
+def record_history(events):
+    """Append events to dns-history.jsonl, keeping the last HISTORY_LIMIT."""
+    if not events:
+        return
+    now = int(time.time())
+    try:
+        lines = HISTORY_PATH.read_text().splitlines()
+    except OSError:
+        lines = []
+    lines += [json.dumps({"t": now, **event}, ensure_ascii=False) for event in events]
+    _write(HISTORY_PATH, "\n".join(lines[-HISTORY_LIMIT:]) + "\n")
+
+
+def read_history(limit=50):
+    try:
+        lines = HISTORY_PATH.read_text().splitlines()
+    except OSError:
+        return []
+    events = []
+    for line in reversed(lines[-limit:]):
+        try:
+            item = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(item, dict) and isinstance(item.get("event"), str):
+            events.append(item)
+    return events
+
+
+ISSUERS = (("letsencrypt", "Let's Encrypt"), ("zerossl", "ZeroSSL"), ("local", "Caddy"))
+
+
+def certificate_info(host):
+    """(expiry, issuer name) of the certificate Caddy holds for host, or None."""
+    for path in sorted((DATA_DIR / "certificates").glob(f"*/{host}/{host}.crt")):
+        try:
+            not_after = ssl._ssl._test_decode_cert(str(path))["notAfter"]
+        except (OSError, ValueError, KeyError, AttributeError):
+            continue
+        source = path.parent.parent.name
+        issuer = next((name for key, name in ISSUERS if key in source), source)
+        return datetime.fromtimestamp(ssl.cert_time_to_seconds(not_after), timezone.utc), issuer
+    return None
+
+
+def _alert_strings():
+    """The web catalog in the console's default language, for Bark messages."""
+    lang = "en"
+    try:
+        unit = Path("/etc/systemd/system/vps-server-web.service").read_text()
+        match = re.search(r"^Environment=VPSSRV_DEFAULT_LANG=(\S+)$", unit, re.M)
+        if match:
+            lang = match[1]
+    except OSError:
+        pass
+    tag = {"zh_cn": "zh-CN", "es": "es"}.get(lang, "en")
+    try:
+        return json.loads((Path(__file__).resolve().parents[2] / "lang" / "web" / f"{tag}.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def send_alerts(alerts):
+    """Push (dedupe key, title key, body key, values) alerts through the console's
+    Bark settings, each key at most once a day."""
+    if not alerts:
+        return
+    try:
+        from state_paths import data_dir
+        from security_events import BarkAlerts
+        from features.identity import read_server_label
+    except ImportError:
+        return
+    bark = BarkAlerts(data_dir() / "alerts.json")
+    if not bark.configured():
+        return
+    try:
+        sent = json.loads(ALERTED_PATH.read_text())
+    except (OSError, ValueError):
+        sent = {}
+    now = time.time()
+    strings = _alert_strings()
+    server = read_server_label(data_dir()) or "vps-server"
+    for key, title, body, values in alerts:
+        if now - sent.get(key, 0) < 86400 or title not in strings or body not in strings:
+            continue
+        if bark.send_test(strings[title].format(server=server), strings[body].format(**values)) is None:
+            sent[key] = now
+    _write(ALERTED_PATH, json.dumps({k: v for k, v in sent.items() if now - v < 7 * 86400}) + "\n")
 
 
 # -- requests ---------------------------------------------------------------
@@ -466,6 +583,37 @@ def _locked():
 def reserved_ports():
     """Ports a site must not point back at: Caddy itself."""
     return {80, 443}
+
+
+def _target(request):
+    """The target fields of a site from an add or edit request."""
+    if request.get("target") == "console" or (request.get("port") == console_port() and console_port()):
+        if console_port() is None:
+            raise SiteError("port_invalid")
+        return {"console": True}
+    port = request.get("port")
+    if not valid_port(port) or port in reserved_ports():
+        raise SiteError("port_invalid")
+    return {"port": port, "backend_tls": request.get("backend_tls") is True,
+            "upstream_host": request.get("upstream_host") is True}
+
+
+def _replace_site(sites, host, change):
+    """Apply change(site) -> new site to host, reload Caddy, roll back on refusal."""
+    index = next((i for i, site in enumerate(sites) if site["host"] == host), None)
+    if index is None:
+        raise SiteError("host_missing")
+    updated = list(sites)
+    updated[index] = change(dict(sites[index]))
+    write_sites(updated)
+    render(updated)
+    try:
+        reload_caddy()
+    except RuntimeError:
+        write_sites(sites)
+        render(sites)
+        raise SiteError("caddy_rejected")
+    return updated
 
 
 def apply(request):
@@ -485,15 +633,7 @@ def apply(request):
             else:
                 host = normalize_host(request.get("host"))
                 zone = zone_of(host, read_zones())
-            if request.get("target") == "console" or (request.get("port") == console_port() and console_port()):
-                if console_port() is None:
-                    raise SiteError("port_invalid")
-                site = {"host": host, "console": True}
-            else:
-                port = request.get("port")
-                if not valid_port(port) or port in reserved_ports():
-                    raise SiteError("port_invalid")
-                site = {"host": host, "port": port}
+            site = {"host": host, **_target(request)}
             site.update({"zone": zone, "added_at": int(time.time())} if zone else {"added_at": int(time.time())})
             if any(site["host"] == host for site in sites):
                 raise SiteError("host_exists")
@@ -510,6 +650,7 @@ def apply(request):
                 render(previous)
                 raise SiteError("caddy_rejected")
             dns = sync_dns([sites[-1]], token)
+            record_history([{"event": "site_added", "host": host}] + dns.pop("events", []))
             _merge_dns(dns, sites)
             warning = dns.get("error") or (dns["sites"].get(host) or {}).get("error")
         elif action == "remove":
@@ -526,9 +667,20 @@ def apply(request):
                     remove_records(token, host)
                 except CloudflareError as exc:
                     warning = exc.code
+            record_history([{"event": "site_removed", "host": host}])
             state = read_dns()
             state.get("sites", {}).pop(host, None)
             _write(DNS_PATH, json.dumps(state) + "\n")
+        elif action in ("enable", "disable"):
+            host = normalize_host(request.get("host"))
+            _replace_site(sites, host, lambda site: {**site, "enabled": action == "enable"})
+            record_history([{"event": "site_" + action + "d", "host": host}])
+        elif action == "edit":
+            host = normalize_host(request.get("host"))
+            target = _target(request)
+            keep = ("host", "zone", "added_at", "enabled")
+            _replace_site(sites, host, lambda site: {**{k: site[k] for k in keep if k in site}, **target})
+            record_history([{"event": "site_edited", "host": host}])
         elif action == "ip":
             # HTTPS for the console at this host's own public IPv4 address.
             previous = list(sites)
@@ -588,7 +740,23 @@ def ddns():
         previous = read_dns()
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
-            and all((previous.get("sites", {}).get(site["host"]) or {}).get("ok") for site in sites)
+            and all((previous.get("sites", {}).get(site["host"]) or {}).get("ok")
+                    for site in sites if not site.get("ip"))
+        events, alerts = [], []
+        # No address at all is a routing hiccup, not a move: report nothing.
+        if previous.get("checked_at") and any(addresses) and (previous.get("ipv4"), previous.get("ipv6")) != addresses:
+            events.append({"event": "ip_changed", "old": f'{previous.get("ipv4") or "-"} {previous.get("ipv6") or ""}'.strip(),
+                           "value": f'{addresses[0] or "-"} {addresses[1] or ""}'.strip()})
+            alerts.append((f"ip:{addresses}", "domains_alert_ip_title", "domains_alert_ip_body",
+                           {"old": events[-1]["old"], "new": events[-1]["value"]}))
+        # Certificates Caddy should have renewed by now (an address's lasts six days).
+        for site in sites:
+            info = certificate_info(site["host"]) if site.get("enabled", True) else None
+            if info:
+                left = (info[0] - datetime.now(timezone.utc)).total_seconds() / 86400
+                if left < (1 if site.get("ip") else 7):
+                    alerts.append((f'cert:{site["host"]}', "domains_alert_cert_title", "domains_alert_cert_body",
+                                   {"host": site["host"], "date": info[0].strftime("%Y-%m-%d %H:%M")}))
         # Follow a new public address for the IP site.
         address = public_address(socket.AF_INET)
         for site in sites:
@@ -604,9 +772,19 @@ def ddns():
         # Ask Cloudflare only when the address moved, something failed, or
         # every hour as a check against edits made outside the console.
         if unchanged and time.time() - previous.get("checked_at", 0) < 3600:
+            record_history(events)
+            send_alerts(alerts)
             return previous
         state = sync_dns(sites, token, addresses=addresses)
+        events += state.pop("events", [])
+        for host, result in state["sites"].items():
+            if not result.get("ok") and (previous.get("sites", {}).get(host) or {}).get("ok", True):
+                events.append({"event": "dns_failed", "host": host, "value": result.get("error", "")})
+                alerts.append((f"dns:{host}:{result.get('error')}", "domains_alert_dns_title",
+                               "domains_alert_dns_body", {"host": host}))
         _write(DNS_PATH, json.dumps(state) + "\n")
+        record_history(events)
+        send_alerts(alerts)
         if token:
             save_zones(token)  # Hourly at most: pick up zones added in Cloudflare.
         return state

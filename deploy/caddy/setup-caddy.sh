@@ -55,10 +55,13 @@ getent group "$ACCOUNT" >/dev/null || groupadd --system "$ACCOUNT"
 getent passwd "$ACCOUNT" >/dev/null ||
   useradd --system --gid "$ACCOUNT" --home-dir "$DATA_DIR" --no-create-home --shell /usr/sbin/nologin "$ACCOUNT"
 install -d -m 0750 -o root -g "$ACCOUNT" "$CONFIG_DIR"
-install -d -m 0700 -o "$ACCOUNT" -g "$ACCOUNT" "$DATA_DIR"
+install -d -m 0700 -o "$ACCOUNT" -g "$ACCOUNT" "$DATA_DIR" "$DATA_DIR/logs"
 install -m 0755 "$BIN" "$TARGET"
 /usr/bin/python3 "$HELPER" render
-"$TARGET" validate --config "$CONFIG_DIR/caddy.json" >/dev/null
+# Validate as Caddy's own account: validation opens the access log, and a
+# root-owned file there would keep the service from starting.
+runuser -u "$ACCOUNT" -- "$TARGET" validate --config "$CONFIG_DIR/caddy.json" >/dev/null
+chown -R "$ACCOUNT:$ACCOUNT" "$DATA_DIR/logs"
 
 cat > "$UNIT" <<'EOF'
 [Unit]
