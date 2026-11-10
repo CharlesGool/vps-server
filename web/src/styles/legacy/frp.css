@@ -110,7 +110,16 @@
 .domains-token-actions > .node-inline-edit { flex: 1 1 min(100%, var(--compat-size-104)); margin: 0; }
 .domains-token-actions > form { margin: 0; }
 @media (max-width: 42rem) {
-  .domains-page .node-inline-edit form { grid-template-columns: 1fr; }
+  .domains-page .node-inline-edit form, .domain-facts { grid-template-columns: 1fr; }
 }
 .domain-badges .proxy-node-status:not(.is-open, .is-closed) { border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); }
 .domains-page .frp-card > p.muted { margin: 0 0 var(--compat-size-24); }
+.domain-zone { display: grid; gap: var(--compat-size-14); margin-top: var(--compat-size-24); }
+.domain-zone .frp-client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--compat-size-104)), 1fr)); }
+.domain-zone h3 { margin: 0; font-size: var(--text-base); }
+.domain-zone h3 .muted { font-weight: var(--font-weight-normal); font-size: var(--text-sm); }
+.domain-card .frp-target-name strong { color: var(--foreground); }
+.domain-facts { margin: 0; }
+.domain-facts dd { font-size: var(--text-sm); }
+.domains-page .node-inline-edit .domain-wide { grid-column: 1 / -1; margin-bottom: var(--compat-size-24); }
+.domains-page .node-inline-edit form:has(input[value="console"]:checked) .domain-port { display: none; }

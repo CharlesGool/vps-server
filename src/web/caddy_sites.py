@@ -19,6 +19,7 @@ Files (all root-owned):
     /etc/vps-server-caddy/sites.json        sites                       0600
     /etc/vps-server-caddy/cloudflare-token  Cloudflare API token        0600
     /etc/vps-server-caddy/dns.json          last DNS sync result        0600
+    /etc/vps-server-caddy/zones.json        zones the token can see     0600
     /etc/vps-server-caddy/caddy.json        generated Caddy config      0640 root:vps-server-caddy
     /etc/vps-server-caddy/proxy-key         console proxy secret        0600
     /etc/vps-server-caddy/client-ca.pem     copy of the console client CA 0640 root:vps-server-caddy
@@ -48,6 +49,7 @@ CONFIG_DIR = Path(os.environ.get("VPSSRV_CADDY_DIR", "/etc/vps-server-caddy"))
 SITES_PATH = CONFIG_DIR / "sites.json"
 TOKEN_PATH = CONFIG_DIR / "cloudflare-token"
 DNS_PATH = CONFIG_DIR / "dns.json"
+ZONES_PATH = CONFIG_DIR / "zones.json"
 CADDY_CONFIG = CONFIG_DIR / "caddy.json"
 LOCK_PATH = CONFIG_DIR / "sites.lock"
 PROXY_KEY_PATH = CONFIG_DIR / "proxy-key"
@@ -357,6 +359,34 @@ def sync_record(token, zone, host, kind, address, opener=None):
     return "updated"
 
 
+def list_zones(token, opener=None):
+    """Names of the zones the token can see, for picking a main domain."""
+    zones = _cf(token, "GET", "/zones?per_page=50", opener=opener) or []
+    return sorted({zone["name"] for zone in zones if isinstance(zone.get("name"), str) and valid_host(zone["name"])})
+
+
+def save_zones(token):
+    try:
+        names = list_zones(token) if token else []
+    except CloudflareError:
+        return
+    _write(ZONES_PATH, json.dumps({"zones": names, "checked_at": int(time.time())}) + "\n")
+
+
+def read_zones():
+    try:
+        zones = json.loads(ZONES_PATH.read_text()).get("zones", [])
+        return [zone for zone in zones if valid_host(zone)]
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def zone_of(host, zones):
+    """The longest known zone host belongs to, or None."""
+    matches = [zone for zone in zones if host == zone or host.endswith("." + zone)]
+    return max(matches, key=len) if matches else None
+
+
 def remove_records(token, host, opener=None):
     zone = find_zone(token, host, opener=opener)
     for kind in ("A", "AAAA"):
@@ -380,7 +410,8 @@ def sync_dns(sites, token, *, addresses=None, opener=None):
             zone = find_zone(token, host, opener=opener)
             states = [sync_record(token, zone, host, "A", ipv4, opener=opener),
                       sync_record(token, zone, host, "AAAA", ipv6, opener=opener)]
-            result["sites"][host] = {"ok": True, "changed": any(s not in ("unchanged", "none") for s in states)}
+            result["sites"][host] = {"ok": True, "changed": any(s not in ("unchanged", "none") for s in states),
+                                     "a": ipv4, "aaaa": ipv6, "checked_at": result["checked_at"]}
         except CloudflareError as exc:
             result["sites"][host] = {"ok": False, "error": exc.code}
     return result
@@ -408,13 +439,25 @@ def apply(request):
         token = read_token()
         warning = None
         if action == "add":
-            host = normalize_host(request.get("host"))
-            port = request.get("port")
-            if not valid_port(port) or port in reserved_ports():
-                raise SiteError("port_invalid")
-            site = {"host": host, "port": port}
-            if port == console_port():
+            zone = request.get("zone")
+            if zone:
+                if zone not in read_zones():
+                    raise SiteError("zone_unknown")
+                name = str(request.get("name") or "").strip().lower().strip(".")
+                host = normalize_host(f"{name}.{zone}" if name and name != "@" else zone)
+            else:
+                host = normalize_host(request.get("host"))
+                zone = zone_of(host, read_zones())
+            if request.get("target") == "console" or (request.get("port") == console_port() and console_port()):
+                if console_port() is None:
+                    raise SiteError("port_invalid")
                 site = {"host": host, "console": True}
+            else:
+                port = request.get("port")
+                if not valid_port(port) or port in reserved_ports():
+                    raise SiteError("port_invalid")
+                site = {"host": host, "port": port}
+            site.update({"zone": zone, "added_at": int(time.time())} if zone else {"added_at": int(time.time())})
             if any(site["host"] == host for site in sites):
                 raise SiteError("host_exists")
             if len(sites) >= MAX_SITES:
@@ -454,12 +497,14 @@ def apply(request):
                 raise SiteError("token_invalid")
             if value:
                 _write(TOKEN_PATH, value + "\n")
+                save_zones(value)
                 dns = sync_dns(sites, value)
                 _write(DNS_PATH, json.dumps(dns) + "\n")
                 failed = [state.get("error") for state in dns["sites"].values() if not state.get("ok")]
                 warning = dns.get("error") or (failed[0] if failed else None)
             else:
                 TOKEN_PATH.unlink(missing_ok=True)
+                ZONES_PATH.unlink(missing_ok=True)
         else:
             raise SiteError("invalid")
     return {"ok": True, **({"warning": warning} if warning else {})}
@@ -499,13 +544,15 @@ def ddns():
             return previous
         state = sync_dns(sites, token, addresses=addresses)
         _write(DNS_PATH, json.dumps(state) + "\n")
+        if token:
+            save_zones(token)  # Hourly at most: pick up zones added in Cloudflare.
         return state
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if argv not in (["apply"], ["render"], ["ddns"]):
-        print("usage: caddy_sites.py apply|render|ddns", file=sys.stderr)
+    if argv not in (["apply"], ["render"], ["ddns"], ["zones"]):
+        print("usage: caddy_sites.py apply|render|ddns|zones", file=sys.stderr)
         return 2
     if os.geteuid() != 0:
         return 1
@@ -517,6 +564,9 @@ def main(argv=None):
             print(json.dumps(apply(json.loads(raw))))
         elif argv == ["render"]:
             render()
+        elif argv == ["zones"]:
+            save_zones(read_token())
+            print(json.dumps(read_zones()))
         else:
             state = ddns()
             if state.get("error") or any(not s.get("ok") for s in state.get("sites", {}).values()):
