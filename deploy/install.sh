@@ -8,6 +8,7 @@
 #   frps     offline FRP server (amd64 only)
 #   lucky    offline DDNS and reverse-proxy admin (amd64 only)
 #   tailscale  offline-installed Tailscale client (amd64 only)
+#   caddy    domain forwarding: Caddy on 80/443, Cloudflare DNS (amd64 only)
 #
 #   sudo bash deploy/install.sh                             # console only
 #   sudo VPSSRV_MODULES=web,iperf3 bash deploy/install.sh   # unattended, no prompts
@@ -81,6 +82,7 @@ PROXY_CONFIG_PATH="/etc/vps-server-proxy/config.json"
 FRPS_UNIT="/etc/systemd/system/vps-server-frps.service"
 LUCKY_UNIT="/etc/systemd/system/vps-server-lucky.service"
 TAILSCALE_UNIT="/etc/systemd/system/vps-server-tailscale.service"
+CADDY_UNIT="/etc/systemd/system/vps-server-caddy.service"
 
 declare -A PREV=()
 PREV_VERSION=""
@@ -157,12 +159,13 @@ load_previous() {
     [ -f "$FRPS_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}frps"
     [ -f "$LUCKY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}lucky"
     [ -f "$TAILSCALE_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}tailscale"
+    [ -f "$CADDY_UNIT" ] && PREV_MODULES="${PREV_MODULES:+$PREV_MODULES,}caddy"
   fi
   [ -n "$PREV_MODULES" ] || PREV_MODULES="$DEFAULT_MODULES"
   # An earlier run with a shorter VPSSRV_MODULES may have dropped modules from
   # the record while their units stayed. What is installed on disk still counts.
   local unit module
-  for unit in "$PROXY_UNIT:proxy" "$ANYTLS_UNIT:proxy" "$FRPS_UNIT:frps" "$LUCKY_UNIT:lucky" "$TAILSCALE_UNIT:tailscale" "$PREFIX/vendor/iperf3/iperf3:iperf3"; do
+  for unit in "$PROXY_UNIT:proxy" "$ANYTLS_UNIT:proxy" "$FRPS_UNIT:frps" "$LUCKY_UNIT:lucky" "$TAILSCALE_UNIT:tailscale" "$CADDY_UNIT:caddy" "$PREFIX/vendor/iperf3/iperf3:iperf3"; do
     module="${unit##*:}"
     if [ -e "${unit%:*}" ]; then
       case ",$PREV_MODULES," in *",$module,"*) ;; *) PREV_MODULES="$PREV_MODULES,$module" ;; esac
@@ -747,6 +750,7 @@ fetch_online_assets() {
     case "$module" in
       web|proxy) components="$components sing-box" ;;
       lucky) components="$components lucky" ;;
+      caddy) components="$components caddy" ;;
       tailscale) components="$components tailscale" ;;
       frps) components="$components frp" ;;
     esac
@@ -969,6 +973,8 @@ PY
 
 first_busy_public_port() {
   local name p enabled flag
+  # Domain forwarding holds 80/443 and the public page stays off meanwhile.
+  systemctl is-enabled --quiet vps-server-caddy.service 2>/dev/null && return 1
   for name in http https; do
     if [ "$name" = http ]; then p="$PUBLIC_HTTP_PORT"; else p="$PUBLIC_HTTPS_PORT"; fi
     flag="$VPSSRV_DATA_DIR/web-${name}-enabled"
@@ -1039,7 +1045,7 @@ copy_selected_files() {
     # Module setup and uninstall paths use PREFIX/<module> even when the
     # checkout itself is PREFIX. Keep deploy/<module> as tracked source.
     local module
-    for module in proxy frps lucky tailscale; do
+    for module in proxy frps lucky tailscale caddy; do
       has_module "$module" || continue
       [ -d "$SRC_DIR/deploy/$module" ] || continue
       mkdir -p "$PREFIX/$module"
@@ -1055,15 +1061,16 @@ copy_selected_files() {
     has_module frps && copy_items="$copy_items frps"
     has_module lucky && copy_items="$copy_items lucky"
     has_module tailscale && copy_items="$copy_items tailscale"
+    has_module caddy && copy_items="$copy_items caddy"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in systemd|proxy|frps|lucky|tailscale) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in systemd|proxy|frps|lucky|tailscale|caddy) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
     done
   fi
-  if has_module web || has_module proxy || has_module tailscale || has_module frps || has_module lucky || \
+  if has_module web || has_module proxy || has_module tailscale || has_module frps || has_module lucky || has_module caddy || \
      [ -f "$ANYTLS_CONFIG_PATH" ] || [ -f "$PROXY_CONFIG_PATH" ]; then
     if [ "$SRC_DIR" != "$prefix_abs" ]; then
       mkdir -p "$PREFIX/src/web"
@@ -1106,6 +1113,10 @@ copy_selected_files() {
     mkdir -p "$PREFIX/vendor/lucky"
     cp "$SRC_DIR/third_party/lucky/lucky" "$SRC_DIR/third_party/lucky/LICENSE" "$SRC_DIR/third_party/lucky/component.txt" "$PREFIX/vendor/lucky/"
   fi
+  if has_module caddy; then
+    mkdir -p "$PREFIX/vendor/caddy"
+    cp "$SRC_DIR/third_party/caddy/caddy" "$SRC_DIR/third_party/caddy/LICENSE" "$SRC_DIR/third_party/caddy/component.txt" "$PREFIX/vendor/caddy/"
+  fi
   if has_module tailscale; then
     mkdir -p "$PREFIX/vendor/tailscale"
     cp "$SRC_DIR/third_party/tailscale/tailscale_1.104.5_amd64.tgz" "$PREFIX/vendor/tailscale/"
@@ -1135,6 +1146,18 @@ PY
     systemctl disable --now "$unit" >/dev/null 2>&1 || true
     die "$(msg port_registration_failed "$module")"
   }
+}
+
+# Domain forwarding takes 80/443 from the public page, also in PORTS.md.
+install_caddy() {
+  PREFIX="$PREFIX" bash "$PREFIX/caddy/setup-caddy.sh" || die "$(msg caddy_install_failed)"
+  python3 - "$PREFIX" <<'PY' || die "$(msg port_registration_failed caddy)"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'src' / 'web'))
+from module_manager import claim_caddy_ports
+claim_caddy_ports(sys.argv[1])
+PY
 }
 
 # Keep a version-matched, root-owned installer payload so the control panel
@@ -1199,6 +1222,7 @@ msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME"
     register_optional_listener lucky
   fi
   if has_module frps; then register_optional_listener frps; fi
+  if has_module caddy; then install_caddy; fi
   if has_module tailscale; then
     PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
   fi
@@ -1316,6 +1340,7 @@ if has_module frps; then
   PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || die "$(msg frps_install_failed)"
   register_optional_listener frps
 fi
+if has_module caddy; then install_caddy; fi
 # FRPC is installed from the console, not here. An upgrade still replaces an
 # older pinned client this project installed, so running tunnels get the fix.
 VPSSRV_STATE_DIR="$STATE_DIR" python3 - "$PREFIX" <<'PY' || die "$(msg frpc_refresh_failed)"

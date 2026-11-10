@@ -121,6 +121,7 @@ case "$key" in
   proxy_migration_failed) fmt='No se pudo integrar el servicio AnyTLS anterior en el proxy unificado; la instalación se detuvo. Conserva la copia de migración y comprueba el estado del servicio original.\n' ;;
   frpc_refresh_failed) fmt='Falló la actualización del cliente FRPC\n' ;;
   frps_install_failed) fmt='Falló la instalación de frps\n' ;;
+  caddy_install_failed) fmt='Falló la instalación del reenvío de dominios\n' ;;
   lucky_install_failed) fmt='Falló la instalación de Lucky\n' ;;
   lucky_port_verify) fmt='No se pudo verificar el puerto de administración de Lucky existente; se rechazó la instalación web\n' ;;
   lucky_console_conflict) fmt='El puerto de consola %s entra en conflicto con el puerto de administración de Lucky existente\n' ;;

@@ -52,6 +52,7 @@ target/
 /proxy/
 /frps/
 /lucky/
+/caddy/
 dist/*
 private/*
 build/
@@ -75,5 +76,6 @@ Thumbs.db
 /third_party/frp/frps
 /third_party/frp/frpc
 /third_party/lucky/lucky
+/third_party/caddy/caddy
 /third_party/tailscale/tailscale_*_amd64.tgz
 .online-assets-*/

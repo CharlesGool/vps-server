@@ -34,6 +34,7 @@ metadata:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frps | 0.72.0 | [frps](https://github.com/fatedier/frp) | Apache-2.0 | 独立服务二进制. | fatedier/frp contributors | 保留许可;官方归档没有 NOTICE. | 2026-11-06 |
 | frpc | 0.72.0 | [frpc](https://github.com/fatedier/frp) | Apache-2.0 | 实例客户端二进制. | fatedier/frp contributors | 保留版权及完整许可. | 2026-11-06 |
+| Caddy | 2.11.9 | [Caddy](https://github.com/caddyserver/caddy) | Apache-2.0 | 域名转发的独立服务二进制. | Matthew Holt and The Caddy Authors | 保留许可;官方归档没有 NOTICE. | 2026-11-10 |
 | Lucky | 2.27.2 | [Lucky](https://github.com/gdy666/lucky) | MIT | 独立管理服务. | gdy (2022) | 保留版权及完整许可. | 2026-09-27 |
 | sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | 独立代理核心. | nekohasekai (2022) | 保留源码获取方式及上游名称/关联条件. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | 浏览器测速引擎. | LibreSpeed contributors | 保留 LGPL/GPL 原文, 提供对应源码, 可替换客户端文件. | 2026-09-27 |
@@ -55,6 +56,7 @@ metadata:
 
 - [frp](../third_party/frp/LICENSE)
 - [Lucky](../third_party/lucky/LICENSE)
+- [Caddy](../third_party/caddy/LICENSE)
 - [sing-box](../third_party/sing-box/LICENSE)
 - [GPL-3.0](../LICENSE)
 - [LibreSpeed LGPL-3.0](../src/web/static/licenses/LGPL-3.0.txt)

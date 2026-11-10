@@ -124,6 +124,24 @@ if [ -f /etc/systemd/system/vps-server-lucky.service ] || [ -f /etc/vps-server-l
   if [ "${KEEP_DATA:-0}" = 1 ]; then msg lucky_config_retained >&2; fi
 fi
 
+# Domain forwarding: stop Caddy and its DNS timer, close the ports it opened.
+# Sites, the Cloudflare token and certificates follow KEEP_DATA below.
+if [ -f /etc/systemd/system/vps-server-caddy.service ] || [ -f /etc/systemd/system/vps-server-caddy-dns.timer ]; then
+  systemctl disable --now vps-server-caddy.service vps-server-caddy-dns.timer 2>/dev/null || true
+  for caddy_owner in /etc/vps-server-caddy/firewall-owned-80 /etc/vps-server-caddy/firewall-owned-443; do
+    [ -f "$caddy_owner" ] || continue
+    read -r backend port < "$caddy_owner" || true
+    case "$backend" in
+      ufw) ufw --force delete allow "${port}/tcp" >/dev/null 2>&1 && rm -f "$caddy_owner" ;;
+      firewalld) firewall-cmd --permanent --remove-port="${port}/tcp" >/dev/null 2>&1 &&
+                 firewall-cmd --reload >/dev/null 2>&1 && rm -f "$caddy_owner" ;;
+    esac
+  done
+  rm -f /etc/systemd/system/vps-server-caddy.service /etc/systemd/system/vps-server-caddy-dns.service \
+        /etc/systemd/system/vps-server-caddy-dns.timer /usr/local/bin/caddy-vps-server
+  systemctl daemon-reload
+fi
+
 if [ -f /etc/systemd/system/vps-server-frps-meter.service ]; then
   systemctl disable --now vps-server-frps-meter.service 2>/dev/null || true
   if command -v nft >/dev/null 2>&1; then nft delete table inet vps_server_frps 2>/dev/null || true; fi
@@ -237,9 +255,12 @@ if [ "${KEEP_DATA:-0}" != 1 ]; then
   systemctl daemon-reload
   rm -f /usr/local/bin/tailscale-vps-server /usr/local/bin/tailscaled-vps-server \
         /usr/local/bin/lucky-vps-server /usr/local/bin/frps-vps-server
-  for module_config in /etc/vps-server-lucky /etc/vps-server-frps /etc/vps-server-proxy; do
+  for module_config in /etc/vps-server-lucky /etc/vps-server-frps /etc/vps-server-proxy \
+                       /etc/vps-server-caddy /var/lib/vps-server-caddy; do
     rm -rf -- "$module_config"
   done
+  if getent passwd vps-server-caddy >/dev/null; then userdel vps-server-caddy 2>/dev/null || true; fi
+  if getent group vps-server-caddy >/dev/null; then groupdel vps-server-caddy 2>/dev/null || true; fi
   # Written by proxy/setup-proxy.sh; the running kernel setting is left as is.
   rm -f /etc/sysctl.d/99-vps-server-bbr.conf
 fi

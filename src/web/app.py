@@ -271,6 +271,12 @@ PUBLIC_HTTP_ENABLED = public_listener_enabled(BASE_DIR, "web_http", PUBLIC_DEFAU
 PUBLIC_HTTPS_ENABLED = public_listener_enabled(BASE_DIR, "web_https", PUBLIC_DEFAULT)
 PUBLIC_HTTP_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTP_PORT", "80"))
 PUBLIC_HTTPS_PORT = int(os.environ.get("VPSSRV_PUBLIC_HTTPS_PORT", "443"))
+# Domain forwarding (Caddy) takes 80 and 443 while it is enabled, and
+# public_listener_enabled() then reads as off. Decided once at start:
+# enabling or disabling the module restarts this service.
+CADDY_HOLDS_PUBLIC_PORTS = subprocess.run(
+    ["systemctl", "is-enabled", "--quiet", "vps-server-caddy.service"],
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 # Speed-test tuning. Defaults follow LibreSpeed's methodology: several parallel
 # streams, a duration-based measurement window, and a warmup/grace period whose
@@ -958,7 +964,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "clover", "terminal"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "clover", "terminal", "earth"})
 _UI_ICON_CACHE = {}
 
 
@@ -1010,7 +1016,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "lucky", "tailscale", "terminal", "login")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "lucky", "tailscale", "terminal", "login", "domains")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -1046,6 +1052,7 @@ from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.lucky import LuckyMixin
+from features.domains import DomainsMixin
 from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
@@ -1074,7 +1081,7 @@ SECURITY_HEADERS = (
 
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, LuckyMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, LuckyMixin, DomainsMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1343,7 +1350,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
-                      self.route_lucky, self.route_tailscale, self.route_frp, self.route_iperf,
+                      self.route_lucky, self.route_domains, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return

@@ -23,6 +23,7 @@
 - 浏览器上传/下载测速, 访客记录, 限时 iperf3 服务端与客户端测试.
 - Singbox 托管 AnyTLS, VMess, VLESS, Trojan 和 Shadowsocks 节点, 支持分享, 配额, 限速与到期策略.
 - FRPS 服务端(与 Singbox 节点相同的流量统计, 配额, 限速与到期策略, 按 bindPort 计量), FRPC 实例及 TCP/UDP 代理管理, Lucky 管理页(经控制台 HTTPS 的 `/lucky/` 打开, 管理端口只允许本机连接), Tailscale 状态与设备管理.
+- 域名转发: 按子域名把 HTTPS 转发到本机端口(例如 frps 端口), 随附 Caddy 自动申请 Let's Encrypt 证书, 用 Cloudflare API 自动维护 DNS 记录(仅 DNS, 每 5 分钟检查本机公网 IP). 开启后 Caddy 占用 80/443, 公开可达性页面停用.
 - 模块按需安装, 端口转发, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
 - 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).
@@ -264,7 +265,7 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 | `PROXY_SS_PORT` | 空 | 该协议初始端口;空值自动选择. |
 | `PROXY_SS_PASSWORD` | 空 | 该协议初始凭据;空值自动生成. |
 
-安装器另外接受环境参数 `VPSSRV_MODULES`(逗号分隔的 `web,iperf3,proxy,frps,lucky,tailscale`, 首装默认 `web`, 重装保留已有模块)和 `SERVICE_NAME`(默认 `vps-server-web`). 卸载参数 `KEEP_DATA=1` 保留数据. 这些参数不是 Web 配置项.
+安装器另外接受环境参数 `VPSSRV_MODULES`(逗号分隔的 `web,iperf3,proxy,frps,lucky,tailscale,caddy`(`caddy` 为域名转发), 首装默认 `web`, 重装保留已有模块)和 `SERVICE_NAME`(默认 `vps-server-web`). 卸载参数 `KEEP_DATA=1` 保留数据. 这些参数不是 Web 配置项.
 
 维护源码时执行 `python3 tools/check-project/check_project.py`. 需要 Git, Bash, Python 3.9+ 和 Node.js 24;Node.js 用于前端构建及 JavaScript 检查, 服务器运行不需要它. 非 PATH 中的 Node.js 可用 `--node /绝对路径/node` 指定. 工具目录由 `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` 改为对应的 `build-styles`, `build-offline`, `verify-dependencies`;旧维护命令需替换路径, 安装命令不变. 该命令不启动服务, 不替代真实部署验收.
 
@@ -292,7 +293,7 @@ cd /root/apps/vps-server/installer-source
 bash deploy/uninstall.sh
 ```
 
-两种方式都会停止受管服务并释放项目端口. 完全卸载还清除默认状态根, 本项目的 FRPS/统一代理/FRPC 配置, Lucky 设置和任务及 Tailscale 身份. 自定义到状态根外的数据路径不自动删除. 共用 FRPC 的主机应先核对实例归属. 防火墙清理失败会停止完整卸载并保留归属记录.
+两种方式都会停止受管服务并释放项目端口. 完全卸载还清除默认状态根, 本项目的 FRPS/统一代理/FRPC 配置, Lucky 设置和任务, 域名转发的站点, Cloudflare 令牌和证书(`/etc/vps-server-caddy`, `/var/lib/vps-server-caddy`)及 Tailscale 身份. Cloudflare 上的 DNS 记录不会被卸载删除. 自定义到状态根外的数据路径不自动删除. 共用 FRPC 的主机应先核对实例归属. 防火墙清理失败会停止完整卸载并保留归属记录.
 
 ## 致谢
 

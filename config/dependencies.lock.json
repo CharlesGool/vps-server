@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "coverage": "Fifteen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
+  "coverage": "Seventeen bundled third-party distributable artifacts are pinned by SHA-256. This is checkout-byte verification, not a complete operating-system dependency lock.",
   "artifacts": [
     {
       "component": "Lucky",
@@ -129,6 +129,14 @@
       "recorded_upstream_revision": null,
       "path": "third_party/tailscale/tailscale_1.104.5_amd64.tgz",
       "sha256": "720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
+    },
+    {
+      "component": "Caddy",
+      "version": "v2.11.9 linux amd64",
+      "upstream": "https://github.com/caddyserver/caddy",
+      "recorded_upstream_revision": null,
+      "path": "third_party/caddy/caddy",
+      "sha256": "a563843e11cbce39c557bd429ebb787d56f49d51d9bbb3292cd9b36b37a60cdf"
     }
   ],
   "exclusions": [

@@ -95,6 +95,8 @@ metadata:
 | `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | FRPS 流量条目(配额, 限速, 有效期, 用量)与计量账本. |
 | `/etc/frp/frpc-<name>.toml` | FRPC 实例配置;非 ASCII 名称映射到稳定的 unit 别名. |
 | `/etc/vps-server-lucky` | Lucky 原生设置及任务. |
+| `/etc/vps-server-caddy` | 域名转发: 站点清单 `sites.json`, Cloudflare 令牌 `cloudflare-token`(均为 `0600`), DNS 同步结果 `dns.json`, 生成的 Caddy 配置 `caddy.json`. |
+| `/var/lib/vps-server-caddy` | Caddy 的证书和 ACME 账号, 归 `vps-server-caddy` 用户. |
 | `~/apps/PORTS.md`, `~/apps/.ports.lock` | 主机端口归属清单与互斥锁. |
 
 状态文件按敏感等级限制权限, Web 不把备份或配置作为静态资源公开. FRPC 任务文件 `data/frp-jobs/*.json` 权限为 `0600`, 执行前移除请求凭据, 结果以任务状态保存. 转发规则保存为项目 JSON 并在启动时重放, 不保存整个主机规则集. 安装前备份和人工恢复流程见 README.
@@ -106,5 +108,6 @@ metadata:
 - 权限辅助程序通过白名单动作调用 systemd, FRP 验证器, nft/iptables 与安装器;不提供任意命令执行 API. root PTY 仅供经过密码复验的终端会话.
 - FRPC 连接用户指定的服务器, 结构化编辑只支持简单 token 认证 TCP/UDP 代理.
 - Tailscale CLI 与本机守护进程通信, 登录和路由审批由控制服务器/Tailnet 处理.
+- 域名转发(`caddy` 模块)由 `src/web/caddy_sites.py` 管理: 控制台经 `systemd-run` 以 root 调用它修改站点和令牌, 它生成 Caddy 原生 JSON 配置(每个域名一条到 `127.0.0.1:<端口>` 的反向代理, 其他域名和直接用 IP 访问一律断开连接), 再通过 Unix 套接字上的管理接口热加载. Caddy 以 `vps-server-caddy` 用户运行, 只有绑定低端口的能力, 证书由它自己的自动 HTTPS 用 HTTP-01/TLS-ALPN-01 申请, 因此需要 80 和 443, 也不支持泛域名. Caddy 服务启用时, `public_listener_enabled()` 一律读作关闭, 公开可达性页面让出 80/443, `PORTS.md` 中两行改登记给 Caddy; 关闭或卸载模块时按原开关还给公开页面. DNS 记录用 Cloudflare API 维护(A, 有公网 IPv6 时加 AAAA, 仅 DNS): 添加站点时立即同步, `vps-server-caddy-dns.timer` 每 5 分钟比较本机地址, 地址变化, 上次失败或距上次检查超过一小时才请求 Cloudflare. 本机地址取自内核为外部路由选择的源地址, 只接受公网地址, 不请求外部服务.
 - Lucky 管理页经控制台的 `/lucky/` 显示: `src/web/lucky_proxy.py` 在控制台登录之后把请求(含 WebSocket)去掉前缀转发到 `127.0.0.1` 上的 Lucky 管理端口, 不转发 `X-Forwarded-For` 等来源地址头和控制台 Cookie, 响应分块转发. Lucky 因此看到的是本机地址, `AllowInternetaccess` 保持关闭. Lucky 不能只监听本机, 所以 `src/web/lucky_guard.py` 用独立 nft 表 `vps_server_lucky` 丢弃不是从 `lo` 进入的管理端口 TCP 连接(公网, 内网和 Tailscale 都只能经控制台进入); Lucky 服务启动后和控制台每次发现端口变化(另每分钟一次)时同步规则, 卸载时删除. 以公开管理页安装(`LUCKY_PUBLIC_ADMIN=1`)时不加规则, 主机没有 nft 时跳过规则. 开启 Lucky 的 HTTPS 后, 同一端口的 HTTP 请求会被重定向到 HTTPS; 端口探测不跟随重定向, 代理遇到这种重定向时改用 HTTPS. Lucky 页面与控制台同源, 使用单独的 CSP: 脚本仍只来自本站, 但允许运行时编译(protobufjs), 以及访问和内嵌 Lucky 官网的 https 地址. `/lucky` 在 Lucky 运行时跳到 `/lucky/`, 未运行时显示状态页.
 - 地址来自本机网卡及已配置的 FRPC 服务器地址, 安装器不请求外部服务查询公网 IP.

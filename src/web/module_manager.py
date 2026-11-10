@@ -46,7 +46,7 @@ except ImportError:
     from host_checks import NFT_CODES, check as host_check, install_nft
 
 
-MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale")
+MODULES = ("web", "iperf3", "proxy", "frps", "lucky", "tailscale", "caddy")
 STANDALONE_MODULES = ("frpc",)
 FEATURES = ("speedtest", "portfwd", "visitors", "terminal")
 GROUPS = ("proxy_nodes", "frpc")
@@ -56,7 +56,11 @@ UNITS = {
     "frps": "vps-server-frps.service",
     "lucky": "vps-server-lucky.service",
     "tailscale": "vps-server-tailscale.service",
+    "caddy": "vps-server-caddy.service",
 }
+CADDY_TIMER = "vps-server-caddy-dns.timer"
+CADDY_PORTS = ((80, "vps-server Caddy HTTP", "web_http", "vps-server Web HTTP"),
+               (443, "vps-server Caddy HTTPS", "web_https", "vps-server Web HTTPS"))
 FRPC_BINARY = Path("/usr/local/bin/frpc")
 FRPC_UNIT = Path("/etc/systemd/system/frpc@.service")
 FRPC_CONFIG_DIR = Path("/etc/frp")
@@ -113,7 +117,7 @@ def installed_modules(prefix):
                 present.add("web")
             if "iperf3" in recorded and iperf_binary(prefix):
                 present.add("iperf3")
-            for module in ("proxy", "frps", "lucky", "tailscale"):
+            for module in ("proxy", "frps", "lucky", "tailscale", "caddy"):
                 if module in recorded and Path(f"/etc/systemd/system/{UNITS[module]}").is_file():
                     present.add(module)
             if frpc_installed():
@@ -192,9 +196,19 @@ def feature_enabled(prefix, feature):
     return not flag.is_file() or flag.read_text().strip() != "0"
 
 
-def public_listener_enabled(prefix, listener, default=True):
+def caddy_enabled():
+    """Domain forwarding holds 80/443; the public page is off meanwhile."""
+    return subprocess.run(["systemctl", "is-enabled", "--quiet", UNITS["caddy"]],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                          check=False).returncode == 0
+
+
+def public_listener_enabled(prefix, listener, default=True, *, own_setting=False):
+    """Whether the public page serves this port. own_setting ignores Caddy."""
     if listener not in PUBLIC_LISTENERS:
         raise ValueError("unknown public listener")
+    if not own_setting and caddy_enabled():
+        return False
     flag = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
     if flag.is_file():
         return flag.read_text().strip() == "1"
@@ -674,6 +688,8 @@ def run_toggle(prefix, module, enabled):
     if module in PUBLIC_LISTENERS:
         if "web" not in installed_modules(prefix):
             raise RuntimeError("the console module is unavailable")
+        if caddy_enabled():
+            raise RuntimeError("domain forwarding holds ports 80 and 443")
         # Let the console return its redirect before the Web unit restarts.
         time.sleep(2)
         switch_public_listener(prefix, module, enabled)
@@ -716,6 +732,8 @@ def run_toggle(prefix, module, enabled):
         target = state_data_dir() / "iperf3-enabled"
         switch_web_setting(target, enabled)
         return
+    if module == "caddy":
+        return switch_caddy(prefix, enabled)
     unit = UNITS[module]
     nodes = []
     if module == "proxy":
@@ -801,6 +819,53 @@ def run_toggle(prefix, module, enabled):
             from node_control import _node_port_row
             for node in nodes:
                 _node_port_row(node["port"], node["id"], False)
+
+
+def claim_caddy_ports(prefix):
+    """Move the 80/443 rows in PORTS.md from the public page to Caddy."""
+    from console_port import reserve_owned_port, release_owned_port
+    for port, owner, _listener, web_owner in CADDY_PORTS:
+        try:
+            release_owned_port(prefix, port, web_owner)
+        except ValueError:
+            pass  # Another owner; reserving below names the conflict.
+        reserve_owned_port(prefix, port, owner, probe=False)
+
+
+def release_caddy_ports(prefix):
+    """Give 80/443 in PORTS.md back to the public page where it is switched on."""
+    from console_port import reserve_owned_port, release_owned_port
+    for port, owner, listener, web_owner in CADDY_PORTS:
+        try:
+            release_owned_port(prefix, port, owner)
+        except ValueError:
+            continue
+        if "web" in installed_modules(prefix) and public_listener_enabled(prefix, listener, own_setting=True):
+            try:
+                reserve_owned_port(prefix, port, web_owner, probe=False)
+            except ValueError:
+                pass
+
+
+def switch_caddy(prefix, enabled):
+    """Caddy and the public page take turns on 80/443; Web restarts to follow."""
+    time.sleep(2)  # Let the console return its redirect before Web restarts.
+    unit = UNITS["caddy"]
+    if enabled:
+        subprocess.run(["systemctl", "enable", unit], check=True, timeout=30)
+        try:
+            subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
+            subprocess.run(["systemctl", "start", unit], check=True, timeout=60)
+            subprocess.run(["systemctl", "enable", "--now", CADDY_TIMER], check=True, timeout=30)
+            claim_caddy_ports(prefix)
+        except BaseException:
+            subprocess.run(["systemctl", "disable", "--now", unit, CADDY_TIMER], check=False, timeout=60)
+            subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=False, timeout=60)
+            raise
+    else:
+        subprocess.run(["systemctl", "disable", "--now", unit, CADDY_TIMER], check=True, timeout=60)
+        release_caddy_ports(prefix)
+        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
 
 
 def remove_owned_firewall_rule(owner):
@@ -928,7 +993,7 @@ def run_uninstall(prefix, module):
     """Remove an optional module after retaining its configuration locally."""
     if module == "frpc":
         return uninstall_frpc(prefix)
-    if module not in ("iperf3", "proxy_nodes", "frps", "lucky", "tailscale"):
+    if module not in ("iperf3", "proxy_nodes", "frps", "lucky", "tailscale", "caddy"):
         raise ValueError("module cannot be uninstalled separately")
     present = installed_modules(prefix)
     targets = ({"proxy"} & present) if module == "proxy_nodes" else {module} & present
@@ -938,6 +1003,7 @@ def run_uninstall(prefix, module):
     with tarfile.open(archive, "w:gz") as output:
         paths = {"proxy": "/etc/vps-server-proxy",
                  "frps": "/etc/vps-server-frps", "lucky": "/etc/vps-server-lucky",
+                 "caddy": "/etc/vps-server-caddy",
                  "tailscale": str(state_dir() / "tailscale")}
         for item in targets:
             path = Path(paths[item]) if item in paths else None
@@ -1004,6 +1070,17 @@ def run_uninstall(prefix, module):
         subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
         # Lucky owns DDNS and proxy settings; leave its config in place.
         Path("/usr/local/bin/lucky-vps-server").unlink(missing_ok=True)
+    elif module == "caddy":
+        subprocess.run(["systemctl", "disable", "--now", UNITS["caddy"], CADDY_TIMER], check=True, timeout=60)
+        release_caddy_ports(prefix)
+        for port in (80, 443):
+            remove_owned_firewall_rule(Path(f"/etc/vps-server-caddy/firewall-owned-{port}"))
+        for name in (UNITS["caddy"], "vps-server-caddy-dns.service", CADDY_TIMER):
+            Path(f"/etc/systemd/system/{name}").unlink(missing_ok=True)
+        subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=30)
+        # Sites, the Cloudflare token and certificates stay for a reinstall.
+        Path("/usr/local/bin/caddy-vps-server").unlink(missing_ok=True)
+        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
     elif module == "tailscale":
         try:
             snapshot_tailscale_ports()

@@ -14,7 +14,7 @@ LOG_LEVELS = (("all", "logs_level_all"), ("err", "logs_level_error"),
               ("debug", "logs_level_debug"))
 
 
-LOG_SOURCES = ("modules", "web", "proxy", "frps", "frpc", "lucky", "tailscale")
+LOG_SOURCES = ("modules", "web", "proxy", "frps", "frpc", "lucky", "tailscale", "caddy")
 
 
 def log_cutoffs(context):
@@ -83,7 +83,7 @@ def module_job_text(t, job, names):
 
 # Feature pages that offer their own install button, and where the job reports.
 INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
-                 "lucky": "/lucky", "tailscale": "/tailscale"}
+                 "lucky": "/lucky", "tailscale": "/tailscale", "caddy": "/domains"}
 
 
 _HOST_FINDINGS = {}
@@ -173,6 +173,7 @@ class ModulesMixin:
             ("frpc", "FRPC", tuple(self.context.frpc_unit(name) for name in self.context.frpc_names())),
             ("lucky", "Lucky", ("vps-server-lucky.service",)),
             ("tailscale", "Tailscale", ("vps-server-tailscale.service",)),
+            ("caddy", t["domains"], ("vps-server-caddy.service", "vps-server-caddy-dns.service")),
         )
         selected = next((item for item in sources if item[0] == source), None)
         if selected is None:
@@ -262,7 +263,7 @@ class ModulesMixin:
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
                 f'{self.module_install_control(lang, module, module_name)}</div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc",
-                 "lucky": "lucky", "tailscale": "tailscale"}
+                 "lucky": "lucky", "tailscale": "tailscale", "caddy": "domains"}
         return self.send_html(200, self.render_page(title, body, lang, active=active, icon=icons.get(module)),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -301,6 +302,7 @@ class ModulesMixin:
             ("frpc", "FRPC", "frpc"),
             ("lucky", "Lucky", "lucky"),
             ("tailscale", "Tailscale", "tailscale"),
+            ("caddy", t["domains"], "caddy"),
         )
         cards = []
         for module, title, installable in catalogue:
@@ -314,7 +316,7 @@ class ModulesMixin:
             elif module == "iperf3":
                 present = module in installed
                 enabled = present and self.context.IPERF_ENABLED
-            elif module in ("frps", "lucky", "tailscale"):
+            elif module in ("frps", "lucky", "tailscale", "caddy"):
                 present = module in installed
                 enabled = present and self.context._run_quiet(["systemctl", "is-enabled", "--quiet", self.context.MANAGED_UNITS[module]])
             status = (t["module_not_installed"] if not present else
@@ -380,8 +382,8 @@ class ModulesMixin:
         except (UnicodeError, ValueError):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
-        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale") if action in ("install", "uninstall") else (
-            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale") + self.context.MANAGED_FEATURES
+        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale", "caddy") if action in ("install", "uninstall") else (
+            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "lucky", "tailscale", "caddy") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
@@ -444,6 +446,7 @@ class ModulesMixin:
         destinations = {"web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "lucky": "/lucky", "tailscale": "/tailscale", "portfwd": "/portfwd",
+                        "caddy": "/domains",
                         "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -453,13 +456,14 @@ class ModulesMixin:
         names = {"web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "lucky": "Lucky", "tailscale": "Tailscale",
+                 "caddy": t["domains"],
                  "frp": t["frp_heading"], "portfwd": t["portfwd"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
         closed = self.context.html.escape(t["module_closed_title"])
         body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
                 f'<div class="card access-card"><p>{closed}</p></div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc", "frp": "frp",
-                 "lucky": "lucky", "tailscale": "tailscale", "speedtest": "speedtest",
+                 "lucky": "lucky", "tailscale": "tailscale", "caddy": "domains", "speedtest": "speedtest",
                  "portfwd": "portfwd", "visitors": "visitors", "changelog": "changelog"}
         return self.send_html(200, self.render_page(f"{names[module]}: {t['module_closed_title']}", body, lang,
                                                     back_href="/", icon=icons.get(module, "modules")),
@@ -480,6 +484,7 @@ class ModulesMixin:
             ("frpc", "FRPC", "/frpc", "cable", states["frpc"]),
             ("lucky", "Lucky", "/lucky", "clover", states["lucky"]),
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
+            ("caddy", t["domains"], "/domains", "earth", states["caddy"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
             ("terminal", t["terminal_title"], "/terminal", "terminal", states["terminal"]),
@@ -505,12 +510,15 @@ class ModulesMixin:
             switch = ""
             if module not in ("settings", "changelog", "logs"):
                 action = "disable" if enabled else "enable"
-                available = (module not in ("web_http", "web_https") or "web" in installed) and (
+                # While domain forwarding holds 80/443 the public page cannot be switched on.
+                held = module in ("web_http", "web_https") and self.context.CADDY_HOLDS_PUBLIC_PORTS
+                available = not held and (module not in ("web_http", "web_https") or "web" in installed) and (
                     module != "iperf3" or "iperf3" in installed) and (
                     module != "proxy_nodes" or "proxy" in installed) and (
                     module != "frps" or "frps" in installed) and (
                     module != "frpc" or "frpc" in installed) and (
                     module != "tailscale" or "tailscale" in installed) and (
+                    module != "caddy" or "caddy" in installed) and (
                     module != "portfwd" or self.context.PORTFWD_ALLOWED)
                 switch = (f'<form method="post" action="/settings/modules/action" class="tile-switch-form">'
                           f'<input type="hidden" name="module" value="{module}">'
@@ -522,11 +530,13 @@ class ModulesMixin:
             closed = not enabled and (module in self.context.MANAGED_FEATURES or
                                       module == "iperf3" and "iperf3" in installed or
                                       module == "proxy_nodes" and "proxy" in installed or
-                                      module in ("frps", "frpc", "lucky", "tailscale") and module in installed)
+                                      module in ("frps", "frpc", "lucky", "tailscale", "caddy") and module in installed)
             occupied_port = public_listener_occupied(self.context, module, job)
             detail = (f'<span class="tile-error" role="status">'
                       f'{esc(t["module_port_occupied"].format(port=occupied_port))}</span>'
-                      if occupied_port is not None else "")
+                      if occupied_port is not None else
+                      f'<span class="tile-error" role="status">{esc(t["module_held_by_domains"])}</span>'
+                      if module in ("web_http", "web_https") and self.context.CADDY_HOLDS_PUBLIC_PORTS else "")
             target = ("/closed?module=" + module
                       if closed or module in ("web_http", "web_https") and not enabled else href)
             # The public pages are meant to be seen from outside, so they open in a tab of their own.
@@ -621,6 +631,8 @@ def module_states(context, installed=None):
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["lucky"]]),
         "tailscale": "tailscale" in installed and context._run_quiet(
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["tailscale"]]),
+        "caddy": "caddy" in installed and context._run_quiet(
+            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["caddy"]]),
         "portfwd": context.portfwd_enabled(),
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
         "terminal": context.AUTH_ENABLED and context.module_feature_enabled(context.BASE_DIR, "terminal"),
