@@ -100,6 +100,28 @@ def _output(args):
         return ""
 
 
+def _ca_store_present(ssl):
+    """A CA bundle file or a hashed CA directory that Python will use.
+
+    cert_store_stats() only counts certificates already loaded; Debian's
+    hashed directory is read on demand, so it reports none before the first
+    handshake even with ca-certificates installed.
+    """
+    if ssl.create_default_context().cert_store_stats().get("x509_ca"):
+        return True
+    paths = ssl.get_default_verify_paths()
+    for name in (paths.cafile, paths.openssl_cafile):
+        if name and Path(name).is_file() and Path(name).stat().st_size:
+            return True
+    for name in (paths.capath, paths.openssl_capath):
+        try:
+            if name and any(Path(name).glob("*.[0-9]")):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def _core(source):
     import sqlite3
     import ssl
@@ -119,7 +141,7 @@ def _core(source):
     variant = Path(source) / "config" / "PACKAGE_VARIANT" if source else None
     if variant and variant.is_file() and variant.read_text().strip() == "online":
         # The online package downloads its binaries over HTTPS with the host CA store.
-        if not ssl.create_default_context().cert_store_stats().get("x509_ca"):
+        if not _ca_store_present(ssl):
             findings.append(("error", "ca_missing"))
     return findings
 
