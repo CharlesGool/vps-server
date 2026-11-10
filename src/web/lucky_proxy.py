@@ -177,9 +177,30 @@ def forward(handler, context, method):
         handler._close_after_response = False
         handler.close_connection = False
         response = upstream.getresponse()
+        switched = _scheme_switch(response, port, scheme)
+        if switched:
+            # Remember the scheme; the rewritten redirect sends the browser
+            # back to the same /lucky/ address, which now goes over it.
+            with _target_lock:
+                _target["value"], _target["at"] = (port, switched), time.monotonic()
         _relay(handler, response, method, port)
     finally:
         upstream.close()
+
+
+def _scheme_switch(response, port, scheme):
+    """Lucky with HTTPS on redirects plain HTTP to HTTPS on the same port."""
+    if not 300 <= response.status < 400:
+        return None
+    parts = urlsplit(response.getheader("Location") or "")
+    try:
+        same_port = (parts.port or (443 if parts.scheme == "https" else 80)) == port
+    except ValueError:
+        return None
+    if parts.scheme in ("http", "https") and parts.scheme != scheme and same_port \
+            and parts.hostname in ("127.0.0.1", "localhost"):
+        return parts.scheme
+    return None
 
 
 def _relay(handler, response, method, port):

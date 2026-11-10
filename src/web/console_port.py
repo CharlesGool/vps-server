@@ -378,7 +378,13 @@ def detect_lucky_admin():
             host = "::1"
         url_host = f"[{host}]" if ":" in host else host
         listeners.append((port, url_host))
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        # With HTTPS on, Lucky answers plain HTTP with a redirect to HTTPS on
+        # the same port. Following it would report the port as HTTP.
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
                                          urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
     matches = set()
     for port, host in listeners[:24]:
