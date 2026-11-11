@@ -454,8 +454,12 @@ class SettingsMixin:
                 hosts += names(site)
         return list(dict.fromkeys("https://" + host.lower() for host in hosts))
 
-    def render_cert_autoselect(self, t, entry, ident):
-        """Browser policy lines that pick ``entry`` without asking each time."""
+    def render_cert_autoselect(self, t, entry, ident, bundle=None):
+        """Browser policy lines that pick ``entry`` without asking each time.
+
+        With ``bundle`` (right after issuing) the Windows script also imports it.
+        """
+        from cert_setup import windows_script, windows_script_name
         from client_cert import subject_cn
         esc = self.context.html.escape
         json = self.context.json
@@ -474,8 +478,15 @@ class SettingsMixin:
             + [f"New-ItemProperty -Path $key -Name '{number}' -PropertyType String -Value '{rule}' -Force | Out-Null"
                for number, rule in enumerate(rules, 1)])
         linux = json.dumps({"AutoSelectCertificateForUrls": rules}, indent=2)
+        script = windows_script(t, subject_cn(entry), issuer, self.cert_autoselect_patterns(), bundle)
+        script_href = "data:application/octet-stream;base64," + self.context.base64.b64encode(script).decode("ascii")
+        script_name = windows_script_name(subject_cn(entry))
         return (f'<details class="client-cert-autoselect"><summary>{esc(t["client_cert_autoselect"])}</summary>'
                 f'<p>{esc(t["client_cert_autoselect_intro"].format(name=subject_cn(entry)))}</p>'
+                f'<p><a class="button-link" href="{script_href}" download="{esc(script_name, quote=True)}">'
+                f'{esc(t["client_cert_setup_download"])}</a></p>'
+                f'<p class="muted">{esc(t["client_cert_setup_hint_import" if bundle else "client_cert_setup_hint"])}</p>'
+                f'<p>{esc(t["client_cert_autoselect_manual"])}</p>'
                 + self.context.render_copyable(t, t["client_cert_autoselect_windows"], windows, ident + "-win")
                 + f'<p class="muted">{esc(t["client_cert_autoselect_windows_hint"])}</p>'
                 + self.context.render_copyable(t, t["client_cert_autoselect_linux"], linux, ident + "-linux")
@@ -501,7 +512,7 @@ class SettingsMixin:
             <li><p>{esc(t['client_cert_step_restart'])}</p></li>
             <li><p>{esc(t['client_cert_step_verify'])}</p></li>
           </ol>
-          {self.render_cert_autoselect(t, entry, "autoselect-new")}
+          {self.render_cert_autoselect(t, entry, "autoselect-new", bundle)}
           <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
         </section></div><script src="/static/copy.js"></script>'''
         return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",
