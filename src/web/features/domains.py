@@ -306,14 +306,14 @@ class DomainsMixin:
                     f'<div class="frp-target-head"><a class="frp-target-name" href="https://{esc(host, quote=True)}/" '
                     f'target="_blank" rel="noopener noreferrer">{title}</a>{toggle}</div>'
                     f'<div class="domain-badges">{"".join(badges)}</div>{facts}'
-                    f'<div class="domain-actions">{edit}{log_link}</div>'
-                    f'<form method="post" action="/domains/remove" class="frp-target-foot domain-remove" '
+                    f'<div class="domain-actions">{edit}{log_link}'
+                    f'<form method="post" action="/domains/remove" class="domain-remove" '
                     f'data-confirm="{esc(t["domains_remove_confirm"].format(host=host), quote=True)}">'
                     f'<input type="hidden" name="csrf" value="{csrf}">'
                     f'<input type="hidden" name="host" value="{esc(host, quote=True)}">'
                     f'<label class="checkline"><input type="checkbox" name="remove_dns" value="1" checked>'
                     f'<span>{esc(t["domains_remove_dns"])}</span></label>'
-                    f'<button type="submit" class="node-action-danger frp-card-edit">{esc(t["domains_remove"])}</button></form>'
+                    f'<button type="submit" class="node-action-danger">{esc(t["domains_remove"])}</button></form></div>'
                     f'</article>')
 
         groups = {}

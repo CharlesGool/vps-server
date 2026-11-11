@@ -173,3 +173,17 @@
 @media (max-width: 42rem) {
   .domains-page .domain-more-grid, .domains-page .domain-more-grid > .domain-auth { grid-template-columns: 1fr; }
 }
+/* Site card footer: one row of equal outline buttons; delete sits at the end. */
+.domain-card .domain-actions { align-items: center; padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
+.domain-card .domain-actions :is(.node-inline-edit > summary, .button-link, .domain-remove > button) { display: inline-flex; align-items: center; justify-content: center; min-width: 0; min-height: var(--compat-size-46); margin: 0; padding: 0 var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--primary); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); line-height: var(--leading-normal); text-decoration: none; }
+.domain-card .domain-actions :is(.node-inline-edit > summary, .button-link):hover { background: var(--secondary); }
+.domain-card .domain-remove { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--compat-size-14); margin: 0 0 0 auto; }
+.domains-page .domain-card .domain-remove .checkline { align-items: center; color: var(--muted-foreground); }
+.domains-page .domain-card .domain-remove .checkline > input { margin: 0; }
+.domain-card .domain-actions .domain-remove > button { border-color: var(--destructive); color: var(--destructive); }
+.domain-card .domain-actions .domain-remove > button:hover { background: var(--destructive); color: var(--destructive-foreground); }
+.domain-card .domain-actions .node-inline-edit[open] ~ :is(.button-link, .domain-remove) { display: none; }
+.domain-card .frp-target-meta .private-value button { flex: none; white-space: nowrap; }
+.domain-card .frp-target-meta .private-value { flex-wrap: nowrap; }
+.domain-card .frp-target-meta .private-value code { min-width: 0; white-space: nowrap; }
+.frp-client-grid > .domain-zone { flex: 1 1 100%; min-width: 0; }
