@@ -178,12 +178,14 @@ class DomainsMixin:
             """Target choice, port and backend options, for adding and editing."""
             site = site or {}
             console_on = bool(site.get("console"))
-            radios = (f'<fieldset class="protocol-choice domain-wide"><legend>{esc(t["domains_target"])}</legend>'
+            radios = (f'<fieldset class="protocol-choice"><legend>{esc(t["domains_target"])}</legend>'
                       f'<label><input type="radio" name="target" value="port" {"" if console_on else "checked"}> '
                       f'{esc(t["domains_target_port"])}</label>'
                       + (f'<label><input type="radio" name="target" value="console" {"checked" if console_on else ""}> '
                          f'{esc(t["domains_target_console_short"])}</label>' if console else '') + '</fieldset>')
             port_value = f' value="{site["port"]}"' if site.get("port") else ''
+            # Optional settings fold away; an edit opens them when one is in use.
+            extras = bool(site.get("aliases") or site.get("allow_ips") or (site.get("auth") or {}).get("user"))
             return (radios
                     + f'<label class="domain-port">{esc(t["domains_port"])}<input type="number" name="port" min="1" '
                       f'max="65535" placeholder="5000"{port_value}></label>'
@@ -193,13 +195,15 @@ class DomainsMixin:
                       f'<label class="checkline"><input type="checkbox" name="upstream_host" value="1" '
                       f'{"checked" if site.get("upstream_host") else ""}><span>{esc(t["domains_upstream_host"])}</span></label>'
                       f'</div>'
-                    + f'<label class="domain-wide">{esc(t["domains_aliases"])}<textarea name="aliases" rows="2" '
+                    + f'<details class="domain-more domain-wide"{" open" if extras else ""}>'
+                      f'<summary>{esc(t["domains_more_options"])}</summary><div class="domain-more-grid">'
+                      f'<label>{esc(t["domains_aliases"])}<textarea name="aliases" rows="3" '
                       f'spellcheck="false" autocapitalize="none" placeholder="www.example.com">'
                       f'{esc(chr(10).join(site.get("aliases", [])))}</textarea></label>'
-                    + f'<label class="domain-wide">{esc(t["domains_allow_ips"])}<textarea name="allow_ips" rows="2" '
+                      f'<label>{esc(t["domains_allow_ips"])}<textarea name="allow_ips" rows="3" '
                       f'spellcheck="false" placeholder="203.0.113.7&#10;198.51.100.0/24">'
                       f'{esc(chr(10).join(site.get("allow_ips", [])))}</textarea></label>'
-                    + auth_fields(site))
+                    + auth_fields(site) + '</div></details>')
 
         def auth_fields(site):
             auth = site.get("auth") or {}
@@ -207,7 +211,7 @@ class DomainsMixin:
                 t, "domains-auth-" + str(abs(hash(site.get("host", "new")))), t["domains_auth_password"], "auth_password",
                 f'maxlength="128" autocomplete="new-password" '
                 f'placeholder="{esc(t["domains_auth_keep"] if auth else "", quote=True)}"')
-            return (f'<fieldset class="domain-port domain-wide domain-auth"><legend>{esc(t["domains_auth"])}</legend>'
+            return (f'<fieldset class="domain-port domain-auth"><legend>{esc(t["domains_auth"])}</legend>'
                     f'<p class="muted">{esc(t["domains_auth_help"])}</p>'
                     f'<label>{esc(t["domains_auth_user"])}<input type="text" name="auth_user" maxlength="64" '
                     f'autocomplete="off" value="{esc(auth.get("user", ""), quote=True)}"></label>'

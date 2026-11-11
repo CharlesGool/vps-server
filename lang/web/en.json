@@ -819,6 +819,7 @@
   "domains_aliases": "Other names (optional, one per line, same target)",
   "domains_aliases_short": "Other names",
   "domains_allow_ips": "Only these addresses or networks may connect (optional, one per line; empty means anyone)",
+  "domains_more_options": "More options: other names, allowed addresses, password",
   "domains_auth": "Password (basic auth)",
   "domains_auth_help": "Browsers ask for this user name and password first. Leave the user name empty for none.",
   "domains_auth_user": "User name",

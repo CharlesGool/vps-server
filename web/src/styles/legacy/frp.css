@@ -102,7 +102,7 @@
 .domains-token-actions > .node-inline-edit { flex: 1 1 min(100%, var(--compat-size-104)); margin: 0; }
 .domains-token-actions > form { margin: 0; }
 @media (max-width: 42rem) {
-  .domains-page .node-inline-edit form, .domain-facts { grid-template-columns: 1fr; }
+  .domains-page .node-inline-edit form, .domain-facts, .domain-more-grid, .domain-auth { grid-template-columns: 1fr; }
 }
 .domain-badges .proxy-node-status:not(.is-open, .is-closed) { border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); }
 .domains-page .frp-card > p.muted { margin: 0 0 var(--compat-size-24); }
@@ -142,10 +142,34 @@
 .domains-log th { color: var(--muted-foreground); font-weight: var(--font-weight-semibold); }
 .domains-log .domains-log-uri { max-width: var(--compat-size-104); overflow: hidden; text-overflow: ellipsis; }
 .domains-log .domains-log-bad { color: var(--destructive); }
-.domains-page textarea { width: 100%; min-height: var(--compat-size-38); padding: var(--compat-size-14); resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font-family: var(--font-mono); font-size: var(--text-sm); }
+.domains-page textarea { width: 100%; min-height: var(--compat-size-38); padding: var(--compat-size-14); resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); line-height: var(--leading-normal); }
 .domain-auth { display: grid; gap: var(--compat-size-14); margin: 0 0 var(--compat-size-24); padding: 0; border: 0; }
 .domain-auth legend { margin-bottom: var(--compat-size-11); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
 .domain-auth p, .domain-auth label { margin: 0; }
 .domains-page form .checkline { display: flex; flex-direction: row; align-items: center; gap: var(--compat-size-13); margin: 0; font-weight: var(--font-weight-normal); }
 .domains-page form .checkline input { margin: 0; }
 .domain-options { margin-bottom: var(--compat-size-24); }
+/* Domains forms: one type scale; fields never inherit the labels' weight. */
+.domains-page form :is(input, select, textarea) { font-family: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
+.domains-page form :is(input, select, textarea)::placeholder { font-weight: var(--font-weight-normal); }
+.domains-page form p.muted, .domains-page form .checkline { font-size: var(--text-sm); line-height: var(--leading-normal); }
+.domains-page .node-inline-edit form > .protocol-choice { margin-bottom: var(--compat-size-24); }
+.domains-page .domain-options { margin-bottom: var(--compat-size-24); }
+.domain-more { margin-bottom: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
+.domain-more > summary { width: fit-content; color: var(--primary); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.domain-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--compat-size-24); margin-top: var(--compat-size-24); }
+/* Labels in one row share a height; the fields sit at the bottom and line up. */
+.domain-more-grid > label { display: grid; grid-template-rows: 1fr auto; margin-bottom: var(--compat-size-24); }
+.domain-more-grid > .domain-auth { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-14) var(--compat-size-24); margin: 0; }
+.domain-auth > :is(p, .checkline) { grid-column: 1 / -1; }
+.domains-page .node-inline-edit .domain-auth .frp-password-field { grid-column: auto; margin: 0; }
+/* Inside a site card the edit form is narrow: one column throughout. */
+.domains-page .domain-edit form, .domains-page .domain-edit .domain-more-grid, .domains-page .domain-edit .domain-more-grid > .domain-auth { grid-template-columns: 1fr; }
+.domains-page .reference-select-trigger { font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
+.domains-page form.domain-remove { align-items: center; }
+.domain-remove > button { margin: 0; }
+.domains-page form .checkline { align-items: flex-start; }
+.domains-page form .checkline > input { flex: none; margin: var(--compat-size-22) 0 0; }
+@media (max-width: 42rem) {
+  .domains-page .domain-more-grid, .domains-page .domain-more-grid > .domain-auth { grid-template-columns: 1fr; }
+}

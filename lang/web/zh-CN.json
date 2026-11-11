@@ -819,6 +819,7 @@
   "domains_aliases": "其他域名(可选, 每行一个, 同样指向这个目标)",
   "domains_aliases_short": "其他域名",
   "domains_allow_ips": "只允许这些 IP 或网段访问(可选, 每行一个, 留空不限制)",
+  "domains_more_options": "更多选项: 其他域名, 来源限制, 访问密码",
   "domains_auth": "访问密码(基本认证)",
   "domains_auth_help": "访问前浏览器会弹窗要求输入用户名和密码。留空用户名表示不需要。",
   "domains_auth_user": "用户名",

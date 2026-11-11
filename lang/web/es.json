@@ -819,6 +819,7 @@
   "domains_aliases": "Otros nombres (opcional, uno por línea, mismo destino)",
   "domains_aliases_short": "Otros nombres",
   "domains_allow_ips": "Solo estas direcciones o redes pueden conectar (opcional, una por línea; vacío significa cualquiera)",
+  "domains_more_options": "Más opciones: otros nombres, direcciones permitidas, contraseña",
   "domains_auth": "Contraseña (autenticación básica)",
   "domains_auth_help": "El navegador pide primero este usuario y contraseña. Deja el usuario vacío para no pedirlos.",
   "domains_auth_user": "Usuario",
