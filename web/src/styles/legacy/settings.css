@@ -108,5 +108,4 @@ html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX
 .motion-switch[aria-checked="true"] span { background: var(--primary-foreground); }
 .client-cert-autoselect { display: grid; gap: var(--compat-size-20); }
 .client-cert-autoselect > summary { width: fit-content; color: var(--primary); font-weight: var(--font-weight-semibold); cursor: pointer; }
-.client-cert-autoselect p { margin: 0; }
-.client-cert-autoselect .cmd { white-space: pre-wrap; overflow-wrap: anywhere; }
+.client-cert-setup-links { display: flex; flex-wrap: wrap; gap: var(--compat-size-14); }

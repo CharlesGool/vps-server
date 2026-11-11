@@ -168,7 +168,7 @@ class SettingsMixin:
               {confirm_password_field}
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
-          </section></div></div><script src="/static/access-settings.js" defer></script><script src="/static/copy.js"></script>
+          </section></div></div><script src="/static/access-settings.js" defer></script>
           </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -455,42 +455,29 @@ class SettingsMixin:
         return list(dict.fromkeys("https://" + host.lower() for host in hosts))
 
     def render_cert_autoselect(self, t, entry, ident, bundle=None):
-        """Browser policy lines that pick ``entry`` without asking each time.
+        """Download links for scripts that make the browser pick ``entry`` on its own.
 
-        With ``bundle`` (right after issuing) the Windows script also imports it.
+        With ``bundle`` (right after issuing) the scripts also import the certificate.
         """
-        from cert_setup import windows_script, windows_script_name
+        import cert_setup
         from client_cert import subject_cn
         esc = self.context.html.escape
-        json = self.context.json
-        issuer = self.context.CLIENT_AUTH.issuer_cn()
-        rules = [json.dumps({"pattern": pattern, "filter": {"ISSUER": {"CN": issuer},
-                                                            "SUBJECT": {"CN": subject_cn(entry)}}},
-                            separators=(",", ":"))
-                 for pattern in self.cert_autoselect_patterns()]
-        if not rules:
+        patterns = self.cert_autoselect_patterns()
+        if not patterns:
             return ""
-        # PowerShell: single quotes keep the JSON literal (it never holds a single quote).
-        # New-Item -Force on an existing key would wipe its other values, so test first.
-        windows = "\n".join(
-            ["$key = 'HKLM:\\SOFTWARE\\Policies\\Google\\Chrome\\AutoSelectCertificateForUrls'",
-             "if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }"]
-            + [f"New-ItemProperty -Path $key -Name '{number}' -PropertyType String -Value '{rule}' -Force | Out-Null"
-               for number, rule in enumerate(rules, 1)])
-        linux = json.dumps({"AutoSelectCertificateForUrls": rules}, indent=2)
-        script = windows_script(t, subject_cn(entry), issuer, self.cert_autoselect_patterns(), bundle)
-        script_href = "data:application/octet-stream;base64," + self.context.base64.b64encode(script).decode("ascii")
-        script_name = windows_script_name(subject_cn(entry))
-        return (f'<details class="client-cert-autoselect"><summary>{esc(t["client_cert_autoselect"])}</summary>'
-                f'<p>{esc(t["client_cert_autoselect_intro"].format(name=subject_cn(entry)))}</p>'
-                f'<p><a class="button-link" href="{script_href}" download="{esc(script_name, quote=True)}">'
-                f'{esc(t["client_cert_setup_download"])}</a></p>'
-                f'<p class="muted">{esc(t["client_cert_setup_hint_import" if bundle else "client_cert_setup_hint"])}</p>'
-                f'<p>{esc(t["client_cert_autoselect_manual"])}</p>'
-                + self.context.render_copyable(t, t["client_cert_autoselect_windows"], windows, ident + "-win")
-                + f'<p class="muted">{esc(t["client_cert_autoselect_windows_hint"])}</p>'
-                + self.context.render_copyable(t, t["client_cert_autoselect_linux"], linux, ident + "-linux")
-                + f'<p class="muted">{esc(t["client_cert_autoselect_verify"])}</p></details>')
+        subject, issuer = subject_cn(entry), self.context.CLIENT_AUTH.issuer_cn()
+        links = ""
+        for system, build, mime in (("windows", cert_setup.windows_script, "application/octet-stream"),
+                                    ("macos", cert_setup.macos_profile, "application/x-apple-aspen-config"),
+                                    ("linux", cert_setup.linux_script, "application/octet-stream")):
+            data = build(t, subject, issuer, patterns, bundle)
+            href = f"data:{mime};base64," + self.context.base64.b64encode(data).decode("ascii")
+            name = cert_setup.file_name(system, subject)
+            links += (f'<a class="button-link" href="{href}" download="{esc(name, quote=True)}" '
+                      f'title="{esc(t["client_cert_setup_" + system], quote=True)}">'
+                      f'{esc(t["client_cert_setup_label_" + system])}</a>')
+        return (f'<details class="client-cert-autoselect" id="{ident}"><summary>{esc(t["client_cert_autoselect"])}</summary>'
+                f'<div class="client-cert-setup-links">{links}</div></details>')
 
     def page_client_cert_issued(self, lang, bundle, password, entry):
         t = self.context.STRINGS[lang]
@@ -514,7 +501,7 @@ class SettingsMixin:
           </ol>
           {self.render_cert_autoselect(t, entry, "autoselect-new", bundle)}
           <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
-        </section></div><script src="/static/copy.js"></script>'''
+        </section></div>'''
         return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",
                                                     back_href='/settings/security'),
                               {"Cache-Control": "no-store"})
