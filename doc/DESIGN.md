@@ -75,7 +75,7 @@ metadata:
 - 信任代理地址头时, 客户端地址**必须**取代理追加的最后一个 `X-Forwarded-For` 项; 左侧各项可被客户端伪造, **禁止**用于封禁和访问限制.
 - 控制台页面**禁止**使用内联脚本和内联事件属性; 响应默认带 `script-src 'self'` 的 Content-Security-Policy 和禁止嵌入的头. 内联样式保留允许, 因为 xterm.js 和 UI 在运行时设置样式.
 - 控制台访问限制在 TLS 握手前按来源地址断开连接, 本机回环地址始终允许; 设置文件变化后立即生效, 文件损坏时按关闭处理, 以免把所有人挡在外面.
-- 控制台**必须**只提供 HTTPS. 客户端证书由控制台自建 CA(`certs/client-ca.*`)签发, 服务器**禁止**保存设备私钥;TLS 层只请求不强制证书(`CERT_OPTIONAL`), "要求证书"在 HTTP 层逐请求检查并核对未撤销的序列号, 以便 Clash 订阅照常访问, 撤销无需重建 TLS. 开启要求前当前连接**必须**已出示有效证书, 要求期间**禁止**撤销当前连接使用的证书.
+- 控制台**必须**只提供 HTTPS. 客户端证书由控制台自建 CA(`certs/client-ca.*`)签发, 服务器**禁止**保存设备私钥;TLS 层只请求不强制证书(`CERT_OPTIONAL`), "要求证书"在 HTTP 层逐请求检查并核对未撤销的序列号, 以便 Clash 订阅和网盘下载链接照常访问, 撤销无需重建 TLS. 开启要求前当前连接**必须**已出示有效证书, 要求期间**禁止**撤销当前连接使用的证书.
 - 同布局安装**必须**保留持久状态;旧布局或缺失定位文件**禁止**被当作空白安装自动覆盖.
 - 第三方构件**必须**核验固定摘要并携带原始许可与对应源码获取方式. 文件身份校验不代表系统依赖完全锁定.
 
@@ -91,6 +91,7 @@ metadata:
 | `admin_password.txt`, `console_port.txt`, `.env`, `paths.json`, `.layout-version` | 认证, 固定端口, 配置及路径/布局元数据. |
 | `certs/` | TLS 证书与私钥;客户端证书 CA(`client-ca.pem`, `client-ca.key`)与签发记录 `client-auth.json`(要求开关, 序列号, 设备名, 撤销状态). |
 | `data/` | SQLite 访客库, 会话与签名密钥, 功能状态, 节点清单和后台任务; 登录安全设置(`login-ban.json`, `console-access.json`, `alerts.json`), 安全记录(`security-audit.jsonl`)和登录过的地址(`known-logins.json`). |
+| `data/files/` | 网盘: `index.json`(容量上限, 文件, 下载链接令牌, 服务器下载任务)与 `blobs/<id>` 文件内容, 目录 `0700`, 文件 `0600`. |
 | `/etc/vps-server-proxy/config.json` | Singbox 运行配置;节点身份与策略由受管清单协调. |
 | `/etc/vps-server-frps/frps.toml` | FRPS 服务端配置. |
 | `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | FRPS 流量条目(配额, 限速, 有效期, 用量)与计量账本. |

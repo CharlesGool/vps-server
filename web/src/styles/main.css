@@ -19,6 +19,7 @@
 @import "./legacy/proxy.css" layer(legacy);
 @import "./legacy/responsive.css" layer(legacy);
 @import "./legacy/nodes.css" layer(legacy);
+@import "./legacy/files.css" layer(legacy);
 @import "./alignment.css" layer(legacy);
 @import "./unlayered.css";
 

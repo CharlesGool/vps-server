@@ -76,6 +76,7 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
 from client_cert import ClientAuth, ClientCertError
+from file_share import FileStore
 from console_access import ConsoleAccess, ConsoleAccessError
 from security_events import AuditLog, KnownLogins, BarkAlerts
 import terminal_session
@@ -453,6 +454,7 @@ def ensure_tls_files(*args, **kwargs):
 ADMIN_PASSWORD = ensure_admin_password()
 IP_ALLOWLIST = IpAllowlist(IP_ALLOWLIST_FILE)
 CLIENT_AUTH = ClientAuth(CERT_DIR)
+FILE_STORE = FileStore(DATA_DIR / "files")
 CONSOLE_PORT = ensure_console_port()
 SESSION_SECRET = ensure_session_secret()
 FILL_BUFFER = os.urandom(DOWNLOAD_CHUNK)
@@ -953,7 +955,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download"})
 _UI_ICON_CACHE = {}
 
 
@@ -1001,10 +1003,11 @@ STATIC_FILES = {
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
     "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
+    "/static/files.js": ("application/javascript", STATIC_DIR / "files.js"),
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains", "files")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
@@ -1040,6 +1043,7 @@ from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.domains import DomainsMixin
+from features.files import FilesMixin
 from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
@@ -1068,7 +1072,7 @@ SECURITY_HEADERS = (
 
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, DomainsMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, DomainsMixin, FilesMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1243,6 +1247,16 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def do_POST(self):
         self._dispatch("POST")
 
+    def do_HEAD(self):
+        # Only download links answer HEAD (curl -I, download managers);
+        # every other route would send a body HEAD must not carry.
+        if urlsplit(self.path).path.startswith("/f/"):
+            return self._dispatch("HEAD")
+        self.send_response(405)
+        self.send_header("Allow", "GET, POST")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _dispatch(self, method):
         parsed = urlsplit(self.path)
         path = parsed.path
@@ -1286,7 +1300,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                 # socketserver, which kills the keep-alive connection — and
                 # the speed test depends on that connection staying up.
                 try:
-                    logged_path = "/clash/sub/[redacted]" if path.startswith("/clash/sub/") else path
+                    logged_path = ("/clash/sub/[redacted]" if path.startswith("/clash/sub/") else
+                                   "/f/[redacted]" if path.startswith("/f/") else path)
                     if not (method == "POST" and path == "/visitors/clear" and self._last_status == 204):
                         log_visit(self.client_ip(), method, logged_path, self._last_status)
                 except Exception as exc:
@@ -1298,11 +1313,13 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
         if self.route_proxy_public(method, path):
             return
+        if self.route_files_public(method, path):
+            return
 
         lang, query_lang = self.resolve_lang(parsed)
 
         # With client certificates required, a device without an active one
-        # reaches nothing but static files and Clash subscriptions above.
+        # reaches nothing but static files, Clash subscriptions and download links above.
         if AUTH_ENABLED and CLIENT_AUTH.required() and self.client_certificate() is None:
             return self.page_client_cert_required(lang)
 
@@ -1349,7 +1366,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
-                      self.route_domains, self.route_tailscale, self.route_frp, self.route_iperf,
+                      self.route_domains, self.route_files, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return

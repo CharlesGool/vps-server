@@ -48,7 +48,9 @@ except ImportError:
 
 MODULES = ("web", "iperf3", "proxy", "frps", "tailscale", "caddy")
 STANDALONE_MODULES = ("frpc",)
-FEATURES = ("speedtest", "portfwd", "visitors", "terminal")
+FEATURES = ("speedtest", "portfwd", "visitors", "terminal", "files")
+# Off until switched on, unlike the older features (on unless switched off).
+DEFAULT_OFF_FEATURES = ("files",)
 GROUPS = ("proxy_nodes", "frpc")
 PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {
@@ -192,7 +194,9 @@ def feature_enabled(prefix, feature):
     if feature not in FEATURES:
         raise ValueError("unknown feature")
     flag = state_data_dir() / f"{feature}-enabled"
-    return not flag.is_file() or flag.read_text().strip() != "0"
+    if not flag.is_file():
+        return feature not in DEFAULT_OFF_FEATURES
+    return flag.read_text().strip() != "0"
 
 
 def caddy_enabled():

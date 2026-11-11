@@ -23,7 +23,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Pruebas de subida/bajada en el navegador, registros de visitantes y pruebas iperf3 de cliente y servidor con duración limitada.
 - Nodos Singbox para AnyTLS, VMess, VLESS, Trojan y Shadowsocks, con enlaces, cuotas, límites de velocidad y caducidad.
 - Servidor FRPS (contabilidad de tráfico, cuota, límites de velocidad y vigencia como un nodo Singbox, medidos en bindPort), instancias FRPC y proxies TCP/UDP, acceso a Lucky y estado y dispositivos de Tailscale.
-- Módulos opcionales, reenvío de puertos, registros detallados, terminal root con contraseña, tres idiomas y temas.
+- Módulos opcionales, reenvío de puertos, un pequeño almacén de archivos con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
@@ -188,6 +188,10 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 ```
 
 El argumento `status` muestra el estado del requisito y todos los certificados.
+
+### Archivos
+
+"Archivos", en la página de inicio, está desactivado por defecto. Al activarlo, guarda archivos temporalmente en este servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. Los archivos llegan de dos formas: subidos desde un navegador, o indicando una URL http/https para que el servidor la descargue por sí mismo (en segundo plano; se puede cerrar el navegador). El límite es de 5 GiB por defecto y se cambia en la página; sea cual sea, siempre quedan al menos 2 GiB libres en el disco. Cada archivo puede tener varios enlaces de descarga, cada uno con caducidad (1 día, 7 días, 30 días o nunca) y un límite de descargas opcional, y cualquiera se puede revocar en todo momento. Los enlaces tienen la forma `https://<dirección de la consola>/f/<token>/<nombre del archivo>`; quien tenga uno no necesita contraseña ni certificado de cliente, y `curl -O`, `wget` y las descargas reanudadas funcionan. Solo las solicitudes que empiezan desde el principio cuentan como descargas. Desactivar Archivos invalida todos los enlaces y conserva los archivos.
 
 ### Seguridad del inicio de sesión
 

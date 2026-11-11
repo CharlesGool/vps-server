@@ -445,6 +445,7 @@ class ModulesMixin:
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
                         "caddy": "/domains",
+                        "files": "/files",
                         "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
             return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
@@ -455,14 +456,14 @@ class ModulesMixin:
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
                  "caddy": t["domains"],
-                 "frp": t["frp_heading"], "portfwd": t["portfwd"],
+                 "frp": t["frp_heading"], "portfwd": t["portfwd"], "files": t["files"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
         closed = self.context.html.escape(t["module_closed_title"])
         body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
                 f'<div class="card access-card"><p>{closed}</p></div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc", "frp": "frp",
                  "tailscale": "tailscale", "caddy": "domains", "speedtest": "speedtest",
-                 "portfwd": "portfwd", "visitors": "visitors", "changelog": "changelog"}
+                 "portfwd": "portfwd", "files": "files", "visitors": "visitors", "changelog": "changelog"}
         return self.send_html(200, self.render_page(f"{names[module]}: {t['module_closed_title']}", body, lang,
                                                     back_href="/", icon=icons.get(module, "modules")),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -483,6 +484,7 @@ class ModulesMixin:
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("caddy", t["domains"], "/domains", "earth", states["caddy"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
+            ("files", t["files"], "/files", "hard-drive-download", states["files"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
             ("terminal", t["terminal_title"], "/terminal", "terminal", states["terminal"]),
             ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
@@ -630,6 +632,7 @@ def module_states(context, installed=None):
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["caddy"]]),
         "portfwd": context.portfwd_enabled(),
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
+        "files": context.module_feature_enabled(context.BASE_DIR, "files"),
         "terminal": context.AUTH_ENABLED and context.module_feature_enabled(context.BASE_DIR, "terminal"),
         "changelog": True,
     }

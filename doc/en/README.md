@@ -23,7 +23,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 - Browser upload/download tests, visitor records, timed iperf3 server windows and client tests.
 - Managed Singbox nodes for AnyTLS, VMess, VLESS, Trojan and Shadowsocks, with sharing, quotas, rate limits and expiry.
 - FRPS server (traffic accounting, cap, speed limits and validity like a Singbox node, metered on bindPort), FRPC instances and TCP/UDP proxies, a native Lucky management entry, and Tailscale status and devices.
-- Optional modules, port forwarding, detailed logs, a password-protected browser root terminal, three languages and themes.
+- Optional modules, port forwarding, a small file store with password-free download links, detailed logs, a password-protected browser root terminal, three languages and themes.
 - Escalating bans after failed logins, a console access limit, signed-in device management, a security log and Bark login alerts.
 - Fresh installs include only Web; public reachability pages are disabled. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
@@ -188,6 +188,10 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 ```
 
 The `status` argument lists the requirement state and all certificates.
+
+### Files
+
+"Files" on the home page is off by default. Once on, it keeps files on this server for a while and creates password-free download links, for example so a server that cannot reach GitHub can download from here. Files arrive in two ways: upload from a browser, or enter an http/https URL for the server to download itself (in the background; the browser can be closed). The limit defaults to 5 GiB and can be changed on the page; whatever the limit, at least 2 GiB stays free on disk. Each file can have several download links, each with an expiry (1 day, 7 days, 30 days or never) and an optional download limit, and each can be revoked at any time. Links look like `https://<console address>/f/<token>/<file name>`; whoever has one needs no password or client certificate, and `curl -O`, `wget` and resumed downloads all work. Only requests that start from the beginning count as downloads. Turning Files off disables every link and keeps the files.
 
 ### Login security
 

@@ -1,0 +1,26 @@
+/* Files page (/files). */
+.files-page { display: grid; gap: var(--compat-size-24); }
+.files-meter { height: var(--compat-size-14); border-radius: var(--radius-full); background: var(--secondary); overflow: hidden; }
+.files-meter > span { display: block; height: 100%; background: var(--primary); }
+.files-quota { margin-top: var(--compat-size-33); }
+.files-quota > summary { width: fit-content; color: var(--primary); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.files-quota > :not(summary) { margin-top: var(--compat-size-33); }
+.files-inline-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--compat-size-14); }
+.files-inline-form label { display: grid; gap: var(--compat-size-20); flex: 1 1 var(--compat-size-82); min-width: 0; }
+.files-inline-form button { flex: none; }
+.files-add > .files-inline-form + p { margin: var(--compat-size-20) 0 var(--compat-size-24); font-size: var(--text-sm); }
+.files-upload progress { flex: 1 1 100%; width: 100%; }
+.files-upload output { flex: 1 1 100%; font-size: var(--text-sm); }
+.files-list { display: grid; gap: var(--compat-size-14); margin: 0; padding: 0; list-style: none; }
+.files-list > li { display: grid; gap: var(--compat-size-11); min-width: 0; padding: var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
+.files-entry-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-24); }
+.files-entry-head .files-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.files-entry-head .muted, .files-source { font-size: var(--text-sm); }
+.files-source { margin: 0; overflow-wrap: anywhere; }
+.files-url { display: block; min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); }
+.files-links { display: grid; gap: var(--compat-size-11); margin: 0; padding: 0; list-style: none; }
+.files-links > li { display: grid; gap: var(--compat-size-20); padding: var(--compat-size-23) var(--compat-size-14); border-radius: var(--radius-md); background: var(--card); }
+.files-links .muted { font-size: var(--text-sm); }
+.files-link-actions { display: flex; flex-wrap: wrap; gap: var(--compat-size-11); }
+.files-link-form { padding-top: var(--compat-size-11); border-top: 1px solid var(--border); }
+.files-jobs .files-list > li > form { justify-self: start; }
