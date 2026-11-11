@@ -723,7 +723,7 @@
   "theme.terracotta": "Terracotta",
   "theme.indigo": "Indigo",
   "domains": "Domain forwarding",
-  "module_held_by_domains": "Ports 80 and 443 are used by domain forwarding",
+  "module_held_by_domains": "Ports 80 and 443 are used by domain forwarding or the IP certificate",
   "domains_added": "Added. The certificate is requested automatically once the name points here, usually within a minute or two.",
   "domains_removed": "Removed.",
   "domains_token_saved": "Cloudflare token saved and DNS records synced.",
@@ -914,5 +914,9 @@
   "files_error_cancelled": "Cancelled.",
   "files_error_interrupted": "Interrupted by a service restart.",
   "files_error_network": "Connection failed or timed out.",
-  "files_error_http": "The source answered HTTP {code}."
+  "files_error_http": "The source answered HTTP {code}.",
+  "ipcert": "IP certificate",
+  "ipcert_pending": "Being issued: usually within a minute, then the console switches to it",
+  "ipcert_ports": "Port 80 must be reachable from the internet (Let's Encrypt validates through it). While on, Caddy holds 80/443 and the public reachability page is off. No domain or Cloudflare token is needed.",
+  "ipcert_failed": "The change failed: there may be no public IPv4. See Settings > Detailed logs."
 }

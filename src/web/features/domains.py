@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from caddy_sites import (ACCESS_LOG, CONFIG_DIR, SERVICE, certificate_info, console_port, read_history,
                          read_sites, read_zones, zone_of)
 NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
-           "domains_ip_enabled", "domains_ip_disabled", "domains_site_enabled", "domains_site_disabled",
+           "domains_site_enabled", "domains_site_disabled",
            "domains_site_saved")
 ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip", "allow_invalid", "auth_invalid",
           "caddy_rejected", "token_invalid", "invalid", "failed")
@@ -124,28 +124,7 @@ class DomainsMixin:
         checked_text = (time.strftime("%Y-%m-%d %H:%M", time.localtime(checked))
                         if isinstance(checked, (int, float)) else "—")
         dns_error = dns.get("error") if dns.get("error") in WARNINGS and dns.get("error") != "dns_no_token" else None
-        # HTTPS for the console at the bare public address (Let's Encrypt six-day certificates).
-        ip_site = next((site for site in sites if site.get("ip")), None)
-        sites = [site for site in sites if not site.get("ip")]
-        if ip_site:
-            cert = certificate_info(ip_site["host"])
-            ip_cert = (t["domains_cert_detail"].format(issuer=cert[1], date=cert[0].strftime("%Y-%m-%d %H:%M"),
-                                                       days=(cert[0] - datetime.now(timezone.utc)).days)
-                       if cert else t["domains_cert_pending_detail"])
-            ip_url = f'https://{ip_site["host"]}:{console_port() or self.context.CONSOLE_PORT}/'
-            ip_state = (f'<p>{pill(t["domains_ip_on"], "is-open")} '
-                        f'<a href="{esc(ip_url, quote=True)}" target="_blank" rel="noopener noreferrer">'
-                        f'{esc(ip_url)}</a></p>'
-                        f'<p class="muted">{esc(t["domains_certificate_label"])}: {esc(ip_cert)}</p>')
-        else:
-            ip_state = f'<p class="muted">{esc(t["domains_ip_help"])}</p>'
-        ip_section = (f'<div class="domains-ip"><h3 class="domains-zones-heading">{esc(t["domains_ip_heading"])}</h3>'
-                      f'{ip_state}<form method="post" action="/domains/ip" '
-                      + (f'data-confirm="{esc(t["domains_ip_off_confirm"], quote=True)}"' if ip_site else '') + '>'
-                      f'<input type="hidden" name="csrf" value="{csrf}">'
-                      f'<input type="hidden" name="enable" value="{"0" if ip_site else "1"}">'
-                      f'<button type="submit" class="{"node-action-danger " if ip_site else ""}frp-card-edit">'
-                      f'{esc(t["domains_ip_disable"] if ip_site else t["domains_ip_enable"])}</button></form></div>')
+        sites = [site for site in sites if not site.get("ip")]  # the IP certificate has its own page
         history = read_history(30)
         history_rows = "".join(
             f'<li><time>{esc(time.strftime("%m-%d %H:%M", time.localtime(item.get("t", 0))))}</time>'
@@ -163,7 +142,7 @@ class DomainsMixin:
                     f'<div><dt>{esc(t["domains_dns_checked"])}</dt><dd><code>{esc(checked_text)}</code></dd></div>'
                     f'</dl>'
                     + (f'<p class="error" role="status">{esc(t["domains_" + dns_error])}</p>' if dns_error else '')
-                    + ip_section + history_section + '</section>')
+                    + history_section + '</section>')
 
         zones = read_zones()
         listening = listening_ports()
@@ -527,13 +506,60 @@ class DomainsMixin:
         return self.send_html(200, self.render_page(t["domains_access_log"], body, lang, icon="domains", back_href="/domains"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
-    def handle_domains_ip(self):
-        form = self.domains_form()
-        if form is None:
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        enable = form.get("enable", [""])[0] == "1"
-        reply = self.domains_apply({"action": "ip", "enable": enable})
-        return self.domains_finish(reply, "domains_ip_enabled" if enable else "domains_ip_disabled")
+    def page_ipcert(self, lang, query_lang):
+        """HTTPS for the console at this host's public IPv4, on its own port.
+
+        It runs on the Caddy module like domain forwarding, but needs no
+        domain or Cloudflare token: a host can have only this.
+        """
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        if "caddy" not in self.context.installed_modules(self.context.BASE_DIR):
+            return self.page_module_not_installed(lang, query_lang, t["ipcert"], t["ipcert"], module="caddy")
+        states = self.context.module_states()
+        enabled = states["ipcert"]
+        try:
+            ip_site = next((site for site in read_sites() if site.get("ip")), None)
+        except (OSError, ValueError):
+            ip_site = None
+        if enabled and ip_site:
+            cert = certificate_info(ip_site["host"])
+            detail = (t["domains_cert_detail"].format(issuer=cert[1], date=cert[0].strftime("%Y-%m-%d %H:%M"),
+                                                      days=(cert[0] - datetime.now(timezone.utc)).days)
+                      if cert else t["ipcert_pending"])
+            url = f'https://{ip_site["host"]}:{console_port() or self.context.CONSOLE_PORT}/'
+            state = (f'<p><span class="proxy-node-status is-open">{esc(t["domains_ip_on"])}</span> '
+                     f'<a href="{esc(url, quote=True)}" target="_blank" rel="noopener noreferrer">{esc(url)}</a></p>'
+                     f'<p class="muted">{esc(t["domains_certificate_label"])}: {esc(detail)}</p>')
+        else:
+            state = ""
+        # The switch runs as a background job; refresh until it ends.
+        try:
+            job = json.loads(self.context.module_status_path(self.context.BASE_DIR).read_text())
+        except (OSError, ValueError):
+            job = {}
+        if job.get("module") == "ipcert" and time.time() - job.get("at", 0) < 900:
+            if job.get("state") in ("queued", "running"):
+                state = (f'<meta http-equiv="refresh" content="3">'
+                         f'<p class="notice" role="status">{esc(t["module_job_running"])}</p>') + state
+            elif job.get("state") == "failed" and time.time() - job.get("at", 0) < 60:
+                state = f'<p class="error" role="alert">{esc(t["ipcert_failed"])}</p>' + state
+        action = "disable" if enabled else "enable"
+        token = self.context.access_csrf_token(self.get_cookie("session"), "module:ipcert:" + action)
+        confirm = f' data-confirm="{esc(t["domains_ip_off_confirm"], quote=True)}"' if enabled else ""
+        form = (f'<form method="post" action="/settings/modules/action">'
+                f'<input type="hidden" name="module" value="ipcert">'
+                f'<input type="hidden" name="action" value="{action}">'
+                f'<input type="hidden" name="return" value="ipcert">'
+                f'<input type="hidden" name="csrf" value="{token}">'
+                f'<button type="submit" class="{"node-action-danger " if enabled else ""}frp-card-edit"{confirm}>'
+                f'{esc(t["domains_ip_disable"] if enabled else t["domains_ip_enable"])}</button></form>')
+        body = (f'<h1>{esc(t["ipcert"])}</h1><div class="frp-workspace domains-page">'
+                f'<section class="card frp-card ipcert-card"><p>{esc(t["domains_ip_help"])}</p>'
+                f'<p class="muted">{esc(t["ipcert_ports"])}</p>{state}{form}</section></div>'
+                '<script src="/static/module-controls.js" defer></script>')
+        return self.send_html(200, self.render_page(t["ipcert"], body, lang, icon="ipcert"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
     def handle_domains_token(self):
         form = self.domains_form()
@@ -556,13 +582,16 @@ class DomainsMixin:
         if method == "GET" and path == "/domains/value":
             self.handle_domains_value(parsed)
             return True
-        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token", "/domains/ip",
+        if method == "GET" and path == "/ipcert":
+            self.page_ipcert(lang, query_lang)
+            return True
+        if method == "POST" and path in ("/domains/add", "/domains/remove", "/domains/token",
                                          "/domains/toggle", "/domains/edit"):
             if not self.context.module_states()["caddy"]:
                 self.send_html(404, "Not found", {"Cache-Control": "no-store"})
                 return True
             {"/domains/add": self.handle_domains_add, "/domains/remove": self.handle_domains_remove,
-             "/domains/ip": self.handle_domains_ip, "/domains/toggle": self.handle_domains_toggle,
+             "/domains/toggle": self.handle_domains_toggle,
              "/domains/edit": self.handle_domains_edit,
              "/domains/token": self.handle_domains_token}[path]()
             return True

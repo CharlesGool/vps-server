@@ -723,7 +723,7 @@
   "theme.terracotta": "陶土红",
   "theme.indigo": "靛蓝",
   "domains": "域名转发",
-  "module_held_by_domains": "80 和 443 端口由域名转发使用",
+  "module_held_by_domains": "80 和 443 端口由域名转发或 IP 证书使用",
   "domains_added": "已添加。证书会在域名解析到本机后自动申请, 通常需要一两分钟。",
   "domains_removed": "已删除。",
   "domains_token_saved": "Cloudflare 令牌已保存, DNS 记录已同步。",
@@ -914,5 +914,9 @@
   "files_error_cancelled": "已取消。",
   "files_error_interrupted": "服务重启，下载中断。",
   "files_error_network": "连接失败或超时。",
-  "files_error_http": "来源返回 HTTP {code}。"
+  "files_error_http": "来源返回 HTTP {code}。",
+  "ipcert": "IP 证书",
+  "ipcert_pending": "申请中: 通常一分钟内签发, 控制台随后自动换上",
+  "ipcert_ports": "需要本机 80 端口能从公网访问 (Let's Encrypt 用它验证); 开启期间 80/443 由 Caddy 占用, 公开可达性页面停用。不需要域名或 Cloudflare 令牌。",
+  "ipcert_failed": "操作失败: 可能没有公网 IPv4, 详细原因见 设置 > 详细日志。"
 }

@@ -77,6 +77,7 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          cert_dir as host_cert_dir, install_state_file)
 from client_cert import ClientAuth, ClientCertError
 from file_share import FileStore
+from caddy_sites import domains_enabled as caddy_domains_enabled, ip_enabled as caddy_ip_enabled
 from console_access import ConsoleAccess, ConsoleAccessError
 from security_events import AuditLog, KnownLogins, BarkAlerts
 import terminal_session
@@ -955,7 +956,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download", "shield-check"})
 _UI_ICON_CACHE = {}
 
 
@@ -1007,7 +1008,7 @@ STATIC_FILES = {
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains", "files")},
+                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains", "files", "ipcert")},
     "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
     "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
     "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),

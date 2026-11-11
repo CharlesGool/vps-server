@@ -723,7 +723,7 @@
   "theme.terracotta": "Terracota",
   "theme.indigo": "Índigo",
   "domains": "Reenvío de dominios",
-  "module_held_by_domains": "Los puertos 80 y 443 los usa el reenvío de dominios",
+  "module_held_by_domains": "Los puertos 80 y 443 los usa el reenvío de dominios o el certificado IP",
   "domains_added": "Añadido. El certificado se solicita automáticamente cuando el nombre apunte aquí, normalmente en uno o dos minutos.",
   "domains_removed": "Eliminado.",
   "domains_token_saved": "Token de Cloudflare guardado y registros DNS sincronizados.",
@@ -914,5 +914,9 @@
   "files_error_cancelled": "Cancelada.",
   "files_error_interrupted": "Interrumpida por un reinicio del servicio.",
   "files_error_network": "La conexión falló o expiró.",
-  "files_error_http": "El origen respondió HTTP {code}."
+  "files_error_http": "El origen respondió HTTP {code}.",
+  "ipcert": "Certificado IP",
+  "ipcert_pending": "En emisión: suele tardar menos de un minuto y luego la consola lo usa",
+  "ipcert_ports": "El puerto 80 debe ser accesible desde internet (Let's Encrypt valida por él). Mientras está activado, Caddy ocupa 80/443 y la página pública de accesibilidad se desactiva. No hace falta dominio ni token de Cloudflare.",
+  "ipcert_failed": "El cambio falló: puede que no haya IPv4 pública. Consulta Configuración > Registros detallados."
 }

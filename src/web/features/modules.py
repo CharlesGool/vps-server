@@ -381,14 +381,14 @@ class ModulesMixin:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
         allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") if action in ("install", "uninstall") else (
-            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") + self.context.MANAGED_FEATURES
+            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy", "ipcert") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
         if not self.context.hmac.compare_digest(form["csrf"][0], expected):
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         back = form.get("return", [""])[0]
-        destination = ("/" if back == "home" else
+        destination = ("/" if back == "home" else "/ipcert" if back == "ipcert" and module == "ipcert" else
                        INSTALL_PAGES[module] if back == "page" and action == "install" and module in INSTALL_PAGES else
                        "/settings#settings-modules")
         installed = self.context.installed_modules(self.context.BASE_DIR)
@@ -444,7 +444,7 @@ class ModulesMixin:
         destinations = {"web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
-                        "caddy": "/domains",
+                        "caddy": "/domains", "ipcert": "/ipcert",
                         "files": "/files",
                         "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
@@ -455,14 +455,14 @@ class ModulesMixin:
         names = {"web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
-                 "caddy": t["domains"],
+                 "caddy": t["domains"], "ipcert": t["ipcert"],
                  "frp": t["frp_heading"], "portfwd": t["portfwd"], "files": t["files"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
         closed = self.context.html.escape(t["module_closed_title"])
         body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
                 f'<div class="card access-card"><p>{closed}</p></div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc", "frp": "frp",
-                 "tailscale": "tailscale", "caddy": "domains", "speedtest": "speedtest",
+                 "tailscale": "tailscale", "caddy": "domains", "ipcert": "ipcert", "speedtest": "speedtest",
                  "portfwd": "portfwd", "files": "files", "visitors": "visitors", "changelog": "changelog"}
         return self.send_html(200, self.render_page(f"{names[module]}: {t['module_closed_title']}", body, lang,
                                                     back_href="/", icon=icons.get(module, "modules")),
@@ -483,6 +483,7 @@ class ModulesMixin:
             ("frpc", "FRPC", "/frpc", "cable", states["frpc"]),
             ("tailscale", "Tailscale", "/tailscale", "waypoints", states["tailscale"]),
             ("caddy", t["domains"], "/domains", "earth", states["caddy"]),
+            ("ipcert", t["ipcert"], "/ipcert", "shield-check", states["ipcert"]),
             ("portfwd", t["portfwd"], "/portfwd", "route", states["portfwd"]),
             ("files", t["files"], "/files", "hard-drive-download", states["files"]),
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
@@ -517,7 +518,7 @@ class ModulesMixin:
                     module != "frps" or "frps" in installed) and (
                     module != "frpc" or "frpc" in installed) and (
                     module != "tailscale" or "tailscale" in installed) and (
-                    module != "caddy" or "caddy" in installed) and (
+                    module not in ("caddy", "ipcert") or "caddy" in installed) and (
                     module != "portfwd" or self.context.PORTFWD_ALLOWED)
                 switch = (f'<form method="post" action="/settings/modules/action" class="tile-switch-form">'
                           f'<input type="hidden" name="module" value="{module}">'
@@ -614,6 +615,8 @@ def public_listener_occupied(context, module, job):
 
 def module_states(context, installed=None):
     installed = installed if installed is not None else context.installed_modules(context.BASE_DIR)
+    caddy_running = "caddy" in installed and context._run_quiet(
+        ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["caddy"]])
     states = {
         "web_http": "web" in installed and context.PUBLIC_HTTP_ENABLED and
                     (public_listener_runtime(context, "web_http") or {}).get("bound", True),
@@ -628,8 +631,8 @@ def module_states(context, installed=None):
         "frpc": "frpc" in installed and context.frpc_group_enabled(context.BASE_DIR),
         "tailscale": "tailscale" in installed and context._run_quiet(
             ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["tailscale"]]),
-        "caddy": "caddy" in installed and context._run_quiet(
-            ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["caddy"]]),
+        "caddy": caddy_running and context.caddy_domains_enabled(),
+        "ipcert": caddy_running and context.caddy_ip_enabled(),
         "portfwd": context.portfwd_enabled(),
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
         "files": context.module_feature_enabled(context.BASE_DIR, "files"),

@@ -59,6 +59,7 @@ CADDY_CONFIG = CONFIG_DIR / "caddy.json"
 LOCK_PATH = CONFIG_DIR / "sites.lock"
 PROXY_KEY_PATH = CONFIG_DIR / "proxy-key"
 CLIENT_CA_COPY = CONFIG_DIR / "client-ca.pem"
+DOMAINS_FLAG = CONFIG_DIR / "domains-enabled"
 DATA_DIR = Path(os.environ.get("VPSSRV_CADDY_DATA", "/var/lib/vps-server-caddy"))
 ACCESS_LOG = DATA_DIR / "logs" / "access.log"
 ADMIN_SOCKET = "/run/vps-server-caddy/admin.sock"
@@ -105,6 +106,34 @@ def read_sites(path=SITES_PATH):
 
 def write_sites(sites, path=SITES_PATH):
     _write(Path(path), json.dumps({"sites": sites}, indent=2) + "\n")
+
+
+def domains_enabled():
+    """Domain forwarding's own switch. Caddy also runs for the IP certificate alone."""
+    try:
+        return DOMAINS_FLAG.read_text().strip() == "1"
+    except OSError:
+        # Before the switch existed, an enabled Caddy meant domain forwarding was on.
+        return subprocess.run(["systemctl", "is-enabled", "--quiet", SERVICE], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def set_domains_enabled(enabled):
+    _write(DOMAINS_FLAG, "1\n" if enabled else "0\n")
+
+
+def ip_enabled(sites=None):
+    if sites is None:
+        try:
+            sites = read_sites()
+        except (OSError, ValueError):
+            return False
+    return any(site.get("ip") and site.get("enabled", True) for site in sites)
+
+
+def active_sites(sites):
+    """The sites Caddy serves: domain sites only while domain forwarding is on."""
+    return sites if domains_enabled() else [site for site in sites if site.get("ip")]
 
 
 def read_token(path=TOKEN_PATH):
@@ -306,7 +335,7 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
 
 def render(sites=None):
     """Write caddy.json (and the client CA copy); True when either changed."""
-    sites = read_sites() if sites is None else sites
+    sites = active_sites(read_sites() if sites is None else sites)
     try:
         group = grp.getgrnam(GROUP).gr_gid
     except KeyError:
@@ -853,12 +882,13 @@ def _merge_dns(update, sites):
 def ddns():
     with _locked():
         sites = read_sites()
+        active = active_sites(sites)
         token = read_token()
         previous = read_dns()
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
             and all((previous.get("sites", {}).get(name) or {}).get("ok")
-                    for site in sites if not site.get("ip") for name in names(site))
+                    for site in active if not site.get("ip") for name in names(site))
         events, alerts = [], []
         # No address at all is a routing hiccup, not a move: report nothing.
         if previous.get("checked_at") and any(addresses) and (previous.get("ipv4"), previous.get("ipv6")) != addresses:
@@ -867,7 +897,7 @@ def ddns():
             alerts.append((f"ip:{addresses}", "domains_alert_ip_title", "domains_alert_ip_body",
                            {"old": events[-1]["old"], "new": events[-1]["value"]}))
         # Certificates Caddy should have renewed by now (an address's lasts six days).
-        for site in sites:
+        for site in active:
             info = certificate_info(site["host"]) if site.get("enabled", True) else None
             if info:
                 left = (info[0] - datetime.now(timezone.utc)).total_seconds() / 86400
@@ -892,7 +922,7 @@ def ddns():
             record_history(events)
             send_alerts(alerts)
             return previous
-        state = sync_dns(sites, token, addresses=addresses)
+        state = sync_dns(active, token, addresses=addresses)
         events += state.pop("events", [])
         for host, result in state["sites"].items():
             if not result.get("ok") and (previous.get("sites", {}).get(host) or {}).get("ok", True):

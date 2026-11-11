@@ -52,6 +52,8 @@ FEATURES = ("speedtest", "portfwd", "visitors", "terminal", "files")
 # Off until switched on, unlike the older features (on unless switched off).
 DEFAULT_OFF_FEATURES = ("files",)
 GROUPS = ("proxy_nodes", "frpc")
+# Switches carried by an installed module: the IP certificate runs on Caddy.
+CADDY_FEATURES = ("ipcert",)
 PUBLIC_LISTENERS = ("web_http", "web_https")
 UNITS = {
     "proxy": "vps-server-proxy.service",
@@ -729,6 +731,10 @@ def run_toggle(prefix, module, enabled):
     if module in FEATURES:
         set_feature(prefix, module, enabled)
         return
+    if module == "ipcert":
+        if "caddy" not in installed_modules(prefix):
+            raise RuntimeError("caddy is not installed")
+        return switch_ipcert(prefix, enabled)
     if module not in installed_modules(prefix):
         raise RuntimeError("module is not installed")
     if module == "iperf3":
@@ -850,9 +856,50 @@ def release_caddy_ports(prefix):
                 pass
 
 
+def _caddy_sites():
+    try:
+        from . import caddy_sites
+    except ImportError:
+        import caddy_sites
+    return caddy_sites
+
+
 def switch_caddy(prefix, enabled):
-    """Caddy and the public page take turns on 80/443; Web restarts to follow."""
+    """Domain forwarding's switch. Caddy keeps running while the IP certificate is on."""
     time.sleep(2)  # Let the console return its redirect before Web restarts.
+    sites = _caddy_sites()
+    sites.set_domains_enabled(enabled)
+    sync_caddy(prefix)
+
+
+def switch_ipcert(prefix, enabled):
+    """The certificate for this host's public IPv4, for the console's own port."""
+    time.sleep(2)
+    sites = _caddy_sites()
+    # Fix domain forwarding's state before Caddy's own state changes under it.
+    sites.set_domains_enabled(sites.domains_enabled())
+    reply = sites.apply({"action": "ip", "enable": enabled})
+    if not reply.get("ok"):
+        raise RuntimeError("IP certificate change failed")
+    sync_caddy(prefix)
+
+
+def sync_caddy(prefix):
+    """Run Caddy while domain forwarding or the IP certificate needs it."""
+    sites = _caddy_sites()
+    want = sites.domains_enabled() or sites.ip_enabled()
+    running = caddy_enabled()
+    sites.render()
+    if want and not running:
+        start_caddy(prefix, True)
+    elif running and not want:
+        start_caddy(prefix, False)
+    elif running:
+        sites.reload_caddy()
+
+
+def start_caddy(prefix, enabled):
+    """Caddy and the public page take turns on 80/443; Web restarts to follow."""
     unit = UNITS["caddy"]
     if enabled:
         subprocess.run(["systemctl", "enable", unit], check=True, timeout=30)
@@ -1194,10 +1241,10 @@ def uninstall_frpc(prefix):
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS:
+    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS + CADDY_FEATURES:
         raise SystemExit("invalid module action")
     action, module, prefix = argv
-    if module in PUBLIC_LISTENERS and action not in ("enable", "disable"):
+    if module in PUBLIC_LISTENERS + CADDY_FEATURES and action not in ("enable", "disable"):
         raise SystemExit("invalid public listener action")
     prefix = str(Path(prefix).resolve(strict=True))
     if os.geteuid() != 0 or not (install_state_file()).is_file():
