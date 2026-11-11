@@ -26,6 +26,25 @@ metadata:
 
 ## Historial de cambios
 
+### v6.1.0 — 2026-11-11
+
+Iniciar sesión con certificado de cliente cuesta menos: los archivos de configuración en un clic importan el certificado y hacen que el navegador lo elija solo, sin buscarlo en el selector en cada inicio de sesión; ahora los certificados se importan en macOS. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Añadido
+
+- **Archivos de configuración en un clic.** El primer paso de la página que aparece tras emitir un certificado ofrece archivos para Windows (`.cmd`), macOS (`.mobileconfig`) y Linux (`.sh`). Importan el certificado y, mediante la política del navegador `AutoSelectCertificateForUrls`, hacen que Chrome y Edge (y Chromium en Linux) lo elijan solos en cada dirección de la consola (la dirección actual y los dominios e IP que apuntan a la consola). Un dispositivo que ya tiene el certificado puede descargar una versión sin él en Configuración > Seguridad > Certificados de cliente para activar solo la selección automática. Los pasos manuales con el `.p12` pasan a "Importación manual" en la página de emisión.
+- **Los nombres de los certificados incluyen el nombre del host.** Las CA y los certificados de dispositivo nuevos llevan el nombre del host, así que en el selector se distinguen los certificados de varios hosts. Las CA existentes conservan su nombre y los certificados emitidos siguen funcionando.
+
+#### Corregido
+
+- macOS indicaba contraseña incorrecta al importar un certificado (tanto en Llavero como en perfiles): el paquete del certificado usa ahora un cifrado que macOS admite (SHA1/3DES). Los certificados emitidos antes deben volver a emitirse para usarlos en un Mac.
+- Cuando la conexión no presenta certificado, la tarjeta de certificados indica que un dispositivo nuevo genere el suyo abajo.
+- Los botones de editar, registro de accesos y eliminar al pie de las tarjetas de sitios del reenvío de dominios quedan en una fila con el mismo estilo.
+
+#### Verificación
+
+El operador verificó la configuración de Windows en una máquina real. Linux se verificó de extremo a extremo en Ubuntu 22.04 con Chrome 157 (importación, escritura de la política, y las direcciones de IP y de dominio de la consola enviando el certificado sin selector). El operador importó en macOS, mediante el perfil, un certificado con el nuevo cifrado e inició sesión. Sin verificar: Chromium de snap (almacén de certificados aparte, no admitido por el script) y Firefox (no lee estas políticas). Limitación conocida: en un mismo Mac, los perfiles de dos hosts entran en conflicto por la política del navegador.
+
 ### v6.0.0 — 2026-11-11
 
 Añade un módulo de reenvío de dominios (con Caddy incluido) que sustituye al módulo Lucky, eliminado: HTTPS por subdominio hacia un puerto local o la consola, con certificados automáticos y registros DNS mantenidos en Cloudflare. La consola también puede obtener un certificado de confianza para la IP del servidor. El comando de actualización no cambia y se conservan la configuración y los datos; el módulo Lucky se elimina durante la actualización.

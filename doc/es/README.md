@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.0.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.0.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.1.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.1.0)
 
 ## Documentación
 
@@ -125,10 +125,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.0.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.1.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -136,7 +136,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Lucky y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v6.0.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.1.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -148,17 +148,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.0.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.1.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -177,7 +177,7 @@ Inicie sesión con la dirección y contraseña del registro. Instale componentes
 
 ### Inicio de sesión con certificado de cliente
 
-Un certificado de cliente (clave pública/privada) puede sustituir a la contraseña. En Configuración > Seguridad > Certificados de cliente, emita un certificado por dispositivo, descargue el archivo `.p12`, anote la contraseña de importación (se muestra una sola vez), impórtelo en el sistema o el navegador y reinicie el navegador por completo. Al volver a abrir la consola, el navegador pregunta qué certificado usar y la página de inicio de sesión ofrece "Entrar con certificado". Los nombres de los certificados incluyen el nombre del host para distinguirlos en el selector. "No elegir el certificado cada vez", en la misma página, ofrece archivos de configuración en un clic para Windows, macOS y Linux: importan el certificado si hace falta y hacen que el navegador lo elija solo. Windows: doble clic en el `.cmd` (sin permisos de administrador; Chrome y Edge). macOS: doble clic en el `.mobileconfig` y luego instálalo en Ajustes del Sistema > Privacidad y seguridad > Perfiles (Chrome y Edge). Linux: ejecuta el `.sh` con `bash` en una terminal (usa sudo para el archivo de políticas; Chrome, Chromium y Edge; importar necesita libnss3-tools). El servidor solo guarda los números de serie, nunca las claves privadas de los dispositivos; revoque en la misma página los certificados perdidos o sin uso.
+Un certificado de cliente (clave pública/privada) puede sustituir a la contraseña. En Configuración > Seguridad > Certificados de cliente, emita un certificado por dispositivo, descargue el archivo `.p12`, anote la contraseña de importación (se muestra una sola vez), impórtelo en el sistema o el navegador y reinicie el navegador por completo. Al volver a abrir la consola, el navegador pregunta qué certificado usar y la página de inicio de sesión ofrece "Entrar con certificado". Los nombres de los certificados incluyen el nombre del host para distinguirlos en el selector. El primer paso de la página que aparece tras emitirlo ofrece archivos de configuración en un clic para Windows, macOS y Linux: importan el certificado y hacen que el navegador lo elija solo; los pasos manuales con el `.p12` están en "Importación manual". Un dispositivo que ya tiene el certificado puede descargar una versión sin él en "No elegir el certificado cada vez", en la tarjeta de certificados, para activar solo la selección automática. Cada dispositivo usa su propio certificado; para un dispositivo nuevo, genere otro en esta página. Windows: doble clic en el `.cmd` (sin permisos de administrador; Chrome y Edge). macOS: doble clic en el `.mobileconfig` y luego instálalo en Ajustes del Sistema > Privacidad y seguridad > Perfiles (Chrome y Edge). Linux: ejecuta el `.sh` con `bash` en una terminal (usa sudo para el archivo de políticas; Chrome, Chromium y Edge; importar necesita libnss3-tools). El servidor solo guarda los números de serie, nunca las claves privadas de los dispositivos; revoque en la misma página los certificados perdidos o sin uso.
 
 Cuando la conexión actual ya use un certificado, active "Exigir certificado de cliente": los dispositivos sin certificado válido no pueden abrir ni la página de inicio de sesión y la contraseña deja de servir para entrar; solo verifica de nuevo el terminal root y la configuración de seguridad. El acceso por IP sin contraseña también necesita certificado; los enlaces de suscripción de Clash no se ven afectados. Los certificados los firma el OpenSSL 3.5 LTS estático incluido en el paquete, con una configuración mínima propia, así que la versión de openssl y el openssl.cnf del equipo no influyen. Cada autoridad de certificación pasa antes una autoprueba de TLS mutuo con la biblioteca TLS del equipo; una autoridad inválida creada por un openssl antiguo se reemplaza, sus certificados se marcan como revocados y se desactiva "Exigir certificado de cliente". `client_cert.py check` muestra el openssl usado y el resultado de la autoprueba.
 
@@ -276,7 +276,7 @@ Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pas
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.0.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.1.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

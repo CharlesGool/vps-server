@@ -26,6 +26,25 @@ metadata:
 
 ## Changelog
 
+### v6.1.0 — 2026-11-11
+
+Client certificate login takes less effort: one-click setup files import the certificate and make the browser pick it on its own, so you no longer search the picker at every login; certificates now import on macOS. The upgrade command is unchanged and settings and data are kept.
+
+#### Added
+
+- **One-click setup files.** The first step on the page shown after issuing a certificate offers Windows (`.cmd`), macOS (`.mobileconfig`) and Linux (`.sh`) files. They import the certificate and, through the browser policy `AutoSelectCertificateForUrls`, make Chrome and Edge (plus Chromium on Linux) pick it on their own for each console address (the current address, and the domains and IP that point to the console). A device that already has the certificate can download a version without it from Settings > Security > Client certificates to turn on auto-select only. The manual `.p12` steps move into "Manual import" on the issued page.
+- **Certificate names include the host name.** Newly issued CAs and device certificates carry the host name, so certificates from several hosts can be told apart in the picker. Existing CAs keep their names and issued certificates keep working.
+
+#### Fixed
+
+- macOS reported a wrong password when importing a certificate (both Keychain and profiles): the certificate bundle now uses encryption that macOS supports (SHA1/3DES). Certificates issued earlier must be reissued for use on a Mac.
+- When the connection presents no certificate, the certificate card tells a new device to generate its own below.
+- The edit, access log and delete buttons at the bottom of the domain forwarding site cards sit in one row with matching styles.
+
+#### Verification
+
+The operator verified the Windows setup on a real machine. Linux was verified end to end on Ubuntu 22.04 with Chrome 157 (import, policy write, and both the console's IP and domain addresses sending the certificate with no picker). The operator imported a certificate with the new encryption on macOS through the profile and signed in. Not verified: snap Chromium (separate certificate store, not supported by the script) and Firefox (does not read these policies). Known limitation: on one Mac, profiles from two hosts conflict over the browser policy.
+
 ### v6.0.0 — 2026-11-11
 
 Adds a domain forwarding module (bundled Caddy) that replaces the removed Lucky module: HTTPS by subdomain to a local port or the console, with automatic certificates and DNS records kept on Cloudflare. The console can also get a trusted certificate for the host's IP. The upgrade command is unchanged and settings and data are kept; the Lucky module is removed during the upgrade.

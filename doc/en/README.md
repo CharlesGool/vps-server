@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.0.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.0.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.1.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.1.0)
 
 ## Documentation
 
@@ -125,10 +125,10 @@ Run as root.
 
 ### Quick Install
 
-Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v6.0.0-linux-amd64-online.tar.gz` as the file name, or run this command:
+Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v6.1.0-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -136,7 +136,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 Source installs require building the frontend first in `web/` (Node.js 24). The repository does not contain upstream programs such as sing-box, frp, Lucky and Tailscale; like the online package, the installer downloads them and verifies their SHA-256. The private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v6.0.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.1.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -148,17 +148,17 @@ bash deploy/install.sh
 The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.0.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.1.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -177,7 +177,7 @@ Log in using the address and password in the installation log. Install component
 
 ### Client-certificate login
 
-A client certificate (public/private key) can replace the password for login. In Settings > Security > Client certificates, issue one certificate per device, download the `.p12` file, note the import password (shown only once), import it into the system or browser, then fully restart the browser. The next time the console opens, the browser asks which certificate to use and the login page offers "Sign in with certificate". Certificate names include the host name so the picker tells hosts apart. "Stop picking the certificate every time" on the same page offers one-click setup files for Windows, macOS and Linux: they import the certificate when needed and make the browser pick it on its own. Windows: double-click the `.cmd` (no administrator rights; Chrome and Edge). macOS: double-click the `.mobileconfig`, then install it in System Settings > Privacy & Security > Profiles (Chrome and Edge). Linux: run the `.sh` with `bash` in a terminal (uses sudo for the policy file; Chrome, Chromium and Edge; importing needs libnss3-tools). The server keeps only certificate serial numbers, never device private keys; revoke lost or unused certificates on the same page.
+A client certificate (public/private key) can replace the password for login. In Settings > Security > Client certificates, issue one certificate per device, download the `.p12` file, note the import password (shown only once), import it into the system or browser, then fully restart the browser. The next time the console opens, the browser asks which certificate to use and the login page offers "Sign in with certificate". Certificate names include the host name so the picker tells hosts apart. The first step on the page shown after issuing offers one-click setup files for Windows, macOS and Linux: they import the certificate and make the browser pick it on its own; the manual `.p12` steps are under "Manual import". A device that already has the certificate can download a version without it under "Stop picking the certificate every time" in the certificate card to turn on auto-select only. Each device uses its own certificate; generate another one here for a new device. Windows: double-click the `.cmd` (no administrator rights; Chrome and Edge). macOS: double-click the `.mobileconfig`, then install it in System Settings > Privacy & Security > Profiles (Chrome and Edge). Linux: run the `.sh` with `bash` in a terminal (uses sudo for the policy file; Chrome, Chromium and Edge; importing needs libnss3-tools). The server keeps only certificate serial numbers, never device private keys; revoke lost or unused certificates on the same page.
 
 Once the current connection uses a certificate, turn on "Require client certificate": devices without a valid certificate cannot even open the login page, and the password no longer logs in; it only re-verifies the root terminal and security settings. IP allowlist login also needs a certificate; Clash subscription links are unaffected. Certificates are signed by the static OpenSSL 3.5 LTS shipped in the package, with the project's own minimal configuration, so the host's openssl version and openssl.cnf do not matter. Each certificate authority first passes a mutual-TLS self test on the host TLS library; an invalid authority written by an old host openssl is replaced, the certificates it signed are marked revoked, and "Require client certificate" is turned off. `client_cert.py check` shows the openssl in use and the self-test result.
 
@@ -276,7 +276,7 @@ Layout-1 v5.1.1 test builds and v5.2.x can be upgraded using the installation st
 
 v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v6.0.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v6.1.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 

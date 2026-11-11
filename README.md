@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.0.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.0.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.1.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.1.0)
 
 ## 文档
 
@@ -126,10 +126,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.0.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.1.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -137,7 +137,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 源码安装需先在 `web/` 构建前端(Node.js 24). 仓库不含 sing-box, frp, Caddy 和 Tailscale 等上游程序, 安装时像在线版一样联网下载并校验 SHA-256;私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v6.0.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.1.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -149,17 +149,17 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/vps-server-v6.0.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.0.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.0.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.1.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -178,7 +178,7 @@ cat /root/apps/vps-server/.local/install-job/exit-code
 
 ### 客户端证书登录
 
-可以用客户端证书(公钥/私钥)代替密码登录. 在 设置 > 安全 > 客户端证书 中为每台设备生成证书, 下载 `.p12` 文件并记下只显示一次的导入密码, 导入系统或浏览器后完全重启浏览器. 再打开控制台时浏览器会询问用哪个证书, 登录页出现"使用证书登录". 证书名称带主机名, 便于在选择框里区分. 同一页的"免去每次手动选证书"提供 Windows, macOS 和 Linux 的一键设置文件: 需要时导入证书, 并让浏览器自动选中它. Windows 双击 `.cmd`(无需管理员权限, 支持 Chrome 和 Edge); macOS 双击 `.mobileconfig` 后在 系统设置 > 隐私与安全性 > 描述文件 中安装(Chrome 和 Edge); Linux 在终端运行 `bash` 加 `.sh` 文件(写入策略时会用 sudo, 支持 Chrome, Chromium 和 Edge, 导入证书需要 libnss3-tools). 服务器只保存证书序列号, 不保存设备私钥;丢失或不用的证书在同一页撤销.
+可以用客户端证书(公钥/私钥)代替密码登录. 在 设置 > 安全 > 客户端证书 中为每台设备生成证书, 下载 `.p12` 文件并记下只显示一次的导入密码, 导入系统或浏览器后完全重启浏览器. 再打开控制台时浏览器会询问用哪个证书, 登录页出现"使用证书登录". 证书名称带主机名, 便于在选择框里区分. 签发后的页面第一步提供 Windows, macOS 和 Linux 的一键设置文件: 导入证书, 并让浏览器自动选中它, 手动导入 `.p12` 的步骤收在"手动导入"里; 已导入证书的设备在证书卡片的"免去每次手动选证书"下载不带证书的版本, 只开启自动选择. 每台设备各用一张证书, 新设备在本页另外生成. Windows 双击 `.cmd`(无需管理员权限, 支持 Chrome 和 Edge); macOS 双击 `.mobileconfig` 后在 系统设置 > 隐私与安全性 > 描述文件 中安装(Chrome 和 Edge); Linux 在终端运行 `bash` 加 `.sh` 文件(写入策略时会用 sudo, 支持 Chrome, Chromium 和 Edge, 导入证书需要 libnss3-tools). 服务器只保存证书序列号, 不保存设备私钥;丢失或不用的证书在同一页撤销.
 
 确认当前连接已使用证书后, 开启"要求客户端证书": 没有有效证书的设备连登录页都打不开, 密码不能再用于登录, 只用于打开 root 终端和安全设置时的二次验证. 指定 IP 免密登录同样需要证书, Clash 订阅链接不受影响. 证书由安装包随附的静态 OpenSSL 3.5 LTS 签发, 使用项目自带的最小配置, 不受主机 openssl 版本和 openssl.cnf 影响. 每个证书颁发机构先在主机 TLS 库上做一次双向 TLS 自检; 旧版主机 openssl 生成的无效颁发机构会被换掉, 由它签发的证书标为已撤销, 并关闭"要求客户端证书". `client_cert.py check` 显示所用的 openssl 和自检结果.
 
@@ -277,7 +277,7 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备份旧安装目录及模块配置, 再全新安装并手动恢复所需设置. 缺少状态定位文件或检测到旧布局时安装器会拒绝原地升级;不要先删除旧目录.
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.0.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.1.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 
