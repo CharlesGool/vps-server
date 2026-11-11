@@ -1441,23 +1441,55 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
             secure.close()
 
 
-def _server_context():
+def _server_context(issued=None):
     cert, key = ensure_tls_files()
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    if issued:
+        try:
+            context.load_cert_chain(certfile=str(issued[0]), keyfile=str(issued[1]))
+            return context
+        except (OSError, ssl.SSLError):
+            pass  # Unreadable or half-written: keep the console's own certificate.
     context.load_cert_chain(certfile=str(cert), keyfile=str(key))
     return context
 
 
+def _issued_certificate(cache, now):
+    """The address certificate Caddy keeps for the console, with its mtime.
+
+    Turning on HTTPS by IP on the domains page makes Caddy obtain and renew a
+    Let's Encrypt certificate for the public address; the console serves it on
+    its own port. A certificate given through VPSSRV_TLS_CERT always wins.
+    """
+    if TLS_CERT and TLS_KEY:
+        return None
+    if "looked" not in cache or now - cache["looked"] > 30:
+        try:
+            from caddy_sites import ip_certificate
+            cache["issued"] = ip_certificate()
+        except Exception:  # noqa: BLE001 - module absent or unreadable: no certificate
+            cache["issued"] = None
+        cache["looked"] = now
+    issued = cache.get("issued")
+    if not issued:
+        return None
+    try:
+        return issued, issued[0].stat().st_mtime_ns
+    except OSError:
+        return None
+
+
 def console_context_factory():
-    """Rebuild the console's TLS context whenever the client CA changes."""
+    """Rebuild the console's TLS context when the client CA or the issued certificate changes."""
     cache = {}
     lock = threading.Lock()
 
     def current():
-        stamp = CLIENT_AUTH.ca_stamp()
         with lock:
+            issued = _issued_certificate(cache, time.monotonic())
+            stamp = (CLIENT_AUTH.ca_stamp(), issued)
             if cache.get("stamp", object()) != stamp:
-                cache["context"] = CLIENT_AUTH.configure(_server_context())
+                cache["context"] = CLIENT_AUTH.configure(_server_context(issued and issued[0]))
                 cache["stamp"] = stamp
             return cache["context"]
     current()  # Fail at startup, not on the first connection.

@@ -249,6 +249,8 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
     console_hosts = []
     sites = [site for site in sites if site.get("enabled", True)]
     for site in sites:
+        if site.get("ip"):
+            continue  # Only its certificate is wanted, for the console's own port.
         if site.get("console"):
             if console is None or not key:
                 continue  # No console to reach: leave the name unanswered.
@@ -270,29 +272,11 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
     https = {"listen": [":443"], "routes": routes + [abort], "logs": {}}
     client_auth = ({"ca": {"provider": "file", "pem_files": [str(client_ca)]}, "mode": "verify_if_given"}
                    if client_ca else None)
-    ip_hosts = [site["host"] for site in sites if site.get("ip") and site["host"] in console_hosts]
-    named = [host for host in console_hosts if host not in ip_hosts]
+    ip_hosts = [site["host"] for site in sites if site.get("ip")]
     policies = []
-    if named and client_auth:
+    if console_hosts and client_auth:
         # Ask for a certificate; whether one is required stays the console's call.
-        policies.append({"match": {"sni": named}, "client_authentication": client_auth})
-    if ip_hosts:
-        # Browsers send no SNI for an address: the catch-all serves the IP
-        # certificate then, and asks for a client certificate like the console.
-        catch_all = {"default_sni": ip_hosts[0]}
-        if client_auth:
-            catch_all["client_authentication"] = client_auth
-        others = [name for site in sites for name in names(site) if name not in console_hosts]
-        if others and client_auth:
-            policies.append({"match": {"sni": others}})  # Plain sites never ask for one.
-        policies.append(catch_all)
-        # With client authentication Caddy wants Host to match SNI, and a
-        # browser sends no SNI for an address. Turning that off is safe here:
-        # the serial header comes only from a certificate verified on the same
-        # connection, and the console itself decides whether one is required.
-        https["strict_sni_host"] = False
-    elif policies:
-        policies.append({})
+        policies += [{"match": {"sni": console_hosts}, "client_authentication": client_auth}, {}]
     if policies:
         https["tls_connection_policies"] = policies
     apps = {"http": {"servers": {
@@ -302,9 +286,12 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
         "http": {"listen": [":80"], "routes": [abort]},
     }}}
     if ip_hosts:
-        # Let's Encrypt issues address certificates only on its six-day profile.
-        apps["tls"] = {"automation": {"policies": [
-            {"subjects": ip_hosts, "issuers": [{"module": "acme", "profile": "shortlived"}]}]}}
+        # The address gets a certificate but no site: the console serves it on
+        # its own port, and 80/443 answer nothing for the bare address. Let's
+        # Encrypt issues address certificates only on its six-day profile.
+        apps["tls"] = {"certificates": {"automate": ip_hosts},
+                       "automation": {"policies": [
+                           {"subjects": ip_hosts, "issuers": [{"module": "acme", "profile": "shortlived"}]}]}}
     return {
         "logging": {"logs": {
             "default": {"exclude": ["http.log.access"]},
@@ -556,6 +543,22 @@ def certificate_info(host):
         source = path.parent.parent.name
         issuer = next((name for key, name in ISSUERS if key in source), source)
         return datetime.fromtimestamp(ssl.cert_time_to_seconds(not_after), timezone.utc), issuer
+    return None
+
+
+def ip_certificate(sites=None):
+    """(cert, key) paths Caddy holds for the enabled IP site, or None."""
+    try:
+        sites = read_sites() if sites is None else sites
+    except (OSError, ValueError):
+        return None
+    for site in sites:
+        if site.get("ip") and site.get("enabled", True):
+            host = site["host"]
+            for cert in sorted((DATA_DIR / "certificates").glob(f"*/{host}/{host}.crt")):
+                key = cert.with_suffix(".key")
+                if key.is_file():
+                    return cert, key
     return None
 
 

@@ -132,9 +132,10 @@ class DomainsMixin:
             ip_cert = (t["domains_cert_detail"].format(issuer=cert[1], date=cert[0].strftime("%Y-%m-%d %H:%M"),
                                                        days=(cert[0] - datetime.now(timezone.utc)).days)
                        if cert else t["domains_cert_pending_detail"])
+            ip_url = f'https://{ip_site["host"]}:{console_port() or self.context.CONSOLE_PORT}/'
             ip_state = (f'<p>{pill(t["domains_ip_on"], "is-open")} '
-                        f'<a href="https://{esc(ip_site["host"], quote=True)}/" target="_blank" rel="noopener noreferrer">'
-                        f'https://{esc(ip_site["host"])}/</a></p>'
+                        f'<a href="{esc(ip_url, quote=True)}" target="_blank" rel="noopener noreferrer">'
+                        f'{esc(ip_url)}</a></p>'
                         f'<p class="muted">{esc(t["domains_certificate_label"])}: {esc(ip_cert)}</p>')
         else:
             ip_state = f'<p class="muted">{esc(t["domains_ip_help"])}</p>'
