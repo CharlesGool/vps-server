@@ -359,7 +359,12 @@ class ClientAuth:
             return LEGACY_CA_CN
 
     def issue(self, name):
-        """Sign a new device certificate; return (pkcs12_bytes, import_password, entry)."""
+        """Sign a new device certificate; return (pkcs12_bytes, import_password, entry).
+
+        The PKCS#12 uses SHA1/3DES encryption and a SHA1 MAC. OpenSSL 3 defaults
+        to AES-256 with PBKDF2, which macOS (Keychain and configuration
+        profiles) and older Android reject as a wrong password.
+        """
         name = _clean_name(name)
         with self._lock:
             self._ensure_ca()
@@ -371,6 +376,7 @@ class ClientAuth:
                 env = dict(os.environ, VPSSRV_P12_PASSWORD=password)
                 self._openssl(work, "pkcs12", "-export", "-inkey", str(work / "client.key"),
                               "-in", str(work / "client.pem"), "-name", f"vps-server {host_label()} {serial[:8]}",
+                              "-keypbe", "PBE-SHA1-3DES", "-certpbe", "PBE-SHA1-3DES", "-macalg", "sha1",
                               "-passout", "env:VPSSRV_P12_PASSWORD", "-out", str(work / "client.p12"),
                               env=env)
                 bundle = (work / "client.p12").read_bytes()
