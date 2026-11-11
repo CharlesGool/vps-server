@@ -25,8 +25,10 @@ and checks the openssl and CA in use with:
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -34,6 +36,23 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+
+
+LEGACY_CA_CN = "vps-server console client CA"
+
+
+def host_label():
+    """This host's name, reduced to what an openssl -subj value can carry safely.
+
+    It goes into certificate names so a browser's picker tells hosts apart.
+    """
+    name = re.sub(r"[^A-Za-z0-9.-]+", "-", socket.gethostname()).strip("-.")[:40]
+    return name or "host"
+
+
+def subject_cn(entry):
+    """The CN a device certificate was issued with (older ones had no host)."""
+    return entry.get("cn") or f"vps-server client {entry['serial'][:8]}"
 
 try:
     from .state_paths import cert_dir as default_cert_dir
@@ -240,7 +259,7 @@ class ClientAuth:
             key, cert = Path(work) / "ca.key", Path(work) / "ca.pem"
             self._openssl(work, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
                           "-nodes", "-keyout", str(key), "-out", str(cert), "-days", str(CA_DAYS),
-                          "-subj", "/CN=vps-server console client CA",
+                          "-subj", f"/CN={LEGACY_CA_CN} {host_label()}",
                           "-addext", "basicConstraints=critical,CA:TRUE",
                           "-addext", "keyUsage=critical,keyCertSign,cRLSign")
             _write_private(self.ca_key, key.read_bytes())
@@ -252,14 +271,16 @@ class ClientAuth:
         (work / "ext.cnf").write_text("basicConstraints=CA:FALSE\n"
                                       "keyUsage=critical,digitalSignature\n"
                                       "extendedKeyUsage=clientAuth\n")
-        # The CN is fixed ASCII so the device name never reaches openssl's -subj parser.
+        # The CN is plain ASCII so the device name never reaches openssl's -subj parser.
+        common_name = f"vps-server client {host_label()} {serial[:8]}"
         self._openssl(work, "req", "-new", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
                       "-nodes", "-keyout", str(work / "client.key"), "-out", str(work / "client.csr"),
-                      "-subj", f"/CN=vps-server client {serial[:8]}")
+                      "-subj", f"/CN={common_name}")
         self._openssl(work, "x509", "-req", "-in", str(work / "client.csr"),
                       "-CA", str(self.ca_cert), "-CAkey", str(self.ca_key),
                       "-set_serial", "0x" + serial, "-days", str(days),
                       "-sha256", "-extfile", str(work / "ext.cnf"), "-out", str(work / "client.pem"))
+        return common_name
 
     def self_test(self):
         """True when the host's TLS library accepts a certificate from this CA.
@@ -329,6 +350,14 @@ class ClientAuth:
                 raise ClientCertError("client_cert_tls_unsupported")
         self._save({**data, "ca_checked": fingerprint})
 
+    def issuer_cn(self):
+        """The CN of this host's client CA, as browsers match it."""
+        try:
+            decoded = ssl._ssl._test_decode_cert(str(self.ca_cert))  # private CPython helper
+            return next(value for group in decoded.get("subject", ()) for key, value in group if key == "commonName")
+        except (OSError, ValueError, StopIteration, AttributeError):
+            return LEGACY_CA_CN
+
     def issue(self, name):
         """Sign a new device certificate; return (pkcs12_bytes, import_password, entry)."""
         name = _clean_name(name)
@@ -338,15 +367,15 @@ class ClientAuth:
             password = secrets.token_urlsafe(12)
             with tempfile.TemporaryDirectory(dir=self.cert_dir) as work:
                 work = Path(work)
-                self._sign_client(work, serial, CLIENT_DAYS)
+                common_name = self._sign_client(work, serial, CLIENT_DAYS)
                 env = dict(os.environ, VPSSRV_P12_PASSWORD=password)
                 self._openssl(work, "pkcs12", "-export", "-inkey", str(work / "client.key"),
-                              "-in", str(work / "client.pem"), "-name", f"vps-server {serial[:8]}",
+                              "-in", str(work / "client.pem"), "-name", f"vps-server {host_label()} {serial[:8]}",
                               "-passout", "env:VPSSRV_P12_PASSWORD", "-out", str(work / "client.p12"),
                               env=env)
                 bundle = (work / "client.p12").read_bytes()
             data = self.state()
-            entry = {"serial": serial, "name": name, "created": int(time.time()), "revoked": False}
+            entry = {"serial": serial, "name": name, "cn": common_name, "created": int(time.time()), "revoked": False}
             self._save({**data, "certs": [*data["certs"], entry]})
             return bundle, password, entry
 

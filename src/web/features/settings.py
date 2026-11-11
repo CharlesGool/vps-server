@@ -168,7 +168,7 @@ class SettingsMixin:
               {confirm_password_field}
               <button type="submit">{esc(t['access_change_password'])}</button>
             </form>
-          </section></div></div><script src="/static/access-settings.js" defer></script>
+          </section></div></div><script src="/static/access-settings.js" defer></script><script src="/static/copy.js"></script>
           </div>'''
         return self.send_html(200, self.render_page(t['settings'], body, lang, active="settings", back_href='/settings'),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -418,7 +418,7 @@ class SettingsMixin:
               <h2>{esc(t['access_client_cert'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
             <div class="access-card-body">
             <p>{esc(t['client_cert_intro'])}</p>
-            <p>{esc(status)}</p>{hint}
+            <p>{esc(status)}</p>{hint}{self.render_cert_autoselect(t, current, "autoselect-current") if current else ""}
             <form method="post" action="/settings/client-cert/toggle" class="access-toggle-form">
               <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-toggle')}">
               <input type="hidden" name="enabled" value="{'0' if required else '1'}">
@@ -434,6 +434,49 @@ class SettingsMixin:
             </form>
             </div>
           </section>'''
+
+    def cert_autoselect_patterns(self):
+        """Addresses this console answers on, as browser URL patterns."""
+        from caddy_sites import console_port, names, read_sites
+        hosts = []
+        current = (self.headers.get("Host") or "").strip()
+        if self.context.re.fullmatch(r"[A-Za-z0-9.:\[\]-]{1,255}", current):
+            hosts.append(current)
+        port = console_port() or self.context.CONSOLE_PORT
+        try:
+            sites = [site for site in read_sites() if site.get("enabled", True)]
+        except (OSError, ValueError):
+            sites = []
+        for site in sites:
+            if site.get("ip"):
+                hosts.append(f'{site["host"]}:{port}')
+            elif site.get("console"):
+                hosts += names(site)
+        return list(dict.fromkeys("https://" + host.lower() for host in hosts))
+
+    def render_cert_autoselect(self, t, entry, ident):
+        """Browser policy lines that pick ``entry`` without asking each time."""
+        from client_cert import subject_cn
+        esc = self.context.html.escape
+        json = self.context.json
+        issuer = self.context.CLIENT_AUTH.issuer_cn()
+        rules = [json.dumps({"pattern": pattern, "filter": {"ISSUER": {"CN": issuer},
+                                                            "SUBJECT": {"CN": subject_cn(entry)}}},
+                            separators=(",", ":"))
+                 for pattern in self.cert_autoselect_patterns()]
+        if not rules:
+            return ""
+        windows = "\n".join(
+            'reg add "HKLM\\SOFTWARE\\Policies\\Google\\Chrome\\AutoSelectCertificateForUrls" '
+            f'/v {number} /t REG_SZ /d "{rule.replace(chr(34), chr(92) + chr(34))}" /f'
+            for number, rule in enumerate(rules, 1))
+        linux = json.dumps({"AutoSelectCertificateForUrls": rules}, indent=2)
+        return (f'<details class="client-cert-autoselect"><summary>{esc(t["client_cert_autoselect"])}</summary>'
+                f'<p>{esc(t["client_cert_autoselect_intro"].format(name=subject_cn(entry)))}</p>'
+                + self.context.render_copyable(t, t["client_cert_autoselect_windows"], windows, ident + "-win")
+                + f'<p class="muted">{esc(t["client_cert_autoselect_windows_hint"])}</p>'
+                + self.context.render_copyable(t, t["client_cert_autoselect_linux"], linux, ident + "-linux")
+                + f'<p class="muted">{esc(t["client_cert_autoselect_verify"])}</p></details>')
 
     def page_client_cert_issued(self, lang, bundle, password, entry):
         t = self.context.STRINGS[lang]
@@ -455,8 +498,9 @@ class SettingsMixin:
             <li><p>{esc(t['client_cert_step_restart'])}</p></li>
             <li><p>{esc(t['client_cert_step_verify'])}</p></li>
           </ol>
+          {self.render_cert_autoselect(t, entry, "autoselect-new")}
           <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
-        </section></div>'''
+        </section></div><script src="/static/copy.js"></script>'''
         return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",
                                                     back_href='/settings/security'),
                               {"Cache-Control": "no-store"})
