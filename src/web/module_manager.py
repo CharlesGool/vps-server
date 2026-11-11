@@ -694,7 +694,15 @@ def run_toggle(prefix, module, enabled):
         if "web" not in installed_modules(prefix):
             raise RuntimeError("the console module is unavailable")
         if caddy_enabled():
-            raise RuntimeError("domain forwarding holds ports 80 and 443")
+            # Caddy holds 80/443 and answers the page itself: only its config changes.
+            time.sleep(2)
+            flag = state_data_dir() / f"{module.replace('_', '-')}-enabled"
+            flag.write_text("1\n" if enabled else "0\n")
+            os.chmod(flag, 0o600)
+            sites = _caddy_sites()
+            sites.render()
+            sites.reload_caddy()
+            return
         # Let the console return its redirect before the Web unit restarts.
         time.sleep(2)
         switch_public_listener(prefix, module, enabled)

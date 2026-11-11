@@ -510,9 +510,7 @@ class ModulesMixin:
             switch = ""
             if module not in ("settings", "changelog", "logs"):
                 action = "disable" if enabled else "enable"
-                # While domain forwarding holds 80/443 the public page cannot be switched on.
-                held = module in ("web_http", "web_https") and self.context.CADDY_HOLDS_PUBLIC_PORTS
-                available = not held and (module not in ("web_http", "web_https") or "web" in installed) and (
+                available = (module not in ("web_http", "web_https") or "web" in installed) and (
                     module != "iperf3" or "iperf3" in installed) and (
                     module != "proxy_nodes" or "proxy" in installed) and (
                     module != "frps" or "frps" in installed) and (
@@ -535,8 +533,9 @@ class ModulesMixin:
             detail = (f'<span class="tile-error" role="status">'
                       f'{esc(t["module_port_occupied"].format(port=occupied_port))}</span>'
                       if occupied_port is not None else
-                      f'<span class="tile-error" role="status">{esc(t["module_held_by_domains"])}</span>'
-                      if module in ("web_http", "web_https") and self.context.CADDY_HOLDS_PUBLIC_PORTS else "")
+                      f'<span class="tile-error" role="status">{esc(t["module_public_needs_ipcert"])}</span>'
+                      if module == "web_https" and enabled and self.context.CADDY_HOLDS_PUBLIC_PORTS
+                      and not states["ipcert"] else "")
             target = ("/closed?module=" + module
                       if closed or module in ("web_http", "web_https") and not enabled else href)
             # The public pages are meant to be seen from outside, so they open in a tab of their own.
@@ -617,11 +616,16 @@ def module_states(context, installed=None):
     installed = installed if installed is not None else context.installed_modules(context.BASE_DIR)
     caddy_running = "caddy" in installed and context._run_quiet(
         ["systemctl", "is-enabled", "--quiet", context.MANAGED_UNITS["caddy"]])
+    def public(listener, enabled):
+        if context.CADDY_HOLDS_PUBLIC_PORTS:
+            # Caddy answers the page; its switch is the console's own setting.
+            return context.public_listener_enabled(context.BASE_DIR, listener, context.PUBLIC_DEFAULT,
+                                                   own_setting=True)
+        return enabled and (public_listener_runtime(context, listener) or {}).get("bound", True)
+
     states = {
-        "web_http": "web" in installed and context.PUBLIC_HTTP_ENABLED and
-                    (public_listener_runtime(context, "web_http") or {}).get("bound", True),
-        "web_https": "web" in installed and context.PUBLIC_HTTPS_ENABLED and
-                     (public_listener_runtime(context, "web_https") or {}).get("bound", True),
+        "web_http": "web" in installed and public("web_http", context.PUBLIC_HTTP_ENABLED),
+        "web_https": "web" in installed and public("web_https", context.PUBLIC_HTTPS_ENABLED),
         "speedtest": context.module_feature_enabled(context.BASE_DIR, "speedtest"),
         "iperf3": "iperf3" in installed and context.IPERF_ENABLED,
         "proxy_nodes": "proxy" in installed and context._run_quiet(

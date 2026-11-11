@@ -917,7 +917,7 @@
   "files_error_http": "来源返回 HTTP {code}。",
   "ipcert": "IP 证书",
   "ipcert_pending": "申请中: 通常一分钟内签发, 控制台随后自动换上",
-  "ipcert_ports": "需要本机 80 端口能从公网访问 (Let's Encrypt 用它验证); 开启期间 80/443 由 Caddy 占用, 公开可达性页面停用。不需要域名或 Cloudflare 令牌。",
+  "ipcert_ports": "需要本机 80 端口能从公网访问 (Let's Encrypt 用它验证)。开启期间 80/443 由 Caddy 占用, 公开可达性页面改由 Caddy 提供, 用 https://本机IP/ 访问时也使用这张证书。不需要域名或 Cloudflare 令牌。",
   "ipcert_failed": "操作失败: 可能没有公网 IPv4, 详细原因见 设置 > 详细日志。",
   "files_used": "已用",
   "files_available": "还能放",
@@ -930,5 +930,6 @@
   "ipcert_expires": "有效至",
   "ipcert_expires_value": "{date} (剩 {days} 天, 自动续期)",
   "ipcert_pending_short": "申请中",
-  "files_link_limit_placeholder": "次数不限"
+  "files_link_limit_placeholder": "次数不限",
+  "module_public_needs_ipcert": "HTTPS 需要先开启 IP 证书"
 }

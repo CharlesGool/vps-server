@@ -266,7 +266,75 @@ def _console_route(site, port, key):
 
 # -- Caddy ------------------------------------------------------------------
 
-def caddy_config(sites, *, console=None, key="", client_ca=None):
+def _catalog(tag):
+    try:
+        return json.loads((Path(__file__).resolve().parents[2] / "lang" / "web" / f"{tag}.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def probe_switches():
+    """(http, https): the public reachability page switches from the console's settings."""
+    try:
+        from module_manager import public_listener_enabled
+    except ImportError:
+        return False, False
+    try:
+        prefix = Path(__file__).resolve().parents[2]
+        default = _public_default()
+        return (public_listener_enabled(prefix, "web_http", default, own_setting=True),
+                public_listener_enabled(prefix, "web_https", default, own_setting=True))
+    except (OSError, ValueError):
+        return False, False
+
+
+def _public_default():
+    """VPSSRV_PUBLIC_ENABLE as the console sees it: its unit first, then the state .env."""
+    try:
+        unit = Path("/etc/systemd/system/vps-server-web.service").read_text()
+        match = re.search(r"^Environment=VPSSRV_PUBLIC_ENABLE=(\S*)$", unit, re.M)
+        if match:
+            return match[1] == "1"
+    except OSError:
+        pass
+    try:
+        from state_paths import state_dir
+        for line in (state_dir() / ".env").read_text().splitlines():
+            key, _, value = line.strip().partition("=")
+            if key.strip() == "VPSSRV_PUBLIC_ENABLE":
+                return value.strip() == "1"
+    except (ImportError, OSError, ValueError):
+        pass
+    return True
+
+
+def probe_handler():
+    """The public reachability page, answered by Caddy while it holds 80/443.
+
+    The same one line as the console's own page: the address the server sees,
+    in the visitor's first Accept-Language. The console is not involved.
+    """
+    routes = []
+    for tag, pattern in (("zh-CN", "(?i)^\\s*zh"), ("es", "(?i)^\\s*es"), ("en", None)):
+        label = _catalog(tag).get("probe_your_ip", "The server sees your IP address")
+        sep = "\uff1a" if tag == "zh-CN" else ": "
+        route = {"handle": [{"handler": "static_response", "status_code": 200,
+                             "body": f"{label}{sep}{{http.request.remote.host}}\n"}]}
+        if pattern:
+            route["match"] = [{"header_regexp": {"Accept-Language": {"pattern": pattern}}}]
+        routes.append(route)
+    headers = {"handler": "headers", "response": {
+        "set": {"Content-Type": ["text/plain; charset=utf-8"], "Cache-Control": ["no-store"],
+                "X-Content-Type-Options": ["nosniff"], "Referrer-Policy": ["no-referrer"]},
+        "delete": ["Server"]}}
+    return {"handle": [{"handler": "subroute", "routes": [
+        {"match": [{"path": ["/"]}], "handle": [headers, {"handler": "subroute", "routes": routes}],
+         "terminal": True},
+        {"handle": [headers, {"handler": "static_response", "status_code": 404, "body": "not found\n"}]}]}],
+        "terminal": True}
+
+
+def caddy_config(sites, *, console=None, key="", client_ca=None, probe=(False, False)):
     """Caddy's native JSON: one route per host, everything else is dropped.
 
     console is the console's port; sites marked "console" forward there.
@@ -298,21 +366,41 @@ def caddy_config(sites, *, console=None, key="", client_ca=None):
                 proxy["headers"] = {"request": {"set": {"Host": ["{http.request.hostport}"]}}}
             routes += _guarded(site, {"match": [{"host": names(site)}], "handle": [proxy], "terminal": True})
     # Access log for every site, read back by the console page.
-    https = {"listen": [":443"], "routes": routes + [abort], "logs": {}}
+    ip_hosts = [site["host"] for site in sites if site.get("ip")]
+    # The reachability page: any name on 80, and the bare address on 443 when
+    # it has its certificate (a client without SNI gets that one).
+    probe_https = [{**probe_handler(), "match": [{"host": ip_hosts}]}] if probe[1] and ip_hosts else []
+    https = {"listen": [":443"], "routes": routes + probe_https + [abort], "logs": {}}
     client_auth = ({"ca": {"provider": "file", "pem_files": [str(client_ca)]}, "mode": "verify_if_given"}
                    if client_ca else None)
-    ip_hosts = [site["host"] for site in sites if site.get("ip")]
     policies = []
     if console_hosts and client_auth:
         # Ask for a certificate; whether one is required stays the console's call.
         policies += [{"match": {"sni": console_hosts}, "client_authentication": client_auth}, {}]
     if policies:
         https["tls_connection_policies"] = policies
+    if probe_https:
+        # A browser sends no SNI for an address, so Caddy's strict SNI check
+        # (on by default once any policy asks for client certificates) would
+        # answer 421. Turning it off is safe here: only the console's names
+        # ask for certificates, and the console itself decides per request
+        # whether one is required, so a mismatched SNI gains nothing.
+        https["strict_sni_host"] = False
+    domain_names = [name for site in sites if not site.get("ip") for name in names(site)]
+    http_routes = [abort]
+    if probe[0]:
+        # The page must answer plain HTTP: redirecting would hide whether 80
+        # itself is reachable. Domain names keep their redirect, made here.
+        https["automatic_https"] = {"disable_redirects": True}
+        http_routes = ([{"match": [{"host": domain_names}], "handle": [{
+            "handler": "static_response", "status_code": 308,
+            "headers": {"Location": ["https://{http.request.host}{http.request.uri}"]}}], "terminal": True}]
+            if domain_names else []) + [probe_handler()]
     apps = {"http": {"servers": {
         # Automatic HTTPS adds the HTTP-to-HTTPS redirects and the ACME
         # HTTP challenge to the :80 server; any other host gets nothing.
         "https": https,
-        "http": {"listen": [":80"], "routes": [abort]},
+        "http": {"listen": [":80"], "routes": http_routes},
     }}}
     if ip_hosts:
         # The address gets a certificate but no site: the console serves it on
@@ -360,7 +448,8 @@ def render(sites=None):
                 changed = True
             client_ca = CLIENT_CA_COPY
     text = json.dumps(caddy_config(sites, console=console_port() if has_console else None,
-                                   key=proxy_key() if has_console else "", client_ca=client_ca),
+                                   key=proxy_key() if has_console else "", client_ca=client_ca,
+                                   probe=probe_switches()),
                       indent=2) + "\n"
     try:
         current = CADDY_CONFIG.read_text()

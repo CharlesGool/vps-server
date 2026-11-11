@@ -917,7 +917,7 @@
   "files_error_http": "El origen respondió HTTP {code}.",
   "ipcert": "Certificado IP",
   "ipcert_pending": "En emisión: suele tardar menos de un minuto y luego la consola lo usa",
-  "ipcert_ports": "El puerto 80 debe ser accesible desde internet (Let's Encrypt valida por él). Mientras está activado, Caddy ocupa 80/443 y la página pública de accesibilidad se desactiva. No hace falta dominio ni token de Cloudflare.",
+  "ipcert_ports": "El puerto 80 debe ser accesible desde internet (Let's Encrypt valida por él). Mientras está activado, Caddy ocupa 80/443 y sirve la página pública de accesibilidad, usando este certificado también para https://<esta IP>/. No hace falta dominio ni token de Cloudflare.",
   "ipcert_failed": "El cambio falló: puede que no haya IPv4 pública. Consulta Configuración > Registros detallados.",
   "files_used": "Usado",
   "files_available": "Disponible",
@@ -930,5 +930,6 @@
   "ipcert_expires": "Válido hasta",
   "ipcert_expires_value": "{date} (quedan {days} días, se renueva solo)",
   "ipcert_pending_short": "En emisión",
-  "files_link_limit_placeholder": "Sin límite"
+  "files_link_limit_placeholder": "Sin límite",
+  "module_public_needs_ipcert": "HTTPS necesita el certificado IP activado"
 }

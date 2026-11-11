@@ -917,7 +917,7 @@
   "files_error_http": "The source answered HTTP {code}.",
   "ipcert": "IP certificate",
   "ipcert_pending": "Being issued: usually within a minute, then the console switches to it",
-  "ipcert_ports": "Port 80 must be reachable from the internet (Let's Encrypt validates through it). While on, Caddy holds 80/443 and the public reachability page is off. No domain or Cloudflare token is needed.",
+  "ipcert_ports": "Port 80 must be reachable from the internet (Let's Encrypt validates through it). While on, Caddy holds 80/443 and serves the public reachability page, using this certificate for https://<this IP>/ too. No domain or Cloudflare token is needed.",
   "ipcert_failed": "The change failed: there may be no public IPv4. See Settings > Detailed logs.",
   "files_used": "Used",
   "files_available": "Available",
@@ -930,5 +930,6 @@
   "ipcert_expires": "Valid until",
   "ipcert_expires_value": "{date} ({days} days left, renews automatically)",
   "ipcert_pending_short": "Being issued",
-  "files_link_limit_placeholder": "No limit"
+  "files_link_limit_placeholder": "No limit",
+  "module_public_needs_ipcert": "HTTPS needs the IP certificate on"
 }
