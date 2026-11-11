@@ -26,7 +26,7 @@ DEFAULT_QUOTA = 5 * GIB
 MIN_QUOTA = 100 * 1024 ** 2
 MAX_QUOTA = 10 * 1024 * GIB
 # Never fill the disk: keep this much free whatever the quota says.
-DISK_RESERVE = 2 * GIB
+DISK_RESERVE = 500 * 1024 ** 2
 MAX_FILES = 500
 MAX_LINKS_PER_FILE = 20
 MAX_JOBS = 20
