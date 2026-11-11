@@ -410,9 +410,7 @@ class SettingsMixin:
                      f'<code>{esc(meta)}</code></span>{action}</li>')
         if not rows:
             rows = f'<li class="muted">{esc(t["client_cert_list_empty"])}</li>'
-        hint = ""
-        if not current and any(not item.get("revoked") for item in auth.certificates()):
-            hint = f'<p class="muted">{esc(t["client_cert_current_none_hint"])}</p>'
+        hint = "" if current else f'<p class="muted">{esc(t["client_cert_current_none_hint"])}</p>'
         return f'''<section id="security-client-cert" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
               <h2>{esc(t['access_client_cert'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
@@ -454,10 +452,11 @@ class SettingsMixin:
                 hosts += names(site)
         return list(dict.fromkeys("https://" + host.lower() for host in hosts))
 
-    def render_cert_autoselect(self, t, entry, ident, bundle=None):
+    def render_cert_autoselect(self, t, entry, ident, bundle=None, inline=False):
         """Download links for scripts that make the browser pick ``entry`` on its own.
 
         With ``bundle`` (right after issuing) the scripts also import the certificate.
+        ``inline`` returns the links with how to run each file, without the collapsed wrapper.
         """
         import cert_setup
         from client_cert import subject_cn
@@ -476,6 +475,11 @@ class SettingsMixin:
             links += (f'<a class="button-link" href="{href}" download="{esc(name, quote=True)}" '
                       f'title="{esc(t["client_cert_setup_" + system], quote=True)}">'
                       f'{esc(t["client_cert_setup_label_" + system])}</a>')
+        if inline:
+            how = "".join(f'<li><strong>{esc(t["client_cert_setup_label_" + system])}</strong> {esc(t["client_cert_setup_" + system])}</li>'
+                          for system in ("windows", "macos", "linux"))
+            return (f'<div class="client-cert-setup-links" id="{ident}">{links}</div>'
+                    f'<ul class="client-cert-setup-how muted">{how}</ul>')
         return (f'<details class="client-cert-autoselect" id="{ident}"><summary>{esc(t["client_cert_autoselect"])}</summary>'
                 f'<div class="client-cert-setup-links">{links}</div></details>')
 
@@ -493,13 +497,15 @@ class SettingsMixin:
           <p>{esc(t['client_cert_password'])}: <code>{esc(password)}</code></p>
           <h2>{esc(t['client_cert_steps_title'])}</h2>
           <ol class="client-cert-steps">
-            <li><p>{esc(t['client_cert_step_download'])}</p>
-              <p><a class="button-link" href="{href}" download="{esc(filename, quote=True)}">{esc(t['client_cert_download'])}</a></p></li>
-            <li><p>{esc(t['client_cert_step_import'])}</p><ul>{os_items}</ul></li>
+            <li><p>{esc(t['client_cert_step_setup'])}</p>
+              {self.render_cert_autoselect(t, entry, "autoselect-new", bundle, inline=True)}</li>
             <li><p>{esc(t['client_cert_step_restart'])}</p></li>
             <li><p>{esc(t['client_cert_step_verify'])}</p></li>
           </ol>
-          {self.render_cert_autoselect(t, entry, "autoselect-new", bundle)}
+          <details class="client-cert-autoselect client-cert-manual"><summary>{esc(t['client_cert_manual'])}</summary>
+            <p>{esc(t['client_cert_step_download'])}</p>
+            <p><a class="button-link" href="{href}" download="{esc(filename, quote=True)}">{esc(t['client_cert_download'])}</a></p>
+            <p>{esc(t['client_cert_step_import'])}</p><ul>{os_items}</ul></details>
           <p><a href="/settings/security#security-client-cert">{esc(t['client_cert_back'])}</a></p>
         </section></div>'''
         return self.send_html(200, self.render_page(t['client_cert_issued_heading'], body, lang, active="settings",

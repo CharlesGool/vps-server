@@ -7,7 +7,8 @@
 .client-cert-issued p { margin: 0; }
 .client-cert-issued .button-link { display: inline-flex; }
 .client-cert-issued h2 { margin: var(--compat-size-1) 0 0; font-size: var(--text-lg); }
-.client-cert-steps { display: grid; gap: var(--compat-size-1); margin: 0; padding-left: var(--compat-size-9); }
+.client-cert-steps { display: grid; gap: var(--compat-size-1); margin: 0; padding-left: var(--compat-size-9); list-style: decimal; }
+.client-cert-steps > li::marker { font-weight: var(--font-weight-semibold); }
 .client-cert-steps > li > :not(:first-child) { margin-top: var(--compat-size-20); }
 .client-cert-steps ul { margin: 0; padding-left: var(--compat-size-29); display: grid; gap: var(--compat-size-20); }
 .access-ip-list li > span { min-width: 0; overflow-wrap: anywhere; }
@@ -109,3 +110,7 @@ html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX
 .client-cert-autoselect { display: grid; gap: var(--compat-size-20); }
 .client-cert-autoselect > summary { width: fit-content; color: var(--primary); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .client-cert-setup-links { display: flex; flex-wrap: wrap; gap: var(--compat-size-14); }
+.client-cert-setup-how { list-style: none; margin: 0; padding-left: var(--compat-size-29); display: grid; gap: var(--compat-size-20); font-size: var(--text-sm); }
+.client-cert-manual { margin-top: var(--compat-size-1); }
+.client-cert-manual > :not(summary) { margin: 0; }
+.client-cert-manual ul { margin: 0; padding-left: var(--compat-size-29); display: grid; gap: var(--compat-size-20); list-style: disc; }
