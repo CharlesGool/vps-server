@@ -929,5 +929,6 @@
   "ipcert_issuer": "签发方",
   "ipcert_expires": "有效至",
   "ipcert_expires_value": "{date} (剩 {days} 天, 自动续期)",
-  "ipcert_pending_short": "申请中"
+  "ipcert_pending_short": "申请中",
+  "files_link_limit_placeholder": "次数不限"
 }

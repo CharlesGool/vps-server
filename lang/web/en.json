@@ -929,5 +929,6 @@
   "ipcert_issuer": "Issuer",
   "ipcert_expires": "Valid until",
   "ipcert_expires_value": "{date} ({days} days left, renews automatically)",
-  "ipcert_pending_short": "Being issued"
+  "ipcert_pending_short": "Being issued",
+  "files_link_limit_placeholder": "No limit"
 }

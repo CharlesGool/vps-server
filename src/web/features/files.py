@@ -172,39 +172,34 @@ class FilesMixin:
                 f'<input type="hidden" name="{name}" value="{esc(str(value), quote=True)}">'
                 for name, value in fields.items())
 
+        meter = (f'<div class="files-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}" '
+                 f'aria-label="{esc(t["files_usage"], quote=True)}"><span style="width:{max(percent, 1)}%"></span></div>')
         usage = (f'<section class="card frp-card files-usage">'
-                 f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["files_usage"])}</h2>'
-                 f'<span class="muted">{percent}%</span></div>'
-                 f'<div class="files-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}" '
-                 f'aria-label="{esc(t["files_usage"], quote=True)}"><span style="width:{percent}%"></span></div>'
-                 f'<dl class="frp-facts frp-server-facts files-facts">'
-                 f'<div><dt>{esc(t["files_used"])}</dt><dd>{esc(human_size(used))}</dd></div>'
-                 f'<div><dt>{esc(t["files_available"])}</dt><dd>{esc(human_size(room))}</dd></div>'
-                 f'<div><dt>{esc(t["files_disk_free"])}</dt><dd>{esc(human_size(free))}</dd></div></dl>'
-                 f'<form method="post" action="/files/quota" class="files-row-form files-quota">{hidden()}'
-                 f'<label>{esc(t["files_quota_label"])}<input type="number" name="quota" min="0.1" max="10240" step="0.1" '
-                 f'value="{quota / GIB:g}" required></label>'
-                 f'<button type="submit" class="frp-card-edit">{esc(t["files_quota_save"])}</button>'
-                 f'<p class="muted">{esc(t["files_quota_help"])}</p></form></section>')
+                 f'<div class="files-usage-head"><h2 class="frp-instances-heading">{esc(t["files_usage"])}</h2>'
+                 f'<span class="files-usage-total"><strong>{esc(human_size(used))}</strong> / {esc(human_size(quota))}</span></div>'
+                 f'{meter}<div class="files-usage-foot"><span class="files-meta">'
+                 f'{esc(t["files_available"])} {esc(human_size(room))} · {esc(t["files_disk_free"])} {esc(human_size(free))}</span>'
+                 f'<form method="post" action="/files/quota" class="files-inline" title="{esc(t["files_quota_help"], quote=True)}">{hidden()}'
+                 f'<label for="files-quota">{esc(t["files_quota_label"])}</label>'
+                 f'<input id="files-quota" type="number" name="quota" min="0.1" max="10240" step="0.1" value="{quota / GIB:g}" required>'
+                 f'<button type="submit" class="files-button">{esc(t["files_quota_save"])}</button></form></div></section>')
 
         add = (f'<section class="card frp-card files-add">'
-               f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["files_add"])}</h2></div>'
-               f'<div class="files-add-grid">'
-               f'<article class="frp-target-card files-panel"><h3>{esc(t["files_fetch_label"])}</h3>'
-               f'<p class="muted">{esc(t["files_fetch_help"])}</p>'
-               f'<form method="post" action="/files/fetch" class="files-stack-form">{hidden()}'
+               f'<div class="files-add-part"><h2 class="frp-instances-heading">{esc(t["files_fetch_label"])}</h2>'
+               f'<p class="files-meta">{esc(t["files_fetch_help"])}</p>'
+               f'<form method="post" action="/files/fetch" class="files-inline files-grow">{hidden()}'
                f'<input type="url" name="url" required maxlength="2000" aria-label="URL" '
                f'placeholder="https://github.com/…/releases/download/…">'
-               f'<button type="submit">{esc(t["files_fetch"])}</button></form></article>'
-               f'<article class="frp-target-card files-panel"><h3>{esc(t["files_upload_label"])}</h3>'
-               f'<p class="muted">{esc(t["files_upload_help"].format(room=human_size(room)))}</p>'
-               f'<form class="files-upload files-stack-form" data-csrf="{csrf}" data-room="{room}" '
+               f'<button type="submit">{esc(t["files_fetch"])}</button></form></div>'
+               f'<div class="files-add-part"><h2 class="frp-instances-heading">{esc(t["files_upload_label"])}</h2>'
+               f'<p class="files-meta">{esc(t["files_upload_help"].format(room=human_size(room)))}</p>'
+               f'<form class="files-upload files-inline files-grow" data-csrf="{csrf}" data-room="{room}" '
                f'data-too-big="{esc(t["files_error_no_room"], quote=True)}" '
                f'data-failed="{esc(t["files_upload_failed"], quote=True)}">'
                f'<input type="file" name="file" required aria-label="{esc(t["files_upload_label"], quote=True)}">'
                f'<button type="submit">{esc(t["files_upload"])}</button>'
-               f'<progress max="100" value="0" hidden></progress><output class="muted"></output></form></article>'
-               f'</div></section>')
+               f'<progress max="100" value="0" hidden></progress><output class="files-meta"></output></form></div>'
+               f'</section>')
 
         jobs = ""
         if data["jobs"]:
@@ -231,16 +226,15 @@ class FilesMixin:
                               else t.get("files_error_" + reason, reason))
                     pill = f'<span class="proxy-node-status is-closed">{esc(t["files_job_failed"])}</span>'
                     action, label = "remove", t["files_job_remove"]
-                rows += (f'<article class="frp-target-card files-job" data-job="{esc(job["id"], quote=True)}" '
-                         f'data-state="{esc(state or "", quote=True)}">'
-                         f'<div class="files-card-head"><strong class="files-name">{esc(job.get("name", ""))}</strong>{pill}</div>'
-                         f'{bar}<p class="files-meta"><span class="files-job-detail">{esc(detail)}</span></p>'
-                         f'<p class="files-source" title="{esc(job["url"], quote=True)}">{esc(job["url"])}</p>'
-                         f'<div class="files-actions"><form method="post" action="/files/job">{hidden(job=job["id"], action=action)}'
-                         f'<button type="submit" class="files-button">{esc(label)}</button></form></div></article>')
-            jobs = (f'<section class="card frp-card files-jobs"><div class="frp-instances-head">'
-                    f'<h2 class="frp-instances-heading">{esc(t["files_jobs"])}</h2></div>'
-                    f'<div class="files-cards">{rows}</div></section>')
+                rows += (f'<li class="files-row" data-job="{esc(job["id"], quote=True)}" data-state="{esc(state or "", quote=True)}">'
+                         f'<div class="files-row-main"><div class="files-row-title">{pill}<strong class="files-name">'
+                         f'{esc(job.get("name", ""))}</strong></div>'
+                         f'<p class="files-meta files-job-detail">{esc(detail)}</p>'
+                         f'<p class="files-meta" title="{esc(job["url"], quote=True)}">{esc(job["url"])}</p>{bar}</div>'
+                         f'<form method="post" action="/files/job" class="files-row-actions">{hidden(job=job["id"], action=action)}'
+                         f'<button type="submit" class="files-button">{esc(label)}</button></form></li>')
+            jobs = (f'<section class="card frp-card files-jobs"><h2 class="frp-instances-heading">{esc(t["files_jobs"])}</h2>'
+                    f'<ul class="files-list">{rows}</ul></section>')
 
         links_by_file = {}
         for link in data["links"]:
@@ -249,7 +243,7 @@ class FilesMixin:
             f'<option value="{days}"{" selected" if days == 7 else ""}>'
             f'{esc(t["files_link_forever"] if days == 0 else t["files_link_days"].format(days=days))}</option>'
             for days in LINK_DAYS)
-        cards = ""
+        rows = ""
         for entry in sorted(data["files"], key=lambda item: item["created"], reverse=True):
             link_rows = ""
             for link in links_by_file.get(entry["id"], []):
@@ -260,35 +254,36 @@ class FilesMixin:
                          else t["files_link_count"].format(count=link.get("downloads", 0)))
                 expires = (t["files_link_until"].format(date=date(link["expires"])) if link.get("expires")
                            else t["files_link_forever"])
-                link_rows += (f'<li class="files-link">'
-                              f'<div class="files-link-url"><code id="{ident}" title="{esc(url, quote=True)}">{esc(url)}</code>'
+                link_rows += (f'<li class="files-link"><div class="files-link-text">'
+                              f'<code id="{ident}" title="{esc(url, quote=True)}">{esc(url)}</code>'
+                              f'<span class="files-meta">{esc(expires)} · {esc(count)}</span></div>'
+                              f'<div class="files-row-actions">'
                               f'<button type="button" class="copybtn files-button" data-copy="{ident}" '
-                              f'data-copied="{esc(t["copied"], quote=True)}">{esc(t["copy"])}</button></div>'
-                              f'<div class="files-link-meta"><span>{esc(expires)} · {esc(count)}</span>'
+                              f'data-copied="{esc(t["copied"], quote=True)}">{esc(t["copy"])}</button>'
                               f'<form method="post" action="/files/revoke">{hidden(token=link["token"])}'
-                              f'<button type="submit" class="files-text-button">{esc(t["files_link_revoke"])}</button>'
+                              f'<button type="submit" class="files-button files-danger">{esc(t["files_link_revoke"])}</button>'
                               f'</form></div></li>')
             source = (t["files_source_upload"] if entry.get("source") == "upload"
                       else t["files_source_url"].format(url=entry.get("source", "")))
-            cards += (f'<article class="frp-target-card files-entry">'
-                      f'<div class="files-card-head"><strong class="files-name">{esc(entry["name"])}</strong>'
-                      f'<span class="files-meta">{esc(human_size(entry["size"]))} · {esc(date(entry["created"]))}</span></div>'
-                      f'<p class="files-source" title="{esc(source, quote=True)}">{esc(source)}</p>'
-                      + (f'<ul class="files-links">{link_rows}</ul>' if link_rows else '')
-                      + f'<div class="files-actions">'
-                      f'<form method="post" action="/files/link" class="files-link-form">{hidden(file=entry["id"])}'
-                      f'<label>{esc(t["files_link_expiry"])}<select name="days">{day_options}</select></label>'
-                      f'<label>{esc(t["files_link_limit"])}<input type="number" name="max" min="1" max="100000" '
-                      f'placeholder="{esc(t["files_link_unlimited"], quote=True)}"></label>'
-                      f'<button type="submit" class="files-button">{esc(t["files_link_add"])}</button></form>'
-                      f'<form method="post" action="/files/delete" class="files-delete" '
-                      f'data-confirm="{esc(t["files_delete_confirm"].format(name=entry["name"]), quote=True)}">'
-                      f'{hidden(file=entry["id"])}<button type="submit" class="files-button files-danger">'
-                      f'{esc(t["files_delete"])}</button></form></div></article>')
-        files_card = (f'<section class="card frp-card files-files"><div class="frp-instances-head">'
-                      f'<h2 class="frp-instances-heading">{esc(t["files_files"])}</h2></div>'
-                      f'<p class="muted files-help">{esc(t["files_link_help"])}</p>'
-                      + (f'<div class="files-cards">{cards}</div>' if cards else
+            rows += (f'<li class="files-row files-entry"><div class="files-row-main">'
+                     f'<strong class="files-name">{esc(entry["name"])}</strong>'
+                     f'<p class="files-meta" title="{esc(source, quote=True)}">{esc(human_size(entry["size"]))} · '
+                     f'{esc(date(entry["created"]))} · {esc(source)}</p></div>'
+                     f'<div class="files-row-actions">'
+                     f'<form method="post" action="/files/link" class="files-inline">{hidden(file=entry["id"])}'
+                     f'<select name="days" aria-label="{esc(t["files_link_expiry"], quote=True)}">{day_options}</select>'
+                     f'<input type="number" name="max" min="1" max="100000" aria-label="{esc(t["files_link_limit"], quote=True)}" '
+                     f'placeholder="{esc(t["files_link_limit_placeholder"], quote=True)}">'
+                     f'<button type="submit" class="files-button">{esc(t["files_link_add"])}</button></form>'
+                     f'<form method="post" action="/files/delete" class="files-delete" '
+                     f'data-confirm="{esc(t["files_delete_confirm"].format(name=entry["name"]), quote=True)}">'
+                     f'{hidden(file=entry["id"])}<button type="submit" class="files-button files-danger">'
+                     f'{esc(t["files_delete"])}</button></form></div>'
+                     + (f'<ul class="files-links">{link_rows}</ul>' if link_rows else '') + '</li>')
+        files_card = (f'<section class="card frp-card files-files"><div class="files-usage-head">'
+                      f'<h2 class="frp-instances-heading">{esc(t["files_files"])}</h2>'
+                      f'<span class="files-meta">{esc(t["files_link_help"])}</span></div>'
+                      + (f'<ul class="files-list">{rows}</ul>' if rows else
                          f'<p class="files-empty">{esc(t["files_empty"])}</p>') + '</section>')
 
         body = (f'<h1>{esc(t["files"])}</h1><div class="frp-workspace files-page">{"".join(messages)}'
