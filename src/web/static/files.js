@@ -82,6 +82,8 @@
         if (job.state !== 'running') { finished = true; continue; }
         const detail = row.querySelector('.files-job-detail');
         if (detail) detail.textContent = job.total ? `${size(job.bytes)} / ${size(job.total)}` : size(job.bytes);
+        const bar = row.querySelector('.files-job-meter > span');
+        if (bar && job.total) bar.style.width = Math.min(100, Math.round((job.bytes * 100) / job.total)) + '%';
       }
       if (finished) { window.location.assign('/files'); return; }
     } catch (error) { /* try again on the next tick */ }

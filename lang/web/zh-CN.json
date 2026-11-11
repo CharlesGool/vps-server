@@ -918,5 +918,16 @@
   "ipcert": "IP 证书",
   "ipcert_pending": "申请中: 通常一分钟内签发, 控制台随后自动换上",
   "ipcert_ports": "需要本机 80 端口能从公网访问 (Let's Encrypt 用它验证); 开启期间 80/443 由 Caddy 占用, 公开可达性页面停用。不需要域名或 Cloudflare 令牌。",
-  "ipcert_failed": "操作失败: 可能没有公网 IPv4, 详细原因见 设置 > 详细日志。"
+  "ipcert_failed": "操作失败: 可能没有公网 IPv4, 详细原因见 设置 > 详细日志。",
+  "files_used": "已用",
+  "files_available": "还能放",
+  "files_disk_free": "磁盘剩余",
+  "files_upload_help": "选择文件后上传, 最大 {room}。",
+  "client_cert_autoselect_help": "下载这台设备系统对应的文件并运行, 以后打开控制台时浏览器自动选这个证书, 不再弹出选择框。",
+  "ipcert_off": "未开启",
+  "ipcert_address": "控制台地址",
+  "ipcert_issuer": "签发方",
+  "ipcert_expires": "有效至",
+  "ipcert_expires_value": "{date} (剩 {days} 天, 自动续期)",
+  "ipcert_pending_short": "申请中"
 }

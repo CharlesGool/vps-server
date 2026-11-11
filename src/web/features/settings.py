@@ -480,8 +480,12 @@ class SettingsMixin:
                           for system in ("windows", "macos", "linux"))
             return (f'<div class="client-cert-setup-links" id="{ident}">{links}</div>'
                     f'<ul class="client-cert-setup-how muted">{how}</ul>')
-        return (f'<details class="client-cert-autoselect" id="{ident}"><summary>{esc(t["client_cert_autoselect"])}</summary>'
-                f'<div class="client-cert-setup-links">{links}</div></details>')
+        how = "".join(f'<li><strong>{esc(t["client_cert_setup_label_" + system])}</strong> {esc(t["client_cert_setup_" + system])}</li>'
+                      for system in ("windows", "macos", "linux"))
+        return (f'<div class="client-cert-autoselect" id="{ident}">'
+                f'<h3>{esc(t["client_cert_autoselect"])}</h3><p class="muted">{esc(t["client_cert_autoselect_help"])}</p>'
+                f'<div class="client-cert-setup-links">{links}</div>'
+                f'<ul class="client-cert-setup-how muted">{how}</ul></div>')
 
     def page_client_cert_issued(self, lang, bundle, password, entry):
         t = self.context.STRINGS[lang]

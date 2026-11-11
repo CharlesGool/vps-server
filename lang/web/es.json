@@ -918,5 +918,16 @@
   "ipcert": "Certificado IP",
   "ipcert_pending": "En emisión: suele tardar menos de un minuto y luego la consola lo usa",
   "ipcert_ports": "El puerto 80 debe ser accesible desde internet (Let's Encrypt valida por él). Mientras está activado, Caddy ocupa 80/443 y la página pública de accesibilidad se desactiva. No hace falta dominio ni token de Cloudflare.",
-  "ipcert_failed": "El cambio falló: puede que no haya IPv4 pública. Consulta Configuración > Registros detallados."
+  "ipcert_failed": "El cambio falló: puede que no haya IPv4 pública. Consulta Configuración > Registros detallados.",
+  "files_used": "Usado",
+  "files_available": "Disponible",
+  "files_disk_free": "Libre en disco",
+  "files_upload_help": "Elige un archivo y súbelo; hasta {room}.",
+  "client_cert_autoselect_help": "Descarga el archivo para el sistema de este dispositivo y ejecútalo; desde entonces el navegador elige este certificado para la consola sin preguntar.",
+  "ipcert_off": "Desactivado",
+  "ipcert_address": "Dirección de la consola",
+  "ipcert_issuer": "Emisor",
+  "ipcert_expires": "Válido hasta",
+  "ipcert_expires_value": "{date} (quedan {days} días, se renueva solo)",
+  "ipcert_pending_short": "En emisión"
 }

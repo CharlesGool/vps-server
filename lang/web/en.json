@@ -918,5 +918,16 @@
   "ipcert": "IP certificate",
   "ipcert_pending": "Being issued: usually within a minute, then the console switches to it",
   "ipcert_ports": "Port 80 must be reachable from the internet (Let's Encrypt validates through it). While on, Caddy holds 80/443 and the public reachability page is off. No domain or Cloudflare token is needed.",
-  "ipcert_failed": "The change failed: there may be no public IPv4. See Settings > Detailed logs."
+  "ipcert_failed": "The change failed: there may be no public IPv4. See Settings > Detailed logs.",
+  "files_used": "Used",
+  "files_available": "Available",
+  "files_disk_free": "Free on disk",
+  "files_upload_help": "Choose a file and upload it; up to {room}.",
+  "client_cert_autoselect_help": "Download the file for this device's system and run it; from then on the browser picks this certificate for the console without asking.",
+  "ipcert_off": "Off",
+  "ipcert_address": "Console address",
+  "ipcert_issuer": "Issuer",
+  "ipcert_expires": "Valid until",
+  "ipcert_expires_value": "{date} ({days} days left, renews automatically)",
+  "ipcert_pending_short": "Being issued"
 }

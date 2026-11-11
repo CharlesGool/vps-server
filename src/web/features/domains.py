@@ -522,17 +522,22 @@ class DomainsMixin:
             ip_site = next((site for site in read_sites() if site.get("ip")), None)
         except (OSError, ValueError):
             ip_site = None
+        facts = ""
         if enabled and ip_site:
             cert = certificate_info(ip_site["host"])
-            detail = (t["domains_cert_detail"].format(issuer=cert[1], date=cert[0].strftime("%Y-%m-%d %H:%M"),
-                                                      days=(cert[0] - datetime.now(timezone.utc)).days)
-                      if cert else t["ipcert_pending"])
             url = f'https://{ip_site["host"]}:{console_port() or self.context.CONSOLE_PORT}/'
-            state = (f'<p><span class="proxy-node-status is-open">{esc(t["domains_ip_on"])}</span> '
-                     f'<a href="{esc(url, quote=True)}" target="_blank" rel="noopener noreferrer">{esc(url)}</a></p>'
-                     f'<p class="muted">{esc(t["domains_certificate_label"])}: {esc(detail)}</p>')
-        else:
-            state = ""
+            if cert:
+                issuer = cert[1]
+                expires = t["ipcert_expires_value"].format(date=cert[0].strftime("%Y-%m-%d %H:%M"),
+                                                           days=(cert[0] - datetime.now(timezone.utc)).days)
+            else:
+                issuer, expires = t["ipcert_pending_short"], "—"
+            facts = (f'<dl class="frp-facts frp-server-facts">'
+                     f'<div><dt>{esc(t["ipcert_address"])}</dt><dd><a href="{esc(url, quote=True)}" target="_blank" '
+                     f'rel="noopener noreferrer">{esc(url)}</a></dd></div>'
+                     f'<div><dt>{esc(t["ipcert_issuer"])}</dt><dd>{esc(issuer)}</dd></div>'
+                     f'<div><dt>{esc(t["ipcert_expires"])}</dt><dd>{esc(expires)}</dd></div></dl>')
+        state = ""
         # The switch runs as a background job; refresh until it ends.
         try:
             job = json.loads(self.context.module_status_path(self.context.BASE_DIR).read_text())
@@ -547,16 +552,19 @@ class DomainsMixin:
         action = "disable" if enabled else "enable"
         token = self.context.access_csrf_token(self.get_cookie("session"), "module:ipcert:" + action)
         confirm = f' data-confirm="{esc(t["domains_ip_off_confirm"], quote=True)}"' if enabled else ""
-        form = (f'<form method="post" action="/settings/modules/action">'
+        form = (f'<form method="post" action="/settings/modules/action" class="ipcert-switch">'
                 f'<input type="hidden" name="module" value="ipcert">'
                 f'<input type="hidden" name="action" value="{action}">'
                 f'<input type="hidden" name="return" value="ipcert">'
                 f'<input type="hidden" name="csrf" value="{token}">'
-                f'<button type="submit" class="{"node-action-danger " if enabled else ""}frp-card-edit"{confirm}>'
+                f'<button type="submit" class="{"files-button files-danger" if enabled else ""}"{confirm}>'
                 f'{esc(t["domains_ip_disable"] if enabled else t["domains_ip_enable"])}</button></form>')
-        body = (f'<h1>{esc(t["ipcert"])}</h1><div class="frp-workspace domains-page">'
-                f'<section class="card frp-card ipcert-card"><p>{esc(t["domains_ip_help"])}</p>'
-                f'<p class="muted">{esc(t["ipcert_ports"])}</p>{state}{form}</section></div>'
+        pill = (f'<span class="proxy-node-status is-open">{esc(t["domains_ip_on"])}</span>' if enabled else
+                f'<span class="proxy-node-status is-closed">{esc(t["ipcert_off"])}</span>')
+        body = (f'<h1>{esc(t["ipcert"])}</h1><div class="frp-workspace domains-page ipcert-page">'
+                f'<section class="card frp-card ipcert-card"><div class="frp-status-line">{pill}{form}</div>'
+                f'{state}{facts}<div class="ipcert-notes"><p>{esc(t["domains_ip_help"])}</p>'
+                f'<p class="muted">{esc(t["ipcert_ports"])}</p></div></section></div>'
                 '<script src="/static/module-controls.js" defer></script>')
         return self.send_html(200, self.render_page(t["ipcert"], body, lang, icon="ipcert"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})

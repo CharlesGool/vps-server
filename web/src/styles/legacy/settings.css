@@ -107,8 +107,11 @@ html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX
 }
 
 .motion-switch[aria-checked="true"] span { background: var(--primary-foreground); }
-.client-cert-autoselect { display: grid; gap: var(--compat-size-20); }
-.client-cert-autoselect > summary { width: fit-content; color: var(--primary); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.client-cert-autoselect { display: grid; gap: var(--compat-size-14); margin: var(--compat-size-24) 0; padding: var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
+.client-cert-autoselect > h3 { margin: 0; font-size: var(--text-base); }
+.client-cert-autoselect > p { margin: 0; font-size: var(--text-sm); }
+.client-cert-manual { padding: 0; border: 0; background: none; }
+.client-cert-manual > summary { width: fit-content; color: var(--primary); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .client-cert-setup-links { display: flex; flex-wrap: wrap; gap: var(--compat-size-14); }
 .client-cert-setup-how { list-style: none; margin: 0; padding-left: var(--compat-size-29); display: grid; gap: var(--compat-size-20); font-size: var(--text-sm); }
 .client-cert-manual { margin-top: var(--compat-size-1); }
