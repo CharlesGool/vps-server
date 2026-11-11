@@ -26,6 +26,30 @@ metadata:
 
 ## Changelog
 
+### v6.0.0 — 2026-11-11
+
+Adds a domain forwarding module (bundled Caddy) that replaces the removed Lucky module: HTTPS by subdomain to a local port or the console, with automatic certificates and DNS records kept on Cloudflare. The console can also get a trusted certificate for the host's IP. The upgrade command is unchanged and settings and data are kept; the Lucky module is removed during the upgrade.
+
+#### Added
+
+- **Domain forwarding (`caddy` module).** On the Domains page, add a subdomain (choosing from the main domains the Cloudflare token can manage) and forward it to a local port (such as an frps port) or to the console itself. The bundled Caddy 2.11.9 obtains and renews Let's Encrypt certificates, so it takes ports 80/443 and the public reachability page is off while it runs. A/AAAA records (DNS only) are created and removed through the Cloudflare API; the host's public IP is checked every 5 minutes and records follow it.
+- **Site management.** Each site can be switched off and edited; the backend may speak HTTPS (its certificate is not checked, for self-signed NAS or router pages), and the backend can receive either the original name or its own address as Host. Up to 8 extra names per site, limits by source address or network, and a password prompt (only the hash is stored). Each site has an access log (last 200 requests).
+- **History and alerts.** Site changes, switches, DNS records and public IP changes are recorded. A changed public IP, a failed DNS update or a certificate close to expiry and not renewed is pushed through the console's existing Bark settings, at most once a day per event.
+- **Console on a domain.** A site can target "this console": Caddy hands the client certificate to the console, and "require client certificate" still applies.
+- **HTTPS certificate for IP access.** Turned on from the Domains page, it gets a Let's Encrypt certificate for the host's public IPv4 (about 6 days, renewed by Caddy), and the console's existing `https://IP:port` uses it, so browsers stop warning. Ports 80/443 do not serve the console for the bare IP.
+
+#### Removed
+
+- **Lucky module (breaking).** The DDNS, reverse proxy and certificate features in use are covered by domain forwarding. The upgrade stops and removes Lucky after archiving its settings to `data/module-backup-lucky-*.tar.gz` in the state directory; `lucky` in `VPSSRV_MODULES` is ignored.
+
+#### Fixed
+
+- The online installer check reported hashed CA certificate directories as missing certificates.
+
+#### Verification
+
+Installed and upgraded from an older version in throwaway Ubuntu 24.04 system containers, testing site switches, edits, HTTPS backends, the Host choice, address limits, passwords, extra names, access logs and alert de-duplication. On a public test host with a real Cloudflare zone and Let's Encrypt: certificates for subdomains and extra names, passwords, address limits, switches, DNS cleanup on removal, the console on a domain, and the IP certificate being issued and picked up by the console (one forced reissue was picked up automatically). Not verified: the natural renewal of the 6-day IP certificate, real Bark delivery (only a mocked send), IPv6 records, opening 80/443 in ufw/firewalld. Wildcard certificates and certificate export are not supported; DNS is Cloudflare only.
+
 ### v5.8.0 — 2026-11-08
 
 FRPS gets the same traffic accounting and limits as Singbox nodes; client certificates are now signed with a bundled OpenSSL, fixing invalid certificate authorities on hosts with an old openssl. The upgrade command is unchanged and configuration and data are kept.

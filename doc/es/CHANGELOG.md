@@ -26,6 +26,30 @@ metadata:
 
 ## Historial de cambios
 
+### v6.0.0 — 2026-11-11
+
+Añade un módulo de reenvío de dominios (con Caddy incluido) que sustituye al módulo Lucky, eliminado: HTTPS por subdominio hacia un puerto local o la consola, con certificados automáticos y registros DNS mantenidos en Cloudflare. La consola también puede obtener un certificado de confianza para la IP del servidor. El comando de actualización no cambia y se conservan la configuración y los datos; el módulo Lucky se elimina durante la actualización.
+
+#### Añadido
+
+- **Reenvío de dominios (módulo `caddy`).** En la página Dominios se añade un subdominio (eligiendo entre los dominios principales que gestiona el token de Cloudflare) y se reenvía a un puerto local (por ejemplo, un puerto de frps) o a la propia consola. El Caddy 2.11.9 incluido obtiene y renueva certificados de Let's Encrypt, por lo que ocupa los puertos 80/443 y la página pública de alcance se desactiva mientras funciona. Los registros A/AAAA (solo DNS) se crean y eliminan con la API de Cloudflare; la IP pública se comprueba cada 5 minutos y los registros la siguen.
+- **Gestión de sitios.** Cada sitio se puede desactivar y editar; el backend puede usar HTTPS (sin comprobar su certificado, para NAS o routers autofirmados) y puede recibir como Host el nombre original o su propia dirección. Hasta 8 nombres adicionales por sitio, límites por dirección o red de origen y una contraseña de acceso (solo se guarda el hash). Cada sitio tiene un registro de acceso (últimas 200 peticiones).
+- **Historial y avisos.** Se registran los cambios de sitios, activaciones, registros DNS y cambios de IP pública. Un cambio de IP, un fallo de DNS o un certificado a punto de caducar sin renovar se notifica con la configuración de Bark de la consola, como mucho una vez al día por evento.
+- **Consola en un dominio.** Un sitio puede apuntar a "esta consola": Caddy entrega el certificado de cliente a la consola y "exigir certificado de cliente" sigue aplicándose.
+- **Certificado HTTPS para el acceso por IP.** Al activarlo en la página Dominios se obtiene un certificado de Let's Encrypt para la IPv4 pública (unos 6 días, Caddy lo renueva) y la dirección actual de la consola, `https://IP:puerto`, pasa a usarlo, de modo que el navegador deja de avisar. Los puertos 80/443 no sirven la consola para la IP sola.
+
+#### Eliminado
+
+- **Módulo Lucky (incompatible).** Las funciones de DDNS, proxy inverso y certificados que se usaban las cubre el reenvío de dominios. La actualización detiene y elimina Lucky tras archivar su configuración en `data/module-backup-lucky-*.tar.gz` del directorio de estado; `lucky` en `VPSSRV_MODULES` se ignora.
+
+#### Corregido
+
+- La comprobación del instalador en línea daba por ausentes los certificados de CA guardados en directorios con hash.
+
+#### Verificación
+
+Instalado y actualizado desde una versión anterior en contenedores de sistema Ubuntu 24.04 desechables, probando activación, edición, backends HTTPS, la elección de Host, límites de dirección, contraseñas, nombres adicionales, registros de acceso y la deduplicación de avisos. En un servidor de pruebas público con una zona real de Cloudflare y Let's Encrypt: certificados para subdominios y nombres adicionales, contraseñas, límites de dirección, activación, limpieza de DNS al eliminar, la consola en un dominio y la emisión del certificado de IP y su adopción por la consola (una reemisión forzada se adoptó sola). Sin verificar: la renovación natural del certificado de IP de 6 días, el envío real por Bark (solo simulado), los registros IPv6 y la apertura de 80/443 en ufw/firewalld. No se admiten certificados comodín ni la exportación de certificados; el DNS es solo Cloudflare.
+
 ### v5.8.0 — 2026-11-08
 
 FRPS obtiene la misma contabilidad y límites de tráfico que los nodos Singbox; los certificados de cliente se firman ahora con un OpenSSL incluido, lo que corrige autoridades de certificación inválidas en equipos con un openssl antiguo. El comando de actualización no cambia y se conservan la configuración y los datos.

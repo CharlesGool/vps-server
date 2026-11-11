@@ -80,7 +80,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v5.8.0(标签 `v5.8.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v6.0.0(标签 `v6.0.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
@@ -102,8 +102,8 @@ v5.8.0 同时发布 FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`
 
 真机验证(2026-11-08): 操作员在 vmshell 主机 `KVM11553`(主机 TLS 库 OpenSSL 3.5.7)用 `v5.8.0-test.1` 离线包从控制台终端原地升级, `client_cert.py check` 显示随附 openssl 且原 CA 自检通过; 证书签发与登录, FRPS 流量卡片与配额限制等测试操作员确认一切正常. 仍未验证: 主机 TLS 库为 OpenSSL 1.1.1k 的那台主机.
 
-域名转发(未发布, 2026-11-10, `bafc692` 起): 新增 `caddy` 模块, 按子域名把 HTTPS 转发到本机端口, 随附 Caddy 2.11.9 占用 80/443 并自动申请证书, Cloudflare API 维护 A/AAAA 记录; 开启时公开可达性页面让出 80/443. 同期: Lucky 管理页经控制台 `/lucky/` 显示, 管理端口只允许本机连接(`lucky_guard.py`), 修复 Lucky 开启 HTTPS 后的循环跳转, 修复在线版把按目录存放的 CA 误判为缺失(`0e52e3b`). 已验证: `check_project.py` 通过; 一次性 Ubuntu 24.04 系统容器中安装, 转发(`*.localhost` 内部证书), HTTP 跳转, 未知域名断开, 删除, 开关模块时探测页和 `PORTS.md` 交接, 控制台卸载/重装, 安装器重跑, 完整卸载无残留; Cloudflare 同步逻辑用模拟接口验证. 测试版 `test-0e52e3b` 已用在线包升级部署到一台 VPS, 全部模块运行. 未验证: IPv6 记录, ufw/firewalld 开启时放行 80/443.
+域名转发(已于 v6.0.0 发布, 2026-11-10, `bafc692` 起): 新增 `caddy` 模块, 按子域名把 HTTPS 转发到本机端口, 随附 Caddy 2.11.9 占用 80/443 并自动申请证书, Cloudflare API 维护 A/AAAA 记录; 开启时公开可达性页面让出 80/443. 同期: Lucky 管理页经控制台 `/lucky/` 显示, 管理端口只允许本机连接(`lucky_guard.py`), 修复 Lucky 开启 HTTPS 后的循环跳转, 修复在线版把按目录存放的 CA 误判为缺失(`0e52e3b`). 已验证: `check_project.py` 通过; 一次性 Ubuntu 24.04 系统容器中安装, 转发(`*.localhost` 内部证书), HTTP 跳转, 未知域名断开, 删除, 开关模块时探测页和 `PORTS.md` 交接, 控制台卸载/重装, 安装器重跑, 完整卸载无残留; Cloudflare 同步逻辑用模拟接口验证. 测试版 `test-0e52e3b` 已用在线包升级部署到一台 VPS, 全部模块运行. 未验证: IPv6 记录, ufw/firewalld 开启时放行 80/443.
 
-后续(2026-11-10, 至 `1a708d4`): Lucky 模块移除(升级时归档并清理); 控制台可挂到域名和本机 IP(Caddy 校验客户端证书, IP 证书为 Let's Encrypt 6 天证书); 站点启停, 编辑, 后端 HTTPS 与 Host 选择, 访问日志, 变更记录, Bark 通知, 其他域名, IP 白名单, 基本认证. 已验证: 一次性容器中各项功能与从 `c6356ea` 升级; 测试主机上用真实 Cloudflare 区域和 Let's Encrypt 签发验证了子域名, 其他域名, 基本认证, 白名单, 启停, 访问日志和删除时清理 DNS, IP 证书与客户端证书访问. 未验证: 6 天 IP 证书的自动续期, Bark 通知的真实推送(只用模拟发送验证), 泛域名证书与证书导出(未实现, 需要带 DNS 插件的 Caddy 或自行实现 ACME DNS 验证).
+后续(2026-11-10 至 11-11, 已于 v6.0.0 发布): Lucky 模块移除(升级时归档并清理); 控制台可挂到域名和本机 IP(Caddy 校验客户端证书, IP 证书为 Let's Encrypt 6 天证书); 站点启停, 编辑, 后端 HTTPS 与 Host 选择, 访问日志, 变更记录, Bark 通知, 其他域名, IP 白名单, 基本认证. 已验证: 一次性容器中各项功能与从 `c6356ea` 升级; 测试主机上用真实 Cloudflare 区域和 Let's Encrypt 签发验证了子域名, 其他域名, 基本认证, 白名单, 启停, 访问日志和删除时清理 DNS, IP 证书与客户端证书访问. 未验证: 6 天 IP 证书的自动续期, Bark 通知的真实推送(只用模拟发送验证), 泛域名证书与证书导出(未实现, 需要带 DNS 插件的 Caddy 或自行实现 ACME DNS 验证). 2026-11-11: IP 证书改为只供控制台原端口使用(80/443 不再对裸 IP 提供控制台, 控制台读取 Caddy 存储中的证书并在文件变化时换上), 强制重签一次验证了无路由时 HTTP-01 签发和控制台自动换用; 域名表单改为分行布局和统一字号.
 
 临时项目规则: 未发现.
