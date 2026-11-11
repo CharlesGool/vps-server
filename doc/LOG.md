@@ -107,5 +107,5 @@ v5.8.0 同时发布 FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`
 后续(2026-11-10 至 11-11, 已于 v6.0.0 发布): Lucky 模块移除(升级时归档并清理); 控制台可挂到域名和本机 IP(Caddy 校验客户端证书, IP 证书为 Let's Encrypt 6 天证书); 站点启停, 编辑, 后端 HTTPS 与 Host 选择, 访问日志, 变更记录, Bark 通知, 其他域名, IP 白名单, 基本认证. 已验证: 一次性容器中各项功能与从 `c6356ea` 升级; 测试主机上用真实 Cloudflare 区域和 Let's Encrypt 签发验证了子域名, 其他域名, 基本认证, 白名单, 启停, 访问日志和删除时清理 DNS, IP 证书与客户端证书访问. 未验证: 6 天 IP 证书的自动续期, Bark 通知的真实推送(只用模拟发送验证), 泛域名证书与证书导出(未实现, 需要带 DNS 插件的 Caddy 或自行实现 ACME DNS 验证). 2026-11-11: IP 证书改为只供控制台原端口使用(80/443 不再对裸 IP 提供控制台, 控制台读取 Caddy 存储中的证书并在文件变化时换上), 强制重签一次验证了无路由时 HTTP-01 签发和控制台自动换用; 域名表单改为分行布局和统一字号.
 
 
-v6.1.0(2026-11-11, `706962b` 至 `9f3faf4`): 客户端证书一键设置文件(`src/web/cert_setup.py`, Windows .cmd, macOS 描述文件, Linux 脚本, 浏览器策略 `AutoSelectCertificateForUrls`), 签发页把一键设置放在第一步; 新 CA 和设备证书名带主机名; 证书包改用 SHA1/3DES 以便 macOS 导入; 域名转发站点卡片按钮统一. 验证情况见 `doc/CHANGELOG.md`. 测试主机 163.53.246.15 运行 `test-9f3faf4`(按文件复制部署).
+v6.1.0(2026-11-11, `706962b` 至 `9f3faf4`): 客户端证书一键设置文件(`src/web/cert_setup.py`, Windows .cmd, macOS 描述文件, Linux 脚本, 浏览器策略 `AutoSelectCertificateForUrls`), 签发页把一键设置放在第一步; 新 CA 和设备证书名带主机名; 证书包改用 SHA1/3DES 以便 macOS 导入; 域名转发站点卡片按钮统一. 验证情况见 `doc/CHANGELOG.md`. 测试主机此前运行 `test-9f3faf4`(按文件复制部署).
 临时项目规则: 未发现.
