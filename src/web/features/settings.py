@@ -466,10 +466,13 @@ class SettingsMixin:
                  for pattern in self.cert_autoselect_patterns()]
         if not rules:
             return ""
+        # PowerShell: single quotes keep the JSON literal (it never holds a single quote).
+        # New-Item -Force on an existing key would wipe its other values, so test first.
         windows = "\n".join(
-            'reg add "HKLM\\SOFTWARE\\Policies\\Google\\Chrome\\AutoSelectCertificateForUrls" '
-            f'/v {number} /t REG_SZ /d "{rule.replace(chr(34), chr(92) + chr(34))}" /f'
-            for number, rule in enumerate(rules, 1))
+            ["$key = 'HKLM:\\SOFTWARE\\Policies\\Google\\Chrome\\AutoSelectCertificateForUrls'",
+             "if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }"]
+            + [f"New-ItemProperty -Path $key -Name '{number}' -PropertyType String -Value '{rule}' -Force | Out-Null"
+               for number, rule in enumerate(rules, 1)])
         linux = json.dumps({"AutoSelectCertificateForUrls": rules}, indent=2)
         return (f'<details class="client-cert-autoselect"><summary>{esc(t["client_cert_autoselect"])}</summary>'
                 f'<p>{esc(t["client_cert_autoselect_intro"].format(name=subject_cn(entry)))}</p>'
