@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.1.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.1.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.2.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.2.0)
 
 ## Documentación
 
@@ -22,8 +22,10 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
 - Pruebas de subida/bajada en el navegador, registros de visitantes y pruebas iperf3 de cliente y servidor con duración limitada.
 - Nodos Singbox para AnyTLS, VMess, VLESS, Trojan y Shadowsocks, con enlaces, cuotas, límites de velocidad y caducidad.
-- Servidor FRPS (contabilidad de tráfico, cuota, límites de velocidad y vigencia como un nodo Singbox, medidos en bindPort), instancias FRPC y proxies TCP/UDP, acceso a Lucky y estado y dispositivos de Tailscale.
-- Módulos opcionales, reenvío de puertos, un pequeño almacén de archivos con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
+- Servidor FRPS (contabilidad de tráfico, cuota, límites de velocidad y vigencia como un nodo Singbox, medidos en bindPort), instancias FRPC y proxies TCP/UDP y estado y dispositivos de Tailscale.
+- Reenvío de dominios: reenvía HTTPS por subdominio a un puerto local (por ejemplo, un puerto de frps) o a la propia consola. Incluye Caddy, que solicita certificados de Let's Encrypt automáticamente, y mantiene los registros DNS con la API de Cloudflare (solo DNS; comprueba la IP pública del equipo cada 5 minutos). Se pueden añadir varios tokens de Cloudflare (por ejemplo, si los dominios están en cuentas distintas) y cada sitio usa automáticamente el token que gestiona su dominio principal. Cada sitio se puede activar o desactivar, editar, vincular a varios dominios, limitar por IP de origen o proteger con contraseña, y su servidor de destino puede ser HTTPS; hay registro de accesos, historial de cambios y avisos de Bark (cambio de IP, fallo de DNS, certificado a punto de caducar). Al activarlo, Caddy ocupa 80/443 y la página pública de accesibilidad pasa a servirla Caddy (véase más abajo).
+- Certificado IP: un interruptor propio en el inicio que solicita un certificado de Let's Encrypt para la IPv4 pública del equipo; la dirección `https://IP:puerto` de la consola pasa a usarlo y el navegador deja de avisar de que el certificado no es seguro. No necesita dominio ni token de Cloudflare, solo que el puerto 80 sea accesible desde internet; comparte el Caddy incluido con el reenvío de dominios (requiere instalar el módulo de reenvío de dominios), y Caddy funciona y ocupa 80/443 mientras cualquiera de los dos esté activado. En ese caso, el interruptor de página pública del inicio sigue funcionando y Caddy devuelve la página directamente: el puerto 80 la muestra para la IP y para cualquier nombre no configurado (sin redirigir a HTTPS, para poder comprobar si el propio puerto 80 es accesible) y el puerto 443 la muestra solo para `https://IP-del-equipo/` mientras el certificado IP esté activado.
+- Módulos opcionales, reenvío de puertos, Mini nube con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. La tarjeta «Página pública» del inicio activa o desactiva juntas las páginas HTTP y HTTPS con un solo interruptor. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
@@ -115,7 +117,7 @@ Capturas de la compilación de prueba previa a v5.3.0 en el entorno de prueba co
 
 ## Requisitos
 
-Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas. El reenvío de puertos necesita iptables, y la contabilidad y los límites de los nodos Singbox y de FRPS necesitan nft; si el equipo no tiene una versión funcional, el paquete completo incluye nft/iptables de Debian 13 con cargador y glibc propios, que también funcionan sin conexión. Cambiar el puerto de la consola y detectar el puerto de administración de Lucky necesitan `ss`; el resumen de instalación y las rutas de Tailscale necesitan `ip` (ambos de iproute2). Versiones mínimas del sistema: Bash 4.1, systemd 240, SQLite 3.24 y la biblioteca OpenSSL 1.1.1 que usa Python, y Python 3.9+ tanto en `/usr/bin/python3` como en el `python3` del PATH; deben existir flock, sha256sum, base64, getent, install, mktemp y systemd-run. El paquete en línea también necesita certificados CA (ca-certificates). Un `ip`/`ss` del equipo sin rutas JSON o sin `-H` cede ante la copia incluida. Un iperf3 del equipo solo se usa si no hay copia incluida y debe ser 3.1+. El instalador comprueba esto antes de cambiar cualquier servicio: un mínimo no cumplido o Python inferior a 3.9 detiene la instalación, la falta de iptables (sin entorno incluido), `ss` o `ip` solo genera un aviso, y un nft inutilizable o un demonio Tailscale del sistema ya existente detienen la instalación.
+Mínimo: Linux x86-64, systemd, acceso root, Python 3.9+, Bash y directorios de instalación/estado escribibles. El instalador está dirigido a Debian 11+ y Ubuntu 20.04+; otras arquitecturas no están soportadas. El reenvío de puertos necesita iptables, y la contabilidad y los límites de los nodos Singbox y de FRPS necesitan nft; si el equipo no tiene una versión funcional, el paquete completo incluye nft/iptables de Debian 13 con cargador y glibc propios, que también funcionan sin conexión. Cambiar el puerto de la consola y detectar si el puerto de destino está escuchando necesitan `ss`; el resumen de instalación y las rutas de Tailscale necesitan `ip` (ambos de iproute2). Versiones mínimas del sistema: Bash 4.1, systemd 240, SQLite 3.24 y la biblioteca OpenSSL 1.1.1 que usa Python, y Python 3.9+ tanto en `/usr/bin/python3` como en el `python3` del PATH; deben existir flock, sha256sum, base64, getent, install, mktemp y systemd-run. El paquete en línea también necesita certificados CA (ca-certificates). Un `ip`/`ss` del equipo sin rutas JSON o sin `-H` cede ante la copia incluida. Un iperf3 del equipo solo se usa si no hay copia incluida y debe ser 3.1+. El instalador comprueba esto antes de cambiar cualquier servicio: un mínimo no cumplido o Python inferior a 3.9 detiene la instalación, la falta de iptables (sin entorno incluido), `ss` o `ip` solo genera un aviso, y un nft inutilizable o un demonio Tailscale del sistema ya existente detienen la instalación.
 
 Se recomienda una versión mantenida de Debian/Ubuntu, espacio para copias de seguridad y puertos abiertos para las funciones activadas. Debian 13 x86-64 se verificó en una máquina; Python 3.9 y otras distribuciones no tienen aceptación independiente. Cada versión publica dos paquetes. El paquete sin conexión incluye todos los programas de terceros; el destino solo necesita Python 3.9+, sin curl, Git, tar ni gzip y sin red. El paquete en línea es pequeño y descarga esos programas durante la instalación, verificados con SHA-256; el instalador instala con apt los iptables, iproute2 y nftables que falten. El paquete sin conexión también incluye iptables, nftables e iproute2 (`ss`, `ip`) y los usa cuando el equipo no los tiene. Crear el paquete sin conexión desde el código fuente requiere red.
 
@@ -125,18 +127,18 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.1.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.2.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.2.0/vps-server-v6.2.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
 
-La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Lucky y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
+La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Caddy y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v6.1.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.2.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -148,17 +150,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.2.0/vps-server-v6.2.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/vps-server-v6.1.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.1.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.2.0/vps-server-v6.2.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.2.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.1.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.2.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -189,9 +191,9 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 El argumento `status` muestra el estado del requisito y todos los certificados.
 
-### Archivos
+### Mini nube
 
-"Archivos", en la página de inicio, está desactivado por defecto. Al activarlo, guarda archivos temporalmente en este servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. Los archivos llegan de dos formas: subidos desde un navegador, o indicando una URL http/https para que el servidor la descargue por sí mismo (en segundo plano; se puede cerrar el navegador). El límite es de 5 GiB por defecto y se cambia en la página; sea cual sea, siempre quedan al menos 500 MiB libres en el disco. Cada archivo puede tener varios enlaces de descarga, cada uno con caducidad (5, 10 o 30 minutos; 1, 2 o 5 horas; 1, 7 o 30 días; o nunca) y un límite de descargas opcional, y cualquiera se puede revocar en todo momento. Los enlaces tienen la forma `https://<dirección de la consola>/f/<token>/<nombre del archivo>`; quien tenga uno no necesita contraseña ni certificado de cliente, y `curl -O`, `wget` y las descargas reanudadas funcionan. Solo las solicitudes que empiezan desde el principio cuentan como descargas. Desactivar Archivos invalida todos los enlaces y conserva los archivos.
+"Mini nube", en la página de inicio, está desactivado por defecto. Al activarlo, guarda archivos temporalmente en este servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. Los archivos llegan de dos formas: subidos desde un navegador, o indicando una URL http/https para que el servidor la descargue por sí mismo (en segundo plano; se puede cerrar el navegador). El límite es de 5 GiB por defecto y se cambia en la página; sea cual sea, siempre quedan al menos 500 MiB libres en el disco. Cada archivo puede tener varios enlaces de descarga, cada uno con caducidad (5, 10 o 30 minutos; 1, 2 o 5 horas; 1, 7 o 30 días; o nunca) y un límite de descargas opcional, y cualquiera se puede revocar en todo momento. Los enlaces tienen la forma `https://<dirección de la consola>/f/<token>/<nombre del archivo>`; quien tenga uno no necesita contraseña ni certificado de cliente, y `curl -O`, `wget` y las descargas reanudadas funcionan. Solo las solicitudes que empiezan desde el principio cuentan como descargas. Desactivar Mini nube invalida todos los enlaces y conserva los archivos.
 
 ### Seguridad del inicio de sesión
 
@@ -268,7 +270,7 @@ Plantilla de configuración: [.env.example](../../.env.example). Todas las varia
 | `PROXY_SS_PORT` | vacío | Puerto inicial del protocolo; vacío lo selecciona automáticamente. |
 | `PROXY_SS_PASSWORD` | vacío | Credencial inicial del protocolo; vacío la genera. |
 
-El instalador también acepta `VPSSRV_MODULES` (lista `web,iperf3,proxy,frps,lucky,tailscale`; valor inicial `web`, conserva módulos al reinstalar) y `SERVICE_NAME` (predeterminado `vps-server-web`). El argumento `KEEP_DATA=1` conserva los datos al desinstalar. No son parámetros de Web.
+El instalador también acepta `VPSSRV_MODULES` (lista `web,iperf3,proxy,frps,tailscale,caddy`, donde `caddy` es el reenvío de dominios; valor inicial `web`, conserva módulos al reinstalar. El módulo `lucky` de versiones anteriores se ha eliminado: al actualizar se detiene y se borra, y antes se archiva su configuración en `data/module-backup-lucky-*.tar.gz` del directorio de estado) y `SERVICE_NAME` (predeterminado `vps-server-web`). El argumento `KEEP_DATA=1` conserva los datos al desinstalar. No son parámetros de Web.
 
 Para mantener el código, ejecute `python3 tools/check-project/check_project.py`. Requiere Git, Bash, Python 3.9+ y Node.js 24; Node.js compila el frontend y comprueba JavaScript y no es necesario para ejecutar el servidor. Use `--node /ruta/absoluta/node` si no está en PATH. Los directorios `tools/build_styles`, `tools/build_offline`, `tools/verify_dependencies` pasan a llamarse `build-styles`, `build-offline`, `verify-dependencies`, respectivamente; sustituya las rutas en los comandos antiguos de mantenimiento. Los comandos de instalación no cambian. La comprobación no inicia servicios ni sustituye la aceptación del despliegue.
 
@@ -276,11 +278,11 @@ Antes de instalar el código de desarrollo, ejecute `npm ci && npm run check` en
 
 ## Actualización
 
-Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pasos anteriores. Copie la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, configuraciones FRPC y Lucky. Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.
+Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pasos anteriores. Copie la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, configuraciones FRPC y la configuración del reenvío de dominios (`/etc/vps-server-caddy`). Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.1.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.2.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 
@@ -296,11 +298,11 @@ cd /root/apps/vps-server/installer-source
 bash deploy/uninstall.sh
 ```
 
-Ambos detienen servicios y liberan puertos del proyecto. La eliminación completa borra además el estado predeterminado, configuraciones FRPS/proxy/FRPC, ajustes y tareas Lucky e identidad Tailscale. No elimina automáticamente datos externos a la raíz del estado. Revise la pertenencia de instancias FRPC compartidas. Un fallo al limpiar el cortafuegos detiene la eliminación completa y conserva los registros de pertenencia.
+Ambos detienen servicios y liberan puertos del proyecto. La eliminación completa borra además el estado predeterminado, configuraciones FRPS/proxy/FRPC, los ajustes de Lucky que dejaron versiones anteriores, los sitios del reenvío de dominios, los tokens de Cloudflare y los certificados (`/etc/vps-server-caddy`, `/var/lib/vps-server-caddy`) e identidad Tailscale. Los registros DNS de Cloudflare no se eliminan al desinstalar. No elimina automáticamente datos externos a la raíz del estado. Revise la pertenencia de instancias FRPC compartidas. Un fallo al limpiar el cortafuegos detiene la eliminación completa y conserva los registros de pertenencia.
 
 ## Agradecimientos
 
-Este proyecto utiliza o toma como referencia: [LibreSpeed](https://github.com/librespeed/speedtest), [sing-box](https://github.com/SagerNet/sing-box), [frp](https://github.com/fatedier/frp), [Lucky](https://github.com/gdy666/lucky), [Tailscale](https://github.com/tailscale/tailscale), [iperf3](https://github.com/esnet/iperf), [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), [xterm.js](https://github.com/xtermjs/xterm.js), [Fontsource](https://github.com/fontsource/font-files), [Lucide](https://github.com/lucide-icons/lucide).
+Este proyecto utiliza o toma como referencia: [LibreSpeed](https://github.com/librespeed/speedtest), [sing-box](https://github.com/SagerNet/sing-box), [frp](https://github.com/fatedier/frp), [Caddy](https://github.com/caddyserver/caddy), [Tailscale](https://github.com/tailscale/tailscale), [iperf3](https://github.com/esnet/iperf), [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), [xterm.js](https://github.com/xtermjs/xterm.js), [Fontsource](https://github.com/fontsource/font-files), [Lucide](https://github.com/lucide-icons/lucide).
 
 Consulte [Avisos de terceros](THIRD_PARTY_NOTICES.md) para atribución y condiciones originales.
 

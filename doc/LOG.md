@@ -80,7 +80,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v6.1.0(标签 `v6.1.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v6.2.0(标签 `v6.2.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
@@ -108,4 +108,6 @@ v5.8.0 同时发布 FRPS 流量统计和限制, 逻辑与 Singbox 节点相同(`
 
 
 v6.1.0(2026-11-11, `706962b` 至 `9f3faf4`): 客户端证书一键设置文件(`src/web/cert_setup.py`, Windows .cmd, macOS 描述文件, Linux 脚本, 浏览器策略 `AutoSelectCertificateForUrls`), 签发页把一键设置放在第一步; 新 CA 和设备证书名带主机名; 证书包改用 SHA1/3DES 以便 macOS 导入; 域名转发站点卡片按钮统一. 验证情况见 `doc/CHANGELOG.md`. 测试主机此前运行 `test-9f3faf4`(按文件复制部署).
+v6.2.0(2026-11-12, `a02b7a8` 至 `661dc00`): 迷你网盘(`src/web/file_share.py`, `src/web/features/files.py`, 数据在 `data/files/`, 默认关闭); IP 证书独立为首页卡片(`ipcert`, 域名转发的开关存于 `/etc/vps-server-caddy/domains-enabled`); Caddy 运行时公开可达性页面由 Caddy 返回(`caddy_sites.probe_handler()`); 首页"公开页面"一个开关(`web_public` 任务); 多个 Cloudflare 令牌(`cloudflare-tokens.json`). 验证情况见 `doc/CHANGELOG.md`. 英语/西班牙语 README 和 DESIGN 此前缺少域名转发相关内容, 本次从 `bafc692` 之前的版本起同步.
+
 临时项目规则: 未发现.

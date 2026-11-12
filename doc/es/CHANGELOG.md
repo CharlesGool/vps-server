@@ -26,6 +26,30 @@ metadata:
 
 ## Historial de cambios
 
+### v6.2.0 — 2026-11-12
+
+Nueva Mini nube: guarda archivos temporalmente en el servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. El certificado IP pasa a ser un interruptor propio en el inicio y ya no exige configurar antes un dominio; la página pública de accesibilidad también funciona mientras Caddy está en marcha; el reenvío de dominios admite varios tokens de Cloudflare. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Añadido
+
+- **Mini nube (desactivada por defecto).** Los archivos se pueden subir desde el navegador o indicando un enlace http/https para que el servidor los descargue por sí mismo (en segundo plano; se puede cerrar el navegador). Cada archivo puede tener varios enlaces de descarga, con caducidad de 5, 10 o 30 minutos, 1, 2 o 5 horas, 1, 7 o 30 días, o sin caducidad, además de un límite de descargas opcional, y cualquiera se puede revocar en todo momento. Quien tenga el enlace no necesita contraseña ni certificado de cliente, y `curl -O`, `wget` y las descargas reanudadas funcionan. El límite de capacidad es de 5 GiB por defecto y siempre quedan al menos 500 MiB libres en el disco. Se puede fijar un límite de velocidad de descarga, que todos los enlaces juntos no superan. Una subida interrumpida o sin datos durante 2 minutos descarta el archivo parcial, y los restos se limpian cada 10 minutos.
+- **Interruptor propio para el certificado IP.** El inicio tiene una tarjeta nueva «Certificado IP» que solicita un certificado de Let's Encrypt para la IPv4 pública del equipo, útil también en equipos cuyo certificado no está ligado a un dominio. Comparte Caddy con el reenvío de dominios (requiere instalar el módulo de reenvío de dominios); cada uno tiene su interruptor y Caddy funciona mientras cualquiera de los dos esté activado.
+- **Varios tokens de Cloudflare.** Si los dominios están en cuentas de Cloudflare distintas, se pueden añadir varios tokens (hasta 20, con nombre). Cada sitio usa automáticamente el token que gestiona su dominio principal. Los tokens que Cloudflare rechaza no se guardan. El token único anterior se convierte automáticamente la primera vez que se cambian los tokens.
+
+#### Cambiado
+
+- **La página pública de accesibilidad ya no se desactiva mientras Caddy está en marcha.** Ahora la devuelve Caddy directamente: el puerto 80 la muestra para la IP y para los nombres no configurados (sin redirigir a HTTPS, para poder comprobar el propio puerto 80), y el puerto 443 la muestra para `https://IP-del-equipo/` cuando el certificado IP está activado. Las solicitudes HTTP de los sitios con dominio siguen redirigiéndose a HTTPS.
+- **Un solo interruptor «Página pública» en el inicio.** Las tarjetas «Página HTTP» y «Página HTTPS» se fusionan; un solo interruptor activa o desactiva ambas páginas, y la tarjeta permite abrir por separado la página HTTP y la HTTPS.
+- El apartado «No elegir el certificado cada vez» de la página de emisión de certificados de cliente y de los ajustes de seguridad se muestra desplegado directamente; se ha ordenado la maquetación de Mini nube y de la página del certificado IP.
+
+#### Corregido
+
+- Cuando el menú desplegable era más estrecho que sus opciones, el texto de las opciones se rompía en una letra por línea: el ancho del menú ahora lo determinan las opciones.
+
+#### Verificación
+
+Verificado en un equipo de prueba con acceso público, desplegando cada versión de prueba por copia de archivos: subida a Mini nube, descarga del servidor (recurso de GitHub Release), descarga con los enlaces sin certificado, tanto por el puerto de la IP como por el dominio, con el requisito de certificado de cliente activo, límite de descargas, caducidad y límite de velocidad (una descarga y dos simultáneas cumplen lo configurado); las cuatro combinaciones de los interruptores de certificado IP y reenvío de dominios; la página pública de accesibilidad por http/https con la IP (validando estrictamente el certificado IP), mientras las solicitudes con dominio siguen redirigiéndose; conversión del token antiguo con varios tokens y sincronización DNS, y tokens rechazados por Cloudflare que no se guardan; el interruptor de página pública con Caddy en marcha. En el equipo local se verificaron con interfaces y conexiones simuladas la elección de token entre cuentas y que las subidas bloqueadas o interrumpidas no dejan archivos. Sin verificar: un token real de una segunda cuenta de Cloudflare; el cambio de ambos puertos con un solo interruptor de «Página pública» sin Caddy; subidas bloqueadas en una red real; registros IPv6.
+
 ### v6.1.0 — 2026-11-11
 
 Iniciar sesión con certificado de cliente cuesta menos: los archivos de configuración en un clic importan el certificado y hacen que el navegador lo elija solo, sin buscarlo en el selector en cada inicio de sesión; ahora los certificados se importan en macOS. El comando de actualización no cambia y se conservan la configuración y los datos.

@@ -26,6 +26,30 @@ metadata:
 
 ## Changelog
 
+### v6.2.0 — 2026-11-12
+
+Adds Mini Drive: keep files on the server for a while and create password-free download links, for example so a server that cannot reach GitHub can download from here. The IP certificate becomes a separate switch on the home page and no longer needs a domain to be configured first; the public reachability page also keeps working while Caddy runs; domain forwarding supports several Cloudflare tokens. The upgrade command is unchanged and settings and data are kept.
+
+#### Added
+
+- **Mini Drive (off by default).** Files can be uploaded from the browser, or you can enter an http/https URL for the server to download itself (in the background; the browser can be closed). Each file can have several download links with an expiry of 5, 10 or 30 minutes, 1, 2 or 5 hours, 1, 7 or 30 days, or never, an optional download limit, and each can be revoked at any time. Whoever has a link needs no password or client certificate, and `curl -O`, `wget` and resumed downloads all work. The limit defaults to 5 GiB, and at least 500 MiB always stays free on disk. A download speed limit can be set; all links together stay under it. An upload that is interrupted or gets no data for 2 minutes has its partial file discarded, and leftover files are cleaned every 10 minutes.
+- **Separate switch for the IP certificate.** The home page gets an "IP certificate" tile that obtains a Let's Encrypt certificate for the host's public IPv4 on its own, so it also works on hosts that do not bind a certificate to a domain. It shares Caddy with domain forwarding (the domain forwarding module must be installed); each has its own switch, and Caddy runs when either is on.
+- **Several Cloudflare tokens.** When domains belong to different Cloudflare accounts, several tokens can be added (up to 20, nameable). Each site automatically uses the token that can manage its main domain. A token Cloudflare rejects is not saved. The previous single token is converted automatically the first time a token is changed.
+
+#### Changed
+
+- **The public reachability page is no longer disabled while Caddy runs.** Caddy returns the page directly: port 80 shows it for the IP and for names that are not configured (no HTTPS redirect, so that port 80 itself can be tested), and port 443 shows it for `https://host-IP/` while the IP certificate is on. HTTP requests for domain sites still redirect to HTTPS.
+- **One "Public page" switch on the home page.** The former "HTTP page" and "HTTPS page" tiles are merged; one switch turns both pages on or off, and the tile has separate buttons to open the HTTP and HTTPS pages.
+- "Stop picking the certificate every time" is now shown expanded on the certificate issuing page and in the security settings; the layout of the Mini Drive and IP certificate pages is tidied.
+
+#### Fixed
+
+- When a dropdown menu was narrower than its options, option text was squeezed into one character per line: the menu width now follows the options.
+
+#### Verification
+
+Each test version was deployed by file copy to a public test host and verified: Mini Drive upload, server download (a GitHub Release asset), download links working without a certificate through both the IP port and a domain while client certificates are required, download limits, expiry, speed limit (both a single download and two simultaneous downloads match the setting); the four combinations of the IP certificate and domain forwarding switches; the public reachability page by IP over http/https (strictly validating the IP certificate) while domain requests still redirect; conversion of an old token with several tokens and DNS sync, and a Cloudflare-rejected token not being saved; the public page switch while Caddy runs. On the local machine, mocked interfaces and connections verified picking a token across accounts and that stalled and interrupted uploads leave no file. Not verified: a real token from a second Cloudflare account; the "Public page" switch changing both ports in one go when there is no Caddy; stalled uploads on a real network; IPv6 records.
+
 ### v6.1.0 — 2026-11-11
 
 Client certificate login takes less effort: one-click setup files import the certificate and make the browser pick it on its own, so you no longer search the picker at every login; certificates now import on macOS. The upgrade command is unchanged and settings and data are kept.
