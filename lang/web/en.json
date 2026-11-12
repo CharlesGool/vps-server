@@ -171,6 +171,7 @@
   "traffic_help_once": "Upload is traffic coming into this host, download is traffic leaving it; each byte counts once. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
   "traffic_help_twice": "Forwarded traffic enters and leaves this host, so it counts twice, like a Singbox node. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
   "traffic_help_tailscale": "Counts traffic on the tailscale0 interface; traffic this host forwards (exit node, subnet routes) enters and leaves it, so it counts twice. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
+  "traffic_frpc_shared": "These instances connect to the same server, so their traffic is counted and limited together: {names}",
   "files_error_traffic_blocked": "Mini Drive reached its traffic cap or validity period; uploads and downloads are paused.",
   "node_unlimited": "No limit",
   "node_next_reset": "Next reset",

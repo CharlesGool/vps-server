@@ -55,6 +55,13 @@ class TrafficMixin:
             ledger = {entry["id"]: {"samples": {}, "suspect": False}}
         else:
             entries, ledger = kernel_entries()
+            if key.startswith("frpc:"):
+                # FRPC instances are counted per server (see traffic_meter.py).
+                try:
+                    from traffic_meter import frpc_server_key
+                    key = frpc_server_key(key[5:]) or key
+                except Exception:
+                    return ""
             entry = entries.get(key)
             if entry is None:
                 return ""
@@ -70,10 +77,13 @@ class TrafficMixin:
         if not getattr(self, "_traffic_script_added", False):
             self._traffic_script_added = True
             script = '<script src="/static/node-controls.js"></script>'
+        shared = ""
+        if key.startswith("frpcsrv:") and ", " in entry["name"]:
+            shared = f'<p class="muted traffic-help">{esc(t["traffic_frpc_shared"].format(names=entry["name"]))}</p>'
         help_key = ("traffic_help_tailscale" if key == "tailscale" else
                     "traffic_help_twice" if entry.get("billable_multiplier", 2) == 2 else "traffic_help_once")
         body = (f'{notice}{self.node_metrics(entry, ledger, t)}'
-                f'<p class="muted traffic-help">{esc(t[help_key])}</p>'
+                f'<p class="muted traffic-help">{esc(t[help_key])}</p>{shared}'
                 f'<div class="node-secondary"><button type="button" class="node-action node-access-open" '
                 f'data-dialog-open="node-access-{identifier}">{esc(t["node_limit_manage"])}</button></div>'
                 f'{self.node_limits_dialog(entry, identifier, self.traffic_csrf(), "/traffic/limits?back=" + back, t)}'

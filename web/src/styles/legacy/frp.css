@@ -194,6 +194,7 @@
 .domain-card .frp-target-meta .private-value code { min-width: 0; white-space: nowrap; }
 .frp-client-grid > .domain-zone { flex: 1 1 100%; min-width: 0; }
 .traffic-card > p.traffic-help.muted { margin: var(--compat-size-24) 0 var(--compat-size-14); font-size: var(--text-sm); }
+.traffic-card > p.traffic-help.muted + p.traffic-help.muted { margin-top: 0; }
 div.traffic-card { margin-top: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
 .traffic-card .node-usage { display: block; margin: 0; padding: 0; border-top: 0; }
 .traffic-card .node-usage-heading h3 { font-size: var(--text-base); }

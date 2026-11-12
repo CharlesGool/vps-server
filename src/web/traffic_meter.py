@@ -8,7 +8,10 @@ This one covers what is left, with the same counters, traffic cap (throttle to
     caddy           domain forwarding: everything Caddy serves on 80 and 443
     iperf3          the iperf3 port
     portfwd:<id>    one port forwarding rule, forwarded packets to and from its target
-    frpc:<name>     one FRPC instance, its connection to the FRPS server
+    frpcsrv:<server>:<port>
+                    the FRPC instances connecting to one FRPS server, together:
+                    the kernel only sees their connections to that server and
+                    cannot tell two instances using the same one apart
     tailscale       the tailscale0 interface; forwarded packets (exit node,
                     subnet routes) count twice, they cross the network twice
 
@@ -65,7 +68,9 @@ LIMIT_FIELDS = frozenset(("cap_bytes", "cap_action", "upload_limit_bps", "downlo
                           "expiry_count", "expiry_unit", "expires_at", "reset_mode", "next_reset_at"))
 FIELDS = frozenset(("id", "key", "name", "enabled", "billable_multiplier", "upload_bytes", "download_bytes",
                     "total_upload_bytes", "total_download_bytes", "counter_epoch")) | LIMIT_FIELDS
-KEY_RE = re.compile(r"(caddy|iperf3|tailscale|portfwd:[0-9a-f]{1,32}|frpc:.{1,32})")
+KEY_RE = re.compile(r"(caddy|iperf3|tailscale|portfwd:[0-9a-f]{1,32}|frpc:.{1,32}|"
+                    r"frpcsrv:[A-Za-z0-9.:\[\]-]{1,255}:[0-9]{1,5})")
+SERVER_RE = re.compile(r"[A-Za-z0-9.:\[\]-]{1,255}")
 RESOLVE_SECONDS = 300
 _resolved = {}
 
@@ -174,7 +179,7 @@ def _resolve(host):
     return addresses
 
 
-def _frpc_instances():
+def _frpc_instances(resolve=True):
     try:
         from frp_control import client_names
         names = client_names(FRPC_DIR)
@@ -187,10 +192,19 @@ def _frpc_instances():
         port = re.search(r"^serverPort\s*=\s*(\d+)", text, re.M)
         if not _valid_frpc_name(name):
             continue
-        addresses = _resolve(server.group(1)) if server else []
+        addresses = _resolve(server.group(1)) if server and resolve else []
         number = int(port.group(1)) if port else 7000
-        found.append((name, addresses if 1 <= number <= 65535 else [], number))
+        host = server.group(1).strip() if server else ""
+        if not SERVER_RE.fullmatch(host) or not 1 <= number <= 65535:
+            continue
+        found.append((name, host, addresses, number))
     return found
+
+
+def frpc_server_key(name):
+    """The entry key an FRPC instance is counted under, or None."""
+    return next((f"frpcsrv:{host}:{port}" for instance, host, _, port in _frpc_instances(resolve=False)
+                 if instance == name), None)
 
 
 def _valid_frpc_name(name):
@@ -247,9 +261,13 @@ def live_entries():
                    for protocol in protocols
                    for direction, side in (("upload", "d"), ("download", "s"))] if active else []
         live[f"portfwd:{rule_id}"] = (label, 2, matches)
-    for name, addresses, port in _frpc_instances():
-        matches = []
-        for address in addresses:
+    servers = {}
+    for name, host, addresses, port in _frpc_instances():
+        group = servers.setdefault(f"frpcsrv:{host}:{port}", {"names": [], "addresses": addresses, "port": port})
+        group["names"].append(name)
+    for key, group in servers.items():
+        matches, port = [], group["port"]
+        for address in group["addresses"]:
             family = _nfproto(address)
             field = "ip6" if family == "ipv6" else "ip"
             for protocol in ("tcp", "udp"):
@@ -257,7 +275,7 @@ def live_entries():
                              f"meta nfproto {family} {field} daddr {address} {protocol} dport {port}", 1),
                             (family, "download", "input",
                              f"meta nfproto {family} {field} saddr {address} {protocol} sport {port}", 1)]
-        live[f"frpc:{name}"] = (name, 1, matches)
+        live[key] = (", ".join(group["names"]), 1, matches)
     return live
 
 
@@ -276,13 +294,21 @@ def read_state(*, state_path=None, config_paths=None):
     state = _stored()
     live = live_entries()
     entries = {entry["key"]: entry for entry in state["nodes"]}
+    # v6.3.0 kept one entry per FRPC instance; those of one server counted the
+    # same packets. The first of them becomes the server's entry, keeping its
+    # id, totals and limits; the others go.
+    for key in sorted(k for k in entries if k.startswith("frpc:")):
+        server = frpc_server_key(key[5:])
+        old = entries.pop(key)
+        if server and server not in entries:
+            entries[server] = {**old, "key": server}
     nodes = []
     for key in sorted(set(entries) | set(live)):
         entry = entries.get(key)
         if key not in live:
             # A deleted forwarding rule or FRPC instance is gone for good; a
             # module that is off or removed may come back with its limits.
-            if key.startswith(("portfwd:", "frpc:")):
+            if key.startswith(("portfwd:", "frpcsrv:")):
                 continue
             nodes.append({**entry, "matches": []})
             continue
