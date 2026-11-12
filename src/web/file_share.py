@@ -34,6 +34,10 @@ LINK_DAYS = (1, 7, 30, 0)  # 0: no expiry
 MAX_DOWNLOADS = 100000
 CHUNK = 1024 * 1024
 FETCH_TIMEOUT = 60
+# An upload whose sender stays silent this long is dropped with its partial file.
+UPLOAD_IDLE_TIMEOUT = 120
+# Leftover partial files (no write holds them any more) are swept this often.
+SWEEP_SECONDS = 600
 USER_AGENT = "vps-server-files"
 TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32}")
 ID_RE = re.compile(r"[0-9a-f]{16}")
@@ -76,6 +80,7 @@ class FileStore:
         self._reserved = {}  # write id -> bytes held against the quota
         self._cancel = set()
         self._recovered = False
+        self._swept = 0.0
 
     # -- index ---------------------------------------------------------
 
@@ -115,14 +120,21 @@ class FileStore:
                     if job.get("state") == "running":
                         job.update(state="failed", error="interrupted", finished=now)
                         changed = True
-                if self.blobs.is_dir():
-                    known = {item["id"] for item in data["files"]}
-                    for path in self.blobs.iterdir():
-                        if path.name not in known:
-                            path.unlink(missing_ok=True)
+            if now - self._swept >= SWEEP_SECONDS:
+                self._sweep(data)
+                self._swept = now
             if changed:
                 self._save(data)
             return data
+
+    def _sweep(self, data):
+        """Remove partial files that no stored file or running write owns."""
+        if not self.blobs.is_dir():
+            return
+        owned = {item["id"] for item in data["files"]} | set(self._reserved)
+        for path in self.blobs.iterdir():
+            if path.name not in owned:
+                path.unlink(missing_ok=True)
 
     @staticmethod
     def _link_dead(link, now):

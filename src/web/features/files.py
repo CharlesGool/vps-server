@@ -9,7 +9,7 @@ import re
 import time
 import urllib.parse
 
-from file_share import GIB, LINK_DAYS, FileShareError
+from file_share import GIB, LINK_DAYS, UPLOAD_IDLE_TIMEOUT, FileShareError
 
 NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
            "files_fetch_started", "files_quota_saved", "files_job_removed", "files_job_cancelled")
@@ -311,10 +311,22 @@ class FilesMixin:
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self.send_json(411, {"error": "length_required"})
+        # Without a limit a sender that goes silent (a sleeping laptop, a dropped
+        # network) would hold its partial file and its share of the quota forever.
+        self.connection.settimeout(UPLOAD_IDLE_TIMEOUT)
         try:
             self.context.FILE_STORE.upload(query.get("name", [""])[0], self.rfile, length)
         except FileShareError as exc:
             return self.send_json(400, {"error": exc.code})
+        except OSError:
+            # The sender went away; the partial file is already removed.
+            self.close_connection = True
+            return None
+        finally:
+            try:
+                self.connection.settimeout(None)
+            except OSError:
+                pass
         return self.send_json(200, {"ok": True})
 
     def handle_files_fetch(self):
