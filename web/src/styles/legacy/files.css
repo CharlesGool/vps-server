@@ -12,7 +12,8 @@
 .files-usage-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-14) var(--compat-size-24); }
 .files-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11); margin: 0; }
 .files-inline label { margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); }
-.files-inline :is(input, select, button) { box-sizing: border-box; height: var(--compat-size-46); min-height: var(--compat-size-46); margin: 0; }
+/* Only the form's own controls: a select's menu options are buttons too. */
+.files-inline > :is(input, select, button), .files-inline .reference-select-trigger { box-sizing: border-box; height: var(--compat-size-46); min-height: var(--compat-size-46); margin: 0; }
 .files-inline input[type=number] { width: var(--compat-size-56); }
 .files-grow input { flex: 1 1 var(--compat-size-82); min-width: 0; }
 .files-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-82)), 1fr)); gap: var(--compat-size-24) var(--compat-size-98); }
