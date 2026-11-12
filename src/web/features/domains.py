@@ -365,7 +365,7 @@ class DomainsMixin:
                       f'data-confirm="{esc(t["domains_token_clear_confirm"].format(name=name), quote=True)}">'
                       f'<input type="hidden" name="csrf" value="{csrf}">'
                       f'<input type="hidden" name="remove" value="{esc(item["id"], quote=True)}">'
-                      f'<button type="submit" class="node-action-danger frp-card-edit">{esc(t["domains_token_clear"])}</button></form>')
+                      f'<button type="submit" class="domains-token-remove">{esc(t["domains_token_clear"])}</button></form>')
             return (f'<li class="domains-token"><div class="domains-token-head">'
                     f'<h3>{esc(name)}</h3>{state}<span class="muted">{esc(checked_text)}</span>{remove}</div>'
                     f'{zone_list}</li>')
