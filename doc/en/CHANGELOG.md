@@ -26,6 +26,23 @@ metadata:
 
 ## Changelog
 
+### v6.3.2 — 2026-11-12
+
+Fixes two problems with the IP certificate. The upgrade command is unchanged and settings and data are kept.
+
+#### Fixed
+
+- **Installing from the IP certificate page turned on domain forwarding.** The IP certificate and domain forwarding both run on the Caddy module, and the install button on the IP certificate page installed Caddy directly, then went to the domain forwarding page with domain forwarding turned on. Now domain forwarding stays off: the install requests the IP certificate and returns to its page, and if the request fails Caddy stops and 80/443 go back to the public page. Installing from the domain forwarding page is unchanged. Domain forwarding that this already turned on is not turned off on upgrade; turn it off on the home page if it is not needed.
+- **Cloud servers behind one-to-one NAT had no public IPv4.** Cloud servers such as Alibaba Cloud ECS only have a private address on their interface, so the IP certificate reported no public IPv4 and domain forwarding wrote no A record. Now, when the host's IPv4 address is private, the address its connections leave from is read from `www.cloudflare.com` over IPv4 and cached for 10 minutes.
+
+#### Verification
+
+Upgraded an Alibaba Cloud Debian server behind one-to-one NAT from v6.3.1: its public IPv4 was found, a Let's Encrypt IP certificate was issued, and the console port passed normal certificate verification. Installing from the IP certificate page was verified only in a local simulation, not by clicking it on a host without Caddy.
+
+#### Known issues
+
+- The online package downloads sing-box, frp and Caddy from GitHub during install, which can stall on servers in mainland China; use the offline package there.
+
 ### v6.3.1 — 2026-11-12
 
 Fixes two problems with FRPC instances in traffic accounting, and the note shown when the Windows setup script runs from a network location. The upgrade command is unchanged and settings and data are kept.

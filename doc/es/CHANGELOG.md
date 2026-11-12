@@ -26,6 +26,23 @@ metadata:
 
 ## Historial de cambios
 
+### v6.3.2 — 2026-11-12
+
+Corrige dos problemas del certificado IP. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Corregido
+
+- **Instalar desde la página del certificado IP activaba el reenvío de dominios.** El certificado IP y el reenvío de dominios funcionan sobre el módulo Caddy, y el botón de instalar de la página del certificado IP instalaba Caddy directamente y luego iba a la página de reenvío de dominios con este activado. Ahora el reenvío de dominios sigue desactivado: la instalación solicita el certificado IP y vuelve a su página, y si la solicitud falla Caddy se detiene y 80/443 vuelven a la página pública. Instalar desde la página de reenvío de dominios no cambia. El reenvío de dominios que ya se activó así no se desactiva al actualizar; desactívelo en la página de inicio si no lo necesita.
+- **Los servidores en la nube tras NAT uno a uno no tenían IPv4 pública.** Servidores como Alibaba Cloud ECS solo tienen una dirección privada en su interfaz, así que el certificado IP indicaba que no había IPv4 pública y el reenvío de dominios no escribía registros A. Ahora, cuando la IPv4 del equipo es privada, la dirección de salida se obtiene de `www.cloudflare.com` por IPv4 y se guarda en caché 10 minutos.
+
+#### Verificación
+
+Se actualizó desde v6.3.1 un servidor Debian de Alibaba Cloud tras NAT uno a uno: se encontró su IPv4 pública, se emitió un certificado IP de Let's Encrypt y el puerto de la consola superó la verificación normal del certificado. La instalación desde la página del certificado IP solo se verificó en una simulación local, no pulsándola en un equipo sin Caddy.
+
+#### Problemas conocidos
+
+- El paquete en línea descarga sing-box, frp y Caddy de GitHub durante la instalación, lo que puede atascarse en servidores de China continental; use allí el paquete sin conexión.
+
 ### v6.3.1 — 2026-11-12
 
 Corrige dos problemas con las instancias FRPC en la contabilidad de tráfico, y el aviso que muestra el script de configuración de Windows al ejecutarse desde una ubicación de red. El comando de actualización no cambia y se conservan la configuración y los datos.
