@@ -501,6 +501,7 @@
   "module_web": "Página pública de acceso",
   "module_web_http": "Página HTTP",
   "module_web_https": "Página HTTPS",
+  "module_web_public": "Página pública",
   "module_port_occupied": "El puerto {port} ya está en uso.",
   "host_check_nft_missing": "Este equipo no tiene nftables utilizable. Ejecuta primero apt install nftables.",
   "host_check_nft_unusable": "nftables en este equipo no puede leer las reglas del cortafuegos. Ejecuta primero apt install nftables.",

@@ -55,6 +55,8 @@ GROUPS = ("proxy_nodes", "frpc")
 # Switches carried by an installed module: the IP certificate runs on Caddy.
 CADDY_FEATURES = ("ipcert",)
 PUBLIC_LISTENERS = ("web_http", "web_https")
+# One home switch for both public pages; the job sets both listeners together.
+PUBLIC_PAGE = "web_public"
 UNITS = {
     "proxy": "vps-server-proxy.service",
     "frps": "vps-server-frps.service",
@@ -281,19 +283,20 @@ class HostCheckFailed(RuntimeError):
         super().__init__("host check failed: " + ", ".join(codes))
 
 
-def wait_public_listener_applied(prefix, listener, enabled, old_pid):
+def wait_public_listener_applied(prefix, listeners, enabled, old_pid):
     status_file = state_data_dir() / "public-listeners.json"
-    name = "http" if listener == "web_http" else "https"
+    names = ["http" if listener == "web_http" else "https" for listener in listeners]
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         try:
             status = json.loads(status_file.read_text())
-            item = status[name]
-            if status["pid"] != old_pid and item["enabled"] == enabled:
-                if enabled and not item["bound"]:
-                    if item.get("reason") == "occupied":
-                        raise PublicPortOccupied(item["port"])
-                    raise RuntimeError(f"Port {item['port']} could not start")
+            items = [status[name] for name in names]
+            if status["pid"] != old_pid and all(item["enabled"] == enabled for item in items):
+                for item in items:
+                    if enabled and not item["bound"]:
+                        if item.get("reason") == "occupied":
+                            raise PublicPortOccupied(item["port"])
+                        raise RuntimeError(f"Port {item['port']} could not start")
                 return
         except (OSError, ValueError, KeyError, TypeError):
             pass
@@ -320,41 +323,53 @@ def switch_web_setting(path, enabled):
         raise
 
 
-def switch_public_listener(prefix, listener, enabled):
+def switch_public_listener(prefix, listeners, enabled):
+    """Set the listed public listeners on or off with one Web restart, all or nothing."""
     from console_port import reserve_owned_port, release_owned_port
-    key = "VPSSRV_PUBLIC_HTTP_PORT" if listener == "web_http" else "VPSSRV_PUBLIC_HTTPS_PORT"
-    default = 80 if listener == "web_http" else 443
     unit_file = Path("/etc/systemd/system/vps-server-web.service")
     try:
-        recorded = next((line.split("=", 2)[2] for line in unit_file.read_text().splitlines()
-                         if line.startswith("Environment=" + key + "=")), "")
-        port = int(recorded or default)
-    except (OSError, ValueError) as exc:
+        lines = unit_file.read_text().splitlines()
+    except OSError as exc:
         raise RuntimeError("cannot determine public listener port") from exc
-    owner = "vps-server Web HTTP" if listener == "web_http" else "vps-server Web HTTPS"
-    path = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
+    plan = []
+    for listener in listeners:
+        key = "VPSSRV_PUBLIC_HTTP_PORT" if listener == "web_http" else "VPSSRV_PUBLIC_HTTPS_PORT"
+        default = 80 if listener == "web_http" else 443
+        try:
+            recorded = next((line.split("=", 2)[2] for line in lines
+                             if line.startswith("Environment=" + key + "=")), "")
+            port = int(recorded or default)
+        except ValueError as exc:
+            raise RuntimeError("cannot determine public listener port") from exc
+        owner = "vps-server Web HTTP" if listener == "web_http" else "vps-server Web HTTPS"
+        path = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
+        plan.append((port, owner, path, path.read_bytes() if path.exists() else None))
     status_file = state_data_dir() / "public-listeners.json"
     try:
         old_pid = json.loads(status_file.read_text()).get("pid")
     except (OSError, ValueError, TypeError):
         old_pid = None
-    previous = path.read_bytes() if path.exists() else None
-    reserved = reserve_owned_port(prefix, port, owner) if enabled else False
-    path.write_text("1\n" if enabled else "0\n")
-    os.chmod(path, 0o600)
+    reserved = []
     try:
-        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
-        wait_public_listener_applied(prefix, listener, enabled, old_pid)
-        if not enabled:
-            release_owned_port(prefix, port, owner)
-    except (OSError, ValueError, subprocess.SubprocessError, RuntimeError):
-        if previous is None:
-            path.unlink(missing_ok=True)
-        else:
-            path.write_bytes(previous)
+        for port, owner, path, _ in plan:
+            if enabled and reserve_owned_port(prefix, port, owner):
+                reserved.append((port, owner))
+            path.write_text("1\n" if enabled else "0\n")
             os.chmod(path, 0o600)
+        subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=True, timeout=60)
+        wait_public_listener_applied(prefix, listeners, enabled, old_pid)
+        if not enabled:
+            for port, owner, _, _ in plan:
+                release_owned_port(prefix, port, owner)
+    except (OSError, ValueError, subprocess.SubprocessError, RuntimeError):
+        for _, _, path, previous in plan:
+            if previous is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(previous)
+                os.chmod(path, 0o600)
         subprocess.run(["systemctl", "restart", "vps-server-web.service"], check=False, timeout=60)
-        if reserved:
+        for port, owner in reserved:
             release_owned_port(prefix, port, owner)
         raise
 
@@ -690,22 +705,24 @@ def install_frpc(prefix):
 
 
 def run_toggle(prefix, module, enabled):
-    if module in PUBLIC_LISTENERS:
+    if module in PUBLIC_LISTENERS + (PUBLIC_PAGE,):
         if "web" not in installed_modules(prefix):
             raise RuntimeError("the console module is unavailable")
+        listeners = PUBLIC_LISTENERS if module == PUBLIC_PAGE else (module,)
         if caddy_enabled():
             # Caddy holds 80/443 and answers the page itself: only its config changes.
             time.sleep(2)
-            flag = state_data_dir() / f"{module.replace('_', '-')}-enabled"
-            flag.write_text("1\n" if enabled else "0\n")
-            os.chmod(flag, 0o600)
+            for listener in listeners:
+                flag = state_data_dir() / f"{listener.replace('_', '-')}-enabled"
+                flag.write_text("1\n" if enabled else "0\n")
+                os.chmod(flag, 0o600)
             sites = _caddy_sites()
             sites.render()
             sites.reload_caddy()
             return
         # Let the console return its redirect before the Web unit restarts.
         time.sleep(2)
-        switch_public_listener(prefix, module, enabled)
+        switch_public_listener(prefix, listeners, enabled)
         return
     if module == "frpc":
         if not frpc_installed():
@@ -1249,10 +1266,10 @@ def uninstall_frpc(prefix):
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS + CADDY_FEATURES:
+    if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS + (PUBLIC_PAGE,) + CADDY_FEATURES:
         raise SystemExit("invalid module action")
     action, module, prefix = argv
-    if module in PUBLIC_LISTENERS + CADDY_FEATURES and action not in ("enable", "disable"):
+    if module in PUBLIC_LISTENERS + (PUBLIC_PAGE,) + CADDY_FEATURES and action not in ("enable", "disable"):
         raise SystemExit("invalid public listener action")
     prefix = str(Path(prefix).resolve(strict=True))
     if os.geteuid() != 0 or not (install_state_file()).is_file():

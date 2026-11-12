@@ -381,7 +381,7 @@ class ModulesMixin:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
         allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") if action in ("install", "uninstall") else (
-            "web_http", "web_https", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy", "ipcert") + self.context.MANAGED_FEATURES
+            "web_public", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy", "ipcert") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         expected = self.context.access_csrf_token(self.get_cookie("session"), "module:" + module + ":" + action)
@@ -441,7 +441,7 @@ class ModulesMixin:
 
     def page_module_closed(self, lang, query_lang, parsed):
         module = self.context.parse_qs(parsed.query).get("module", [""])[0]
-        destinations = {"web_http": "/public/http", "web_https": "/public/https",
+        destinations = {"web_public": "/public/http", "web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
                         "caddy": "/domains", "ipcert": "/ipcert",
@@ -452,7 +452,7 @@ class ModulesMixin:
         if self.context.module_states()[module]:
             return self.redirect(destinations[module], {"Cache-Control": "no-store"})
         t = self.context.STRINGS[lang]
-        names = {"web_http": t["module_web_http"], "web_https": t["module_web_https"],
+        names = {"web_public": t["module_web_public"], "web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
                  "caddy": t["domains"], "ipcert": t["ipcert"],
@@ -474,8 +474,7 @@ class ModulesMixin:
         installed = self.context.installed_modules(self.context.BASE_DIR)
         states = self.context.module_states(installed)
         items = (
-            ("web_http", t["module_web_http"], "/public/http", "globe", states["web_http"]),
-            ("web_https", t["module_web_https"], "/public/https", "lock-keyhole", states["web_https"]),
+            ("web_public", t["module_web_public"], "/public/http", "globe", states["web_public"]),
             ("speedtest", t["speedtest"], "/speedtest", "gauge", states["speedtest"]),
             ("iperf3", t["iperf"], "/iperf", "arrow-up-down", states["iperf3"]),
             ("proxy_nodes", t["proxy"], "/proxy", "network", states["proxy_nodes"]),
@@ -510,7 +509,7 @@ class ModulesMixin:
             switch = ""
             if module not in ("settings", "changelog", "logs"):
                 action = "disable" if enabled else "enable"
-                available = (module not in ("web_http", "web_https") or "web" in installed) and (
+                available = (module != "web_public" or "web" in installed) and (
                     module != "iperf3" or "iperf3" in installed) and (
                     module != "proxy_nodes" or "proxy" in installed) and (
                     module != "frps" or "frps" in installed) and (
@@ -529,20 +528,25 @@ class ModulesMixin:
                                       module == "iperf3" and "iperf3" in installed or
                                       module == "proxy_nodes" and "proxy" in installed or
                                       module in ("frps", "frpc", "tailscale", "caddy") and module in installed)
-            occupied_port = public_listener_occupied(self.context, module, job)
+            occupied_port = (next((port for port in (public_listener_occupied(self.context, listener, job)
+                                                     for listener in ("web_http", "web_https"))
+                                   if port is not None), None) if module == "web_public" else None)
+            # The public pages are meant to be seen from outside, so they open in a tab of their own.
+            # A closed page only shows the console's "closed" notice, which belongs in this tab.
+            blank = (' target="_blank" rel="noopener noreferrer"'
+                     if module == "web_public" and enabled else "")
             detail = (f'<span class="tile-error" role="status">'
                       f'{esc(t["module_port_occupied"].format(port=occupied_port))}</span>'
                       if occupied_port is not None else
                       f'<span class="tile-error" role="status">{esc(t["module_public_needs_ipcert"])}</span>'
-                      if module == "web_https" and enabled and self.context.CADDY_HOLDS_PUBLIC_PORTS
-                      and not states["ipcert"] else "")
+                      if module == "web_public" and enabled and self.context.CADDY_HOLDS_PUBLIC_PORTS
+                      and not states["ipcert"] else
+                      f'<span class="tile-sublinks"><a href="/public/http"{blank}>HTTP</a>'
+                      f'<a href="/public/https"{blank}>HTTPS</a></span>'
+                      if module == "web_public" and enabled else "")
             target = ("/closed?module=" + module
-                      if closed or module in ("web_http", "web_https") and not enabled else href)
-            # The public pages are meant to be seen from outside, so they open in a tab of their own.
-            # A closed page only shows the console's "closed" notice, which belongs in this tab.
-            blank = (' target="_blank" rel="noopener noreferrer"'
-                     if module in ("web_http", "web_https") and enabled else "")
-            tiles.append(f'<article class="tile{" tile-public" if module in ("web_http", "web_https") else ""}" data-module="{module}"><div class="tile-top">'
+                      if closed or module == "web_public" and not enabled else href)
+            tiles.append(f'<article class="tile{" tile-public" if module == "web_public" else ""}" data-module="{module}"><div class="tile-top">'
                          f'<span class="tile-icon">{self.context.ui_icon(icon)}</span>{switch}</div>'
                          f'<a class="tile-label" href="{target}"{blank}>{esc(title)}</a>{detail}</article>')
         job_names = {key: title for key, title, *_ in items}
@@ -562,7 +566,7 @@ class ModulesMixin:
         if method == "GET" and path in ("/public/http", "/public/https"):
             module = "web_http" if path.endswith("http") else "web_https"
             if not self.context.module_states()[module]:
-                self.redirect("/closed?module=" + module, {"Cache-Control": "no-store"})
+                self.redirect("/closed?module=web_public", {"Cache-Control": "no-store"})
                 return True
             destination = self.public_page_url(module)
             if not destination:
@@ -644,4 +648,5 @@ def module_states(context, installed=None):
         "changelog": True,
     }
     states["frp"] = states["frps"] or states["frpc"]
+    states["web_public"] = states["web_http"] or states["web_https"]
     return states

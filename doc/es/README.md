@@ -25,7 +25,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Servidor FRPS (contabilidad de tráfico, cuota, límites de velocidad y vigencia como un nodo Singbox, medidos en bindPort), instancias FRPC y proxies TCP/UDP, acceso a Lucky y estado y dispositivos de Tailscale.
 - Módulos opcionales, reenvío de puertos, un pequeño almacén de archivos con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
-- Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
+- Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. La tarjeta «Página pública» del inicio activa o desactiva juntas las páginas HTTP y HTTPS con un solo interruptor. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
 ### Capturas de pantalla
 

@@ -25,7 +25,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 - FRPS server (traffic accounting, cap, speed limits and validity like a Singbox node, metered on bindPort), FRPC instances and TCP/UDP proxies, a native Lucky management entry, and Tailscale status and devices.
 - Optional modules, port forwarding, a small file store with password-free download links, detailed logs, a password-protected browser root terminal, three languages and themes.
 - Escalating bans after failed logins, a console access limit, signed-in device management, a security log and Bark login alerts.
-- Fresh installs include only Web; public reachability pages are disabled. See [LOG](LOG.md#bugs) for issues and verification boundaries.
+- Fresh installs include only Web; public reachability pages are disabled. The home "Public page" tile turns the HTTP and HTTPS pages on or off together with one switch. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
 ### Interface screenshots
 

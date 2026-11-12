@@ -14,6 +14,9 @@ html[dir="rtl"] .tile-switch-form .motion-switch[aria-checked="true"] span { tra
 .tile-public .tile-label::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .tile-public .tile-switch-form { position: relative; z-index: var(--layer-111); }
 .tile-error { color: var(--destructive); font-size: var(--text-sm); }
+.tile-sublinks { position: relative; z-index: var(--layer-111); display: flex; flex-wrap: wrap; gap: var(--compat-size-14); font-size: var(--text-sm); }
+.tile-sublinks a { color: var(--muted-foreground); text-decoration: none; }
+.tile-sublinks a:hover { color: var(--primary); text-decoration: underline; }
 
 @media (max-width: 36rem) {
   .tiles { gap: var(--compat-size-11); }
