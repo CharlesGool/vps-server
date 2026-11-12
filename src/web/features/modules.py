@@ -274,6 +274,14 @@ class ModulesMixin:
             host = None
         if not host or not host.isascii() or not all(c.isalnum() or c in ".:-" for c in host):
             return None
+        if self.context.CADDY_HOLDS_PUBLIC_PORTS:
+            # Caddy answers the page only for this host's address: a domain on
+            # 80 is sent on to HTTPS, and on 443 it is a forwarded site.
+            try:
+                self.context.ipaddress.ip_address(host)
+            except ValueError:
+                from caddy_sites import public_address
+                host = public_address(self.context.socket.AF_INET) or host
         host = f"[{host}]" if ":" in host else host
         scheme, port = (("http", self.context.PUBLIC_HTTP_PORT) if module == "web_http"
                         else ("https", self.context.PUBLIC_HTTPS_PORT))
