@@ -520,12 +520,18 @@ def reload_caddy():
 
 # -- addresses --------------------------------------------------------------
 
+TRACE_HOST = "www.cloudflare.com"
+NAT_CACHE_SECONDS = 600
+_nat_cache = {}
+
+
 def public_address(family):
-    """This host's own public address of a family, or None.
+    """This host's public address of a family, or None.
 
     A UDP connect sends nothing; it only asks the kernel which local address
-    routes to the outside. Behind NAT that is a private address, and the
-    host has no public address of its own to publish.
+    routes to the outside. When that is a private IPv4 address, the host may
+    sit behind one-to-one NAT (as cloud servers such as Alibaba Cloud ECS
+    do), so Cloudflare is asked which address its connections come from.
     """
     target = ("1.1.1.1", 53) if family == socket.AF_INET else ("2606:4700:4700::1111", 53)
     try:
@@ -534,7 +540,56 @@ def public_address(family):
             address = ipaddress.ip_address(sock.getsockname()[0])
     except OSError:
         return None
-    return str(address) if address.is_global else None
+    if address.is_global:
+        return str(address)
+    return nat_address() if family == socket.AF_INET else None
+
+
+def nat_address(now=None, fetch=None):
+    """The public IPv4 address this host's connections leave from, or None; kept for a while."""
+    now = time.monotonic() if now is None else now
+    cached = _nat_cache.get("ipv4")
+    if cached and now - cached[0] < NAT_CACHE_SECONDS:
+        return cached[1]
+    try:
+        text = (fetch or _trace)()
+        value = next(line[3:].strip() for line in text.splitlines() if line.startswith("ip="))
+        address = ipaddress.ip_address(value)
+        result = str(address) if address.version == 4 and address.is_global else None
+    except (OSError, ValueError, StopIteration, UnicodeError, ssl.SSLError):
+        result = None
+    _nat_cache["ipv4"] = (now, result)
+    return result
+
+
+def _trace():
+    """Cloudflare's trace page over IPv4: "ip=" is the address the request came from."""
+    import http.client
+
+    class Connection(http.client.HTTPSConnection):
+        def connect(self):
+            family, kind, proto, _name, address = socket.getaddrinfo(
+                self.host, self.port, socket.AF_INET, socket.SOCK_STREAM)[0]
+            sock = socket.socket(family, kind, proto)
+            sock.settimeout(self.timeout)
+            try:
+                sock.connect(address)
+            except OSError:
+                sock.close()
+                raise
+            self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+    connection = Connection(TRACE_HOST, 443, timeout=6, context=ssl.create_default_context())
+    try:
+        connection.request("GET", "/cdn-cgi/trace", headers={"User-Agent": "vps-server"})
+        response = connection.getresponse()
+        if response.status != 200:
+            raise OSError(f"trace status {response.status}")
+        return response.read(4096).decode("ascii")
+    except http.client.HTTPException as exc:
+        raise OSError("trace failed") from exc
+    finally:
+        connection.close()
 
 
 # -- Cloudflare -------------------------------------------------------------
