@@ -26,6 +26,19 @@ metadata:
 
 ## Historial de cambios
 
+### v6.2.1 — 2026-11-12
+
+Corrige que direcciones como los enlaces de descarga de Mini nube apuntaran a `127.0.0.1` al abrir la consola por un dominio. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Corregido
+
+- Al abrir la consola por el reenvío de dominios (un sitio cuyo destino es "Esta consola"), Caddy pasaba a la consola su propia dirección de conexión `127.0.0.1:puerto`, así que todas las direcciones que la consola generaba con ella eran incorrectas: los enlaces de descarga de Mini nube y los de suscripción de Clash apuntaban a `127.0.0.1`, y el terminal web fallaba la comprobación de origen. Ahora Caddy pasa el dominio que usó el visitante; solo los dominios del propio sitio llegan así a la consola. Tras actualizar basta con recargar la página; no hace falta volver a crear los enlaces de descarga existentes.
+- Con Caddy en marcha, el enlace "Página pública" del inicio apuntaba al dominio cuando la consola se abría por uno, pero Caddy muestra esa página solo para la IP del servidor. El enlace usa ahora la IPv4 pública.
+
+#### Verificación
+
+En un servidor de pruebas público, un certificado de cliente temporal inició sesión en la consola por un dominio: todos los enlaces de descarga de Mini nube usaban ese dominio y "Página pública" llevaba a la IP del servidor; el acceso por la IP y el puerto de la consola no cambia. Sin verificar: el terminal web por un dominio.
+
 ### v6.2.0 — 2026-11-12
 
 Nueva Mini nube: guarda archivos temporalmente en el servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. El certificado IP pasa a ser un interruptor propio en el inicio y ya no exige configurar antes un dominio; la página pública de accesibilidad también funciona mientras Caddy está en marcha; el reenvío de dominios admite varios tokens de Cloudflare. El comando de actualización no cambia y se conservan la configuración y los datos.

@@ -26,6 +26,19 @@ metadata:
 
 ## Changelog
 
+### v6.2.1 — 2026-11-12
+
+Fixes addresses such as Mini Drive download links pointing to `127.0.0.1` when the console is opened through a domain. The upgrade command is unchanged and settings and data are kept.
+
+#### Fixed
+
+- When the console was opened through domain forwarding (a site whose target is "This console"), Caddy passed the console its own connection address `127.0.0.1:port`, so every address the console built from it was wrong: Mini Drive download links and Clash subscription links pointed to `127.0.0.1`, and the web terminal failed its origin check. Caddy now passes the domain the visitor used; only the site's own domains reach the console this way. Reload the page after upgrading; existing download links do not need to be created again.
+- While Caddy runs, the home "Public page" link pointed to the domain when the console was opened through one, but Caddy shows that page only for the host's IP. The link now uses the public IPv4.
+
+#### Verification
+
+On a public test host, a temporary client certificate signed in to the console through a domain: every Mini Drive download link used that domain, and "Public page" led to the host's IP; access through the IP and console port is unchanged. Not verified: the web terminal through a domain.
+
 ### v6.2.0 — 2026-11-12
 
 Adds Mini Drive: keep files on the server for a while and create password-free download links, for example so a server that cannot reach GitHub can download from here. The IP certificate becomes a separate switch on the home page and no longer needs a domain to be configured first; the public reachability page also keeps working while Caddy runs; domain forwarding supports several Cloudflare tokens. The upgrade command is unchanged and settings and data are kept.
