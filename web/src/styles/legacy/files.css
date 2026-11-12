@@ -16,7 +16,22 @@
 .files-inline input[type=number] { width: var(--compat-size-56); }
 .files-grow input { flex: 1 1 var(--compat-size-82); min-width: 0; }
 .files-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-82)), 1fr)); gap: var(--compat-size-24) var(--compat-size-98); }
-.files-add-part { display: grid; align-content: start; gap: var(--compat-size-14); min-width: 0; }
+/* The input keeps its button beside it, also on a phone. */
+.files-add .files-grow input:not([type=file]), .files-add .files-pick { flex: 1 1 0; }
+.files-add .files-inline > button { flex: none; }
+@media (max-width: 48rem) {
+  .files-add-part + .files-add-part { padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
+}
+/* Heading, help, form: the help row absorbs the height difference, so both forms line up. */
+.files-add-part { display: grid; grid-template-rows: auto 1fr auto; align-content: stretch; gap: var(--compat-size-14); min-width: 0; }
+.files-add-part > h2, .files-add-part > p { margin: 0; }
+.files-pick { position: relative; display: flex; flex: 1 1 var(--compat-size-82); align-items: center; gap: var(--compat-size-14); min-width: 0; height: var(--compat-size-46); padding: 0 var(--compat-size-14) 0 var(--compat-size-11); border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); cursor: pointer; }
+.files-pick:hover { border-color: var(--primary); }
+.files-pick:focus-within { outline: var(--compat-size-39) solid var(--primary); outline-offset: var(--compat-size-39); }
+.files-inline .files-pick > input[type=file] { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; opacity: 0; }
+.files-pick-button { flex: none; padding: var(--compat-size-88) var(--compat-size-14); border-radius: var(--radius-sm); background: var(--secondary); color: var(--primary); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+.files-pick-name { min-width: 0; overflow: hidden; color: var(--muted-foreground); font-size: var(--text-sm); text-overflow: ellipsis; white-space: nowrap; }
+.files-pick-name.is-set { color: var(--foreground); }
 .files-upload progress { flex: 1 1 100%; width: 100%; }
 .files-upload output:empty { display: none; }
 .files-jobs, .files-files { display: grid; gap: var(--compat-size-14); }

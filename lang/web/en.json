@@ -879,6 +879,8 @@
   "files_fetch_help": "This server downloads it directly, for sources other hosts cannot reach (GitHub Releases, for example). You can close the browser; the download continues in the background.",
   "files_upload_label": "Upload from this device",
   "files_upload": "Upload",
+  "files_choose": "Choose file",
+  "files_no_file": "No file chosen",
   "files_upload_failed": "The upload failed. Try again.",
   "files_jobs": "Server downloads",
   "files_job_running": "Downloading",

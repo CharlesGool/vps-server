@@ -879,6 +879,8 @@
   "files_fetch_help": "Este servidor lo descarga directamente, para orígenes que otros hosts no alcanzan (por ejemplo, GitHub Releases). Puedes cerrar el navegador; la descarga sigue en segundo plano.",
   "files_upload_label": "Subir desde este dispositivo",
   "files_upload": "Subir",
+  "files_choose": "Elegir archivo",
+  "files_no_file": "Ningún archivo elegido",
   "files_upload_failed": "La subida falló. Inténtalo de nuevo.",
   "files_jobs": "Descargas del servidor",
   "files_job_running": "Descargando",

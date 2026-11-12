@@ -6,10 +6,20 @@
     const bar = form.querySelector('progress');
     const output = form.querySelector('output');
     const button = form.querySelector('button');
+    const name = form.querySelector('.files-pick-name');
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      name.textContent = file ? file.name : name.dataset.empty;
+      name.classList.toggle('is-set', Boolean(file));
+      output.textContent = '';
+    });
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const file = input.files[0];
-      if (!file) return;
+      if (!file) {
+        input.click();
+        return;
+      }
       if (file.size > Number(form.dataset.room)) {
         output.textContent = form.dataset.tooBig;
         return;
