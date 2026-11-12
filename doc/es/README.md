@@ -148,7 +148,7 @@ bash deploy/install.sh
 
 #### Instalación en línea
 
-El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
+El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos. Si una descarga de GitHub sigue por debajo de 200 KB/s tras 15 segundos, la instalación pasa a los espejos gh-proxy.com y ghfast.top (para servidores en China continental), y la descarga se verifica igualmente con SHA-256; defina `VPSSRV_GITHUB_MIRROR=https://su.espejo/` para probar antes su propio espejo, o `none` para no usar espejos. El comando de instalación de arriba también descarga de GitHub; en China continental puede sustituir su `https://github.com/` por `https://gh-proxy.com/https://github.com/`.
 
 ```bash
 python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.3.2/vps-server-v6.3.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh

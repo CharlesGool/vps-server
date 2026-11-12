@@ -6,6 +6,13 @@ there is nothing to fetch. The online package omits them; this module fills
 `third_party/` from the pinned upstream archives, verifying the archive and
 each extracted file by SHA-256 before anything is placed. Only python3 is
 needed on the host: no curl, tar, gzip or Git.
+
+GitHub downloads can crawl from mainland China. A source that stays below
+MIN_RATE after SLOW_AFTER seconds is dropped for the next one: GitHub itself,
+then public GitHub mirrors. Every source is checked against the same SHA-256,
+so a mirror can make a download fail but never change what is installed.
+VPSSRV_GITHUB_MIRROR puts a mirror prefix of your own first ("none" turns
+mirrors off).
 """
 
 import hashlib
@@ -19,8 +26,15 @@ import urllib.request
 from pathlib import Path
 
 MANIFEST = Path("config") / "online-assets.json"
-ATTEMPTS = 3
+ATTEMPTS = 2
 TIMEOUT = 60
+SLOW_AFTER = 15
+MIN_RATE = 200 * 1024
+GITHUB_MIRRORS = ("https://gh-proxy.com/", "https://ghfast.top/")
+
+
+class TooSlow(OSError):
+    pass
 
 
 def _digest(path):
@@ -46,19 +60,47 @@ def known(source, component):
     return component in load(source)
 
 
-def _download(url, destination, expected):
+def sources(url, environ=None):
+    """The URLs to try for one download, in order."""
+    if not url.startswith("https://github.com/"):
+        return [url]
+    own = (os.environ if environ is None else environ).get("VPSSRV_GITHUB_MIRROR", "").strip()
+    if own.lower() == "none":
+        return [url]
+    mirrors = list(GITHUB_MIRRORS)
+    if own.startswith("https://"):
+        own = own if own.endswith("/") else own + "/"
+        mirrors = [own] + [mirror for mirror in mirrors if mirror != own]
+    return [url] + [mirror + url for mirror in mirrors]
+
+
+def _fetch(url, destination, expected, *, slow_ok, opener=urllib.request.urlopen, clock=time.monotonic):
+    sha = hashlib.sha256()
+    started, size = clock(), 0
+    request = urllib.request.Request(url, headers={"User-Agent": "vps-server"})
+    with opener(request, timeout=TIMEOUT) as response, open(destination, "wb") as out:
+        for chunk in iter(lambda: response.read(1 << 16), b""):
+            sha.update(chunk)
+            out.write(chunk)
+            size += len(chunk)
+            elapsed = clock() - started
+            if not slow_ok and elapsed > SLOW_AFTER and size < MIN_RATE * elapsed:
+                raise TooSlow(f"too slow: {size // 1024} KiB in {elapsed:.0f} s")
+    if sha.hexdigest() != expected:
+        raise ValueError(f"checksum mismatch: {url}")
+
+
+def _download(url, destination, expected, **fetch):
+    tries = [source for _attempt in range(ATTEMPTS) for source in sources(url)]
     last = None
-    for attempt in range(ATTEMPTS):
-        if attempt:
-            time.sleep(2 * attempt)
+    for index, source in enumerate(tries):
+        if index:
+            time.sleep(1)
+        if source != url:
+            print(f"Downloading from mirror: {source.split('/')[2]}", flush=True)
         try:
-            sha = hashlib.sha256()
-            with urllib.request.urlopen(url, timeout=TIMEOUT) as response, open(destination, "wb") as out:
-                for chunk in iter(lambda: response.read(1 << 20), b""):
-                    sha.update(chunk)
-                    out.write(chunk)
-            if sha.hexdigest() != expected:
-                raise ValueError(f"checksum mismatch: {url}")
+            # The last try keeps any speed: slow is better than nothing.
+            _fetch(source, destination, expected, slow_ok=index == len(tries) - 1, **fetch)
             return
         except (OSError, ValueError) as error:
             last = error

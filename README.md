@@ -148,7 +148,7 @@ bash deploy/install.sh
 
 #### 在线版
 
-只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载.
+只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载. 从 GitHub 下载 15 秒后仍慢于 200 KB/s 时, 自动改用国内镜像 gh-proxy.com, ghfast.top, 下载内容同样校验 SHA-256; 设置 `VPSSRV_GITHUB_MIRROR=https://你的镜像/` 可优先使用自己的镜像, 设为 `none` 不用镜像. 上面的安装命令本身也从 GitHub 下载, 国内服务器可把其中的 `https://github.com/` 换成 `https://gh-proxy.com/https://github.com/`.
 
 ```bash
 python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.3.2/vps-server-v6.3.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh

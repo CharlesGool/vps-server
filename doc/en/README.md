@@ -148,7 +148,7 @@ bash deploy/install.sh
 
 #### Online Install
 
-The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules.
+The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules. When a GitHub download is still below 200 KB/s after 15 seconds, the install switches to the mirrors gh-proxy.com and ghfast.top (for servers in mainland China), and the download is verified by SHA-256 just the same; set `VPSSRV_GITHUB_MIRROR=https://your.mirror/` to try your own mirror first, or `none` to use no mirror. The install command above also downloads from GitHub; in mainland China you can replace its `https://github.com/` with `https://gh-proxy.com/https://github.com/`.
 
 ```bash
 python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.3.2/vps-server-v6.3.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
