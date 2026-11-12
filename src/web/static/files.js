@@ -3,7 +3,8 @@
   const form = document.querySelector('.files-upload');
   if (form) {
     const input = form.querySelector('input[type=file]');
-    const bar = form.querySelector('progress');
+    const meter = form.querySelector('.files-upload-meter');
+    const bar = meter.querySelector('span');
     const output = form.querySelector('output');
     const button = form.querySelector('button');
     const name = form.querySelector('.files-pick-name');
@@ -11,7 +12,7 @@
       const file = input.files[0];
       name.textContent = file ? file.name : name.dataset.empty;
       name.classList.toggle('is-set', Boolean(file));
-      output.textContent = '';
+      say('');
     });
     form.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -21,7 +22,7 @@
         return;
       }
       if (file.size > Number(form.dataset.room)) {
-        output.textContent = form.dataset.tooBig;
+        say(form.dataset.tooBig, true);
         return;
       }
       const request = new XMLHttpRequest();
@@ -30,9 +31,7 @@
       request.setRequestHeader('Content-Type', 'application/octet-stream');
       request.upload.addEventListener('progress', (progress) => {
         if (!progress.lengthComputable) return;
-        const percent = Math.floor((progress.loaded * 100) / progress.total);
-        bar.value = percent;
-        output.textContent = percent + '%';
+        show(progress.loaded, progress.total);
       });
       request.addEventListener('load', () => {
         let reply = {};
@@ -48,16 +47,39 @@
       request.addEventListener('error', () => finish(form.dataset.failed));
       button.disabled = true;
       input.disabled = true;
-      bar.hidden = false;
-      bar.value = 0;
-      output.textContent = '0%';
+      meter.hidden = false;
+      show(0, file.size);
       request.send(file);
     });
+    const size = (bytes) => {
+      const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+      let value = bytes;
+      let unit = 0;
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+      }
+      return (unit ? value.toFixed(1) : String(value)) + ' ' + units[unit];
+    };
+    // Progress sits in the row; a message (an error) hangs under it like the bar.
+    function say(text, message) {
+      output.textContent = text;
+      output.classList.toggle('is-message', Boolean(message));
+    }
+    function show(loaded, total) {
+      const percent = total ? Math.floor((loaded * 100) / total) : 0;
+      bar.style.width = percent + '%';
+      say(percent + '%');
+      const detail = document.createElement('span');
+      detail.className = 'files-upload-size';
+      detail.textContent = ' · ' + size(loaded) + ' / ' + size(total);
+      output.append(detail);
+    }
     const finish = (message) => {
       button.disabled = false;
       input.disabled = false;
-      bar.hidden = true;
-      output.textContent = message;
+      meter.hidden = true;
+      say(message, true);
     };
   }
 

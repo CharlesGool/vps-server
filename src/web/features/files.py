@@ -200,8 +200,9 @@ class FilesMixin:
                f'{esc(t["files_choose"])}</label>'
                f'<span class="files-pick-name" aria-live="polite" data-empty="{esc(t["files_no_file"], quote=True)}">'
                f'{esc(t["files_no_file"])}</span>'
+               f'<output class="files-upload-status"></output>'
                f'<button type="submit">{esc(t["files_upload"])}</button>'
-               f'<progress max="100" value="0" hidden></progress><output class="files-meta"></output></form></div>'
+               f'<div class="files-meter files-upload-meter" hidden><span></span></div></form></div>'
                f'</section>')
 
         jobs = ""

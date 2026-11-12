@@ -30,8 +30,17 @@
 .files-inline .files-pick > input[type=file] { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; opacity: 0; }
 .files-pick-name { min-width: 0; overflow: hidden; color: var(--muted-foreground); font-size: var(--text-sm); text-overflow: ellipsis; white-space: nowrap; }
 .files-pick-name.is-set { color: var(--foreground); }
-.files-upload progress { flex: 1 1 100%; width: 100%; }
-.files-upload output:empty { display: none; }
+/* The bar hangs under the row so the two forms stay lined up while uploading. */
+.files-upload { position: relative; }
+.files-upload-meter { position: absolute; inset: calc(100% + var(--compat-size-11)) 0 auto; height: var(--compat-size-88); }
+.files-upload-meter[hidden] { display: none; }
+.files-upload-meter > span { width: 0; transition: width var(--compat-size-101) ease; }
+.files-upload-status { flex: none; color: var(--muted-foreground); font-size: var(--text-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.files-upload-status:empty { display: none; }
+@media (max-width: 30rem) {
+  .files-upload-size { display: none; }
+}
+.files-upload-status.is-message { position: absolute; inset: calc(100% + var(--compat-size-11)) 0 auto; color: var(--destructive); white-space: normal; }
 .files-jobs, .files-files { display: grid; gap: var(--compat-size-14); }
 .files-list { display: grid; margin: 0; padding: 0; list-style: none; }
 .files-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-14) var(--compat-size-24); padding: var(--compat-size-24) 0; border-top: 1px solid var(--border); }
