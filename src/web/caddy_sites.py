@@ -17,9 +17,9 @@ decides revocation and whether a certificate is required.
 
 Files (all root-owned):
     /etc/vps-server-caddy/sites.json        sites                       0600
-    /etc/vps-server-caddy/cloudflare-token  Cloudflare API token        0600
+    /etc/vps-server-caddy/cloudflare-tokens.json  Cloudflare API tokens, each
+                                            with the zones it can see   0600
     /etc/vps-server-caddy/dns.json          last DNS sync result        0600
-    /etc/vps-server-caddy/zones.json        zones the token can see     0600
     /etc/vps-server-caddy/caddy.json        generated Caddy config      0640 root:vps-server-caddy
     /etc/vps-server-caddy/proxy-key         console proxy secret        0600
     /etc/vps-server-caddy/client-ca.pem     copy of the console client CA 0640 root:vps-server-caddy
@@ -49,9 +49,12 @@ from pathlib import Path
 
 CONFIG_DIR = Path(os.environ.get("VPSSRV_CADDY_DIR", "/etc/vps-server-caddy"))
 SITES_PATH = CONFIG_DIR / "sites.json"
-TOKEN_PATH = CONFIG_DIR / "cloudflare-token"
+TOKENS_PATH = CONFIG_DIR / "cloudflare-tokens.json"
+# Before several tokens: one token file and the zones it could see.
+LEGACY_TOKEN_PATH = CONFIG_DIR / "cloudflare-token"
+LEGACY_ZONES_PATH = CONFIG_DIR / "zones.json"
+MAX_TOKENS = 20
 DNS_PATH = CONFIG_DIR / "dns.json"
-ZONES_PATH = CONFIG_DIR / "zones.json"
 HISTORY_PATH = CONFIG_DIR / "dns-history.jsonl"
 ALERTED_PATH = CONFIG_DIR / "alerts-sent.json"
 HISTORY_LIMIT = 200
@@ -136,12 +139,52 @@ def active_sites(sites):
     return sites if domains_enabled() else [site for site in sites if site.get("ip")]
 
 
-def read_token(path=TOKEN_PATH):
+def token_id(token):
+    """A short stable id for a token, so pages and requests never carry the token."""
+    import hashlib
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()[:12]
+
+
+def read_tokens():
+    """Cloudflare tokens: [{"id", "token", "name", "zones", "checked_at"?, "error"?}].
+
+    Reads the single token of earlier versions when the list does not exist yet;
+    the first change writes the list and removes the old files.
+    """
     try:
-        token = Path(path).read_text().strip()
+        data = json.loads(TOKENS_PATH.read_text())
+        items = data.get("tokens", []) if isinstance(data, dict) else []
     except FileNotFoundError:
-        return ""
-    return token if TOKEN_RE.fullmatch(token) else ""
+        try:
+            token = LEGACY_TOKEN_PATH.read_text().strip()
+        except OSError:
+            return []
+        if not TOKEN_RE.fullmatch(token):
+            return []
+        try:
+            legacy = json.loads(LEGACY_ZONES_PATH.read_text())
+        except (OSError, ValueError):
+            legacy = {}
+        legacy = legacy if isinstance(legacy, dict) else {}
+        items = [{"token": token, "name": "", "zones": legacy.get("zones", []),
+                  **({"checked_at": legacy["checked_at"]} if "checked_at" in legacy else {})}]
+    except (OSError, ValueError):
+        return []
+    tokens = []
+    for item in items:
+        if not isinstance(item, dict) or not TOKEN_RE.fullmatch(str(item.get("token", ""))):
+            continue
+        zones = item.get("zones") if isinstance(item.get("zones"), list) else []
+        tokens.append({**item, "id": token_id(item["token"]), "name": str(item.get("name") or "")[:40],
+                       "zones": sorted({zone for zone in zones if valid_host(zone)})})
+    return tokens
+
+
+def write_tokens(tokens):
+    _write(TOKENS_PATH, json.dumps({"tokens": [{k: v for k, v in item.items() if k != "id"}
+                                               for item in tokens]}) + "\n")
+    LEGACY_TOKEN_PATH.unlink(missing_ok=True)
+    LEGACY_ZONES_PATH.unlink(missing_ok=True)
 
 
 def read_dns(path=DNS_PATH):
@@ -562,20 +605,27 @@ def list_zones(token, opener=None):
     return sorted({zone["name"] for zone in zones if isinstance(zone.get("name"), str) and valid_host(zone["name"])})
 
 
-def save_zones(token):
+def refresh_zones(item):
+    """Read the zones one token can see now; keeps the last list when Cloudflare is unreachable."""
     try:
-        names = list_zones(token) if token else []
-    except CloudflareError:
-        return
-    _write(ZONES_PATH, json.dumps({"zones": names, "checked_at": int(time.time())}) + "\n")
+        item.update({"zones": list_zones(item["token"]), "checked_at": int(time.time())})
+        item.pop("error", None)
+    except CloudflareError as exc:
+        if exc.code == "dns_auth":
+            item.update({"zones": [], "checked_at": int(time.time())})
+        item["error"] = exc.code
+    return item
+
+
+def save_zones():
+    tokens = read_tokens()
+    if tokens:
+        write_tokens([refresh_zones(item) for item in tokens])
 
 
 def read_zones():
-    try:
-        zones = json.loads(ZONES_PATH.read_text()).get("zones", [])
-        return [zone for zone in zones if valid_host(zone)]
-    except (OSError, ValueError, AttributeError):
-        return []
+    """Every main domain some token can manage."""
+    return sorted({zone for item in read_tokens() for zone in item["zones"]})
 
 
 def zone_of(host, zones):
@@ -584,18 +634,32 @@ def zone_of(host, zones):
     return max(matches, key=len) if matches else None
 
 
-def remove_records(token, host, opener=None):
-    zone = find_zone(token, host, opener=opener)
+def locate(tokens, host, opener=None):
+    """(token, zone id) for host: first the token known to see its main domain, then the others."""
+    best = zone_of(host, [zone for item in tokens for zone in item["zones"]])
+    ordered = sorted(tokens, key=lambda item: best not in item["zones"])
+    error = CloudflareError("dns_zone")
+    for item in ordered:
+        try:
+            return item["token"], find_zone(item["token"], host, opener=opener)
+        except CloudflareError as exc:
+            # A token that cannot reach this domain says nothing about the next one.
+            error = exc if error.code == "dns_zone" else error
+    raise error
+
+
+def remove_records(tokens, host, opener=None):
+    token, zone = locate(tokens, host, opener=opener)
     for kind in ("A", "AAAA"):
         sync_record(token, zone, host, kind, None, opener=opener)
 
 
-def sync_dns(sites, token, *, addresses=None, opener=None):
+def sync_dns(sites, tokens, *, addresses=None, opener=None):
     """Point every site at this host. Returns the dns.json document."""
     ipv4, ipv6 = addresses if addresses is not None else (
         public_address(socket.AF_INET), public_address(socket.AF_INET6))
     result = {"checked_at": int(time.time()), "ipv4": ipv4, "ipv6": ipv6, "sites": {}}
-    if not token:
+    if not tokens:
         result["error"] = "dns_no_token"
         return result
     if ipv4 is None and ipv6 is None:
@@ -603,7 +667,7 @@ def sync_dns(sites, token, *, addresses=None, opener=None):
         return result
     for host in [name for site in sites if not site.get("ip") for name in names(site)]:
         try:
-            zone = find_zone(token, host, opener=opener)
+            token, zone = locate(tokens, host, opener=opener)
             states = [sync_record(token, zone, host, "A", ipv4, opener=opener),
                       sync_record(token, zone, host, "AAAA", ipv6, opener=opener)]
             for kind, state, value in (("A", states[0], ipv4), ("AAAA", states[1], ipv6)):
@@ -822,11 +886,11 @@ def _replace_site(sites, host, change):
 
 
 def apply(request):
-    """Change sites or the token; returns {"ok": bool, "error": code?, "warning": code?}."""
+    """Change sites or tokens; returns {"ok": bool, "error": code?, "warning": code?}."""
     action = request.get("action")
     with _locked():
         sites = read_sites()
-        token = read_token()
+        token = read_tokens()
         warning = None
         if action == "add":
             zone = request.get("zone")
@@ -935,20 +999,29 @@ def apply(request):
                 write_sites(previous)
                 render(previous)
                 raise SiteError("caddy_rejected")
-        elif action == "token":
+        elif action == "token_add":
             value = str(request.get("token") or "").strip()
-            if value and not TOKEN_RE.fullmatch(value):
+            name = " ".join(str(request.get("name") or "").split())[:40]
+            if not TOKEN_RE.fullmatch(value):
                 raise SiteError("token_invalid")
-            if value:
-                _write(TOKEN_PATH, value + "\n")
-                save_zones(value)
-                dns = sync_dns(sites, value)
-                _write(DNS_PATH, json.dumps(dns) + "\n")
-                failed = [state.get("error") for state in dns["sites"].values() if not state.get("ok")]
-                warning = dns.get("error") or (failed[0] if failed else None)
-            else:
-                TOKEN_PATH.unlink(missing_ok=True)
-                ZONES_PATH.unlink(missing_ok=True)
+            if any(item["token"] == value for item in token):
+                raise SiteError("token_exists")
+            if len(token) >= MAX_TOKENS:
+                raise SiteError("too_many_tokens")
+            item = refresh_zones({"token": value, "name": name, "added_at": int(time.time())})
+            if item.get("error") == "dns_auth":
+                raise SiteError("token_rejected")  # Unreachable is kept: it may work later.
+            token.append({**item, "id": token_id(value)})
+            write_tokens(token)
+            dns = sync_dns(sites, token)
+            _write(DNS_PATH, json.dumps(dns) + "\n")
+            failed = [state.get("error") for state in dns["sites"].values() if not state.get("ok")]
+            warning = item.get("error") or dns.get("error") or (failed[0] if failed else None)
+        elif action == "token_remove":
+            kept = [item for item in token if item["id"] != request.get("id")]
+            if len(kept) == len(token):
+                raise SiteError("token_missing")
+            write_tokens(kept)
         else:
             raise SiteError("invalid")
     return {"ok": True, **({"warning": warning} if warning else {})}
@@ -972,7 +1045,7 @@ def ddns():
     with _locked():
         sites = read_sites()
         active = active_sites(sites)
-        token = read_token()
+        token = read_tokens()
         previous = read_dns()
         addresses = (public_address(socket.AF_INET), public_address(socket.AF_INET6))
         unchanged = (previous.get("ipv4"), previous.get("ipv6")) == addresses and not previous.get("error") \
@@ -1022,7 +1095,7 @@ def ddns():
         record_history(events)
         send_alerts(alerts)
         if token:
-            save_zones(token)  # Hourly at most: pick up zones added in Cloudflare.
+            save_zones()  # Hourly at most: pick up zones added in Cloudflare.
         return state
 
 
@@ -1042,7 +1115,7 @@ def main(argv=None):
         elif argv == ["render"]:
             render()
         elif argv == ["zones"]:
-            save_zones(read_token())
+            save_zones()
             print(json.dumps(read_zones()))
         else:
             state = ddns()

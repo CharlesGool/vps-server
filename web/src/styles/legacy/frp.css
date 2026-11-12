@@ -98,9 +98,15 @@
 .domain-badges .proxy-node-status { max-width: 100%; }
 .domain-remove { flex-wrap: wrap; margin: 0; }
 .domain-remove .checkline { display: flex; margin: 0; color: var(--muted-foreground); font-weight: var(--font-weight-normal); }
-.domains-token-actions { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: var(--compat-size-24); }
-.domains-token-actions > .node-inline-edit { flex: 1 1 min(100%, var(--compat-size-104)); margin: 0; }
-.domains-token-actions > form { margin: 0; }
+.domains-tokens { display: grid; gap: var(--compat-size-14); margin: 0 0 var(--compat-size-24); padding: 0; list-style: none; }
+.domains-token { padding: var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.domains-token-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-14); margin-bottom: var(--compat-size-14); }
+.domains-token-head h3 { margin: 0; font-size: var(--text-base); overflow-wrap: anywhere; }
+.domains-token-head .muted { font-size: var(--text-sm); }
+.domains-token-head > form { margin: 0 0 0 auto; }
+.domains-token .domains-zones { margin: 0; }
+.domains-token > p.error { margin: 0; }
+.domains-token-add { margin: 0; }
 @media (max-width: 42rem) {
   .domains-page .node-inline-edit form, .domain-facts, .domain-more-grid, .domain-auth { grid-template-columns: 1fr; }
 }
@@ -115,8 +121,6 @@
 .domain-facts dd { font-size: var(--text-sm); }
 .domains-page .node-inline-edit .domain-wide { grid-column: 1 / -1; margin-bottom: var(--compat-size-24); }
 .domains-page .node-inline-edit form:has(input[value="console"]:checked) .domain-port { display: none; }
-.domains-zones-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--compat-size-11); margin: 0 0 var(--compat-size-11); font-size: var(--text-sm); }
-.domains-zones-heading .muted { font-weight: var(--font-weight-normal); }
 .domains-zones { margin-bottom: var(--compat-size-24); }
 .domains-ip { display: grid; gap: var(--compat-size-11); margin-top: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
 .domains-ip p { margin: 0; overflow-wrap: anywhere; }

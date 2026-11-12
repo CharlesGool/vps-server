@@ -11,12 +11,12 @@ import time
 from datetime import datetime, timezone
 
 from caddy_sites import (ACCESS_LOG, CONFIG_DIR, SERVICE, certificate_info, console_port, read_history,
-                         read_sites, read_zones, zone_of)
+                         read_sites, read_tokens, zone_of)
 NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
            "domains_site_enabled", "domains_site_disabled",
            "domains_site_saved")
 ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip", "allow_invalid", "auth_invalid",
-          "caddy_rejected", "token_invalid", "invalid", "failed")
+          "caddy_rejected", "token_invalid", "token_rejected", "token_exists", "token_missing", "too_many_tokens", "invalid", "failed")
 WARNINGS = ("dns_auth", "dns_zone", "dns_unreachable", "dns_api", "dns_no_token", "dns_no_address")
 
 
@@ -108,7 +108,8 @@ class DomainsMixin:
         except (OSError, ValueError):
             sites = []
         dns = _read_json(CONFIG_DIR / "dns.json")
-        token_set = (CONFIG_DIR / "cloudflare-token").is_file()
+        tokens = read_tokens()
+        token_set = bool(tokens)
         running = self.context._run_quiet(["systemctl", "is-active", "--quiet", SERVICE])
         csrf = esc(self.domains_csrf(), quote=True)
 
@@ -144,7 +145,7 @@ class DomainsMixin:
                     + (f'<p class="error" role="status">{esc(t["domains_" + dns_error])}</p>' if dns_error else '')
                     + history_section + '</section>')
 
-        zones = read_zones()
+        zones = sorted({zone for item in tokens for zone in item["zones"]})
         listening = listening_ports()
         dns_sites = dns.get("sites", {}) if isinstance(dns.get("sites"), dict) else {}
         console = console_port()
@@ -337,36 +338,50 @@ class DomainsMixin:
         token_field = self.context.render_password_field(
             t, "domains-token", t["domains_token"], "token",
             'maxlength="100" autocomplete="off" spellcheck="false" required')
-        token_form = (f'<form method="post" action="/domains/token" autocomplete="off">'
+        token_form = (f'<form method="post" action="/domains/token" autocomplete="off" class="domains-token-form">'
                       f'<input type="hidden" name="csrf" value="{csrf}">'
+                      f'<label>{esc(t["domains_token_name"])}<input name="name" maxlength="40" autocomplete="off" '
+                      f'placeholder="{esc(t["domains_token_name_placeholder"], quote=True)}"></label>'
                       f'<div class="frp-password-field">{token_field}</div>'
                       f'<button type="submit">{esc(t["domains_token_save"])}</button></form>')
-        clear = (f'<form method="post" action="/domains/token" class="frp-delete-form" '
-                 f'data-confirm="{esc(t["domains_token_clear_confirm"], quote=True)}">'
-                 f'<input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="clear" value="1">'
-                 f'<button type="submit" class="node-action-danger frp-card-edit">{esc(t["domains_token_clear"])}</button></form>'
-                 if token_set else '')
-        # The main domains the token can manage, with how many sites use each.
-        zone_rows = "".join(
-            f'<div><dt>{esc(zone)}</dt><dd>{esc(t["domains_zone_sites"].format(count=len(groups.get(zone, []))))}</dd></div>'
-            for zone in zones)
-        zones_checked = _read_json(CONFIG_DIR / "zones.json").get("checked_at")
-        zone_list = ((f'<h3 class="domains-zones-heading">{esc(t["domains_zones_bound"])}'
-                      f'<span class="muted">{esc(t["domains_zones_checked"].format(time=time.strftime("%Y-%m-%d %H:%M", time.localtime(zones_checked))))}</span></h3>'
-                      if isinstance(zones_checked, (int, float)) else
-                      f'<h3 class="domains-zones-heading">{esc(t["domains_zones_bound"])}</h3>')
-                     + f'<dl class="frp-facts domains-zones">{zone_rows}</dl>' if zones else
-                     f'<p class="error">{esc(t["domains_zones_none"])}</p>' if token_set else '')
+
+        def token_row(index, item):
+            """One token: its name, state, the main domains it can manage and a remove button."""
+            name = item["name"] or t["domains_token_default_name"].format(number=index)
+            problem = item.get("error")
+            state = (pill(t["domains_token_state_auth"], "is-closed") if problem == "dns_auth" else
+                     pill(t["domains_token_state_unreachable"], "is-closed") if problem else
+                     pill(t["domains_token_state_ok"], "is-open"))
+            checked = item.get("checked_at")
+            checked_text = (t["domains_zones_checked"].format(
+                time=time.strftime("%Y-%m-%d %H:%M", time.localtime(checked)))
+                if isinstance(checked, (int, float)) else "")
+            rows = "".join(
+                f'<div><dt>{esc(zone)}</dt><dd>{esc(t["domains_zone_sites"].format(count=len(groups.get(zone, []))))}</dd></div>'
+                for zone in item["zones"])
+            zone_list = (f'<dl class="frp-facts domains-zones">{rows}</dl>' if rows else
+                         f'<p class="error">{esc(t["domains_zones_none"])}</p>')
+            remove = (f'<form method="post" action="/domains/token" class="frp-delete-form" '
+                      f'data-confirm="{esc(t["domains_token_clear_confirm"].format(name=name), quote=True)}">'
+                      f'<input type="hidden" name="csrf" value="{csrf}">'
+                      f'<input type="hidden" name="remove" value="{esc(item["id"], quote=True)}">'
+                      f'<button type="submit" class="node-action-danger frp-card-edit">{esc(t["domains_token_clear"])}</button></form>')
+            return (f'<li class="domains-token"><div class="domains-token-head">'
+                    f'<h3>{esc(name)}</h3>{state}<span class="muted">{esc(checked_text)}</span>{remove}</div>'
+                    f'{zone_list}</li>')
+
+        token_list = (f'<ul class="domains-tokens">'
+                      + "".join(token_row(index, item) for index, item in enumerate(tokens, 1)) + '</ul>'
+                      if tokens else '')
+        add_open = error in ("token_invalid", "token_rejected", "token_exists", "too_many_tokens")
+        token_add = (f'<details class="node-inline-edit domains-token-add" {"open" if add_open else ""}>'
+                     f'<summary><span>{esc(t["domains_token_add"])}</span><span>{esc(t["node_cancel"])}</span></summary>'
+                     f'{token_form}</details>' if tokens else f'<div class="node-inline-edit">{token_form}</div>')
         token_card = (f'<section class="card frp-card">'
                       f'<div class="frp-instances-head"><h2 class="frp-instances-heading">{esc(t["domains_cloudflare"])}</h2>'
-                      f'{pill(t["domains_token_state_set"] if token_set else t["domains_token_state_missing"], "is-open" if token_set else "is-closed")}</div>'
+                      f'{pill(t["domains_token_count"].format(count=len(tokens)) if tokens else t["domains_token_state_missing"], "is-open" if tokens else "is-closed")}</div>'
                       f'<p class="muted">{esc(t["domains_token_help"])}</p>'
-                      + zone_list +
-                      f'<div class="domains-token-actions">'
-                      + (f'<details class="node-inline-edit"><summary><span>{esc(t["domains_token_change"])}</span>'
-                         f'<span>{esc(t["node_cancel"])}</span></summary>{token_form}</details>'
-                         if token_set else f'<div class="node-inline-edit">{token_form}</div>')
-                      + f'{clear}</div></section>')
+                      f'{token_list}{token_add}</section>')
 
         body = (f'<h1>{esc(t["domains"])}</h1><div class="frp-workspace domains-page">{"".join(messages)}'
                 f'{overview}{sites_card}{token_card}</div>'
@@ -573,10 +588,13 @@ class DomainsMixin:
         form = self.domains_form()
         if form is None:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        clear = form.get("clear", [""])[0] == "1"
-        token = "" if clear else form.get("token", [""])[0][:200]
-        reply = self.domains_apply({"action": "token", "token": token})
-        return self.domains_finish(reply, "domains_token_cleared" if clear else "domains_token_saved")
+        remove = form.get("remove", [""])[0][:40]
+        if remove:
+            reply = self.domains_apply({"action": "token_remove", "id": remove})
+            return self.domains_finish(reply, "domains_token_cleared")
+        reply = self.domains_apply({"action": "token_add", "token": form.get("token", [""])[0][:200],
+                                    "name": form.get("name", [""])[0][:80]})
+        return self.domains_finish(reply, "domains_token_saved")
 
     def route_domains(self, method, path, parsed, lang, query_lang):
         if not self.context.AUTH_ENABLED:
