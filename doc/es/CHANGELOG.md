@@ -26,6 +26,18 @@ metadata:
 
 ## Historial de cambios
 
+### v6.3.3 — 2026-11-12
+
+El paquete en línea ya se instala en servidores de China continental. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Mejorado
+
+- **El paquete en línea pasa a espejos cuando las descargas van lentas.** El paquete en línea descarga sing-box, frp y Caddy de GitHub durante la instalación, lo que podía atascarse en servidores de China continental (un problema conocido de v6.3.2). Ahora, si una descarga de GitHub sigue por debajo de 200 KB/s tras 15 segundos, la instalación pasa a los espejos gh-proxy.com y luego ghfast.top; venga de donde venga, la descarga se verifica con el mismo SHA-256. Defina `VPSSRV_GITHUB_MIRROR=https://su.espejo/` para probar antes su propio espejo, o `none` para no usar espejos. El README también explica cómo descargar el paquete a través de un espejo desde China continental. Tailscale no se descarga de GitHub y no se ve afectado.
+
+#### Verificación
+
+Una actualización en línea en un servidor de Alibaba Cloud en Cantón pasó al espejo para los tres componentes y terminó en 87 segundos (antes se atascaba); en otro servidor de China continental se descargaron y verificaron todos los componentes. El cambio de origen también se verificó en una simulación local.
+
 ### v6.3.2 — 2026-11-12
 
 Corrige dos problemas del certificado IP. El comando de actualización no cambia y se conservan la configuración y los datos.

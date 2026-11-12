@@ -26,6 +26,18 @@ metadata:
 
 ## Changelog
 
+### v6.3.3 — 2026-11-12
+
+The online package now installs on servers in mainland China. The upgrade command is unchanged and settings and data are kept.
+
+#### Improved
+
+- **The online package switches to mirrors when downloads crawl.** The online package downloads sing-box, frp and Caddy from GitHub during install, which could stall on servers in mainland China (a known issue of v6.3.2). Now, when a GitHub download is still below 200 KB/s after 15 seconds, the install switches to the mirrors gh-proxy.com and then ghfast.top; wherever it comes from, the download is verified by the same SHA-256. Set `VPSSRV_GITHUB_MIRROR=https://your.mirror/` to try your own mirror first, or `none` to use no mirror. The README also explains how servers in mainland China can download the package through a mirror. Tailscale does not come from GitHub and is not affected.
+
+#### Verification
+
+An online in-place upgrade on an Alibaba Cloud server in Guangzhou switched to the mirror for all three components and finished in 87 seconds (it used to stall); on another server in mainland China every component was downloaded and verified. The source switching was also verified in a local simulation.
+
 ### v6.3.2 — 2026-11-12
 
 Fixes two problems with the IP certificate. The upgrade command is unchanged and settings and data are kept.
