@@ -83,7 +83,7 @@ def module_job_text(t, job, names):
 
 # Feature pages that offer their own install button, and where the job reports.
 INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
-                 "tailscale": "/tailscale", "caddy": "/domains"}
+                 "tailscale": "/tailscale", "caddy": "/domains", "ipcert": "/ipcert"}
 
 
 _HOST_FINDINGS = {}
@@ -99,7 +99,9 @@ def host_findings(context, t, module):
     if cached is None or now - cached[0] > 60:
         from host_checks import NFT_CODES, can_install_nft, check
         try:
-            findings = check(module, source=context.BASE_DIR / "installer-source", prefix=context.BASE_DIR)
+            # The IP certificate installs the Caddy module.
+            findings = check("caddy" if module == "ipcert" else module,
+                             source=context.BASE_DIR / "installer-source", prefix=context.BASE_DIR)
         except (OSError, ValueError):
             findings = []
         # A missing nft is installed by the module job itself when apt exists.
@@ -262,7 +264,7 @@ class ModulesMixin:
         body = (f'<div class="card access-card"><h1>{esc(title)}</h1>'
                 f'{self.module_install_control(lang, module, module_name)}</div>')
         icons = {"iperf3": "iperf", "proxy_nodes": "proxy", "frps": "frp", "frpc": "frpc",
-                 "tailscale": "tailscale", "caddy": "domains"}
+                 "tailscale": "tailscale", "caddy": "domains", "ipcert": "ipcert"}
         return self.send_html(200, self.render_page(title, body, lang, active=active, icon=icons.get(module)),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
 
@@ -388,7 +390,8 @@ class ModulesMixin:
         except (UnicodeError, ValueError):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         module, action = form["module"][0], form["action"][0]
-        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") if action in ("install", "uninstall") else (
+        allowed = ("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") + (
+            ("ipcert",) if action == "install" else ()) if action in ("install", "uninstall") else (
             "web_public", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy", "ipcert") + self.context.MANAGED_FEATURES
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
@@ -400,7 +403,8 @@ class ModulesMixin:
                        INSTALL_PAGES[module] if back == "page" and action == "install" and module in INSTALL_PAGES else
                        "/settings#settings-modules")
         installed = self.context.installed_modules(self.context.BASE_DIR)
-        present = ("proxy" in installed if module == "proxy_nodes" else module in installed)
+        present = ("proxy" in installed if module == "proxy_nodes" else
+                   "caddy" in installed if module == "ipcert" else module in installed)
         if action in ("install", "uninstall") and (action == "install") == present:
             return self.redirect(destination, {"Cache-Control": "no-store"})
         install_source = (self.context.BASE_DIR / "installer-source" / "deploy" / "systemd" / "frpc@.service" if module == "frpc" else

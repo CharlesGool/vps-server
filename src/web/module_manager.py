@@ -413,6 +413,8 @@ def reconcile_removed_nodes(prefix, installed, *, state_path=NODE_STATE_PATH,
 
 
 def run_install(prefix, module):
+    if module == "ipcert":
+        return install_ipcert(prefix)
     # Stop before anything is changed; the console names each unmet need.
     def unmet():
         return [code for level, code in host_check(module, source=Path(prefix) / "installer-source",
@@ -500,6 +502,18 @@ def run_install(prefix, module):
             subprocess.run(["systemctl", "start", "vps-server-web.service"], check=True, timeout=60)
     if not requested <= installed_modules(prefix):
         raise RuntimeError("module was not recorded as installed")
+
+
+def install_ipcert(prefix):
+    """Install Caddy for the IP certificate alone: domain forwarding stays off."""
+    run_install(prefix, "caddy")
+    sites = _caddy_sites()
+    sites.set_domains_enabled(False)
+    try:
+        switch_ipcert(prefix, True)
+    except BaseException:
+        sync_caddy(prefix)  # Nothing needs Caddy then; let the public page have 80/443 back.
+        raise
 
 
 def install_iperf3(prefix):
@@ -1269,7 +1283,8 @@ def main(argv=None):
     if len(argv) != 3 or argv[0] not in ("install", "enable", "disable", "uninstall") or argv[1] not in MODULES + STANDALONE_MODULES + FEATURES + GROUPS + PUBLIC_LISTENERS + (PUBLIC_PAGE,) + CADDY_FEATURES:
         raise SystemExit("invalid module action")
     action, module, prefix = argv
-    if module in PUBLIC_LISTENERS + (PUBLIC_PAGE,) + CADDY_FEATURES and action not in ("enable", "disable"):
+    if module in PUBLIC_LISTENERS + (PUBLIC_PAGE,) + CADDY_FEATURES and action not in ("enable", "disable") and \
+            (module, action) != ("ipcert", "install"):
         raise SystemExit("invalid public listener action")
     prefix = str(Path(prefix).resolve(strict=True))
     if os.geteuid() != 0 or not (install_state_file()).is_file():

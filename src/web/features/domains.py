@@ -530,7 +530,7 @@ class DomainsMixin:
         t = self.context.STRINGS[lang]
         esc = self.context.html.escape
         if "caddy" not in self.context.installed_modules(self.context.BASE_DIR):
-            return self.page_module_not_installed(lang, query_lang, t["ipcert"], t["ipcert"], module="caddy")
+            return self.page_module_not_installed(lang, query_lang, t["ipcert"], t["ipcert"], module="ipcert")
         states = self.context.module_states()
         enabled = states["ipcert"]
         try:
