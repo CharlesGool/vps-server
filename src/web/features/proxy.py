@@ -306,7 +306,8 @@ class ProxyMixin:
                  t["node_meter_unknown"] if suspect is None else t["node_normal"])
         limit_class = "is-limited" if blocked or capped else "is-unknown" if suspect is None else ""
         cap_label = f"{cap / 1073741824:g} GiB" if cap is not None else t["node_unlimited"]
-        billed_label = (f'<small>{self.context.html.escape(t["node_billed_usage"].format(value=size(used)))}</small>'
+        billed_key = "node_billed_usage" if node.get("billable_multiplier", 2) == 2 else "node_billed_usage_once"
+        billed_label = (f'<small>{self.context.html.escape(t[billed_key].format(value=size(used)))}</small>'
                         if cap is not None else "")
         reset_label = node["next_reset_at"][:16].replace("T", " ") + " UTC" if node["next_reset_at"] else t["node_no_reset"]
         speed = lambda direction: (f'{node[direction + "_limit_bps"] / 1000000:g} Mbps' if node[direction + "_limit_bps"] is not None else t["node_unlimited"])

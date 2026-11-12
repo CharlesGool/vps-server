@@ -384,7 +384,7 @@ class DomainsMixin:
                       f'{token_list}{token_add}</section>')
 
         body = (f'<h1>{esc(t["domains"])}</h1><div class="frp-workspace domains-page">{"".join(messages)}'
-                f'{overview}{sites_card}{token_card}</div>'
+                f'{overview}{self.traffic_card(t, "caddy", "domains")}{sites_card}{token_card}</div>'
                 '<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>')
         return self.send_html(200, self.render_page(t["domains"], body, lang, icon="domains"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})

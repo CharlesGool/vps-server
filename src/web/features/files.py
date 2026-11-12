@@ -14,7 +14,7 @@ from file_share import DEFAULT_LINK_MINUTES, GIB, LINK_MINUTES, UPLOAD_IDLE_TIME
 NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
            "files_fetch_started", "files_quota_saved", "files_rate_saved", "files_job_removed", "files_job_cancelled")
 ERRORS = ("no_room", "too_many", "empty", "incomplete", "url_invalid", "busy", "not_found",
-          "link_invalid", "too_many_links", "quota_invalid", "rate_invalid", "cancelled", "interrupted", "network")
+          "link_invalid", "too_many_links", "quota_invalid", "rate_invalid", "traffic_blocked", "cancelled", "interrupted", "network")
 RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 
 
@@ -45,6 +45,18 @@ class FilesMixin:
             ranged = self.headers.get("Range", "")
             first = not ranged or ranged.strip().startswith("bytes=0-")
             entry = self.context.FILE_STORE.resolve(parts[2], count=method == "GET" and first)
+        if entry is not None:
+            try:
+                self.context.APP_METER.check("files")
+            except self.context.TrafficBlocked:
+                self.send_response(503)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", "22")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if method == "GET":
+                    self.wfile.write(b"Traffic limit reached\n")
+                return True
         if entry is None:
             self.send_response(404)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -90,7 +102,7 @@ class FilesMixin:
         self.end_headers()
         if method == "HEAD":
             return
-        store = self.context.FILE_STORE
+        store, meter = self.context.FILE_STORE, self.context.APP_METER
         rate = store.state().get("rate_limit", 0)
         # Small pieces under a limit keep the speed even instead of in bursts.
         piece = min(1024 * 1024, max(16 * 1024, rate // 8)) if rate else 1024 * 1024
@@ -98,10 +110,14 @@ class FilesMixin:
             handle.seek(start)
             left = end - start + 1
             while left > 0:
-                chunk = handle.read(min(piece, left))
+                chunk = handle.read(min(piece, meter.piece("files", "download", piece), left))
                 if not chunk:
                     break
                 store.throttle(len(chunk), rate)
+                try:
+                    meter.take("files", "download", len(chunk))
+                except self.context.TrafficBlocked:
+                    break  # Cut off mid-way: the client sees a short download.
                 self.wfile.write(chunk)
                 left -= len(chunk)
 
@@ -316,7 +332,7 @@ class FilesMixin:
                          f'<p class="files-empty">{esc(t["files_empty"])}</p>') + '</section>')
 
         body = (f'<h1>{esc(t["files"])}</h1><div class="frp-workspace files-page">{"".join(messages)}'
-                f'{usage}{add}{jobs}{files_card}</div>'
+                f'{usage}{self.traffic_card(t, "files", "files")}{add}{jobs}{files_card}</div>'
                 '<script src="/static/copy.js"></script><script src="/static/files.js" defer></script>')
         return self.send_html(200, self.render_page(t["files"], body, lang, icon="files"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -336,6 +352,10 @@ class FilesMixin:
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self.send_json(411, {"error": "length_required"})
+        try:
+            self.context.APP_METER.check("files")
+        except self.context.TrafficBlocked:
+            return self.send_json(400, {"error": "traffic_blocked"})
         # Without a limit a sender that goes silent (a sleeping laptop, a dropped
         # network) would hold its partial file and its share of the quota forever.
         self.connection.settimeout(UPLOAD_IDLE_TIMEOUT)
@@ -358,6 +378,10 @@ class FilesMixin:
         form = self.files_form()
         if form is None:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        try:
+            self.context.APP_METER.check("files")
+        except self.context.TrafficBlocked:
+            return self.files_done(error="traffic_blocked")
         try:
             self.context.FILE_STORE.start_fetch(form.get("url", [""])[0])
         except FileShareError as exc:

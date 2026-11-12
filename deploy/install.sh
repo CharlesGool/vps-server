@@ -901,6 +901,38 @@ EOF
 # A later web install must not displace an already-running frps listener.
 # Resolve the effective console port (explicit override, then persisted file)
 # after the port prompt, but before any web service stop, copy, or unit change.
+# Traffic accounting and limits for domain forwarding, iperf3, port forwarding,
+# FRPC instances and Tailscale (src/web/traffic_meter.py). It only adds an nft
+# table of its own and never stops those features, so a failure here is reported
+# and the install goes on.
+install_traffic_meter() {
+  cat > /etc/systemd/system/vps-server-traffic-meter.service <<EOF
+[Unit]
+Description=vps-server traffic accounting and limits (domain forwarding, iperf3, port forwarding, FRPC, Tailscale)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+Environment=VPSSRV_DATA_DIR=$VPSSRV_DATA_DIR
+Environment=VPSSRV_PREFIX=$PREFIX
+ExecStart=/usr/bin/python3 $PREFIX/src/web/traffic_meter.py run
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/etc/vps-server-traffic
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  mkdir -p -m 0700 /etc/vps-server-traffic
+  systemctl daemon-reload
+  systemctl enable vps-server-traffic-meter.service >/dev/null 2>&1 || true
+  systemctl restart vps-server-traffic-meter.service >/dev/null 2>&1 || core traffic_meter_failed >&2
+}
+
 check_frps_console_collision() {
 if has_module web && [ -f /etc/vps-server-frps/frps.toml ]; then
   console_candidate="${VPSSRV_CONSOLE_PORT:-}"
@@ -1449,6 +1481,9 @@ if ! systemctl is-active --quiet "$SERVICE_NAME"; then
   core start_failed >&2
   journalctl -u "$SERVICE_NAME" -n 20 --no-pager >&2 || true
   exit 1
+fi
+if has_module web; then
+  install_traffic_meter
 fi
 
 PW_FILE="$VPSSRV_PASSWORD_FILE"

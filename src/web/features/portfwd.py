@@ -43,6 +43,7 @@ class PortfwdMixin:
                   <button type="submit" class="danger">{self.context.html.escape(t['portfwd_delete'])}</button>
                 </form>
               </div>
+              {self.traffic_card(t, 'portfwd:' + rule['id'], 'portfwd', card=False)}
             </div>
             """)
         rules_html = "".join(rows) if rows else f'<p class="muted">{self.context.html.escape(t["portfwd_none"])}</p>'

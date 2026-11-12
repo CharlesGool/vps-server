@@ -22,9 +22,18 @@ LIMIT_BPS = 1_000_000
 BILLABLE_MULTIPLIER = 2
 
 
+def multiplier(node):
+    """How many times each metered byte counts: nodes and FRPS forward it, so twice.
+
+    Other meters (see traffic_meter.py) carry their own value; one whose
+    traffic crosses the host's network only once counts it once.
+    """
+    return node.get("billable_multiplier", BILLABLE_MULTIPLIER)
+
+
 def billable_bytes(node):
     """Count both sides of each forwarded byte against the traffic cap."""
-    return BILLABLE_MULTIPLIER * (node["upload_bytes"] + node["download_bytes"])
+    return multiplier(node) * (node["upload_bytes"] + node["download_bytes"])
 
 
 def _uint(value):

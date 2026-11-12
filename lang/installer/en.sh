@@ -55,6 +55,7 @@ case "$key" in
   deps_base_tools_missing) fmt='A basic command is missing (one of flock, sha256sum, base64, getent, install, mktemp, systemd-run). Install coreutils, util-linux, libc-bin and systemd.' ;;
   deps_ca_missing) fmt='The online package downloads components over HTTPS, but this host has no CA certificates. Install ca-certificates first, or use the full offline package.' ;;
   tailscale_install_failed) fmt='Tailscale installation failed; check the module log.\n' ;;
+  traffic_meter_failed) fmt='The traffic accounting service (vps-server-traffic-meter) did not start, so domain forwarding, iperf3, port forwarding, FRPC and Tailscale have no traffic accounting or limits for now; the rest of the install completed. See: journalctl -u vps-server-traffic-meter\n' ;;
   web_start_failed) fmt='The Web service did not start; new public port reservations were released.\n' ;;
   proxy_protocols_head) fmt='  Which protocols? Answer each one independently.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;

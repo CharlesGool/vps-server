@@ -55,6 +55,7 @@ case "$key" in
   deps_base_tools_missing) fmt='缺少基础命令（flock, sha256sum, base64, getent, install, mktemp, systemd-run 之一）。请安装 coreutils, util-linux, libc-bin 和 systemd。' ;;
   deps_ca_missing) fmt='在线安装包要通过 HTTPS 下载组件，但本机没有 CA 证书。请先安装 ca-certificates，或改用完整离线包。' ;;
   tailscale_install_failed) fmt='Tailscale 安装失败，请查看模块日志。\n' ;;
+  traffic_meter_failed) fmt='流量统计服务(vps-server-traffic-meter)未能启动, 域名转发, iperf3, 端口转发, FRPC 和 Tailscale 暂无流量统计和限制; 其余安装照常完成。查看: journalctl -u vps-server-traffic-meter\n' ;;
   web_start_failed) fmt='Web 服务未能启动，新登记的公开端口已释放。\n' ;;
   proxy_protocols_head) fmt='  哪些协议？下面每一项独立回答。\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;

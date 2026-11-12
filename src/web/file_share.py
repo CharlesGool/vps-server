@@ -86,6 +86,9 @@ class FileStore:
         self._cancel = set()
         self._recovered = False
         self._swept = 0.0
+        # Called with the size of every piece received (upload or server
+        # download); the console uses it for traffic accounting and limits.
+        self.on_receive = None
         self._rate_lock = threading.Lock()
         self._next_send = 0.0  # when the shared download budget allows the next byte
 
@@ -240,6 +243,8 @@ class FileStore:
                     chunk = reader.read(want)
                     if not chunk:
                         break
+                    if self.on_receive is not None:
+                        self.on_receive(len(chunk))
                     if expected is None:
                         self._grow(write_id, written + len(chunk))
                     handle.write(chunk)

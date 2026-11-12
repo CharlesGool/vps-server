@@ -55,6 +55,7 @@ case "$key" in
   deps_base_tools_missing) fmt='Falta un comando básico (flock, sha256sum, base64, getent, install, mktemp o systemd-run). Instala coreutils, util-linux, libc-bin y systemd.' ;;
   deps_ca_missing) fmt='El paquete en línea descarga componentes por HTTPS, pero este equipo no tiene certificados CA. Instala ca-certificates o usa el paquete completo sin conexión.' ;;
   tailscale_install_failed) fmt='Falló la instalación de Tailscale; consulte el registro del módulo.\n' ;;
+  traffic_meter_failed) fmt='El servicio de contabilidad de tráfico (vps-server-traffic-meter) no se inició, así que el reenvío de dominios, iperf3, el reenvío de puertos, FRPC y Tailscale no tienen contabilidad ni límites de tráfico por ahora; el resto de la instalación terminó. Consulta: journalctl -u vps-server-traffic-meter\n' ;;
   web_start_failed) fmt='El servicio Web no arrancó; se liberaron los nuevos puertos públicos reservados.\n' ;;
   proxy_protocols_head) fmt='  ¿Qué protocolos? Responde a cada uno por separado.\n' ;;
   ask_proxy_vmess) fmt='    vmess [Y/n] ' ;;

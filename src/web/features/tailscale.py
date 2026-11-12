@@ -264,7 +264,7 @@ class TailscaleMixin:
                         log_level_form(t, "/tailscale", {"tab": "logs"}, level) +
                         f'<pre class="logs-output" role="log">{esc((output or t["logs_empty"]) if output is not None else t["logs_unavailable"])}</pre>')
         body = (f'<div class="card wide tailscale-page">{headline}<nav class="log-sources" aria-label="Tailscale">{nav}</nav>'
-                f'{content}</div><script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
+                f'{content}</div>{self.traffic_card(t, "tailscale", "tailscale")}<script src="/static/copy.js"></script><script src="/static/private-values.js"></script>'
                 '<script src="/static/tailscale.js" defer></script>'
                 '<script src="/static/log-controls.js" defer></script>')
         self.send_html(200, self.render_page("Tailscale", body, lang, back_href="/"),

@@ -76,7 +76,8 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
 from client_cert import ClientAuth, ClientCertError
-from file_share import FileStore
+from file_share import FileShareError, FileStore
+from app_meter import AppMeter, TrafficBlocked
 from caddy_sites import domains_enabled as caddy_domains_enabled, ip_enabled as caddy_ip_enabled
 from console_access import ConsoleAccess, ConsoleAccessError
 from security_events import AuditLog, KnownLogins, BarkAlerts
@@ -456,6 +457,18 @@ ADMIN_PASSWORD = ensure_admin_password()
 IP_ALLOWLIST = IpAllowlist(IP_ALLOWLIST_FILE)
 CLIENT_AUTH = ClientAuth(CERT_DIR)
 FILE_STORE = FileStore(DATA_DIR / "files")
+# Mini Drive and the speed test share the console's port; count their traffic here.
+APP_METER = AppMeter(DATA_DIR / "app-traffic.json")
+
+
+def _files_received(size):
+    try:
+        APP_METER.take("files", "upload", size)
+    except TrafficBlocked:
+        raise FileShareError("traffic_blocked") from None
+
+
+FILE_STORE.on_receive = _files_received
 CONSOLE_PORT = ensure_console_port()
 SESSION_SECRET = ensure_session_secret()
 FILL_BUFFER = os.urandom(DOWNLOAD_CHUNK)
@@ -1045,6 +1058,7 @@ from features.iperf import IperfMixin
 from features.portfwd import PortfwdMixin
 from features.domains import DomainsMixin
 from features.files import FilesMixin
+from features.traffic import TrafficMixin
 from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
 from features.frp import FrpMixin
@@ -1073,7 +1087,7 @@ SECURITY_HEADERS = (
 
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, DomainsMixin, FilesMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
+                     PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1367,7 +1381,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
-                      self.route_domains, self.route_files, self.route_tailscale, self.route_frp, self.route_iperf,
+                      self.route_domains, self.route_files, self.route_traffic, self.route_tailscale, self.route_frp, self.route_iperf,
                       self.route_portfwd, self.route_visitors, self.route_changelog):
             if route(method, path, parsed, lang, query_lang):
                 return
@@ -1623,6 +1637,7 @@ def main():
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
+        APP_METER.start()
 
         console.serve_forever()
     except KeyboardInterrupt:

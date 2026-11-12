@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from node_accounting import BILLABLE_MULTIPLIER, advance_cycles, desired_policy, update_accounting
+from node_accounting import BILLABLE_MULTIPLIER, advance_cycles, desired_policy, multiplier, update_accounting
 from node_inventory import InvalidInventory
 from node_state import CONFIG_PATHS, STATE_PATH, _read_json, read_inventory, write_inventory, write_json
 
@@ -76,7 +76,8 @@ def parse_counters(document, inventory, epoch, *, new_ids=frozenset(), table=TAB
 
 
 def _policy_key(inventory, policy):
-    inputs = [(LIMIT_BYTES_PER_SECOND, BILLABLE_MULTIPLIER, node["id"], node["port"], node["cap_bytes"],
+    inputs = [(LIMIT_BYTES_PER_SECOND, multiplier(node), node["id"], node.get("port"),
+               node.get("matches"), node["cap_bytes"],
                node["cap_action"], policy[node["id"]]["active"],
                policy[node["id"]]["blocked"], policy[node["id"]]["expired"],
                policy[node["id"]]["capped"],
@@ -84,6 +85,19 @@ def _policy_key(inventory, policy):
                policy[node["id"]]["download_bps"])
               for node in inventory["nodes"]]
     return hashlib.sha256(json.dumps(inputs, separators=(",", ":")).encode()).hexdigest()
+
+
+def port_matches(port):
+    """Traffic to and from a local listener: the node and FRPS default.
+
+    Each match is (family, direction, chain, nft expression, weight). A weight
+    of two counts that traffic twice, for packets that cross the host's network
+    on both sides (see traffic_meter.py).
+    """
+    return [(family, direction, chain, f"meta nfproto {family} {protocol} {field} {port}", 1)
+            for family in ("ipv4", "ipv6")
+            for direction, chain, field in (("upload", "input", "dport"), ("download", "output", "sport"))
+            for protocol in ("tcp", "udp")]
 
 
 def render_rules(inventory, policy, *, replace=False, table=TABLE):
@@ -94,8 +108,10 @@ def render_rules(inventory, policy, *, replace=False, table=TABLE):
     lines += [f"add table inet {table}",
               f"add chain inet {table} input {{ type filter hook input priority -50; policy accept; }}",
               f"add chain inet {table} output {{ type filter hook output priority -50; policy accept; }}"]
+    if any(match[2] == "forward" for node in inventory["nodes"] for match in node.get("matches") or ()):
+        lines.append(f"add chain inet {table} forward {{ type filter hook forward priority -50; policy accept; }}")
     for node in inventory["nodes"]:
-        identifier, port = node["id"], node["port"]
+        identifier = node["id"]
         stem = identifier.replace("-", "")
         decision = policy[identifier]
         for family in ("ipv4", "ipv6"):
@@ -117,7 +133,7 @@ def render_rules(inventory, policy, *, replace=False, table=TABLE):
             decision["capped"] or decision["expired"])
         if quota:
             used = node["upload_bytes"] + node["download_bytes"]
-            quota_bytes = max(1, node["cap_bytes"] // BILLABLE_MULTIPLIER)
+            quota_bytes = max(1, node["cap_bytes"] // multiplier(node))
             lines.append(f"add quota inet {table} q_{stem} "
                          f"{{ over {quota_bytes} bytes used {used} bytes; }}")
             if node["cap_action"] == "throttle":
@@ -125,24 +141,22 @@ def render_rules(inventory, policy, *, replace=False, table=TABLE):
                     lines.append(f"add limit inet {table} lcap_{stem}_{direction} "
                                  f"{{ rate over {LIMIT_BYTES_PER_SECOND} bytes/second "
                                  "burst 16384 bytes; }")
-        for family, nft_family in (("ipv4", "ipv4"), ("ipv6", "ipv6")):
-            for direction, chain, port_field in (("upload", "input", "dport"),
-                                                 ("download", "output", "sport")):
-                for protocol in ("tcp", "udp"):
-                    match = (f"meta nfproto {nft_family} {protocol} "
-                             f"{port_field} {port}")
-                    if decision["blocked"]:
-                        lines.append(f"add rule inet {table} {chain} {match} drop")
-                    elif decision[f"{direction}_bps"] is not None:
-                        lines.append(f"add rule inet {table} {chain} {match} "
-                                     f"limit name \"l_{stem}_{direction}\" drop")
-                    if quota:
-                        tail = ("drop" if node["cap_action"] == "block" else
-                                f'limit name "lcap_{stem}_{direction}" drop')
-                        lines.append(f"add rule inet {table} {chain} {match} "
-                                     f"quota name \"q_{stem}\" {tail}")
+        matches = node["matches"] if "matches" in node else port_matches(node["port"])
+        for family, direction, chain, match, weight in matches:
+            if decision["blocked"]:
+                lines.append(f"add rule inet {table} {chain} {match} drop")
+            elif decision[f"{direction}_bps"] is not None:
+                lines.append(f"add rule inet {table} {chain} {match} "
+                             f"limit name \"l_{stem}_{direction}\" drop")
+            # Repeating the quota and counter rules counts the bytes again.
+            for _ in range(weight):
+                if quota:
+                    tail = ("drop" if node["cap_action"] == "block" else
+                            f'limit name "lcap_{stem}_{direction}" drop')
                     lines.append(f"add rule inet {table} {chain} {match} "
-                                 f"counter name {_name(identifier, family, direction)}")
+                                 f"quota name \"q_{stem}\" {tail}")
+                lines.append(f"add rule inet {table} {chain} {match} "
+                             f"counter name {_name(identifier, family, direction)}")
     return "\n".join(lines) + "\n"
 
 

@@ -150,6 +150,7 @@ class IperfMixin:
             {close_form}
           </div>
           {commands}
+          {self.traffic_card(t, 'iperf3', 'iperf', card=False)}
         </div>
         {client_form}
         </div>

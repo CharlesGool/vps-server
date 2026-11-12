@@ -148,6 +148,15 @@ if [ -f /etc/systemd/system/vps-server-frps-meter.service ]; then
   /usr/bin/python3 "$PREFIX/src/web/frps_meter.py" delete-table >/dev/null 2>&1 || true
   rm -f /etc/systemd/system/vps-server-frps-meter.service
 fi
+if [ -f /etc/systemd/system/vps-server-traffic-meter.service ]; then
+  systemctl disable --now vps-server-traffic-meter.service 2>/dev/null || true
+  /usr/bin/python3 "$PREFIX/src/web/traffic_meter.py" delete-table >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/vps-server-traffic-meter.service
+  systemctl daemon-reload
+fi
+if [ "${KEEP_DATA:-0}" != 1 ] && [ -d /etc/vps-server-traffic ] && [ ! -L /etc/vps-server-traffic ]; then
+  rm -rf /etc/vps-server-traffic
+fi
 if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firewall-owned ]; then
   if [ -f "/etc/systemd/system/$FRPS_SERVICE" ]; then
     systemctl disable --now "$FRPS_SERVICE" || true

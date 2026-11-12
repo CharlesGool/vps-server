@@ -68,6 +68,7 @@ class SpeedtestMixin:
           </div>
           <button id="run">{self.context.html.escape(t['run_test'])}</button>
         </div>
+        {self.traffic_card(t, 'speedtest', 'speedtest')}
         <script id="speedtest-config" type="application/json">{self.context.json.dumps(config)}</script>
         <script id="speedtest-i18n" type="application/json">{self.context.json.dumps(i18n)}</script>
         <script src="/static/speedtest.js"></script>
@@ -92,6 +93,11 @@ class SpeedtestMixin:
         # Upstream clamps at 1024 (1 GiB); MAX_TEST_MB is our own additional
         # ceiling on top of that.
         chunks = min(chunks, 1024, self.context.MAX_TEST_MB)
+        meter = self.context.APP_METER
+        try:
+            meter.check("speedtest")
+        except self.context.TrafficBlocked:
+            return self.send_html(503, "Traffic limit reached", {"Cache-Control": "no-store"})
 
         self.send_response(200)
         self.send_header("Content-Description", "File Transfer")
@@ -103,8 +109,16 @@ class SpeedtestMixin:
         self.send_header("Cache-Control", "post-check=0, pre-check=0")
         self.send_header("Pragma", "no-cache")
         self.end_headers()
-        for _ in range(chunks):
-            self.wfile.write(self.context.FILL_BUFFER)
+        data = memoryview(self.context.FILL_BUFFER)
+        size = meter.piece("speedtest", "download", len(data))
+        try:
+            for _ in range(chunks):
+                for offset in range(0, len(data), size):
+                    piece = data[offset:offset + size]
+                    meter.take("speedtest", "download", len(piece))
+                    self.wfile.write(piece)
+        except self.context.TrafficBlocked:
+            self.close_connection = True
 
     def handle_speedtest_ping(self):
         """GET on the same endpoint upload POSTs to — LibreSpeed times the
@@ -126,13 +140,19 @@ class SpeedtestMixin:
         length = max(0, min(length, self.context.MAX_TEST_MB * 1024 * 1024 + 1024))
 
         remaining = length
-        buf = bytearray(self.context.DOWNLOAD_CHUNK)
+        meter = self.context.APP_METER
+        buf = bytearray(meter.piece("speedtest", "upload", self.context.DOWNLOAD_CHUNK))
         view = memoryview(buf)
-        while remaining > 0:
-            n = self.rfile.readinto(view[: min(len(buf), remaining)])
-            if not n:
-                break
-            remaining -= n
+        try:
+            while remaining > 0:
+                n = self.rfile.readinto(view[: min(len(buf), remaining)])
+                if not n:
+                    break
+                meter.take("speedtest", "upload", n)
+                remaining -= n
+        except self.context.TrafficBlocked:
+            self.close_connection = True
+            return self.send_html(503, "Traffic limit reached", {"Cache-Control": "no-store"})
 
         # The client only checks the HTTP status, never the response body.
         self.send_response(200)

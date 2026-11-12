@@ -151,6 +151,7 @@ class FrpMixin:
                            f'{esc(t["frp_test_connection"])}</button>'
                            f'<a class="button-link frp-card-edit" href="/frp/client/edit?name={self.context.quote(name)}">{esc(t["frp_edit_client_button"])}</a></div></div>'
                            f'<div class="frp-target-meta">{self.private_value_control(name, "server", t, endpoint="/frp/client/value")}</div>'
+                           f'{self.traffic_card(t, "frpc:" + name, "frpc", card=False)}'
                            f'<div class="frp-target-foot">{forwarding}'
                            f'<button type="button" class="node-action node-action-danger frp-client-delete-open" '
                            f'data-dialog-open="frp-delete-{esc(name, quote=True)}">{esc(t["frp_delete_client"])}</button></div>'
