@@ -26,6 +26,23 @@ metadata:
 
 ## Changelog
 
+### v6.3.0 — 2026-11-12
+
+Mini Drive, the speed test, domain forwarding, iperf3, port forwarding, FRPC and Tailscale now have the same traffic accounting and limits as Singbox nodes. The upgrade command is unchanged and settings and data are kept; the install adds the service `vps-server-traffic-meter`.
+
+#### Added
+
+- **Traffic limits for every feature that carries traffic.** Each feature's page has a "Traffic" card with upload, download and counted totals; under "Traffic limits" you set a traffic cap (slow to 1 Mbps or cut off when reached), upload and download speed limits, a validity period and a reset schedule, the same as for Singbox nodes. Console pages, the web terminal and SSH are not counted.
+  - Mini Drive (download links, uploads, server downloads) and the speed test share the console's port, so the console counts and limits them itself; when cut off, download links and the speed test answer 503 and uploads and server downloads are refused.
+  - Domain forwarding: Caddy's 80/443 together. iperf3: its port. FRPC: each instance's connection to its server. Each byte counts once.
+  - Port forwarding: each rule on its own; forwarded traffic enters and leaves the host, so it counts twice.
+  - Tailscale: traffic on the `tailscale0` interface; what the host forwards (exit node, subnet routes) counts twice.
+- The new service `vps-server-traffic-meter` (nft table `vps_server_traffic`) handles the last five. When it fails it logs and retries and never stops those features; node and FRPS metering is unchanged and still stops its service on failure.
+
+#### Verification
+
+On a public test host: domain forwarding slowed to about 1 Mbps (0.13 MiB/s) at the cap, could not connect when cut off, and recovered when the limit was removed; Mini Drive downloads ran at 1.01 MiB/s with an 8 Mbps download limit and answered 503 when cut off; a 20 MiB speed test counted 20 MiB; saving and clearing limits through the page worked; port forwarding and FRPC rules (with speed limits, a cap and cut-off) passed the kernel's check. Node and FRPS rules are byte-for-byte unchanged. Not verified: real port forwarding and FRPC traffic, Tailscale limits once reached, real iperf3 traffic. Known: Mini Drive downloads through a domain count toward both Mini Drive and domain forwarding.
+
 ### v6.2.1 — 2026-11-12
 
 Fixes addresses such as Mini Drive download links pointing to `127.0.0.1` when the console is opened through a domain. The upgrade command is unchanged and settings and data are kept.

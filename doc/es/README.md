@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.2.1-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.2.1)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.3.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.3.0)
 
 ## Documentación
 
@@ -25,6 +25,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Servidor FRPS (contabilidad de tráfico, cuota, límites de velocidad y vigencia como un nodo Singbox, medidos en bindPort), instancias FRPC y proxies TCP/UDP y estado y dispositivos de Tailscale.
 - Reenvío de dominios: reenvía HTTPS por subdominio a un puerto local (por ejemplo, un puerto de frps) o a la propia consola. Incluye Caddy, que solicita certificados de Let's Encrypt automáticamente, y mantiene los registros DNS con la API de Cloudflare (solo DNS; comprueba la IP pública del equipo cada 5 minutos). Se pueden añadir varios tokens de Cloudflare (por ejemplo, si los dominios están en cuentas distintas) y cada sitio usa automáticamente el token que gestiona su dominio principal. Cada sitio se puede activar o desactivar, editar, vincular a varios dominios, limitar por IP de origen o proteger con contraseña, y su servidor de destino puede ser HTTPS; hay registro de accesos, historial de cambios y avisos de Bark (cambio de IP, fallo de DNS, certificado a punto de caducar). Al activarlo, Caddy ocupa 80/443 y la página pública de accesibilidad pasa a servirla Caddy (véase más abajo).
 - Certificado IP: un interruptor propio en el inicio que solicita un certificado de Let's Encrypt para la IPv4 pública del equipo; la dirección `https://IP:puerto` de la consola pasa a usarlo y el navegador deja de avisar de que el certificado no es seguro. No necesita dominio ni token de Cloudflare, solo que el puerto 80 sea accesible desde internet; comparte el Caddy incluido con el reenvío de dominios (requiere instalar el módulo de reenvío de dominios), y Caddy funciona y ocupa 80/443 mientras cualquiera de los dos esté activado. En ese caso, el interruptor de página pública del inicio sigue funcionando y Caddy devuelve la página directamente: el puerto 80 la muestra para la IP y para cualquier nombre no configurado (sin redirigir a HTTPS, para poder comprobar si el propio puerto 80 es accesible) y el puerto 443 la muestra solo para `https://IP-del-equipo/` mientras el certificado IP esté activado.
+- Mini nube, la prueba de velocidad, el reenvío de dominios, iperf3, el reenvío de puertos, FRPC y Tailscale tienen la misma contabilidad y los mismos límites de tráfico que los nodos Singbox (al llegar al límite, reducir a 1 Mbps o cortar; límites de velocidad de subida y bajada; periodo de validez; ciclo de reinicio), configurados en "Límites de tráfico" de cada página; el tráfico del reenvío de puertos y el que se reenvía por Tailscale entra y sale del servidor, así que cuenta dos veces.
 - Módulos opcionales, reenvío de puertos, Mini nube con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. La tarjeta «Página pública» del inicio activa o desactiva juntas las páginas HTTP y HTTPS con un solo interruptor. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
@@ -127,10 +128,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.2.1-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.3.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.2.1/vps-server-v6.2.1-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.3.0/vps-server-v6.3.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -138,7 +139,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Caddy y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v6.2.1 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.3.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -150,17 +151,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.2.1/vps-server-v6.2.1-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.3.0/vps-server-v6.3.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.2.1/vps-server-v6.2.1-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.2.1/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.3.0/vps-server-v6.3.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.3.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.2.1-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.3.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -282,7 +283,7 @@ Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pas
 
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.2.1, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.3.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

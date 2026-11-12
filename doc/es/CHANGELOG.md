@@ -26,6 +26,23 @@ metadata:
 
 ## Historial de cambios
 
+### v6.3.0 — 2026-11-12
+
+Mini nube, la prueba de velocidad, el reenvío de dominios, iperf3, el reenvío de puertos, FRPC y Tailscale tienen ahora la misma contabilidad y los mismos límites de tráfico que los nodos Singbox. El comando de actualización no cambia y se conservan la configuración y los datos; la instalación añade el servicio `vps-server-traffic-meter`.
+
+#### Añadido
+
+- **Límites de tráfico en todas las funciones que mueven tráfico.** La página de cada función tiene una tarjeta "Tráfico" con la subida, la bajada y lo contabilizado; en "Límites de tráfico" se configura un límite de tráfico (al alcanzarlo, reducir a 1 Mbps o cortar), límites de velocidad de subida y bajada, un periodo de validez y un ciclo de reinicio, igual que en los nodos Singbox. Las páginas de la consola, el terminal web y SSH no cuentan.
+  - Mini nube (enlaces de descarga, subidas, descargas del servidor) y la prueba de velocidad comparten el puerto de la consola, así que la consola los cuenta y limita; al cortarse, los enlaces y la prueba de velocidad responden 503 y se rechazan las subidas y descargas del servidor.
+  - Reenvío de dominios: el 80/443 de Caddy en conjunto. iperf3: su puerto. FRPC: la conexión de cada instancia con su servidor. Cada byte cuenta una vez.
+  - Reenvío de puertos: cada regla por separado; el tráfico reenviado entra y sale del servidor, así que cuenta dos veces.
+  - Tailscale: el tráfico de la interfaz `tailscale0`; lo que reenvía el servidor (nodo de salida, rutas de subred) cuenta dos veces.
+- El nuevo servicio `vps-server-traffic-meter` (tabla nft `vps_server_traffic`) se ocupa de las últimas cinco. Si falla, lo registra y reintenta y nunca detiene esas funciones; la medición de nodos y FRPS no cambia y sigue deteniendo su servicio ante un fallo.
+
+#### Verificación
+
+En un servidor de pruebas público: el reenvío de dominios bajó a unos 1 Mbps (0.13 MiB/s) al llegar al límite, no conectaba al cortarse y se recuperó al quitar el límite; las descargas de Mini nube fueron a 1.01 MiB/s con un límite de bajada de 8 Mbps y respondieron 503 al cortarse; una prueba de velocidad de 20 MiB contó 20 MiB; guardar y quitar límites desde la página funcionó; las reglas de reenvío de puertos y FRPC (con límites de velocidad, límite de tráfico y corte) pasaron la comprobación del núcleo. Las reglas de nodos y FRPS no cambian ni un byte. Sin verificar: tráfico real de reenvío de puertos y FRPC, los límites de Tailscale una vez alcanzados, tráfico real de iperf3. Conocido: las descargas de Mini nube por un dominio cuentan tanto para Mini nube como para el reenvío de dominios.
+
 ### v6.2.1 — 2026-11-12
 
 Corrige que direcciones como los enlaces de descarga de Mini nube apuntaran a `127.0.0.1` al abrir la consola por un dominio. El comando de actualización no cambia y se conservan la configuración y los datos.
