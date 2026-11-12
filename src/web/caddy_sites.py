@@ -296,8 +296,12 @@ def hash_password(password):
 def _console_route(site, port, key):
     return {"match": [{"host": names(site)}],
             "handle": [{"handler": "reverse_proxy",
-                        # Overwrite whatever the visitor sent under these names.
+                        # Overwrite whatever the visitor sent under these names. The
+                        # console builds its links (download links, public pages,
+                        # subscriptions) from Host, so it gets the visitor's, not
+                        # the loopback address Caddy would send to an HTTPS upstream.
                         "headers": {"request": {"set": {
+                            "Host": ["{http.request.hostport}"],
                             "X-Vps-Server-Proxy": [key],
                             "X-Vps-Server-Client-Serial": ["{http.request.tls.client.serial}"],
                             "X-Vps-Server-Client-IP": ["{http.request.remote.host}"]}}},
