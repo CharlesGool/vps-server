@@ -10,6 +10,7 @@
 .files-usage-total { color: var(--muted-foreground); }
 .files-usage-total strong { color: var(--foreground); font-size: var(--text-lg); }
 .files-usage-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-14) var(--compat-size-24); }
+.files-usage-forms { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--compat-size-14) var(--compat-size-24); }
 .files-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11); margin: 0; }
 .files-inline label { margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); }
 /* Only the form's own controls: a select's menu options are buttons too. */

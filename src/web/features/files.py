@@ -12,9 +12,9 @@ import urllib.parse
 from file_share import DEFAULT_LINK_MINUTES, GIB, LINK_MINUTES, UPLOAD_IDLE_TIMEOUT, FileShareError
 
 NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
-           "files_fetch_started", "files_quota_saved", "files_job_removed", "files_job_cancelled")
+           "files_fetch_started", "files_quota_saved", "files_rate_saved", "files_job_removed", "files_job_cancelled")
 ERRORS = ("no_room", "too_many", "empty", "incomplete", "url_invalid", "busy", "not_found",
-          "link_invalid", "too_many_links", "quota_invalid", "cancelled", "interrupted", "network")
+          "link_invalid", "too_many_links", "quota_invalid", "rate_invalid", "cancelled", "interrupted", "network")
 RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 
 
@@ -90,13 +90,18 @@ class FilesMixin:
         self.end_headers()
         if method == "HEAD":
             return
+        store = self.context.FILE_STORE
+        rate = store.state().get("rate_limit", 0)
+        # Small pieces under a limit keep the speed even instead of in bursts.
+        piece = min(1024 * 1024, max(16 * 1024, rate // 8)) if rate else 1024 * 1024
         with open(path, "rb") as handle:
             handle.seek(start)
             left = end - start + 1
             while left > 0:
-                chunk = handle.read(min(1024 * 1024, left))
+                chunk = handle.read(min(piece, left))
                 if not chunk:
                     break
+                store.throttle(len(chunk), rate)
                 self.wfile.write(chunk)
                 left -= len(chunk)
 
@@ -122,7 +127,8 @@ class FilesMixin:
             return True
         handlers = {"/files/fetch": self.handle_files_fetch, "/files/delete": self.handle_files_delete,
                     "/files/link": self.handle_files_link, "/files/revoke": self.handle_files_revoke,
-                    "/files/quota": self.handle_files_quota, "/files/job": self.handle_files_job}
+                    "/files/quota": self.handle_files_quota, "/files/rate": self.handle_files_rate,
+                    "/files/job": self.handle_files_job}
         if method == "POST" and path in handlers:
             handlers[path]()
             return True
@@ -163,6 +169,8 @@ class FilesMixin:
         used, quota, free = store.used(data), data["quota"], store.disk_free()
         room = store.room(data)
         percent = min(100, round(used * 100 / quota)) if quota else 100
+        rate = data.get("rate_limit", 0)
+        rate_value = f"{rate / 1024 ** 2:g}" if rate else ""
 
         def date(stamp):
             return time.strftime("%Y-%m-%d %H:%M", time.localtime(stamp)) if stamp else "—"
@@ -179,10 +187,16 @@ class FilesMixin:
                  f'<span class="files-usage-total"><strong>{esc(human_size(used))}</strong> / {esc(human_size(quota))}</span></div>'
                  f'{meter}<div class="files-usage-foot"><span class="files-meta">'
                  f'{esc(t["files_available"])} {esc(human_size(room))} · {esc(t["files_disk_free"])} {esc(human_size(free))}</span>'
+                 f'<div class="files-usage-forms">'
                  f'<form method="post" action="/files/quota" class="files-inline" title="{esc(t["files_quota_help"], quote=True)}">{hidden()}'
                  f'<label for="files-quota">{esc(t["files_quota_label"])}</label>'
                  f'<input id="files-quota" type="number" name="quota" min="0.1" max="10240" step="0.1" value="{quota / GIB:g}" required>'
-                 f'<button type="submit" class="files-button">{esc(t["files_quota_save"])}</button></form></div></section>')
+                 f'<button type="submit" class="files-button">{esc(t["files_quota_save"])}</button></form>'
+                 f'<form method="post" action="/files/rate" class="files-inline" title="{esc(t["files_rate_help"], quote=True)}">{hidden()}'
+                 f'<label for="files-rate">{esc(t["files_rate_label"])}</label>'
+                 f'<input id="files-rate" type="number" name="rate" min="0.1" max="10240" step="0.1" '
+                 f'value="{rate_value}" placeholder="{esc(t["files_rate_none"], quote=True)}">'
+                 f'<button type="submit" class="files-button">{esc(t["files_quota_save"])}</button></form></div></div></section>')
 
         add = (f'<section class="card frp-card files-add">'
                f'<div class="files-add-part"><h2 class="frp-instances-heading">{esc(t["files_fetch_label"])}</h2>'
@@ -396,6 +410,21 @@ class FilesMixin:
         except FileShareError as exc:
             return self.files_done(error=exc.code)
         return self.files_done("files_quota_saved")
+
+    def handle_files_rate(self):
+        form = self.files_form()
+        if form is None:
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        value = form.get("rate", [""])[0].strip()
+        try:
+            rate = int(round(float(value) * 1024 ** 2)) if value else 0
+        except (ValueError, OverflowError):
+            return self.files_done(error="rate_invalid")
+        try:
+            self.context.FILE_STORE.set_rate_limit(rate)
+        except FileShareError as exc:
+            return self.files_done(error=exc.code)
+        return self.files_done("files_rate_saved")
 
     def handle_files_job(self):
         form = self.files_form()

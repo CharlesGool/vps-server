@@ -40,6 +40,9 @@ FETCH_TIMEOUT = 60
 UPLOAD_IDLE_TIMEOUT = 120
 # Leftover partial files (no write holds them any more) are swept this often.
 SWEEP_SECONDS = 600
+# Download speed limit for all links together, bytes per second; 0: no limit.
+MIN_RATE = 64 * 1024
+MAX_RATE = 10 * 1024 * GIB
 USER_AGENT = "vps-server-files"
 TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32}")
 ID_RE = re.compile(r"[0-9a-f]{16}")
@@ -83,6 +86,8 @@ class FileStore:
         self._cancel = set()
         self._recovered = False
         self._swept = 0.0
+        self._rate_lock = threading.Lock()
+        self._next_send = 0.0  # when the shared download budget allows the next byte
 
     # -- index ---------------------------------------------------------
 
@@ -97,6 +102,7 @@ class FileStore:
         data.setdefault("files", [])
         data.setdefault("links", [])
         data.setdefault("jobs", [])
+        data.setdefault("rate_limit", 0)
         return data
 
     def _save(self, data):
@@ -166,6 +172,32 @@ class FileStore:
             data = self._load()
             data["quota"] = quota
             self._save(data)
+
+    def set_rate_limit(self, rate):
+        """Limit all link downloads together to ``rate`` bytes per second (0: none)."""
+        if not isinstance(rate, int) or rate and not MIN_RATE <= rate <= MAX_RATE:
+            raise FileShareError("rate_invalid")
+        with self._lock:
+            data = self._load()
+            data["rate_limit"] = rate
+            self._save(data)
+
+    def throttle(self, size, rate):
+        """Wait until ``size`` more bytes fit the shared download budget.
+
+        Every download takes its share from one budget, so the limit holds for
+        all links together however many run at once.
+        """
+        if not rate:
+            return
+        with self._rate_lock:
+            now = time.monotonic()
+            # Time no download used is not saved up: at most a short burst after idling.
+            start = max(self._next_send, now - 0.5)
+            self._next_send = start + size / rate
+            wait = self._next_send - now
+        if wait > 0:
+            time.sleep(wait)
 
     def _reserve(self, size):
         """Hold ``size`` bytes (0 when unknown) for a write; returns its id."""
