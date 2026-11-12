@@ -26,6 +26,20 @@ metadata:
 
 ## Historial de cambios
 
+### v6.3.1 — 2026-11-12
+
+Corrige dos problemas con las instancias FRPC en la contabilidad de tráfico, y el aviso que muestra el script de configuración de Windows al ejecutarse desde una ubicación de red. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Corregido
+
+- **Las instancias FRPC que usan el mismo servidor se cuentan juntas.** La contabilidad cuenta FRPC por sus conexiones con la dirección y el puerto de un servidor, así que las instancias que usan el mismo servidor no se distinguen: en v6.3.0 cada una de sus entradas contaba el mismo tráfico, y limitar o cortar una afectaba a la otra. Ahora comparten una entrada para contar y limitar; la tarjeta de cada instancia la muestra e indica qué instancias la comparten. Al actualizar, las entradas por instancia de v6.3.0 se fusionan en ella, conservando totales y límites.
+- **Las instancias FRPC con nombres no ingleses (en chino, por ejemplo) no tenían contabilidad de tráfico.** Ahora se acepta cualquier nombre que permita la gestión de FRPC.
+- **Script de configuración en un clic de Windows.** El script pasa su propia ruta a PowerShell en una variable de entorno en lugar de la línea de comandos, así que funciona con una ruta que contenga una comilla simple; al ejecutarse desde una ubicación de red (como un recurso compartido del NAS) indica que el aviso de CMD sobre rutas UNC no admitidas se puede ignorar.
+
+#### Verificación
+
+Verificado con tráfico real en un contenedor Debian 13 desechable y en dos máquinas virtuales Debian 13 de la red local: conteo, reducción a unos 1 Mbps al llegar al límite, corte y recuperación para el reenvío de puertos, Tailscale (local y reenviado), FRPC e iperf3, además de la actualización in situ de ambas máquinas virtuales desde v6.1.0. La agrupación de FRPC y la migración de entradas antiguas se verificaron en una simulación local y en una máquina virtual; el lanzador del script de configuración se verificó en Windows desde una ruta UNC (con letras chinas y paréntesis, con un directorio de trabajo UNC), sin una importación completa del certificado en Windows.
+
 ### v6.3.0 — 2026-11-12
 
 Mini nube, la prueba de velocidad, el reenvío de dominios, iperf3, el reenvío de puertos, FRPC y Tailscale tienen ahora la misma contabilidad y los mismos límites de tráfico que los nodos Singbox. El comando de actualización no cambia y se conservan la configuración y los datos; la instalación añade el servicio `vps-server-traffic-meter`.

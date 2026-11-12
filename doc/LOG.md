@@ -80,7 +80,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v6.3.0(标签 `v6.3.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v6.3.1(标签 `v6.3.1`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
@@ -112,4 +112,5 @@ v6.2.0(2026-11-12, `a02b7a8` 至 `661dc00`): 迷你网盘(`src/web/file_share.py
 
 v6.2.1(2026-11-12, `17897ca`, `5d09097`): Caddy 的控制台站点保留访问者的 Host(此前为 `127.0.0.1:端口`, 迷你网盘链接, Clash 订阅, 网页终端来源检查因此出错); Caddy 运行时"公开页面"链接改用本机公网 IPv4. 验证见 `doc/CHANGELOG.md`.
 v6.3.0(2026-11-12, `8f9663d`, `d095240`): 迷你网盘, 测速, 域名转发, iperf3, 端口转发, FRPC 和 Tailscale 的流量统计和限制(`src/web/traffic_meter.py`, 服务 `vps-server-traffic-meter`, 表 `vps_server_traffic`; 控制台内的 `src/web/app_meter.py`); `node_meter.render_rules` 接受每个条目的匹配规则, 节点和 FRPS 的规则不变. 验证见 `doc/CHANGELOG.md`.
+v6.3.1(2026-11-12, `b0fd00f`, `83c397d`): FRPC 流量条目按服务器合并(`frpcsrv:<服务器>:<端口>`, v6.3.0 条目迁移), 中文名 FRPC 实例纳入统计, Windows 一键设置脚本经环境变量传路径并说明 UNC 提示. 两台局域网 Debian 虚拟机已从 v6.1.0 升级并用于真实流量验证(见 `doc/CHANGELOG.md`).
 临时项目规则: 未发现.

@@ -26,6 +26,20 @@ metadata:
 
 ## Changelog
 
+### v6.3.1 — 2026-11-12
+
+Fixes two problems with FRPC instances in traffic accounting, and the note shown when the Windows setup script runs from a network location. The upgrade command is unchanged and settings and data are kept.
+
+#### Fixed
+
+- **FRPC instances using the same server are counted together.** Traffic accounting counts FRPC by its connections to a server address and port, so instances using the same server cannot be told apart: in v6.3.0 each of their entries counted the same traffic, and limiting or cutting off one affected the other. These instances now share one entry for counting and limits; each instance card shows it and names the instances sharing it. On upgrade the per-instance entries of v6.3.0 merge into it, keeping totals and limits.
+- **FRPC instances with non-English names (Chinese ones, for example) had no traffic accounting.** Every name FRPC management allows is now accepted.
+- **Windows one-click setup script.** The script passes its own path to PowerShell in an environment variable instead of the command line, so a path with a single quote works; when run from a network location (such as a NAS share) it says CMD's "UNC paths are not supported" note can be ignored.
+
+#### Verification
+
+Verified with real traffic in a disposable Debian 13 container and on two LAN Debian 13 virtual machines: counting, slowing to about 1 Mbps at the cap, cutting off and recovery for port forwarding, Tailscale (local and forwarded), FRPC and iperf3, plus an in-place upgrade of both virtual machines from v6.1.0. FRPC grouping and the migration of old entries were verified in a local simulation and on one virtual machine; the setup script's launcher was verified on Windows from a UNC path (with Chinese letters and parentheses, with a UNC working directory), without a full certificate import on Windows.
+
 ### v6.3.0 — 2026-11-12
 
 Mini Drive, the speed test, domain forwarding, iperf3, port forwarding, FRPC and Tailscale now have the same traffic accounting and limits as Singbox nodes. The upgrade command is unchanged and settings and data are kept; the install adds the service `vps-server-traffic-meter`.
