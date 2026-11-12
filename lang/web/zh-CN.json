@@ -167,6 +167,7 @@
   "node_cap": "流量上限",
   "node_billed_usage": "已计入 {value}（上传与下载之和 × 2）",
   "node_billed_usage_once": "已计入 {value}（上传与下载之和）",
+  "traffic_limit_manage": "流量限制",
   "traffic_help_once": "上传是流入本机的流量, 下载是从本机流出的流量, 每个字节计一次。达到流量上限后按设置限速到 1 Mbps 或断开。",
   "traffic_help_twice": "转发的流量进出本机各一次, 与 Singbox 节点一样计两次。达到流量上限后按设置限速到 1 Mbps 或断开。",
   "traffic_help_tailscale": "统计 tailscale0 网卡的流量; 经本机转发的流量(出口节点, 子网路由)进出本机各一次, 计两次。达到流量上限后按设置限速到 1 Mbps 或断开。",

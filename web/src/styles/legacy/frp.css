@@ -193,6 +193,9 @@
 .domain-card .frp-target-meta .private-value { flex-wrap: nowrap; }
 .domain-card .frp-target-meta .private-value code { min-width: 0; white-space: nowrap; }
 .frp-client-grid > .domain-zone { flex: 1 1 100%; min-width: 0; }
-.traffic-help { margin: var(--compat-size-11) 0; font-size: var(--text-sm); }
+.traffic-card > p.traffic-help.muted { margin: var(--compat-size-24) 0 var(--compat-size-14); font-size: var(--text-sm); }
 div.traffic-card { margin-top: var(--compat-size-24); padding-top: var(--compat-size-24); border-top: 1px solid var(--border); }
-.traffic-card > .node-secondary { margin-top: 0; }
+.traffic-card .node-usage { display: block; margin: 0; padding: 0; border-top: 0; }
+.traffic-card .node-usage-heading h3 { font-size: var(--text-base); }
+.traffic-card .node-usage > .node-usage-heading { flex-direction: row; justify-content: flex-start; gap: var(--compat-size-14); }
+.traffic-card .node-secondary { margin: 0; padding: 0; border-top: 0; }

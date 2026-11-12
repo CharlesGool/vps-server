@@ -167,6 +167,7 @@
   "node_cap": "Límite de tráfico",
   "node_billed_usage": "Contabilizado {value} (subida + bajada, luego ×2)",
   "node_billed_usage_once": "Contabilizado {value} (subida + bajada)",
+  "traffic_limit_manage": "Límites de tráfico",
   "traffic_help_once": "La subida es el tráfico que entra en este servidor y la bajada el que sale; cada byte cuenta una vez. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
   "traffic_help_twice": "El tráfico reenviado entra y sale de este servidor, así que cuenta dos veces, como un nodo Singbox. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
   "traffic_help_tailscale": "Cuenta el tráfico de la interfaz tailscale0; el que este servidor reenvía (nodo de salida, rutas de subred) entra y sale, así que cuenta dos veces. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",

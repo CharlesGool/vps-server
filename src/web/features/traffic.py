@@ -59,6 +59,7 @@ class TrafficMixin:
             if entry is None:
                 return ""
         identifier = entry["id"]
+        t = {**t, "node_limit_manage": t["traffic_limit_manage"]}  # Not access, only traffic, here.
         query = self.context.parse_qs(self.context.urlsplit(self.path).query)
         notice = ""
         if query.get("traffic", [""])[0] in ("done", "failed") and query.get("entry", [""])[0] == identifier:

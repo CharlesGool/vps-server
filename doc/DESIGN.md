@@ -63,8 +63,9 @@ metadata:
 - **必须**在认证与权限复验后提供敏感数据;初始 HTML **禁止**包含隐藏的真实凭据. 编辑已有对象**必须**载入原值, 不能用空白字段覆盖未修改值.
 - 端口**必须**先锁定并登记归属再启用监听;失败时释放新增登记, **禁止**抢占其他项目的登记.
 - FRP 修改**必须**先验证, 失败时保留或尽可能恢复原配置;高级非受管配置**禁止**被结构化编辑器丢弃.
-- 流量配额按 `(上传 + 下载) × 2` 计入;读取计量失败**禁止**被当作达到配额. 周期重置**必须**同步重建内核 quota.
+- 节点和 FRPS 的流量配额按 `(上传 + 下载) × 2` 计入;读取计量失败**禁止**被当作达到配额. 周期重置**必须**同步重建内核 quota.
 - FRPS 与节点使用同一套计费和 nft 规则, 按 bindPort 计量(`src/web/frps_meter.py`, 独立表 `vps_server_frps`);FRPS 服务依赖计量服务, 计量失败时**必须**停止 FRPS.
+- 其余走流量的功能也有同样的流量统计和限制(流量上限后限速到 1 Mbps 或断开, 上下行限速, 有效期, 重置周期), 在各自页面的"流量限制"里设置; 控制台页面, 终端和 SSH 不计. `src/web/traffic_meter.py`(服务 `vps-server-traffic-meter`, 独立表 `vps_server_traffic`)复用节点计量的 tick, 每个条目带自己的匹配规则和计数倍数: 域名转发计 Caddy 的 80/443, iperf3 计其端口, FRPC 每个实例计与其服务器地址和端口的连接, 均计一次; 端口转发每条规则计 forward 链上去往和来自目标的包, 计两次; Tailscale 计 `tailscale0` 网卡, 经本机转发的包重复一次计数规则, 计两次. 删除的转发规则和 FRPC 实例连同条目删除, 关闭或卸载的模块保留条目和限制. 这些功能并非围绕限额设计, 计量失败时只记录并重试, **禁止**因此停止它们. 迷你网盘和测速与控制台共用端口, 内核分不出它们的字节, 由控制台自己计数和限速(`src/web/app_meter.py`, 每个字节计一次); 经域名下载迷你网盘文件时, 这些字节同时计入迷你网盘和域名转发.
 - 客户端证书**必须**用随附的 openssl 和项目自带的最小配置签发; 证书包**必须**用 SHA1/3DES 加密和 SHA1 MAC 导出(OpenSSL 3 默认的 AES/PBKDF2 在 macOS 上报密码错误);新的证书颁发机构**必须**先在主机 TLS 库上通过双向 TLS 自检.
 - 新签发的 CA 和设备证书的 CN 带主机名(只保留 ASCII 字母数字, 点和横线);已有 CA 不改名, 改名会使已发证书失效. 设置文件由 `cert_setup.py` 生成, 带证书的版本只在签发页提供: Windows 是 .cmd 加内嵌 PowerShell, 只写当前用户的证书库和 HKCU 策略, 不需要管理员权限, 私钥导入为不可导出; macOS 是用户范围的描述文件(PKCS#12 载荷不含密码, 安装时由系统询问, 加 Chrome 和 Edge 的策略载荷); Linux 是 bash 脚本, 用 pk12util 导入到 `~/.pki/nssdb`, 并用 sudo 合并各浏览器策略目录下的 `vps-server.json`, 保留其他条目.
 - iperf3 服务端**必须**限时运行, Web 停止时关闭临时进程与本项目转发规则. **禁止**重置整个主机的 `ip_forward` 或删除其他程序的防火墙规则.
@@ -95,6 +96,8 @@ metadata:
 | `/etc/vps-server-proxy/config.json` | Singbox 运行配置;节点身份与策略由受管清单协调. |
 | `/etc/vps-server-frps/frps.toml` | FRPS 服务端配置. |
 | `/etc/vps-server-frps/traffic.json`, `traffic-meter.json` | FRPS 流量条目(配额, 限速, 有效期, 用量)与计量账本. |
+| `/etc/vps-server-traffic/traffic.json`, `meter.json` | 域名转发, iperf3, 端口转发, FRPC 和 Tailscale 的流量条目与计量账本. |
+| `data/app-traffic.json` | 迷你网盘和测速的流量条目, 由控制台写入. |
 | `/etc/frp/frpc-<name>.toml` | FRPC 实例配置;非 ASCII 名称映射到稳定的 unit 别名. |
 | `/etc/vps-server-caddy` | 域名转发: 站点清单 `sites.json`, Cloudflare 令牌清单 `cloudflare-tokens.json`(每个令牌带名称和它能管理的主域名; 均为 `0600`; 旧版的单个 `cloudflare-token` 和 `zones.json` 在第一次改动令牌时转换并删除), DNS 同步结果 `dns.json`, 生成的 Caddy 配置 `caddy.json`. |
 | `/var/lib/vps-server-caddy` | Caddy 的证书和 ACME 账号, 归 `vps-server-caddy` 用户. |
