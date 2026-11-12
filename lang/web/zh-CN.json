@@ -562,6 +562,7 @@
   "cert_setup_nss_missing": "缺少 certutil 和 pk12util，请先安装 libnss3-tools（Debian/Ubuntu）或 nss-tools（Fedora）。",
   "cert_setup_done_linux": "完成。请完全退出浏览器再打开。",
   "cert_setup_found": "证书已在当前用户的证书库中。",
+  "cert_setup_unc": "从网络位置运行: 上面 CMD 的“UNC 路径不受支持”提示可以忽略, 设置照常进行。",
   "cert_setup_password": "输入证书导入密码",
   "cert_setup_imported": "证书已导入（私钥不可导出）。",
   "cert_setup_imported_linux": "证书已导入浏览器的证书库。",

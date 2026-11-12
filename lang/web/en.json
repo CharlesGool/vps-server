@@ -562,6 +562,7 @@
   "cert_setup_nss_missing": "certutil and pk12util are missing; install libnss3-tools (Debian/Ubuntu) or nss-tools (Fedora) first.",
   "cert_setup_done_linux": "Done. Fully quit the browser and open it again.",
   "cert_setup_found": "The certificate is already in the current user's store.",
+  "cert_setup_unc": "Running from a network location: the “UNC paths are not supported” note from CMD above can be ignored; setup goes on as usual.",
   "cert_setup_password": "Enter the certificate import password",
   "cert_setup_imported": "Certificate imported (private key not exportable).",
   "cert_setup_imported_linux": "Certificate imported into the browser's certificate store.",

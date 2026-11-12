@@ -26,9 +26,13 @@ import json
 import plistlib
 import uuid
 
+# The file's own path reaches PowerShell through the environment, not inside the
+# command line: a path with a quote, non-ASCII letters or one on a network share
+# (\\server\share\..., where cmd falls back to the Windows directory) still works.
 LAUNCHER = ("@echo off\r\n"
+            "set \"VPSSRV_SETUP_FILE=%~f0\"\r\n"
             "powershell -NoProfile -ExecutionPolicy Bypass -Command "
-            "\"$s = [IO.File]::ReadAllText('%~f0'); "
+            "\"$s = [IO.File]::ReadAllText($env:VPSSRV_SETUP_FILE); "
             "Invoke-Expression $s.Substring($s.IndexOf('#PS' + 'START'))\"\r\n"
             "echo.\r\n"
             "pause\r\n"
@@ -37,6 +41,7 @@ LAUNCHER = ("@echo off\r\n"
 
 BODY = r"""
 $ErrorActionPreference = 'Stop'
+if ($env:VPSSRV_SETUP_FILE -like '\\*') { Write-Host {msg_unc} -ForegroundColor DarkGray }
 $subject = {subject}
 $issuer = {issuer}
 $patterns = @({patterns})
@@ -99,7 +104,7 @@ try {
 }
 """
 
-MESSAGES = ("found", "password", "imported", "missing", "machine", "browser", "no_browser", "done", "failed")
+MESSAGES = ("found", "password", "imported", "missing", "machine", "browser", "no_browser", "done", "failed", "unc")
 
 
 def _quote(text):

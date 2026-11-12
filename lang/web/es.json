@@ -562,6 +562,7 @@
   "cert_setup_nss_missing": "Faltan certutil y pk12util; instala antes libnss3-tools (Debian/Ubuntu) o nss-tools (Fedora).",
   "cert_setup_done_linux": "Listo. Cierra el navegador por completo y vuelve a abrirlo.",
   "cert_setup_found": "El certificado ya está en el almacén del usuario actual.",
+  "cert_setup_unc": "Se ejecuta desde una ubicación de red: el aviso de CMD de arriba sobre rutas UNC no admitidas se puede ignorar; la configuración sigue con normalidad.",
   "cert_setup_password": "Escribe la contraseña de importación del certificado",
   "cert_setup_imported": "Certificado importado (clave privada no exportable).",
   "cert_setup_imported_linux": "Certificado importado en el almacén de certificados del navegador.",

@@ -65,7 +65,7 @@ LIMIT_FIELDS = frozenset(("cap_bytes", "cap_action", "upload_limit_bps", "downlo
                           "expiry_count", "expiry_unit", "expires_at", "reset_mode", "next_reset_at"))
 FIELDS = frozenset(("id", "key", "name", "enabled", "billable_multiplier", "upload_bytes", "download_bytes",
                     "total_upload_bytes", "total_download_bytes", "counter_epoch")) | LIMIT_FIELDS
-KEY_RE = re.compile(r"(caddy|iperf3|tailscale|portfwd:[0-9a-f]{1,32}|frpc:[A-Za-z0-9_.-]{1,64})")
+KEY_RE = re.compile(r"(caddy|iperf3|tailscale|portfwd:[0-9a-f]{1,32}|frpc:.{1,32})")
 RESOLVE_SECONDS = 300
 _resolved = {}
 
@@ -79,7 +79,8 @@ def validate(inventory):
         if not isinstance(entry, dict) or set(entry) - {"matches"} != FIELDS:
             raise InvalidInventory("invalid traffic entry fields")
         uuid.UUID(entry["id"])
-        if not isinstance(entry["key"], str) or not KEY_RE.fullmatch(entry["key"]) or entry["key"] in keys:
+        if not isinstance(entry["key"], str) or not KEY_RE.fullmatch(entry["key"]) or entry["key"] in keys or \
+                entry["key"].startswith("frpc:") and not _valid_frpc_name(entry["key"][5:]):
             raise InvalidInventory("invalid traffic entry key")
         keys.add(entry["key"])
         if entry["enabled"] is not True or entry["billable_multiplier"] not in (1, 2) or \
@@ -184,12 +185,21 @@ def _frpc_instances():
         text = _read_text(FRPC_DIR / f"frpc-{name}.toml") or ""
         server = re.search(r'^serverAddr\s*=\s*"([^"]+)"', text, re.M)
         port = re.search(r"^serverPort\s*=\s*(\d+)", text, re.M)
-        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", name):
+        if not _valid_frpc_name(name):
             continue
         addresses = _resolve(server.group(1)) if server else []
         number = int(port.group(1)) if port else 7000
         found.append((name, addresses if 1 <= number <= 65535 else [], number))
     return found
+
+
+def _valid_frpc_name(name):
+    """FRPC instance names may be any letters or digits (Chinese ones too), as frp_control allows."""
+    try:
+        from frp_control import valid_client_name
+    except ImportError:
+        from .frp_control import valid_client_name
+    return valid_client_name(name)
 
 
 def _nfproto(address):
