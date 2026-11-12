@@ -30,7 +30,9 @@ DISK_RESERVE = 500 * 1024 ** 2
 MAX_FILES = 500
 MAX_LINKS_PER_FILE = 20
 MAX_JOBS = 20
-LINK_DAYS = (1, 7, 30, 0)  # 0: no expiry
+# Link lifetimes in minutes, shortest first; 0: no expiry.
+LINK_MINUTES = (5, 10, 30, 60, 120, 300, 1440, 10080, 43200, 0)
+DEFAULT_LINK_MINUTES = 10080
 MAX_DOWNLOADS = 100000
 CHUNK = 1024 * 1024
 FETCH_TIMEOUT = 60
@@ -338,8 +340,8 @@ class FileStore:
             self._save(data)
             self.blob(file_id).unlink(missing_ok=True)
 
-    def add_link(self, file_id, days, max_downloads=None):
-        if days not in LINK_DAYS:
+    def add_link(self, file_id, minutes, max_downloads=None):
+        if minutes not in LINK_MINUTES:
             raise FileShareError("link_invalid")
         if max_downloads is not None and not (isinstance(max_downloads, int) and 1 <= max_downloads <= MAX_DOWNLOADS):
             raise FileShareError("link_invalid")
@@ -351,7 +353,7 @@ class FileStore:
                 raise FileShareError("too_many_links")
             now = int(time.time())
             link = {"token": secrets.token_urlsafe(24), "file": file_id, "created": now,
-                    "expires": now + days * 86400 if days else None,
+                    "expires": now + minutes * 60 if minutes else None,
                     "max_downloads": max_downloads, "downloads": 0}
             data["links"].append(link)
             self._save(data)

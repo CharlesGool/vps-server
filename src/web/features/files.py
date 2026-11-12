@@ -9,7 +9,7 @@ import re
 import time
 import urllib.parse
 
-from file_share import GIB, LINK_DAYS, UPLOAD_IDLE_TIMEOUT, FileShareError
+from file_share import DEFAULT_LINK_MINUTES, GIB, LINK_MINUTES, UPLOAD_IDLE_TIMEOUT, FileShareError
 
 NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
            "files_fetch_started", "files_quota_saved", "files_job_removed", "files_job_cancelled")
@@ -243,10 +243,21 @@ class FilesMixin:
         links_by_file = {}
         for link in data["links"]:
             links_by_file.setdefault(link["file"], []).append(link)
+        def lifetime(minutes):
+            if minutes == 0:
+                return t["files_link_forever"]
+            if minutes % 1440 == 0:
+                days = minutes // 1440
+                return t["files_link_one_day"] if days == 1 else t["files_link_days"].format(days=days)
+            if minutes % 60 == 0:
+                hours = minutes // 60
+                return t["files_link_one_hour"] if hours == 1 else t["files_link_hours"].format(hours=hours)
+            return t["files_link_minutes"].format(minutes=minutes)
+
         day_options = "".join(
-            f'<option value="{days}"{" selected" if days == 7 else ""}>'
-            f'{esc(t["files_link_forever"] if days == 0 else t["files_link_days"].format(days=days))}</option>'
-            for days in LINK_DAYS)
+            f'<option value="{minutes}"{" selected" if minutes == DEFAULT_LINK_MINUTES else ""}>'
+            f'{esc(lifetime(minutes))}</option>'
+            for minutes in LINK_MINUTES)
         rows = ""
         for entry in sorted(data["files"], key=lambda item: item["created"], reverse=True):
             link_rows = ""
@@ -275,7 +286,7 @@ class FilesMixin:
                      f'{esc(date(entry["created"]))} · {esc(source)}</p></div>'
                      f'<div class="files-row-actions">'
                      f'<form method="post" action="/files/link" class="files-inline">{hidden(file=entry["id"])}'
-                     f'<select name="days" aria-label="{esc(t["files_link_expiry"], quote=True)}">{day_options}</select>'
+                     f'<select name="minutes" aria-label="{esc(t["files_link_expiry"], quote=True)}">{day_options}</select>'
                      f'<input type="number" name="max" min="1" max="100000" aria-label="{esc(t["files_link_limit"], quote=True)}" '
                      f'placeholder="{esc(t["files_link_limit_placeholder"], quote=True)}">'
                      f'<button type="submit" class="files-button">{esc(t["files_link_add"])}</button></form>'
@@ -353,11 +364,11 @@ class FilesMixin:
         form = self.files_form()
         if form is None:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        days, limit = form.get("days", [""])[0], form.get("max", [""])[0].strip()
+        minutes, limit = form.get("minutes", [""])[0], form.get("max", [""])[0].strip()
         try:
-            if not days.isdecimal() or (limit and not limit.isdecimal()):
+            if not minutes.isdecimal() or (limit and not limit.isdecimal()):
                 raise FileShareError("link_invalid")
-            self.context.FILE_STORE.add_link(form.get("file", [""])[0], int(days), int(limit) if limit else None)
+            self.context.FILE_STORE.add_link(form.get("file", [""])[0], int(minutes), int(limit) if limit else None)
         except FileShareError as exc:
             return self.files_done(error=exc.code)
         return self.files_done("files_link_added")
