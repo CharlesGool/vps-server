@@ -26,6 +26,28 @@ metadata:
 
 ## Changelog
 
+### v6.5.0 — 2026-11-16
+
+Configuration backup and scheduled tasks are new, and an upgrade now backs up only the configuration. The upgrade command is unchanged and settings and data are kept.
+
+#### New
+
+- **Configuration backup.** The home page gains "Backup": back up with one click, or automatically every day at a set time, keeping only the latest few scheduled backups (by default 03:00 daily, keeping 7). A backup holds all configuration and state: console settings, certificates and keys, nodes, FRP, domain forwarding, the Tailscale login and the service unit files; it does not hold program code or the files in Mini Drive. You can download it, upload an earlier backup, and restore from the page (a backup of the current state is taken first and the affected services restart afterwards). Backup files contain keys and are mode 0600.
+- **Scheduled tasks.** The home page gains "Scheduled tasks": run commands on five cron fields (or @daily and similar) in the server's local time. Each task has a timeout, can be enabled or disabled, run now, and notify through Bark on failure; a task is not started again while its previous run is still going; the latest 20 runs per task are kept (status, exit code, the end of the output). The configuration backup is listed too.
+
+#### Improved
+
+- **An upgrade backs up only the configuration.** Before an upgrade the installer saves the configuration to `<state root>/backups/` (the latest 3 are kept), so backing up whole directories by hand is no longer needed. The backup holds no program code (always available from GitHub) and no Mini Drive files. A failed backup only warns and does not stop the upgrade.
+
+#### Verification
+
+Verified on a home virtual machine through the real console: backup contents (including the Tailscale login, without Mini Drive files), download, upload (non-backup files and archives with paths outside the configuration are refused), the scheduled backup firing on time and pruning old ones by count, restore returning changed files to their backed-up content with services running, and scheduled tasks running as root on schedule with failures, timeouts and skipped overlaps recorded. Restore and the scheduled backup were verified on the home virtual machine, not on the Macau host. 64 automated tests.
+
+#### Known issues
+
+- A restore rolls the traffic counters back to their values at backup time.
+- Scheduled tasks missed while the console restarts are not made up.
+
 ### v6.4.0 — 2026-11-16
 
 FRP gains stcp mode, Singbox nodes can restrict where they may connect, the home page gets a total traffic bar, and a short nft failure no longer stops frps and the proxy. The upgrade command is unchanged and settings and data are kept.

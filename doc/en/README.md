@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.4.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.4.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.5.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.5.0)
 
 ## Documentation
 
@@ -27,6 +27,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 - IP certificate: a separate switch on the home page that obtains a Let's Encrypt certificate for the host's public IPv4, which the console's existing `https://IP:port` then uses, so browsers stop warning about an untrusted certificate. It needs no domain or Cloudflare token, only port 80 reachable from the internet; it shares the bundled Caddy with domain forwarding (the domain forwarding module must be installed), and Caddy runs and holds 80/443 when either one is on. The home page's public page switch keeps working then, and Caddy returns the page directly: port 80 shows it for the IP and for any name that is not configured (no HTTPS redirect, so that port 80 itself can be tested), and port 443 shows it only for `https://host-IP/` while the IP certificate is on.
 - Mini Drive, the speed test, domain forwarding, iperf3, port forwarding, FRPC and Tailscale have the same traffic accounting and limits as Singbox nodes (at the traffic cap, slow to 1 Mbps or cut off; upload and download speed limits; validity period; reset schedule), set under "Traffic limits" on each page; port-forwarded traffic and traffic forwarded through Tailscale enter and leave the host, so they count twice.
 - Optional modules, port forwarding, Mini Drive with password-free download links, detailed logs, a password-protected browser root terminal, three languages and themes.
+- Configuration backup: one click or a daily schedule saves all configuration (certificates, nodes, FRP, the Tailscale login; not program code or Mini Drive files), with download, upload, restore and rolling retention; the installer backs up the configuration before an upgrade. Scheduled tasks run commands as root on a cron schedule with a timeout, overlap protection, run history and Bark failure alerts.
 - Escalating bans after failed logins, a console access limit, signed-in device management, a security log and Bark login alerts.
 - Fresh installs include only Web; public reachability pages are disabled. The home "Public page" tile turns the HTTP and HTTPS pages on or off together with one switch. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
@@ -128,10 +129,10 @@ Run as root.
 
 ### Quick Install
 
-Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v6.4.0-linux-amd64-online.tar.gz` as the file name, or run this command:
+Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v6.5.0-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -139,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 Source installs require building the frontend first in `web/` (Node.js 24). The repository does not contain upstream programs such as sing-box, frp, Caddy and Tailscale; like the online package, the installer downloads them and verifies their SHA-256. The private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v6.4.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.5.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -151,17 +152,17 @@ bash deploy/install.sh
 The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules. When a GitHub download is still below 200 KB/s after 15 seconds, the install switches to the mirrors gh-proxy.com and ghfast.top (for servers in mainland China), and the download is verified by SHA-256 just the same; set `VPSSRV_GITHUB_MIRROR=https://your.mirror/` to try your own mirror first, or `none` to use no mirror. The install command above also downloads from GitHub; in mainland China you can replace its `https://github.com/` with `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.4.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.5.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -279,11 +280,11 @@ Before installing development source, **MUST** run `npm ci && npm run check` in 
 
 ## Upgrade
 
-Layout-1 v5.1.1 test builds and v5.2.x can be upgraded using the installation steps above. Back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and domain forwarding configuration (`/etc/vps-server-caddy`). Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.
+Layout-1 v5.1.1 test builds and v5.2.x can be upgraded using the installation steps above. From v6.5.0 the installer first saves the configuration to `<state root>/backups/` before it changes anything (configuration only, not program code or Mini Drive files; the latest 3 are kept; a failed backup only warns). Before that version, back up the state root, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC instance configuration and domain forwarding configuration (`/etc/vps-server-caddy`) by hand. Extract outside the installed prefix and install with the same `PREFIX` and state root. Passwords, ports, certificates, sessions and module settings are retained within this layout; source directories no longer store persistent data.
 
 v5.1.0 and earlier use the old layout and have no automatic migration. You **MUST** back up the old prefix and module configuration, then install fresh and manually restore required settings. A missing state locator or detected old layout blocks in-place upgrade; do not delete the old directory first.
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v6.4.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v6.5.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 

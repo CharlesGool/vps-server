@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.4.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.4.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.5.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.5.0)
 
 ## 文档
 
@@ -27,6 +27,7 @@
 - IP 证书: 首页单独的开关, 为本机公网 IPv4 申请 Let's Encrypt 证书, 控制台原来的 `https://IP:端口` 改用它, 浏览器不再提示证书不安全. 不需要域名或 Cloudflare 令牌, 只需 80 端口能从公网访问; 与域名转发共用随附的 Caddy(需安装域名转发模块), 两者任一开启时 Caddy 运行并占用 80/443. 这时首页的公开页面开关照常可用, 页面由 Caddy 直接返回: 80 端口对 IP 和任何未配置的名字都显示它(不跳转 HTTPS, 以便检测 80 本身是否可达), 443 端口只在开着 IP 证书时对 `https://本机IP/` 显示.
 - 迷你网盘, 测速, 域名转发, iperf3, 端口转发, FRPC 和 Tailscale 都有与 Singbox 节点相同的流量统计和限制(流量上限后限速到 1 Mbps 或断开, 上下行限速, 有效期, 重置周期), 在各自页面的"流量限制"里设置; 端口转发和经 Tailscale 转发的流量进出本机各一次, 计两次.
 - 模块按需安装, 端口转发, 带免密下载链接的迷你网盘, 详细日志, 密码保护的浏览器 root 终端, 三语言与主题设置.
+- 配置备份: 一键或每天定时备份所有配置(含证书, 节点, FRP, Tailscale 登录状态; 不含程序代码和迷你网盘文件), 可下载, 上传, 恢复, 按份数循环保留; 升级前自动备份配置. 定时任务: 按 cron 计划以 root 运行命令, 有超时, 防重叠, 运行记录和 Bark 失败通知.
 - 登录失败逐次加长封禁, 控制台访问地址限制, 登录设备管理, 安全记录和 Bark 登录提醒.
 - 默认只安装 Web, 公开可达性页面默认关闭. 首页的"公开页面"卡片用一个开关同时开关 HTTP 和 HTTPS 两个页面. 已知问题与验证边界见 [LOG](doc/LOG.md#缺陷).
 
@@ -128,10 +129,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.4.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.5.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -139,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 源码安装需先在 `web/` 构建前端(Node.js 24). 仓库不含 sing-box, frp, Caddy 和 Tailscale 等上游程序, 安装时像在线版一样联网下载并校验 SHA-256;私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v6.4.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.5.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -151,17 +152,17 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载. 从 GitHub 下载 15 秒后仍慢于 200 KB/s 时, 自动改用国内镜像 gh-proxy.com, ghfast.top, 下载内容同样校验 SHA-256; 设置 `VPSSRV_GITHUB_MIRROR=https://你的镜像/` 可优先使用自己的镜像, 设为 `none` 不用镜像. 上面的安装命令本身也从 GitHub 下载, 国内服务器可把其中的 `https://github.com/` 换成 `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/vps-server-v6.4.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.4.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.4.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.5.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -279,11 +280,11 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 ## 升级
 
-布局 1 的 v5.1.1 测试版和 v5.2.x 可按上述安装步骤升级. 先备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与域名转发配置(`/etc/vps-server-caddy`), 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.
+布局 1 的 v5.1.1 测试版和 v5.2.x 可按上述安装步骤升级. 从 v6.5.0 起, 安装器在改动任何东西之前会自动把配置备份到 `<状态根>/backups/`(只含配置, 不含程序代码和迷你网盘文件, 保留最近 3 份; 备份失败只警告); 更早的版本升级前请先手动备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与域名转发配置(`/etc/vps-server-caddy`), 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.
 
 v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备份旧安装目录及模块配置, 再全新安装并手动恢复所需设置. 缺少状态定位文件或检测到旧布局时安装器会拒绝原地升级;不要先删除旧目录.
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.4.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.5.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 

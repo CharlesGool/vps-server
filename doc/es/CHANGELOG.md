@@ -26,6 +26,28 @@ metadata:
 
 ## Historial de cambios
 
+### v6.5.0 — 2026-11-16
+
+Se añaden la copia de configuración y las tareas programadas, y una actualización ahora copia solo la configuración. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Nuevo
+
+- **Copia de configuración.** La página de inicio incluye "Copia de seguridad": copiar con un clic o automáticamente cada día a una hora fijada, conservando solo las últimas copias programadas (por defecto a las 03:00 cada día, conservando 7). Una copia contiene toda la configuración y el estado: ajustes de la consola, certificados y claves, nodos, FRP, reenvío de dominios, la sesión de Tailscale y los archivos de servicio; no contiene el código del programa ni los archivos de Mini Drive. Puede descargarla, subir una copia anterior y restaurar desde la página (antes se hace una copia del estado actual y después se reinician los servicios afectados). Los archivos contienen claves y tienen modo 0600.
+- **Tareas programadas.** La página de inicio incluye "Tareas programadas": ejecutan comandos según cinco campos cron (o @daily y similares) en la hora local del servidor. Cada tarea tiene tiempo límite, se puede activar, desactivar, ejecutar ahora y avisar por Bark si falla; no se inicia de nuevo mientras la ejecución anterior sigue en marcha; se conservan las últimas 20 ejecuciones por tarea (estado, código de salida, final de la salida). La copia de configuración también aparece en la lista.
+
+#### Mejorado
+
+- **Una actualización copia solo la configuración.** Antes de actualizar, el instalador guarda la configuración en `<raíz del estado>/backups/` (se conservan las 3 últimas), de modo que ya no hace falta copiar directorios enteros a mano. La copia no incluye el código (siempre disponible en GitHub) ni los archivos de Mini Drive. Un fallo de la copia solo avisa y no detiene la actualización.
+
+#### Verificación
+
+Verificado en una máquina virtual doméstica con la consola real: contenido de la copia (con la sesión de Tailscale, sin archivos de Mini Drive), descarga, subida (se rechazan archivos que no son copias y paquetes con rutas fuera de la configuración), la copia programada se dispara a su hora y elimina las antiguas por número, la restauración devuelve los archivos modificados a su contenido guardado con los servicios en marcha, y las tareas programadas se ejecutan como root según lo programado, con fallos, tiempos agotados y solapamientos omitidos registrados. La restauración y la copia programada se verificaron en la máquina virtual doméstica, no en el servidor de Macao. 64 pruebas automáticas.
+
+#### Problemas conocidos
+
+- Una restauración devuelve los contadores de tráfico a su valor en el momento de la copia.
+- Las tareas programadas que se pierden mientras se reinicia la consola no se recuperan.
+
 ### v6.4.0 — 2026-11-16
 
 FRP incorpora el modo stcp, los nodos de Singbox pueden limitar a dónde se conectan, la página de inicio muestra una barra de tráfico total y un fallo breve de nft ya no detiene frps ni el proxy. El comando de actualización no cambia y se conservan la configuración y los datos.
