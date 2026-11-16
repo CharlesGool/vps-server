@@ -30,6 +30,10 @@ LOCK_PATH = Path("/etc/vps-server-node.lock")
 # Leave room for the token bucket's startup burst and TCP pacing. On the
 # deployment host, 125000 admitted about 1.03 Mbps over a 4 MiB transfer.
 LIMIT_BYTES_PER_SECOND = 120000
+# How long nft may keep failing before the metered services are stopped. The
+# kernel keeps enforcing the installed rules meanwhile, so a short outage (for
+# example an nft crash on an old host) must not take the proxy or FRPS down.
+TRANSIENT_GRACE = 60.0
 
 
 def _name(identifier, family, direction):
@@ -280,6 +284,31 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         return policy
 
 
+class Tolerance:
+    """Retry a meter step through short nft outages; give up once they last too long.
+
+    Only host-command failures are retried. Invalid state or inventory (ValueError,
+    InvalidInventory) still fails at once, as before."""
+
+    TRANSIENT = (RuntimeError, OSError, subprocess.SubprocessError)
+
+    def __init__(self, grace=TRANSIENT_GRACE, interval=1.0, clock=time.monotonic, sleep=time.sleep):
+        self.grace, self.interval, self.clock, self.sleep = grace, interval, clock, sleep
+
+    def retrying(self, step):
+        first = None
+        while True:
+            try:
+                return step()
+            except self.TRANSIENT as exc:
+                now = self.clock()
+                first = now if first is None else first
+                if now - first >= self.grace:
+                    raise
+                print(f"Traffic accounting step failed, retrying: {exc}", file=sys.stderr, flush=True)
+                self.sleep(self.interval)
+
+
 def _notify_ready():
     address = os.environ.get("NOTIFY_SOCKET")
     if not address:
@@ -294,13 +323,14 @@ def _notify_ready():
 def main():
     if os.geteuid() != 0:
         return 1
+    tolerance = Tolerance()
     try:
-        if tick() is None:
+        if tolerance.retrying(tick) is None:
             raise RuntimeError("node inventory not initialized")
         _notify_ready()
         while True:
             time.sleep(2)
-            tick()
+            tolerance.retrying(tick)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"Node traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Existing rules may have disappeared or become stale. Stop the node

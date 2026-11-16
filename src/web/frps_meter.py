@@ -153,15 +153,16 @@ def delete_table():
 
 
 def run():
-    from node_meter import _notify_ready
+    from node_meter import Tolerance, _notify_ready
+    tolerance = Tolerance()
     try:
         init()
-        if tick() is None:
+        if tolerance.retrying(tick) is None:
             raise RuntimeError("FRPS traffic state not initialized")
         _notify_ready()
         while True:
             time.sleep(2)
-            tick()
+            tolerance.retrying(tick)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FRPS traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Stale or missing rules would leave FRPS unlimited; stop it instead.
