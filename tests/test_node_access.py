@@ -94,6 +94,18 @@ class AccessTest(unittest.TestCase):
         self.assertEqual(once, twice)
         self.assertEqual(once["route"]["rules"][-1], {"domain": ["x.com"], "action": "reject"})
 
+    def test_deleted_node_rules_are_removed(self):
+        inv = inventory(10001, 10002)
+        gone, kept = inv["nodes"]
+        for node in (gone, kept):
+            inv = ops.edit_node(inv, node["id"], {"access": {"mode": "internet"}}, reserved_ports=[])
+        config = ni.render_config(inv)
+        remaining = ops.delete_node(inv, gone["id"])
+        tag = gone["inbound"]["tag"]
+        updated = ni.apply_access(copy.deepcopy(config), remaining["nodes"], [tag])
+        self.assertFalse([r for r in updated["route"]["rules"] if r["inbound"] == [tag]])
+        self.assertTrue([r for r in updated["route"]["rules"] if r["inbound"] == [kept["inbound"]["tag"]]])
+
     def test_invalid_access_rejected(self):
         inv = inventory(10001)
         node_id = inv["nodes"][0]["id"]

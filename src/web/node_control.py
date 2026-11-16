@@ -412,7 +412,8 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         proposed = copy.deepcopy(document)
         proposed["inbounds"] = [copy.deepcopy(n["inbound"]) for n in candidate["nodes"]
                                  if n["enabled"]]
-        apply_access(proposed, candidate["nodes"])
+        apply_access(proposed, candidate["nodes"],
+                     [affected["inbound"]["tag"]] if action == "delete" else ())
         original = config_path.read_bytes()
         meter_path = Path(state_path).parent / "meter.json"
         original_meter = meter_path.read_bytes() if meter_path.exists() else None
