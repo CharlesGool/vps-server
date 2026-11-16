@@ -564,7 +564,8 @@ class ModulesMixin:
         job_names = {key: title for key, title, *_ in items}
         notice = (f'<p class="module-notice" role="status" data-expires-at="{0 if busy else (job["at"] + 30) * 1000}">{esc(module_job_text(t, job, job_names))}</p>'
                   if show_operation and (busy or notice_recent) else '')
-        body = (f'<div class="card"><h1>{esc(t["home"])}</h1>{notice}'
+        body = (self.total_meter_bar(t)
+                + f'<div class="card"><h1>{esc(t["home"])}</h1>{notice}'
                 f'<div class="tiles">{"".join(tiles)}</div></div>'
                 + '<script src="/static/module-controls.js" defer></script>'
                 + ('<script src="/static/module-status.js" defer></script>' if busy or show_operation and notice_recent else ''))

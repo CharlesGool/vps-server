@@ -39,7 +39,128 @@ def kernel_entries():
     return {entry["key"]: entry for entry in state["nodes"]}, ledger
 
 
+LEVEL_COLORS = {"none": "#5b8def", "ok": "#2e9e5b", "warn": "#d9a21b", "over": "#d64545"}
+
+
 class TrafficMixin:
+    def total_entries(self):
+        """Every metered entry the console can read: nodes, FRPS, kernel meters and app meters."""
+        context = self.context
+        entries = []
+        try:
+            inventory = context.read_inventory(state_path=context.NODE_STATE_PATH,
+                                               config_paths={"proxy": context.PROXY_CONFIG})
+            entries += (inventory or {}).get("nodes", [])
+        except Exception:
+            pass
+        try:
+            frps = context.frps_traffic_state()
+            if frps:
+                entries.append({**frps[0], "name": "FRPS"})
+        except Exception:
+            pass
+        entries += list(kernel_entries()[0].values())
+        try:
+            entries += list(context.APP_METER.state()["nodes"])
+        except Exception:
+            pass
+        return entries
+
+    def total_state(self, now=None):
+        """(state, usage per entry id, names) with a due period already started and saved."""
+        import total_meter
+        now = now or self.context.datetime.now(self.context.timezone.utc)
+        snap, names = total_meter.snapshot(self.total_entries())
+        path = self.context.DATA_DIR / "total-traffic.json"
+        state, changed = total_meter.advance(total_meter.read_state(path), snap, now)
+        if changed:
+            total_meter.write_state(path, state)
+        return state, snap, names
+
+    def total_meter_bar(self, t):
+        """The whole-host traffic bar for the top of the home page; "" if it cannot be computed."""
+        import total_meter
+        esc = self.context.html.escape
+        try:
+            state, snap, names = self.total_state()
+        except (OSError, ValueError, TypeError):
+            return ""
+        used, per_entry = total_meter.period_usage(state, snap)
+        state_level = total_meter.level(state, used)
+        cap = state["cap_bytes"]
+        percent = 0 if cap is None else min(100, used * 100 // cap)
+        color = LEVEL_COLORS[state_level]
+        fmt = total_meter.format_bytes
+        headline = (f'{fmt(used)} / {fmt(cap)} ({used * 100 / cap:.1f}%)' if cap is not None
+                    else f'{fmt(used)} · {t["total_no_cap"]}')
+        since = state["period_start"][:10]
+        reset = (t["total_next_reset"].format(date=state["next_reset_at"][:10]) if state["next_reset_at"]
+                 else t["total_no_reset"])
+        warning = {"over": t["total_over"], "warn": t["total_warn"]}.get(state_level, "")
+        warning = (f'<p class="error" role="status" style="margin:.4rem 0 0">{esc(warning)}</p>' if warning else "")
+        query = self.context.parse_qs(self.context.urlsplit(self.path).query).get("total", [""])[0]
+        notice = (f'<p class="{"notice" if query == "done" else "error"}" role="status" style="margin:.4rem 0 0">'
+                  f'{esc(t["node_settings_done" if query == "done" else "node_settings_failed"])}</p>'
+                  if query in ("done", "failed") else "")
+        rows = "".join(f'<li style="display:flex;justify-content:space-between;gap:1rem"><span>{esc(names[i])}</span>'
+                       f'<span>{esc(fmt(v))}</span></li>'
+                       for i, v in sorted(per_entry.items(), key=lambda item: -item[1]) if v)
+        breakdown = (f'<details style="margin-top:.5rem"><summary>{esc(t["total_by_source"])}</summary>'
+                     f'<ul style="list-style:none;margin:.4rem 0 0;padding:0">{rows}</ul></details>' if rows else "")
+        cap_value = "" if cap is None else f'{cap / 1073741824:g}'
+        dialog = (
+            f'<dialog class="node-access-dialog" id="total-meter-settings" aria-labelledby="total-meter-title">'
+            f'<form method="post" action="/traffic/total">'
+            f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie("session"), "traffic:total")}">'
+            f'<h3 id="total-meter-title">{esc(t["total_settings"])}</h3><div class="node-form-grid">'
+            f'<label>{esc(t["total_cap_gib"])}<input type="number" name="cap_gib" min="0.000001" max="100000000" step="any" '
+            f'value="{cap_value}" placeholder="{esc(t["node_unlimited"], quote=True)}"></label>'
+            f'<label>{esc(t["total_reset_day"])}<input type="number" name="reset_day" min="0" max="28" value="{state["reset_day"]}"></label>'
+            f'</div><p class="muted small">{esc(t["total_hint"])}</p>'
+            f'<div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t["node_cancel"])}</button>'
+            f'<button type="submit">{esc(t["total_save"])}</button></div></form></dialog>')
+        return (f'<section class="card total-meter" aria-label="{esc(t["total_title"], quote=True)}">'
+                f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">'
+                f'<h2 style="margin:0;font-size:1.05rem">{esc(t["total_title"])}</h2>'
+                f'<button type="button" class="node-action" data-dialog-open="total-meter-settings">{esc(t["total_settings"])}</button></div>'
+                f'<p style="margin:.4rem 0;font-size:1.25rem;font-weight:600">{esc(headline)}</p>'
+                f'<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}" '
+                f'style="height:10px;border-radius:5px;background:rgba(127,127,127,.25);overflow:hidden">'
+                f'<span style="display:block;height:100%;width:{percent}%;background:{color}"></span></div>'
+                f'<p class="muted small" style="margin:.4rem 0 0">{esc(t["total_since"].format(date=since))} · {esc(reset)}</p>'
+                f'{warning}{notice}{breakdown}{dialog}'
+                f'<script src="/static/node-controls.js"></script></section>')
+
+    def handle_total_settings(self):
+        import total_meter
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if not 0 < length <= 1024 or \
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"),
+                                         strict_parsing=True, keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if set(form) != {"csrf", "cap_gib", "reset_day"} or any(len(v) != 1 for v in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not self.context.hmac.compare_digest(
+                form["csrf"][0], self.context.access_csrf_token(self.get_cookie("session"), "traffic:total")):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        try:
+            cap, day = total_meter.parse_settings(form["cap_gib"][0], form["reset_day"][0])
+            now = self.context.datetime.now(self.context.timezone.utc)
+            state = self.total_state(now)[0]
+            total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
+                                    total_meter.apply_settings(state, cap, day, now))
+            result = "done"
+        except (OSError, ValueError, TypeError):
+            result = "failed"
+        return self.redirect(f"/?total={result}", {"Cache-Control": "no-store"})
+
     def traffic_csrf(self):
         return self.context.access_csrf_token(self.get_cookie("session"), "traffic:limits")
 
@@ -150,5 +271,8 @@ class TrafficMixin:
     def route_traffic(self, method, path, parsed, lang, query_lang):
         if method == "POST" and path == "/traffic/limits":
             self.handle_traffic_limits(parsed)
+            return True
+        if method == "POST" and path == "/traffic/total":
+            self.handle_total_settings()
             return True
         return False
