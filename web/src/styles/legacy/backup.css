@@ -106,3 +106,7 @@
 .backup-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-80)), 1fr)); gap: var(--compat-size-14) var(--compat-size-24); margin: 0; }
 .backup-details dt { color: var(--muted-foreground); font-size: var(--text-sm); }
 .backup-details dd { margin: var(--compat-size-20) 0 0; font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
+.sched-schedule { display: grid; gap: var(--compat-size-14); min-width: 0; margin: 0; padding: var(--compat-size-14) var(--compat-size-24) var(--compat-size-24); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.sched-schedule legend { padding: 0 var(--compat-size-11); font-weight: var(--font-weight-semibold); }
+.sched-schedule .sched-mode[hidden] { display: none; }
+.sched-schedule input[type=date], .sched-schedule input[type=time] { width: auto; min-width: var(--compat-size-80); }

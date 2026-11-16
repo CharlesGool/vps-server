@@ -15,17 +15,21 @@
     });
   });
 
-  // Task form: show only the fields of the chosen way to schedule.
-  const mode = document.getElementById('task-mode');
-  if (mode) {
+  // Schedule form (tasks and backup): show only the parts the chosen kind and frequency need.
+  document.querySelectorAll('fieldset.sched-schedule').forEach((fieldset) => {
+    const kind = fieldset.querySelector('.sched-kind-select');
+    const mode = fieldset.querySelector('.sched-mode-select');
+    if (!kind || !mode) return;
     const show = () => {
-      document.querySelectorAll('.sched-mode').forEach((group) => {
-        group.hidden = group.dataset.mode !== mode.value;
+      const effective = kind.value === 'once' ? 'once' : mode.value;
+      fieldset.querySelectorAll('.sched-mode').forEach((part) => {
+        part.hidden = !part.dataset.modes.split(' ').includes(effective);
       });
     };
+    kind.addEventListener('change', show);
     mode.addEventListener('change', show);
     show();
-  }
+  });
 
   const upload = document.querySelector('form.backup-upload');
   if (upload) {

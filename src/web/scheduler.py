@@ -31,7 +31,7 @@ MACROS = {"@hourly": "0 * * * *", "@daily": "0 0 * * *", "@midnight": "0 0 * * *
           "@weekly": "0 0 * * 0", "@monthly": "0 0 1 * *", "@yearly": "0 0 1 1 *",
           "@annually": "0 0 1 1 *"}
 FIELD_RANGES = ((0, 59), (0, 23), (1, 31), (1, 12), (0, 7))
-BACKUP_DEFAULTS = {"enabled": True, "time": "03:00", "keep": 7}
+BACKUP_DEFAULTS = {"enabled": True, "spec": {"mode": "daily", "time": "03:00:00"}, "keep": 7}
 BACKUP_KEEP_MAX = 100
 
 
@@ -128,25 +128,21 @@ def valid_command(value):
     return isinstance(value, str) and 1 <= len(value.strip()) <= COMMAND_MAX and "\0" not in value
 
 
-def parse_backup_settings(enabled, at, keep):
-    if not isinstance(at, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", at):
-        raise ScheduleError("invalid time")
-    if not isinstance(keep, str) and not isinstance(keep, int) or not str(keep).isdigit() \
-            or not 1 <= int(keep) <= BACKUP_KEEP_MAX:
-        raise ScheduleError("invalid retention")
-    return {"enabled": bool(enabled), "time": at, "keep": int(keep)}
-
-
 UNIT_SECONDS = {"minutes": 60, "hours": 3600, "days": 86400}
 INTERVAL_MAX_SECONDS = 366 * 86400
-MODES = ("interval", "daily", "weekly", "monthly", "cron")
-TIME_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)")
+RECURRING = ("interval", "daily", "weekly", "monthly", "cron")
+MODES = RECURRING + ("once",)
+TIME_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?")
+# A time-of-day schedule missed by less than this (the console was down or busy) still runs, once.
+GRACE_SECONDS = 120
+DEFAULT_BACKUP_SPEC = {"mode": "daily", "time": "03:00:00"}
 
 
 def normalize_spec(spec):
     """A schedule choice as stored: ``interval``, ``daily``, ``weekly``, ``monthly`` or ``cron``.
 
-    A bare string is a cron expression (the older form). Raises ScheduleError.
+    Times are ``HH:MM:SS`` (seconds default to 00). A bare string is a cron expression (the
+    oldest form). Raises ScheduleError.
     """
     if isinstance(spec, str):
         spec = {"mode": "cron", "expr": spec}
@@ -170,6 +166,16 @@ def normalize_spec(spec):
     match = TIME_RE.fullmatch(at) if isinstance(at, str) else None
     if not match:
         raise ScheduleError("invalid time")
+    at = f"{match.group(1)}:{match.group(2)}:{match.group(3) or '00'}"
+    if mode == "once":
+        date = spec.get("date")
+        if not isinstance(date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            raise ScheduleError("invalid date")
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            raise ScheduleError("invalid date") from None
+        return {"mode": "once", "date": date, "time": at}
     if mode == "daily":
         return {"mode": "daily", "time": at}
     if mode == "weekly":
@@ -184,19 +190,111 @@ def normalize_spec(spec):
     return {"mode": "monthly", "day": day, "time": at}
 
 
-def cron_for(spec):
-    """The cron expression for a non-interval spec; None for an interval."""
+def _seconds_of_day(spec):
+    hour, minute, second = (int(part) for part in spec["time"].split(":"))
+    return hour * 3600 + minute * 60 + second
+
+
+def _day_matches_spec(spec, day):
+    """Whether a time-of-day spec runs on this date (cron weekday numbering: Sunday is 0)."""
+    if spec["mode"] == "daily":
+        return True
+    if spec["mode"] == "weekly":
+        return (day.weekday() + 1) % 7 in spec["days"]
+    return day.day == spec["day"]
+
+
+def previous_occurrence(spec, now):
+    """The latest run time at or before ``now`` (naive local time) of a daily, weekly or monthly spec."""
+    seconds = _seconds_of_day(spec)
+    for back in range(0, 63):
+        day = (now - timedelta(days=back)).date()
+        if _day_matches_spec(spec, day):
+            moment = datetime(day.year, day.month, day.day) + timedelta(seconds=seconds)
+            if moment <= now:
+                return moment
+    return None
+
+
+def next_occurrence(spec, after):
+    """The first run time strictly after ``after`` of a daily, weekly or monthly spec."""
+    seconds = _seconds_of_day(spec)
+    for ahead in range(0, 400):
+        day = (after + timedelta(days=ahead)).date()
+        if _day_matches_spec(spec, day):
+            moment = datetime(day.year, day.month, day.day) + timedelta(seconds=seconds)
+            if moment > after:
+                return moment
+    return None
+
+
+def once_time(spec):
+    """The unix time a one-time spec runs at (local time)."""
+    return datetime.strptime(f"{spec['date']} {spec['time']}", "%Y-%m-%d %H:%M:%S").timestamp()
+
+
+def require_future(spec, now):
+    """A one-time schedule must lie ahead; ScheduleError otherwise."""
+    if spec["mode"] == "once" and once_time(spec) <= now:
+        raise ScheduleError("that time has already passed")
+
+
+def check_due(spec, now, marker):
+    """(action, new marker) for one schedule at ``now`` (a unix time); action is ``"run"``, ``"missed"`` or None.
+
+    ``marker`` is what was remembered at the last start (or at creation): the last start for an
+    interval, the minute for cron, the run time for a daily, weekly or monthly spec. Starting from
+    the marker means a restart never repeats a run and a long outage makes one run, not a burst.
+    """
     mode = spec["mode"]
     if mode == "interval":
-        return None
+        due = marker is not None and now >= marker + spec["n"] * UNIT_SECONDS[spec["unit"]]
+        return ("run" if due else None), int(now)
+    if mode == "once":
+        stamp = once_time(spec)
+        if (marker or 0) >= stamp or now < stamp:
+            return None, int(stamp)
+        # Due. Late by more than the grace period (the console was down) is not run after the fact.
+        return ("run" if now - stamp <= GRACE_SECONDS else "missed"), int(stamp)
+    moment = datetime.fromtimestamp(now)
     if mode == "cron":
-        return spec["expr"]
-    hour, minute = (int(part) for part in spec["time"].split(":"))
-    if mode == "daily":
-        return f"{minute} {hour} * * *"
-    if mode == "weekly":
-        return f"{minute} {hour} * * " + ",".join(str(d) for d in spec["days"])
-    return f"{minute} {hour} {spec['day']} * *"
+        minute = moment.replace(second=0, microsecond=0)
+        fire = (marker or 0) < minute.timestamp() and matches(parse_cron(spec["expr"]), minute)
+        return ("run" if fire else None), int(minute.timestamp())
+    occurrence = previous_occurrence(spec, moment)
+    if occurrence is None:
+        return None, None
+    stamp = occurrence.timestamp()
+    return ("run" if (marker or 0) < stamp and now - stamp <= GRACE_SECONDS else None), int(stamp)
+
+
+def next_time(spec, marker, now):
+    """When a schedule next runs (unix time), or None."""
+    mode = spec["mode"]
+    if mode == "interval":
+        return int((marker if marker is not None else now) + spec["n"] * UNIT_SECONDS[spec["unit"]])
+    if mode == "once":
+        stamp = once_time(spec)
+        return int(stamp) if stamp > now and (marker or 0) < stamp else None
+    if mode == "cron":
+        moment = next_run(spec["expr"], datetime.fromtimestamp(now))
+    else:
+        moment = next_occurrence(spec, datetime.fromtimestamp(now))
+    return int(moment.timestamp()) if moment else None
+
+
+def parse_backup_settings(enabled, spec, keep, now=None):
+    """The scheduled-backup settings, validated: ``{"enabled", "spec", "keep"}``.
+
+    With ``now`` given (when saving, not when reading what was saved), a one-time spec must lie ahead.
+    """
+    spec = normalize_spec(spec)
+    if now is not None and enabled:
+        require_future(spec, now)
+    if not isinstance(keep, str) and not isinstance(keep, int) or not str(keep).isdigit() \
+            or not 1 <= int(keep) <= BACKUP_KEEP_MAX:
+        raise ScheduleError("invalid retention")
+    return {"enabled": bool(enabled), "spec": spec, "keep": int(keep)}
 
 
 def task_spec(task):
@@ -211,12 +309,26 @@ def _write_json(path, document):
     secure_store.write_text(path, json.dumps(document, ensure_ascii=False) + "\n")
 
 
+_json_cache = {}
+
+
 def _read_json(path, default):
+    """Parsed JSON, re-read (and decrypted) only when the file changed: the loop looks every second."""
     try:
-        document = json.loads(secure_store.read_text(path))
-    except (OSError, ValueError):
+        info = os.stat(path)
+        stamp = (info.st_mtime_ns, info.st_ino, info.st_size)
+    except OSError:
         return default
-    return document if isinstance(document, type(default)) else default
+    cached = _json_cache.get(str(path))
+    if cached and cached[0] == stamp:
+        document = cached[1]
+    else:
+        try:
+            document = json.loads(secure_store.read_text(path))
+        except (OSError, ValueError):
+            return default
+        _json_cache[str(path)] = (stamp, document)
+    return json.loads(json.dumps(document)) if isinstance(document, type(default)) else default
 
 
 class Scheduler:
@@ -234,8 +346,7 @@ class Scheduler:
         self.running = set()
         self._stop = threading.Event()
         self._thread = None
-        self._last_minute = None
-
+        
     # -- definitions -----------------------------------------------------
 
     def tasks(self):
@@ -271,6 +382,9 @@ class Scheduler:
             tasks = self.tasks()
             for task in tasks:
                 if task.get("id") == task_id:
+                    spec = task_spec(task)
+                    if enabled and spec is not None:
+                        require_future(spec, self.clock())      # a one-time task whose time has passed cannot be re-armed
                     task["enabled"] = bool(enabled)
                     self._save_tasks(tasks)
                     return
@@ -292,25 +406,46 @@ class Scheduler:
         if not valid_name(name) or not valid_command(command):
             raise ScheduleError("invalid task")
         spec = normalize_spec(spec)
+        if enabled:
+            require_future(spec, now)
         timeout = int(timeout)
         if not TIMEOUT_MIN <= timeout <= TIMEOUT_MAX:
             raise ScheduleError("invalid timeout")
         return {"id": task_id or secrets.token_hex(4), "name": name.strip(), "spec": spec,
-                "schedule": cron_for(spec) or "", "anchor": now,
+                "schedule": spec["expr"] if spec["mode"] == "cron" else "", "anchor": now, "done": None,
                 "command": command, "timeout": timeout, "notify": bool(notify), "enabled": bool(enabled)}
 
     # -- backup settings -------------------------------------------------
 
     def backup_settings(self):
+        """``{"enabled", "spec", "keep", "anchor"}``; an older file with ``time`` becomes a daily spec."""
         document = _read_json(self.backup_path, {})
         try:
-            return parse_backup_settings(document.get("enabled", True), document.get("time", "03:00"),
-                                         document.get("keep", 7))
-        except (ScheduleError, AttributeError):
-            return dict(BACKUP_DEFAULTS)
+            spec = document["spec"] if "spec" in document else {
+                "mode": "daily", "time": document.get("time", "03:00")}
+            settings = parse_backup_settings(document.get("enabled", True), spec, document.get("keep", 7))
+        except (ScheduleError, AttributeError, KeyError):
+            settings = json.loads(json.dumps(BACKUP_DEFAULTS))
+        anchor = document.get("anchor")
+        settings["anchor"] = anchor if isinstance(anchor, int) and not isinstance(anchor, bool) else None
+        return settings
 
     def save_backup_settings(self, settings):
-        _write_json(self.backup_path, settings)
+        """Save new settings; counting starts now, so a time earlier today does not fire at once."""
+        stored = {key: settings[key] for key in ("enabled", "spec", "keep")}
+        stored["anchor"] = int(self.clock())
+        _write_json(self.backup_path, stored)
+
+    def _store_backup(self, anchor, **changes):
+        """Write the backup settings in the current format (dropping any old keys), with a new marker."""
+        settings = self.backup_settings()
+        document = {key: settings[key] for key in ("enabled", "spec", "keep")}
+        document.update(changes)
+        document["anchor"] = int(anchor)
+        _write_json(self.backup_path, document)
+
+    def _set_backup_anchor(self, stamp):
+        self._store_backup(stamp)
 
     # -- history -----------------------------------------------------------
 
@@ -411,13 +546,19 @@ class Scheduler:
                     self._save_tasks(tasks)
                     return
 
+    def _finish_once_task(self, task_id, marker, outcome):
+        """A one-time task is over (it ran or was missed): remember when, stop it, keep it listed."""
+        with self.lock:
+            tasks = self.tasks()
+            for task in tasks:
+                if task.get("id") == task_id:
+                    task.update({"anchor": int(marker), "enabled": False, "done": outcome})
+                    self._save_tasks(tasks)
+                    return
+
     def tick(self, now=None):
-        """Start whatever is due. Interval tasks are checked on every call; cron tasks once per minute."""
+        """Start whatever is due. Called every second; each schedule decides from its own marker."""
         stamp = now if now is not None else self.clock()
-        moment = datetime.fromtimestamp(stamp)
-        minute = moment.replace(second=0, microsecond=0)
-        new_minute = minute != self._last_minute
-        self._last_minute = minute
         started = []
         for task in self.tasks():
             if not task.get("enabled"):
@@ -425,39 +566,50 @@ class Scheduler:
             spec = task_spec(task)
             if spec is None:
                 continue
-            if spec["mode"] == "interval":
-                anchor = task.get("anchor")
-                if not isinstance(anchor, int):
-                    self._set_anchor(task["id"], stamp)
-                    continue
-                if stamp >= anchor + spec["n"] * UNIT_SECONDS[spec["unit"]]:
-                    # The next interval counts from now, so a long outage makes one run, not a burst.
-                    self._set_anchor(task["id"], stamp)
-                    self.start_async(self.run_task, task["id"])
-                    started.append(task["id"])
-            elif new_minute and matches(parse_cron(cron_for(spec)), minute) \
-                    and not self._ran_since(task["id"], minute.timestamp()):
+            marker = task.get("anchor")
+            if not isinstance(marker, int):
+                self._set_anchor(task["id"], stamp)       # an old task without a marker: count from now
+                continue
+            action, new_marker = check_due(spec, stamp, marker)
+            if action is None:
+                continue
+            if spec["mode"] == "once":
+                self._finish_once_task(task["id"], new_marker, "ran" if action == "run" else "missed")
+            else:
+                self._set_anchor(task["id"], new_marker)
+            if action == "run":
                 self.start_async(self.run_task, task["id"])
                 started.append(task["id"])
-        if new_minute:
-            settings = self.backup_settings()
-            if settings["enabled"] and minute.strftime("%H:%M") == settings["time"] \
-                    and not self._ran_since("backup", minute.timestamp()):
-                self.start_async(self.run_backup)
-                started.append("backup")
+            else:
+                self._record(task["id"], {"started": int(stamp), "ended": int(stamp), "status": "skipped", "exit": None,
+                                          "trigger": "schedule", "output": "missed"})
+        settings = self.backup_settings()
+        if settings["enabled"]:
+            if settings["anchor"] is None:
+                self._set_backup_anchor(stamp)
+            else:
+                action, new_marker = check_due(settings["spec"], stamp, settings["anchor"])
+                if action:
+                    self._set_backup_anchor(new_marker)
+                    if settings["spec"]["mode"] == "once":
+                        self._disable_backup_schedule()
+                    if action == "run":
+                        self.start_async(self.run_backup)
+                        started.append("backup")
+                    else:
+                        self._record("backup", {"started": int(stamp), "ended": int(stamp), "status": "skipped", "exit": None,
+                                                "trigger": "schedule", "output": "missed"})
         return started
 
-    def _ran_since(self, task_id, stamp):
-        """True when a scheduled run already started in this minute (the console restarted inside it)."""
-        last = self.last_run(task_id)
-        return bool(last and last.get("trigger") == "schedule" and last["started"] >= stamp)
+    def _disable_backup_schedule(self):
+        self._store_backup(self.backup_settings()["anchor"] or self.clock(), enabled=False)
 
     def start(self):
         if self._thread:
             return
 
         def loop():
-            while not self._stop.wait(10):
+            while not self._stop.wait(1):
                 try:
                     self.tick()
                 except Exception:  # a bad file must not stop the scheduler
@@ -473,19 +625,16 @@ class Scheduler:
         spec = task_spec(task)
         if spec is None:
             return None
-        if spec["mode"] == "interval":
-            anchor = task.get("anchor")
-            base = anchor if isinstance(anchor, int) else self.clock()
-            return int(base + spec["n"] * UNIT_SECONDS[spec["unit"]])
         try:
-            moment = next_run(cron_for(spec), datetime.fromtimestamp(self.clock()))
+            return next_time(spec, task.get("anchor"), self.clock())
         except ScheduleError:
             return None
-        return int(moment.timestamp()) if moment else None
 
     def next_backup(self):
         settings = self.backup_settings()
         if not settings["enabled"]:
             return None
-        hour, minute = (int(part) for part in settings["time"].split(":"))
-        return self.next_for({"spec": {"mode": "cron", "expr": f"{minute} {hour} * * *"}})
+        try:
+            return next_time(settings["spec"], settings["anchor"], self.clock())
+        except ScheduleError:
+            return None

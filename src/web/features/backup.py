@@ -17,11 +17,12 @@ from pathlib import Path
 import config_backup
 import scheduler
 import secure_store
+from features import schedule_form
 
 MAX_UPLOAD = 256 * 1024 * 1024
 UPLOAD_IDLE_TIMEOUT = 60
 NOTICES = ("created", "deleted", "settings", "restore_started", "uploaded", "key_set")
-ERRORS = ("failed", "invalid", "not_found", "no_space", "busy", "key_wrong", "key_needed", "ack_needed")
+ERRORS = ("failed", "invalid", "not_found", "no_space", "busy", "key_wrong", "key_needed", "ack_needed", "past")
 KIND_KEYS = {"manual": "backup_kind_manual", "scheduled": "backup_kind_scheduled",
              "pre-upgrade": "backup_kind_pre_upgrade", "pre-restore": "backup_kind_pre_restore"}
 # Restart order after a restore: meters first (they take their dependents along),
@@ -90,23 +91,22 @@ class BackupMixin:
                          f'<span class="tag" data-tone="{tones[last["status"]]}">{esc(t["task_status_" + last["status"]])}</span>')
         else:
             last_text = f'{esc(t["backup_last"])}: {esc(t["backup_never"])}'
-        state_tag = (f'<span class="tag" data-tone="success">{esc(settings["time"])} · '
+        state_tag = (f'<span class="tag" data-tone="success">{esc(schedule_form.describe(t, settings["spec"]))} · '
                      f'{esc(t["backup_keep"])} {settings["keep"]}</span>' if settings["enabled"]
                      else f'<span class="tag">{esc(t["task_disabled"])}</span>')
         schedule = (f'<section class="card wide sched-card"><div class="sched-card-head">'
                     f'<h2>{esc(t["backup_schedule"])}</h2>{state_tag}</div>'
                     f'<p class="muted small">{esc(t["backup_schedule_help"])}</p>'
-                    f'<form method="post" action="/backup/settings" class="sched-form">{hidden}'
-                    f'<label class="sched-check"><input type="checkbox" name="enabled" value="1"{" checked" if settings["enabled"] else ""}>'
+                    f'<form method="post" action="/backup/settings" class="task-form">{hidden}'
+                    f'<label class="sched-check is-wide"><input type="checkbox" name="enabled" value="1"{" checked" if settings["enabled"] else ""}>'
                     f'<span>{esc(t["backup_enabled"])}</span></label>'
-                    f'<label class="sched-field"><span>{esc(t["backup_time"])}</span>'
-                    f'<input type="time" name="time" value="{esc(settings["time"], quote=True)}" required></label>'
-                    f'<label class="sched-field"><span>{esc(t["backup_keep"])}</span>'
+                    + schedule_form.fields_html(self.context, t, settings["spec"])
+                    + f'<label class="sched-field"><span>{esc(t["backup_keep"])}</span>'
                     f'<input type="number" name="keep" min="1" max="{scheduler.BACKUP_KEEP_MAX}" value="{settings["keep"]}" required></label>'
-                    f'<button type="submit">{esc(t["backup_save"])}</button></form>'
+                    f'<div class="task-form-actions is-wide"><button type="submit">{esc(t["backup_save"])}</button></div></form>'
                     f'<p class="sched-status">{last_text}'
                     + (f'<span>{esc(t["backup_next"])}: {esc(local_time(following))}</span>' if following else '')
-                    + f'<span>{esc(time.tzname[0])}</span></p></section>')
+                    + '</p></section>')
 
         rows = []
         for item in config_backup.list_backups():
@@ -228,13 +228,16 @@ class BackupMixin:
         return self.backup_done("created")
 
     def handle_backup_settings(self):
-        form = self.backup_form(("enabled", "time", "keep"))
-        if form is None or "time" not in form or "keep" not in form:
+        form = self.backup_form(("enabled", "keep") + schedule_form.FORM_FIELDS)
+        if form is None or "kind" not in form or "keep" not in form:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
         try:
-            settings = scheduler.parse_backup_settings(form.get("enabled") == "1", form["time"], form["keep"])
+            settings = scheduler.parse_backup_settings(form.get("enabled") == "1", schedule_form.spec_from_form(form),
+                                                       form["keep"], self.context.SCHEDULER.clock())
             self.context.SCHEDULER.save_backup_settings(settings)
-        except (scheduler.ScheduleError, OSError):
+        except scheduler.ScheduleError as exc:
+            return self.backup_done(error="past" if "passed" in str(exc) else "invalid")
+        except OSError:
             return self.backup_done(error="invalid")
         return self.backup_done("settings")
 
