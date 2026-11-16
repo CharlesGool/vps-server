@@ -72,10 +72,10 @@ class FrpMixin:
         entry, meter_nodes = state
         esc = self.context.html.escape
         token = self.context.access_csrf_token(self.get_cookie("session"), "frp:server:limits")
-        return (f'{self.node_metrics(entry, meter_nodes, t)}'
+        return (f'<div class="traffic-card">{self.node_metrics(entry, meter_nodes, t)}'
                 f'<div class="node-secondary"><button type="button" class="node-action node-access-open" '
                 f'data-dialog-open="node-access-frps">{esc(t["node_limit_manage"])}</button></div>'
-                f'{self.node_limits_dialog(entry, "frps", token, "/frp/server/limits", t)}')
+                f'{self.node_limits_dialog(entry, "frps", token, "/frp/server/limits", t)}</div>')
 
     def handle_frps_limits(self):
         try:
