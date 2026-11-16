@@ -83,6 +83,7 @@ class ProxyMixin:
               <dl class="proxy-node-facts">
                 <div class="node-fact"><dt>{esc(t['proxy_port'])}</dt><dd>{self.private_value_control(identifier, 'port', t)}</dd></div>
                 {sni_fact}
+                <div class="node-fact"><dt>{esc(t['node_route_label'])}</dt><dd>{esc(self.node_route_summary(node, t))}</dd></div>
                 <div class="node-fact node-fact-secret"><dt>{esc(t['node_credential'])}</dt><dd class="secret">{self.private_value_control(identifier, 'credential', t, copy=True)}</dd></div>
               </dl></section>
               <div class="proxy-node-addresses">{addresses}</div>
@@ -90,10 +91,12 @@ class ProxyMixin:
               {self.node_clash_share(node, lan_host, t)}
               <div class="node-secondary">
                 <button type="button" class="node-action node-access-open" data-dialog-open="node-access-{identifier}">{esc(t['node_limit_manage'])}</button>
+                <button type="button" class="node-action node-access-open" data-dialog-open="node-route-{identifier}">{esc(t['node_route_manage'])}</button>
                 <div class="node-destructive-actions"><button type="button" class="node-action node-action-danger" data-dialog-open="node-reset-{identifier}">{esc(t['node_random_reset'])}</button>
                 <button type="button" class="node-action node-action-danger" data-dialog-open="node-delete-{identifier}">{esc(t['node_delete'])}</button></div>
               </div>
               {self.node_limits_dialog(node, identifier, token, "/proxy/node/limits", t)}
+              {self.node_route_dialog(node, identifier, token, t)}
               <dialog class="node-confirm-dialog" id="node-reset-{identifier}" aria-labelledby="node-reset-title-{identifier}">
                 <form method="post" action="/proxy/node/reset">
                   <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}"><input type="hidden" name="confirm" value="yes">
@@ -368,6 +371,36 @@ class ProxyMixin:
         </form>
     </dialog>'''
 
+    def node_route_summary(self, node, t):
+        access = node.get("access")
+        if not access:
+            return t["node_route_all"]
+        if access["mode"] == "internet":
+            return t["node_route_internet"]
+        return t["node_route_custom_count"].format(count=len(access["destinations"]))
+
+    def node_route_dialog(self, node, identifier, token, t):
+        """Which destinations this node may reach: anything, public Internet only, or a list."""
+        esc = self.context.html.escape
+        access = node.get("access") or {}
+        selected = access.get("mode", "all")
+        text = "\n".join(access.get("destinations", []))
+        options = "".join(f'<label class="node-radio"><input type="radio" name="mode" value="{value}"'
+                          f'{" checked" if value == selected else ""}><span>{esc(t[key])}</span></label>'
+                          for value, key in (("all", "node_route_all"), ("internet", "node_route_internet"),
+                                             ("custom", "node_route_custom")))
+        return f'''    <dialog class="node-access-dialog" id="node-route-{identifier}" aria-labelledby="node-route-title-{identifier}">
+        <form method="post" action="/proxy/node/access">
+          <input type="hidden" name="id" value="{identifier}"><input type="hidden" name="csrf" value="{token}">
+          <h3 id="node-route-title-{identifier}">{esc(t['node_route_manage'])}</h3>
+          <fieldset class="node-reset-cycle"><legend>{esc(t['node_route_label'])}</legend>{options}</fieldset>
+          <label>{esc(t['node_route_destinations'])}<textarea name="destinations" rows="6" maxlength="8000" spellcheck="false" placeholder="172.22.31.10&#10;172.22.31.10:443&#10;*.example.com:443">{esc(text)}</textarea></label>
+          <p class="muted small">{esc(t['node_route_hint'])}</p>
+          <div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t['node_cancel'])}</button>
+          <button type="submit">{esc(t['node_route_save'])}</button></div>
+        </form>
+    </dialog>'''
+
     def node_limits_request(self, form, existing):
         """Turn the limits form into node fields; raises ValueError on bad input.
         Shared by sing-box nodes and the FRPS entry."""
@@ -442,7 +475,7 @@ class ProxyMixin:
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
             length = 0
-        if (not 0 < length <= 4096 or
+        if (not 0 < length <= (16384 if action == "access" else 4096) or
                 self.headers.get("Content-Type", "").split(";", 1)[0].strip() !=
                 "application/x-www-form-urlencoded"):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
@@ -466,6 +499,7 @@ class ProxyMixin:
             "limits": {"id", "csrf", "cap_gib", "upload_mbps", "download_mbps",
                        "cap_action", "expiry_mode", "expiry_count", "expiry_unit",
                        "reset_mode", "reset_count", "reset_unit", "next_reset_at"},
+            "access": {"id", "csrf", "mode", "destinations"},
             "reset": {"id", "csrf", "confirm"},
             "delete": {"id", "csrf", "confirm"},
             "toggle": {"id", "csrf", "enabled"},
@@ -516,6 +550,22 @@ class ProxyMixin:
                         request["sni"] = sni
             except (ValueError, KeyError):
                 return self.redirect("/proxy?msg=node_settings_failed")
+        elif action == "access":
+            try:
+                mode = form["mode"][0]
+                if mode == "all":
+                    request["access"] = None
+                elif mode == "internet":
+                    request["access"] = {"mode": "internet"}
+                elif mode == "custom":
+                    entries = [item for item in self.context.re.split(r"[\s,;]+", form["destinations"][0]) if item]
+                    request["access"] = {"mode": "custom",
+                                         "destinations": self.context.normalize_destinations(entries)}
+                else:
+                    raise ValueError("invalid access mode")
+                request["action"] = "edit"
+            except (ValueError, self.context.InvalidInventory):
+                return self.redirect("/proxy?msg=node_settings_failed")
         elif action == "limits":
             try:
                 current = self.context.read_inventory(state_path=self.context.NODE_STATE_PATH,
@@ -545,7 +595,8 @@ class ProxyMixin:
                 self.handle_proxy_private_value(parsed)
         elif method == "POST" and path in ("/proxy/node/edit", "/proxy/node/limits",
                                                 "/proxy/node/reset", "/proxy/node/create",
-                                                "/proxy/node/delete", "/proxy/node/toggle"):
+                                                "/proxy/node/delete", "/proxy/node/toggle",
+                                                "/proxy/node/access"):
             if not self.context.AUTH_ENABLED:
                 self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             else:

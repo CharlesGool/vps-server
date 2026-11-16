@@ -16,7 +16,7 @@ from node_inventory import InvalidInventory, PROTOCOLS, _inbound, render_config,
 _EDITABLE = frozenset({"name", "port", "credential", "cap_bytes", "cap_action",
                        "upload_limit_bps", "download_limit_bps",
                        "expiry_count", "expiry_unit", "expires_at",
-                       "reset_mode", "next_reset_at"})
+                       "reset_mode", "next_reset_at", "access"})
 _UUID_PROTOCOLS = frozenset({"vmess", "vless"})
 
 
@@ -217,6 +217,11 @@ def edit_node(inventory, identifier, changes, *, reserved_ports):
     if "credential" in changes:
         _set_credential(node, changes["credential"])
         _unique_credential(candidate, node)
+    if "access" in changes:
+        if changes["access"] is None:
+            node.pop("access", None)  # back to unrestricted
+        else:
+            node["access"] = changes["access"]
     for key in ("name", "cap_bytes", "cap_action", "upload_limit_bps", "download_limit_bps",
                 "expiry_count", "expiry_unit", "expires_at", "reset_mode", "next_reset_at"):
         if key in changes:
