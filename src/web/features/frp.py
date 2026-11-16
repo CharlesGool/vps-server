@@ -124,13 +124,19 @@ class FrpMixin:
             toggle_action = 'disable' if running_client else 'enable'
             state = t['frp_connected'] if connected else t['frp_disconnected']
             try:
-                proxies = (self.context.frpc_structured(name) or {}).get('proxies', [])
+                structured_config = self.context.frpc_structured(name) or {}
+                proxies, visitors = structured_config.get('proxies', []), structured_config.get('visitors', [])
             except (OSError, ValueError, KeyError, TypeError):
-                proxies = []
+                proxies, visitors = [], []
             server_placeholder = '<span data-frpc-forward-server>••••••</span>'
-            forwarding = ''.join(
-                f'<li><strong>{esc(proxy["name"])}</strong><span>{esc(t["frp_forwarding"]).format(server=server_placeholder, remote=proxy["remotePort"], local=esc(proxy["localIP"]), port=proxy["localPort"])}</span></li>'
-                for proxy in proxies)
+            def forward_line(proxy):
+                if proxy['type'] == 'stcp':
+                    return esc(t['frp_forwarding_stcp']).format(local=esc(proxy['localIP']), port=proxy['localPort'])
+                return esc(t['frp_forwarding']).format(server=server_placeholder, remote=proxy['remotePort'], local=esc(proxy['localIP']), port=proxy['localPort'])
+            forwarding = ''.join(f'<li><strong>{esc(proxy["name"])}</strong><span>{forward_line(proxy)}</span></li>' for proxy in proxies)
+            forwarding += ''.join(
+                f'<li><strong>{esc(visitor["name"])}</strong><span>{esc(t["frp_visiting"]).format(bind=esc(visitor["bindAddr"]), port=visitor["bindPort"], target=esc(visitor["serverName"]))}</span></li>'
+                for visitor in visitors)
             forwarding = f'<ul class="frp-forwarding">{forwarding}</ul>' if forwarding else f'<span class="muted small">{item["proxies"]} {esc(t["frp_proxies"])}</span>'
             clients.append(f'<article class="frp-target-card"><div class="frp-target-head">'
                            f'<strong class="frp-target-name">{esc(name)}</strong>'
@@ -244,22 +250,43 @@ class FrpMixin:
                   f'<div><dt>{esc(t["frps_token"])}</dt><dd>{reveal("token", "••••••", t["frps_token"])}</dd></div></dl></section>')
         proxy_fields = [('proxy_name', 'name', 'text'), ('proxy_type', 'type', 'text'),
                         ('frp_local_ip', 'localIP', 'text'), ('frp_local_port', 'localPort', 'number'),
-                        ('frp_server_port', 'remotePort', 'number')]
+                        ('frp_server_port', 'remotePort', 'number'), ('frp_secret_key', 'secretKey', 'text')]
         def fields(proxy, suffix):
             result = []
             for label, key, kind in proxy_fields:
                 if key == 'type':
                     current = proxy.get('type', 'tcp')
                     options = ''.join(f'<option value="{value}" {"selected" if current == value else ""}>{value.upper()}</option>'
-                                      for value in ('tcp', 'udp'))
+                                      for value in ('tcp', 'udp', 'stcp'))
                     result.append(f'<label>{esc(t[label])}<select name="type">{options}</select></label>')
+                elif key == 'secretKey':
+                    # Never rendered into the page: blank keeps the current key, or generates one for a new stcp proxy.
+                    result.append(f'<div class="frp-field"><label for="frp-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>'
+                                  f'<input id="frp-{esc(suffix, quote=True)}-{key}" name="{key}" type="password" maxlength="128" '
+                                  f'autocomplete="new-password" placeholder="{esc(t["frp_secret_keep"], quote=True)}"></div>')
                 else:
                     title = f'<label for="frp-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>'
+                    required = '' if key == 'remotePort' else ' required'
                     result.append(f'<div class="frp-field">{title}'
                                   f'<input id="frp-{esc(suffix, quote=True)}-{key}" name="{"proxyName" if key == "name" else key}" '
                                   f'type="{kind}" aria-label="{esc(t[label], quote=True)}" '
-                                  f'value="{esc(str(proxy.get(key, "")), quote=True)}" required></div>')
+                                  f'value="{esc(str(proxy.get(key, "")), quote=True)}"{required}></div>')
             return ''.join(result)
+        def proxy_tail(proxy, index):
+            if proxy['type'] == 'stcp':
+                return (f'<div><dt>{esc(t["frp_secret_key"])}</dt><dd>'
+                        f'{self.private_value_control(name, "proxy-secret:" + str(index), t, endpoint="/frp/client/value")}</dd></div>')
+            return f'<div><dt>{esc(t["frp_server_port"])}</dt><dd>{proxy["remotePort"]}</dd></div>'
+        def visitor_fields(visitor, suffix, adding):
+            def text(label, key, field, kind):
+                return (f'<div class="frp-field"><label for="frp-visitor-{esc(suffix, quote=True)}-{key}">{esc(t[label])}</label>'
+                        f'<input id="frp-visitor-{esc(suffix, quote=True)}-{key}" name="{field}" type="{kind}" '
+                        f'value="{esc(str(visitor.get(key, "")), quote=True)}" required></div>')
+            return (text('proxy_name', 'name', 'proxyName', 'text') + text('frp_visitor_target', 'serverName', 'serverName', 'text') +
+                    text('frp_visitor_bind_port', 'bindPort', 'bindPort', 'number') +
+                    f'<div class="frp-field"><label for="frp-visitor-{esc(suffix, quote=True)}-secret">{esc(t["frp_secret_key"])}</label>'
+                    f'<input id="frp-visitor-{esc(suffix, quote=True)}-secret" name="secretKey" type="password" maxlength="128" '
+                    f'autocomplete="new-password" {"required" if adding else "placeholder=" + chr(34) + esc(t["frp_secret_keep"], quote=True) + chr(34)}></div>')
         cards = []
         for index, proxy in enumerate(config.get('proxies', [])):
             cards.append(f'<section class="frp-proxy-card"><button type="button" class="node-action frp-proxy-edit-toggle" '
@@ -274,16 +301,40 @@ class FrpMixin:
                          f'<dl class="frp-proxy-fields"><div><dt>{esc(t["proxy_type"])}</dt><dd>{esc(proxy["type"].upper())}</dd></div>'
                          f'<div><dt>{esc(t["frp_local_ip"])}</dt><dd>{esc(proxy["localIP"])}</dd></div>'
                          f'<div><dt>{esc(t["frp_local_port"])}</dt><dd>{proxy["localPort"]}</dd></div>'
-                         f'<div><dt>{esc(t["frp_server_port"])}</dt><dd>{proxy["remotePort"]}</dd></div></dl></div>'
+                         f'{proxy_tail(proxy, index)}</dl></div>'
                          f'<form method="post" action="/frp/client/structured" class="frp-delete-form" data-confirm="{esc(t["frp_delete_confirm"], quote=True)}">{base}'
                          f'<input type="hidden" name="section" value="delete"><input type="hidden" name="index" value="{index}">'
                          f'<button type="submit" class="node-action danger">{esc(t["frp_delete_proxy"])}</button></form></section>')
+        visitor_cards = []
+        for index, visitor in enumerate(config.get('visitors', [])):
+            visitor_cards.append(
+                f'<section class="frp-proxy-card"><button type="button" class="node-action frp-proxy-edit-toggle" '
+                f'data-frp-proxy-edit data-edit="{esc(t["frp_edit_proxy"], quote=True)}" '
+                f'data-cancel="{esc(t["node_cancel"], quote=True)}" aria-expanded="false" '
+                f'aria-controls="frp-visitor-editor-{index}">{esc(t["frp_edit_proxy"])}</button>'
+                f'<form method="post" action="/frp/client/structured" class="frp-proxy-edit-form" '
+                f'id="frp-visitor-editor-{index}" hidden>{base}'
+                f'<input type="hidden" name="section" value="visitor-edit"><input type="hidden" name="index" value="{index}">'
+                f'{visitor_fields(visitor, str(index), False)}<button type="submit">{esc(t["frp_save"])}</button></form>'
+                f'<div class="frp-proxy-facts"><strong>{esc(visitor["name"])}</strong>'
+                f'<dl class="frp-proxy-fields"><div><dt>{esc(t["frp_visitor_target"])}</dt><dd>{esc(visitor["serverName"])}</dd></div>'
+                f'<div><dt>{esc(t["frp_visitor_listen"])}</dt><dd>{esc(visitor["bindAddr"])}:{visitor["bindPort"]}</dd></div>'
+                f'<div><dt>{esc(t["frp_secret_key"])}</dt><dd>{self.private_value_control(name, "visitor-secret:" + str(index), t, endpoint="/frp/client/value")}</dd></div></dl></div>'
+                f'<form method="post" action="/frp/client/structured" class="frp-delete-form" data-confirm="{esc(t["frp_delete_confirm"], quote=True)}">{base}'
+                f'<input type="hidden" name="section" value="visitor-delete"><input type="hidden" name="index" value="{index}">'
+                f'<button type="submit" class="node-action danger">{esc(t["frp_delete_proxy"])}</button></form></section>')
+        visitor_add = (f'<details class="node-inline-edit frp-add-proxy"><summary><span>{esc(t["frp_add_visitor"])}</span>'
+                       f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/client/structured">{base}'
+                       f'<input type="hidden" name="section" value="visitor-add">{visitor_fields({}, "new", True)}'
+                       f'<button type="submit">{esc(t["frp_add_visitor"])}</button></form></details>')
+        visitors_section = (f'<section class="frp-edit-section"><h2>{esc(t["frp_visitor_heading"])}</h2>'
+                            f'<p class="muted small">{esc(t["frp_visitor_note"])}</p>{"".join(visitor_cards)}{visitor_add}</section>')
         empty = f'<p class="muted">{esc(t["frp_no_proxies"])}</p>' if not cards else ''
         add = (f'<details class="node-inline-edit frp-add-proxy"><summary><span>{esc(t["frp_add_proxy"])}</span>'
                f'<span>{esc(t["node_cancel"])}</span></summary><form method="post" action="/frp/client/structured">{base}'
                f'<input type="hidden" name="section" value="add">{fields({}, "new")}'
                f'<button type="submit">{esc(t["frp_add_proxy"])}</button></form></details>')
-        return server + f'<section class="frp-edit-section"><h2>{esc(t["frp_proxy_list_heading"])}</h2>{"".join(cards)}{empty}{add}</section>'
+        return server + f'<section class="frp-edit-section"><h2>{esc(t["frp_proxy_list_heading"])}</h2>{"".join(cards)}{empty}{add}</section>' + visitors_section
 
     def frpc_create_editor(self, lang):
         t, esc = self.context.STRINGS[lang], self.context.html.escape
@@ -321,7 +372,8 @@ class FrpMixin:
         if set(query) != {'name', 'field'} or any(len(values) != 1 for values in query.values()):
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         name, field = query['name'][0], query['field'][0]
-        if field not in ('server', 'port', 'token'):
+        secret = self.context.re.fullmatch(r'(proxy|visitor)-secret:([0-9]{1,2})', field)
+        if field not in ('server', 'port', 'token') and not secret:
             return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
         try:
             if self.context.frpc_path(name).is_symlink():
@@ -329,9 +381,13 @@ class FrpMixin:
             config = self.context.frpc_structured(name)
             if config is None:
                 raise ValueError
-            value = (config['serverAddr'] if field == 'server' else
-                     str(config['serverPort']) if field == 'port' else config['auth']['token'])
-        except (OSError, ValueError, KeyError, TypeError):
+            if secret:
+                item = config['proxies' if secret[1] == 'proxy' else 'visitors'][int(secret[2])]
+                value = item['secretKey']
+            else:
+                value = (config['serverAddr'] if field == 'server' else
+                         str(config['serverPort']) if field == 'port' else config['auth']['token'])
+        except (OSError, ValueError, KeyError, TypeError, IndexError):
             return self.send_html(404, 'FRPC instance missing', {'Cache-Control': 'no-store'})
         body = self.context.json.dumps({'value': value}).encode('utf-8')
         self.send_response(200)
@@ -386,9 +442,11 @@ class FrpMixin:
                         {'csrf', 'name', 'newName'} if path.endswith('client/rename') else
                         {'csrf', 'name'} if path.endswith('client/delete') else
                         {'csrf', 'name', 'section', 'server', 'port', 'token'} if structured and section in ('server', 'create') else
-                        {'csrf', 'name', 'section', 'index'} if structured and section == 'delete' else
-                        {'csrf', 'name', 'section', 'proxyName', 'type', 'localIP', 'localPort', 'remotePort'} if structured and section == 'add' else
-                        {'csrf', 'name', 'section', 'index', 'type', 'localIP', 'localPort', 'remotePort', 'proxyName'} if structured and section == 'edit' else
+                        {'csrf', 'name', 'section', 'index'} if structured and section in ('delete', 'visitor-delete') else
+                        {'csrf', 'name', 'section', 'proxyName', 'type', 'localIP', 'localPort', 'remotePort', 'secretKey'} if structured and section == 'add' else
+                        {'csrf', 'name', 'section', 'index', 'type', 'localIP', 'localPort', 'remotePort', 'secretKey', 'proxyName'} if structured and section == 'edit' else
+                        {'csrf', 'name', 'section', 'proxyName', 'serverName', 'bindPort', 'secretKey'} if structured and section == 'visitor-add' else
+                        {'csrf', 'name', 'section', 'index', 'proxyName', 'serverName', 'bindPort', 'secretKey'} if structured and section == 'visitor-edit' else
                         {'csrf', 'action'} if path.endswith('server/toggle') else
                         {'csrf', 'name', 'action'})
             if set(form) != required or any(len(v) != 1 for v in form.values()):
@@ -414,18 +472,25 @@ class FrpMixin:
                 action = 'frp:delete:' + name
                 request = {'action': 'delete-client', 'name': name}
             elif structured:
-                if section not in ('server', 'add', 'edit', 'delete', 'create') or (section != 'create' and not self.context.frpc_path(name).is_file()):
+                if section not in ('server', 'add', 'edit', 'delete', 'create', 'visitor-add', 'visitor-edit', 'visitor-delete') or (section != 'create' and not self.context.frpc_path(name).is_file()):
                     raise ValueError
                 if section == 'create':
                     self.context.frpc_path(name)
                 action = 'frp:structured:' + (name if section != 'create' else 'new')
-                values = {'index': int(form['index'][0])} if section in ('edit', 'delete') else {}
+                values = {'index': int(form['index'][0])} if section in ('edit', 'delete', 'visitor-edit', 'visitor-delete') else {}
                 if section in ('server', 'create'):
                     values.update(server=form['server'][0], port=int(form['port'][0]), token=form['token'][0])
-                elif section != 'delete':
-                    values['proxy'] = {'name': form['proxyName'][0], 'type': form['type'][0],
-                                       'localIP': form['localIP'][0], 'localPort': int(form['localPort'][0]),
-                                       'remotePort': int(form['remotePort'][0])}
+                elif section in ('visitor-add', 'visitor-edit'):
+                    values['proxy'] = {'name': form['proxyName'][0], 'serverName': form['serverName'][0],
+                                       'bindPort': int(form['bindPort'][0]), 'secretKey': form['secretKey'][0]}
+                elif not section.endswith('delete'):
+                    proxy = {'name': form['proxyName'][0], 'type': form['type'][0],
+                             'localIP': form['localIP'][0], 'localPort': int(form['localPort'][0])}
+                    if proxy['type'] == 'stcp':
+                        proxy['secretKey'] = form['secretKey'][0]
+                    else:
+                        proxy['remotePort'] = int(form['remotePort'][0])
+                    values['proxy'] = proxy
                 request = {'action': 'create-structured-client' if section == 'create' else 'structured-client',
                            'name': name, 'section': section, 'values': values}
             elif path.endswith('server/toggle'):

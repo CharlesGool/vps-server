@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import subprocess
 import sys
@@ -35,6 +36,16 @@ SERVER_SETUP_SOURCES = (
 REGISTRY = APP_DIR.parent / "PORTS.md"
 LOCK = APP_DIR.parent / ".ports.lock"
 ASCII_NAME = re.compile(r"[a-zA-Z0-9_-]{1,32}\Z")
+# tcp/udp open a public remotePort on the FRPS host. stcp opens nothing there: only a
+# visitor holding the same secretKey (and the FRPS token) can reach the local service.
+PROXY_FIELDS = {
+    "tcp": {"name", "type", "localIP", "localPort", "remotePort"},
+    "udp": {"name", "type", "localIP", "localPort", "remotePort"},
+    "stcp": {"name", "type", "localIP", "localPort", "secretKey"},
+}
+VISITOR_FIELDS = {"name", "type", "serverName", "secretKey", "bindAddr", "bindPort"}
+VISITOR_BIND = "127.0.0.1"  # a visitor port is never exposed beyond this host
+MIN_SECRET = 16
 
 
 def valid_client_name(name):
@@ -110,7 +121,7 @@ def client_summary(name):
 
 def structured_client(name):
     """Return editable fields only for the simple TCP/UDP FRPC layout we can preserve."""
-    data = {"auth": {}, "proxies": []}
+    data = {"auth": {}, "proxies": [], "visitors": []}
     current = data
     for raw in client_path(name).read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -119,6 +130,10 @@ def structured_client(name):
         if line == "[[proxies]]":
             current = {}
             data["proxies"].append(current)
+            continue
+        if line == "[[visitors]]":
+            current = {}
+            data["visitors"].append(current)
             continue
         match = re.fullmatch(r'([\w.]+)\s*=\s*("(?:[^"\\]|\\.)*"|\d+)\s*(?:#.*)?', line)
         if not match:
@@ -137,51 +152,109 @@ def structured_client(name):
             destination[key] = json.loads(value)
         except ValueError:
             return None
-    allowed = {"serverAddr", "serverPort", "auth", "proxies"}
+    allowed = {"serverAddr", "serverPort", "auth", "proxies", "visitors"}
     if set(data) - allowed or set(data["auth"]) - {"method", "token"}:
         return None
     if not {"serverAddr", "serverPort"} <= set(data) or not {"method", "token"} <= set(data["auth"]):
         return None
-    proxies = data.get("proxies", [])
-    fields = {"name", "type", "localIP", "localPort", "remotePort"}
-    if not isinstance(proxies, list) or any(not isinstance(p, dict) or set(p) - fields or p.get("type") not in ("tcp", "udp") for p in proxies):
+    proxies, visitors = data.get("proxies", []), data.get("visitors", [])
+    if not isinstance(proxies, list) or any(not isinstance(p, dict) or p.get("type") not in PROXY_FIELDS or set(p) != PROXY_FIELDS[p["type"]] for p in proxies):
         return None
-    if any(set(p) != fields for p in proxies):
+    if not isinstance(visitors, list) or any(not isinstance(v, dict) or set(v) != VISITOR_FIELDS or v.get("type") != "stcp" or v.get("bindAddr") != VISITOR_BIND for v in visitors):
         return None
     if data.get("auth", {}).get("method") != "token":
         return None
     return data
 
 
-def build_client(server, port, token, proxies):
+def _check_secret(value):
+    if not isinstance(value, str) or not 1 <= len(value) <= 128 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ValueError("invalid secretKey")
+
+
+def build_client(server, port, token, proxies, visitors=()):
     try:
         ipaddress.ip_address(server)
     except ValueError as exc:
         raise ValueError("server IP required") from exc
     if type(port) is not int or not 1 <= port <= 65535 or not isinstance(token, str) or not token or len(token) > 128:
         raise ValueError("invalid server settings")
-    if not isinstance(proxies, list) or len(proxies) > 64:
+    if not isinstance(proxies, list) or not isinstance(visitors, (list, tuple)) or len(proxies) + len(visitors) > 64:
         raise ValueError("invalid proxies")
     lines = [f"serverAddr = {json.dumps(server)}", f"serverPort = {port}",
              'auth.method = "token"', f"auth.token = {json.dumps(token)}"]
     names = set()
     for item in proxies:
-        if set(item) != {"name", "type", "localIP", "localPort", "remotePort"}:
+        if not isinstance(item, dict) or item.get("type") not in PROXY_FIELDS or set(item) != PROXY_FIELDS[item["type"]]:
             raise ValueError("invalid proxy fields")
         name = item["name"]
-        if not isinstance(name, str) or not 1 <= len(name) <= 64 or name in names or item["type"] not in ("tcp", "udp"):
+        if not isinstance(name, str) or not 1 <= len(name) <= 64 or name in names:
             raise ValueError("invalid proxy")
         names.add(name)
         try:
             ipaddress.ip_address(item["localIP"])
         except ValueError as exc:
             raise ValueError("invalid local IP") from exc
-        if any(type(item[key]) is not int or not 1 <= item[key] <= 65535 for key in ("localPort", "remotePort")):
+        ports = ("localPort", "remotePort") if item["type"] != "stcp" else ("localPort",)
+        if any(type(item[key]) is not int or not 1 <= item[key] <= 65535 for key in ports):
             raise ValueError("invalid proxy port")
         lines.extend(["", "[[proxies]]", f'name = {json.dumps(name)}', f'type = {json.dumps(item["type"])}',
-                      f'localIP = {json.dumps(item["localIP"])}', f'localPort = {item["localPort"]}',
-                      f'remotePort = {item["remotePort"]}'])
+                      f'localIP = {json.dumps(item["localIP"])}', f'localPort = {item["localPort"]}'])
+        if item["type"] == "stcp":
+            _check_secret(item["secretKey"])
+            lines.append(f'secretKey = {json.dumps(item["secretKey"])}')
+        else:
+            lines.append(f'remotePort = {item["remotePort"]}')
+    bound = set()
+    for item in visitors:
+        if not isinstance(item, dict) or set(item) != VISITOR_FIELDS or item["type"] != "stcp" or item["bindAddr"] != VISITOR_BIND:
+            raise ValueError("invalid visitor fields")
+        name, target = item["name"], item["serverName"]
+        # frpc keeps proxies and visitors in one namespace; a clash would be rejected at verify time.
+        if (not isinstance(name, str) or not 1 <= len(name) <= 64 or name in names or
+                not isinstance(target, str) or not 1 <= len(target) <= 64):
+            raise ValueError("invalid visitor")
+        names.add(name)
+        port = item["bindPort"]
+        if type(port) is not int or not 1 <= port <= 65535 or port in bound:
+            raise ValueError("invalid visitor port")
+        bound.add(port)
+        _check_secret(item["secretKey"])
+        lines.extend(["", "[[visitors]]", f'name = {json.dumps(name)}', 'type = "stcp"',
+                      f'serverName = {json.dumps(target)}', f'secretKey = {json.dumps(item["secretKey"])}',
+                      f'bindAddr = {json.dumps(VISITOR_BIND)}', f'bindPort = {port}'])
     return "\n".join(lines) + "\n"
+
+
+def _normalize_proxy(proxy, previous=None):
+    """Fit a submitted proxy to its type's field set; stcp gets a generated or kept secretKey."""
+    if not isinstance(proxy, dict) or proxy.get("type") not in PROXY_FIELDS:
+        raise ValueError("invalid proxy")
+    kind = proxy["type"]
+    result = {key: proxy.get(key) for key in PROXY_FIELDS[kind] if key != "secretKey"}
+    if kind == "stcp":
+        supplied = proxy.get("secretKey")
+        if supplied:
+            _check_secret(supplied)
+            if len(supplied) < MIN_SECRET:
+                raise ValueError("secretKey too short")
+            result["secretKey"] = supplied
+        elif previous and previous.get("type") == "stcp":
+            result["secretKey"] = previous["secretKey"]
+        else:
+            result["secretKey"] = secrets.token_urlsafe(32)
+    return result
+
+
+def _normalize_visitor(visitor, previous=None):
+    if not isinstance(visitor, dict):
+        raise ValueError("invalid visitor")
+    secret = visitor.get("secretKey") or (previous or {}).get("secretKey")
+    _check_secret(secret)
+    if secret != (previous or {}).get("secretKey") and len(secret) < MIN_SECRET:
+        raise ValueError("secretKey too short")
+    return {"name": visitor.get("name"), "type": "stcp", "serverName": visitor.get("serverName"),
+            "secretKey": secret, "bindAddr": VISITOR_BIND, "bindPort": visitor.get("bindPort")}
 
 
 def update_structured(name, section, values):
@@ -191,25 +264,30 @@ def update_structured(name, section, values):
         raise ValueError("advanced FRPC configuration")
     auth = data["auth"]
     proxies = data.get("proxies", [])
+    visitors = data.get("visitors", [])
     if section == "server":
         server = values["server"]
         port = values["port"]
         token = values["token"] or auth["token"]
     else:
         server, port, token = data["serverAddr"], data["serverPort"], auth["token"]
-        if section == "add":
-            proxies.append(values["proxy"])
-        elif section in ("edit", "delete"):
-            index = values.get("index")
-            if type(index) is not int or not 0 <= index < len(proxies):
-                raise ValueError("invalid proxy index")
-            if section == "edit":
-                proxies[index] = values["proxy"]
-            else:
-                proxies.pop(index)
+        if section in ("add", "edit", "delete"):
+            items, normalize = proxies, lambda item, old=None: _normalize_proxy(item, old)
+        elif section in ("visitor-add", "visitor-edit", "visitor-delete"):
+            items, normalize = visitors, lambda item, old=None: _normalize_visitor(item, old)
         else:
             raise ValueError("invalid proxy section")
-    save_client(name, build_client(server, port, token, proxies))
+        if section.endswith("add"):
+            items.append(normalize(values["proxy"]))
+        else:
+            index = values.get("index")
+            if type(index) is not int or not 0 <= index < len(items):
+                raise ValueError("invalid proxy index")
+            if section.endswith("edit"):
+                items[index] = normalize(values["proxy"], items[index])
+            else:
+                items.pop(index)
+    save_client(name, build_client(server, port, token, proxies, visitors))
 
 
 def _rows():
@@ -236,6 +314,16 @@ def _free_port(port):
 
 
 def _local_client_ports(content):
+    ports = set()
+    # A visitor listens on this host whatever FRPS it connects to.
+    visitor_ports = re.findall(r'^bindPort\s*=\s*(\d+)\s*$', content, re.M)
+    if len(visitor_ports) != len(re.findall(r'^\s*bindPort\s*=', content, re.M)):
+        raise ValueError("unsupported visitor port syntax")
+    for value in visitor_ports:
+        port = int(value)
+        if not 1 <= port <= 65535 or port in ports:
+            raise ValueError("invalid or duplicate visitor port")
+        ports.add(port)
     address = re.search(r'^serverAddr\s*=\s*"([^"]+)"\s*$', content, re.M)
     if not address:
         raise ValueError("serverAddr is required")
@@ -253,8 +341,7 @@ def _local_client_ports(content):
     except OSError:
         pass
     if not local:
-        return set()
-    ports = set()
+        return ports
     values = re.findall(r'^remotePort\s*=\s*(\d+)\s*$', content, re.M)
     if len(values) != len(re.findall(r'^\s*remotePort\s*=', content, re.M)):
         raise ValueError("unsupported same-host remote port syntax")
