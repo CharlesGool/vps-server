@@ -12,6 +12,7 @@ import calendar
 import copy
 from datetime import datetime, timedelta, timezone
 import hashlib
+import ipaddress
 import json
 import re
 from typing import Any, TypedDict
@@ -65,6 +66,123 @@ def advance_reset_interval(due: datetime, mode: str) -> datetime:
                            day=min(day, calendar.monthrange(year, month)[1]))
     except (ValueError, OverflowError) as exc:
         raise InvalidInventory("reset interval exceeds supported dates") from exc
+
+
+# --- Per-node destination policy -------------------------------------------------
+# A node without "access" reaches anything (the historical behaviour). "internet"
+# refuses private, loopback, link-local and CGNAT destinations, so the node can only
+# be used to browse. "custom" refuses everything except the listed destinations.
+ACCESS_MODES = ("internet", "custom")
+MAX_DESTINATIONS = 64
+_DOMAIN = re.compile(r"(?:\*\.)?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
+_PORT = re.compile(r"([0-9]{1,5})(?:-([0-9]{1,5}))?\Z")
+_NON_PUBLIC = ["0.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "192.0.0.0/24",
+               "::1/128", "fc00::/7", "fe80::/10"]
+
+
+def _destination(text: str) -> tuple[str, str, str | None]:
+    """Parse one destination into (kind, value, port); kind is cidr, domain or suffix."""
+    text = text.strip()
+    if not text or len(text) > 255 or any(ord(c) < 33 or ord(c) == 127 for c in text):
+        raise InvalidInventory("invalid destination")
+    host, port = text, None
+    if text.startswith("["):
+        end = text.find("]")
+        if end < 0 or text[end + 1:end + 2] not in ("", ":"):
+            raise InvalidInventory("invalid destination")
+        host, port = text[1:end], (text[end + 2:] or None) if text[end + 1:] else None
+    elif text.count(":") == 1:
+        host, port = text.split(":")
+    if port is not None:
+        match = _PORT.fullmatch(port)
+        if not match or not 1 <= int(match[1]) <= 65535 or (match[2] is not None and not int(match[1]) < int(match[2]) <= 65535):
+            raise InvalidInventory("invalid destination port")
+        port = str(int(match[1])) if match[2] is None else f"{int(match[1])}-{int(match[2])}"
+    try:
+        network = ipaddress.ip_network(host, strict=False)
+        return "cidr", str(network), port
+    except ValueError:
+        pass
+    if host.startswith("*."):
+        if not _DOMAIN.fullmatch(host):
+            raise InvalidInventory("invalid destination domain")
+        return "suffix", host[1:].lower(), port
+    if not _DOMAIN.fullmatch(host) or host.replace(".", "").isdigit():
+        raise InvalidInventory("invalid destination domain")
+    return "domain", host.lower(), port
+
+
+def normalize_destinations(entries: Any) -> list[str]:
+    """Canonical text for a destination list; the same text is edited in the console."""
+    if not isinstance(entries, list) or not 1 <= len(entries) <= MAX_DESTINATIONS or any(not isinstance(item, str) for item in entries):
+        raise InvalidInventory("invalid destination list")
+    result = []
+    for item in entries:
+        kind, value, port = _destination(item)
+        shown = ("*" + value) if kind == "suffix" else value
+        if kind == "cidr" and value.endswith(("/32", "/128")):
+            shown = value.rsplit("/", 1)[0]  # a single address reads better without its prefix
+        if port is not None:
+            shown = f"[{shown}]:{port}" if kind == "cidr" and ":" in value else f"{shown}:{port}"
+        if shown not in result:
+            result.append(shown)
+    return result
+
+
+def validate_access(access: Any) -> None:
+    if not isinstance(access, dict) or access.get("mode") not in ACCESS_MODES:
+        raise InvalidInventory("invalid access mode")
+    if access["mode"] == "internet":
+        if set(access) != {"mode"}:
+            raise InvalidInventory("invalid access fields")
+        return
+    if set(access) != {"mode", "destinations"} or normalize_destinations(access["destinations"]) != access["destinations"]:
+        raise InvalidInventory("invalid access destinations")
+
+
+def access_rules(tag: str, access: dict[str, Any], direct: str) -> list[dict[str, Any]]:
+    """sing-box route rules for one inbound; the first match wins, so allows precede the reject."""
+    validate_access(access)
+    # Resolve first so domain requests are judged by the addresses they would reach.
+    rules: list[dict[str, Any]] = [{"inbound": [tag], "action": "resolve"}]
+    if access["mode"] == "internet":
+        rules.append({"inbound": [tag], "ip_is_private": True, "action": "reject"})
+        rules.append({"inbound": [tag], "ip_cidr": list(_NON_PUBLIC), "action": "reject"})
+        return rules
+    for entry in access["destinations"]:
+        kind, value, port = _destination(entry)
+        rule: dict[str, Any] = {"inbound": [tag]}
+        rule[{"cidr": "ip_cidr", "domain": "domain", "suffix": "domain_suffix"}[kind]] = [value]
+        if port is not None:
+            if "-" in port:
+                rule["port_range"] = [port.replace("-", ":")]
+            else:
+                rule["port"] = [int(port)]
+        rule.update({"action": "route", "outbound": direct})
+        rules.append(rule)
+    rules.append({"inbound": [tag], "action": "reject"})
+    return rules
+
+
+def apply_access(config: dict[str, Any], nodes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Replace the generated per-node rules in config["route"]; other rules are kept."""
+    node_tags = {node["inbound"]["tag"] for node in nodes}
+    route = config.setdefault("route", {})
+    kept = [rule for rule in route.get("rules", [])
+            if not (isinstance(rule, dict) and isinstance(rule.get("inbound"), list) and
+                    len(rule["inbound"]) == 1 and rule["inbound"][0] in node_tags)]
+    direct = next((item["tag"] for item in config.get("outbounds", []) if item.get("type") == "direct"), None)
+    generated: list[dict[str, Any]] = []
+    for node in nodes:
+        if node.get("access") and node["enabled"]:
+            if direct is None:
+                raise InvalidInventory("no direct outbound for access rules")
+            generated += access_rules(node["inbound"]["tag"], node["access"], direct)
+    if generated or kept:
+        route["rules"] = generated + kept
+    else:
+        route.pop("rules", None)
+    return config
 
 
 class InvalidInventory(ValueError):
@@ -270,8 +388,11 @@ def validate_inventory(inventory: Inventory) -> None:
     for node in nodes:
         expected = (set(Node.__annotations__) - {"cap_action", "upload_limit_bps", "download_limit_bps",
                                                 "expiry_count", "expiry_unit"}) if legacy else set(Node.__annotations__)
-        if not isinstance(node, dict) or set(node) != expected:
+        # "access" is optional: absent means the node may reach any destination.
+        if not isinstance(node, dict) or (set(node) - {"access"}) != expected:
             raise InvalidInventory("invalid node fields")
+        if "access" in node:
+            validate_access(node["access"])
         identifier = _uuid(node["id"])
         number = node["number"]
         if type(number) is not int or number < 1 or number in numbers:
@@ -377,4 +498,4 @@ def render_config(inventory: Inventory) -> dict[str, Any]:
     result = copy.deepcopy(inventory["base_config"])
     result["inbounds"] = [copy.deepcopy(node["inbound"]) for node in inventory["nodes"]
                           if node["enabled"]]
-    return result
+    return apply_access(result, inventory["nodes"])

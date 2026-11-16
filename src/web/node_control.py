@@ -23,7 +23,7 @@ import sys
 import tempfile
 import uuid
 
-from node_inventory import InvalidInventory, validate_inventory
+from node_inventory import InvalidInventory, apply_access, validate_inventory
 from console_port import read_rows, write_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
@@ -45,7 +45,7 @@ IPERF_PORT_FILE = state_data_dir() / "iperf-port.txt"
 EDIT_FIELDS = frozenset(("name", "port", "credential", "sni", "cap_bytes",
                          "cap_action", "upload_limit_bps", "download_limit_bps",
                          "expiry_count", "expiry_unit", "expires_at",
-                         "reset_mode", "next_reset_at"))
+                         "reset_mode", "next_reset_at", "access"))
 _HOST_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
 
 
@@ -295,14 +295,14 @@ def _random_credential(protocol):
     return secrets.token_urlsafe(24)
 
 
-def _candidate_document(document, old, new):
+def _candidate_document(document, old, new, nodes):
     result = copy.deepcopy(document)
     matches = [index for index, item in enumerate(result["inbounds"])
                if item["tag"] == old["inbound"]["tag"]]
     if len(matches) != 1:
         raise NodeControlError("installed node is not unique")
     result["inbounds"][matches[0]] = copy.deepcopy(new["inbound"])
-    return result
+    return apply_access(result, nodes)
 
 
 def _default_inbound(protocol, port):
@@ -412,6 +412,7 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
         proposed = copy.deepcopy(document)
         proposed["inbounds"] = [copy.deepcopy(n["inbound"]) for n in candidate["nodes"]
                                  if n["enabled"]]
+        apply_access(proposed, candidate["nodes"])
         original = config_path.read_bytes()
         meter_path = Path(state_path).parent / "meter.json"
         original_meter = meter_path.read_bytes() if meter_path.exists() else None
@@ -608,7 +609,8 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
             new["inbound"]["tls"]["certificate_path"] = str(cert)
             new["inbound"]["tls"]["key_path"] = str(key)
         document = json.loads(config_path.read_text(encoding="utf-8"))
-        changed_config = old["enabled"] and new["inbound"] != old["inbound"]
+        changed_config = old["enabled"] and (new["inbound"] != old["inbound"] or
+                                             new.get("access") != old.get("access"))
         staged = None
         old_bytes = config_path.read_bytes()
         opened = False
@@ -620,7 +622,7 @@ def apply_request(request, *, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         active = backend.active(SERVICES[module]) if changed_config else False
         try:
             if changed_config:
-                proposed = _candidate_document(document, old, new)
+                proposed = _candidate_document(document, old, new, candidate["nodes"])
                 staged = _stage(config_path, json.dumps(proposed, ensure_ascii=False).encode("utf-8"))
                 backend.check(staged)
                 if new_port != old["port"]:
