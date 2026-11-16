@@ -26,6 +26,19 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.5 — 2026-11-17
+
+Correcciones de diseño en la sección de tráfico de la página FRPS. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Corregido
+
+- **La sección de tráfico de la página FRPS no ocupaba todo el ancho de la tarjeta.** El título estaba centrado y las cuatro casillas eran más estrechas que la tarjeta. Ahora usa el mismo diseño de tarjeta de tráfico que las páginas de Tailscale y FRPC: título a la izquierda y casillas a todo el ancho.
+- **El botón «Gestión de acceso» tocaba las casillas de arriba.** Ahora hay un espacio entre ambos.
+
+#### Verificación
+
+Comprobado iniciando sesión y renderizando la página FRPS en el servidor de Macao. Pasa toda la suite automática.
+
 ### v7.0.4 — 2026-11-17
 
 Refuerzo de seguridad: se corrigen tres problemas hallados en una revisión de código. El comando de actualización no cambia y se conservan la configuración y los datos.

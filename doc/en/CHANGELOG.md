@@ -26,6 +26,19 @@ metadata:
 
 ## Changelog
 
+### v7.0.5 — 2026-11-17
+
+Layout fixes for the traffic section of the FRPS page. The upgrade command is unchanged and settings and data are kept.
+
+#### Fixed
+
+- **The traffic section of the FRPS page did not fill the card.** The heading was centred and the four tiles were narrower than the card. It now uses the same traffic-card layout as the Tailscale and FRPC pages: left-aligned heading, tiles across the full card width.
+- **The "Access" button touched the tiles above it.** There is now a gap between them.
+
+#### Verification
+
+Checked by logging in and rendering the FRPS page on the Macau server. The whole automated suite passes.
+
 ### v7.0.4 — 2026-11-17
 
 Security hardening: three issues found in a code review are fixed. The upgrade command is unchanged and settings and data are kept.
