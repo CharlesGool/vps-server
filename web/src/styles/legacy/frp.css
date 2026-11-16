@@ -200,3 +200,4 @@ div.traffic-card { margin-top: var(--compat-size-24); padding-top: var(--compat-
 .traffic-card .node-usage-heading h3 { font-size: var(--text-base); }
 .traffic-card .node-usage > .node-usage-heading { flex-direction: row; justify-content: flex-start; gap: var(--compat-size-14); }
 .traffic-card .node-secondary { margin: 0; padding: 0; border-top: 0; }
+.traffic-card .node-usage + .node-secondary { margin-top: var(--compat-size-14); }
