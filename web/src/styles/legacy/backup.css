@@ -96,3 +96,8 @@
 .sched-inline select { width: auto; min-width: var(--compat-size-54); margin: 0; }
 .sched-days { display: flex; flex-wrap: wrap; gap: var(--compat-size-11) var(--compat-size-24); }
 .sched-when { color: var(--foreground); font-weight: var(--font-weight-medium); }
+.sched-item-actions .backup-key-input { width: var(--compat-size-80); margin: 0; }
+.sched-item-actions form { display: flex; align-items: center; gap: var(--compat-size-11); }
+.sched-field input.is-mono { min-width: min(100%, var(--compat-size-32)); }
+
+.sched-field input.is-mono { width: var(--compat-size-32); max-width: 100%; }

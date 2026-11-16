@@ -26,6 +26,32 @@ metadata:
 
 ## Changelog
 
+### v7.0.0 — 2026-11-16
+
+State data is stored encrypted, backups can be encrypted to a key of your own, and there are four login methods. This version migrates a data format: the upgrade command is unchanged and settings and data are kept, but going back to an older version needs a decrypt step first (see below).
+
+#### New
+
+- **Data encryption.** The installer creates the data key `/etc/vps-server/data.key`, and the console stores the admin password, sessions, the alert (Bark) key, audit records, addresses that have logged in, the console access list, allowed IPs, the Mini Drive index, scheduled tasks, backup settings, the TLS private key and the client CA private key encrypted. Plain files from an older version are read as they are and turned into encrypted ones at startup. The Backup page gains a "Data encryption" card showing the state. It protects against a copy of the state directory, a disk image or a backup without the key, not against someone who is already root on the host. Node, FRP, domain forwarding and Tailscale configuration must be read by those programs directly, and Mini Drive files and the visitor database are not encrypted.
+- **Backup encryption.** Generate a key pair on the Backup page: the server keeps only the public key, and new backups are encrypted to it as `.sealed`, so it cannot open them itself; restoring asks for the private key you saved (shown once, never stored). Encrypted backups carry the data key and restore on any host; without a public key backups are plain and leave out the data key.
+- **Four login methods.** Settings > Access > Client certificates: password only, certificate only, password or certificate, or password + certificate. The older "require client certificates" becomes "certificate only", and when it was off, "password or certificate". Before switching to a method that needs a certificate you must have opened the settings with an active certificate, so you cannot lock yourself out.
+
+#### Changed
+
+- **Before going back to a version older than v7.0.0**, run `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all`; `upgrade.py` refuses an older version while encrypted files exist. Keep the data key safe (`secure_store.py export-key`): without it the encrypted state files cannot be recovered.
+- The configuration backup taken automatically before the upgrade to v7.0.0 is still plain (it is made before the data key exists); delete it once the upgrade looks fine.
+- Password login, certificate login and "password + certificate" are now decided by the login method; the Backup and security settings pages are adjusted.
+
+#### Verification
+
+Verified on a home virtual machine through the real console: after the upgrade the installer created the data key and at startup 10 state files (including the TLS and CA private keys) became encrypted, with HTTPS, certificate login and issuing a new certificate with the encrypted CA key all working and state surviving a restart. Each of the four login methods was checked for what it allows and refuses (including a device without a certificate being unable to switch to a method that needs one, wrong passwords, and devices without a certificate being kept out), and the original setting was restored. A plain backup does not carry the data key; an encrypted backup is entirely unreadable, a missing, wrong or malformed private key is refused without changing anything, the right key restores with services running and the temporary key file removed; uploading an encrypted backup works. 180 automated tests, including the RFC vectors and cross-checks against a reference library. The Macau host was not exercised before this release.
+
+#### Known issues
+
+- A lost backup private key or data key cannot be recovered; keep a separate copy of each.
+- Node, FRP, domain forwarding and Tailscale configuration, Mini Drive files and the visitor database are not encrypted (see above).
+- The key sits on the same host as the data, so it does not protect against someone who already has root on it.
+
 ### v6.6.0 — 2026-11-16
 
 Upgrades are now verified: a host that has pinned the maintainer's key upgrades only to releases signed with that key. The upgrade command changes, see below. Settings and data are kept.

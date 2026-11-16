@@ -13,6 +13,7 @@ import it. Restoring writes system files, so the console runs it through
 """
 
 import argparse
+import base64
 import errno
 import fnmatch
 import io
@@ -28,12 +29,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import crypto_box  # noqa: E402
+import secure_store  # noqa: E402
 import state_paths  # noqa: E402
 
 FORMAT = 1
 MANIFEST = ".vps-server-backup.json"
 KINDS = ("manual", "scheduled", "pre-upgrade", "pre-restore")
-NAME_RE = re.compile(r"config-(\d{8}T\d{6}Z)-(manual|scheduled|pre-upgrade|pre-restore)\.tar\.gz")
+NAME_RE = re.compile(r"config-(\d{8}T\d{6}Z)-(manual|scheduled|pre-upgrade|pre-restore)\.tar\.gz(\.sealed)?")
+SEALED_MAGIC = b"VSB1"
+SEAL_AAD = b"vps-server configuration backup"
 # Never larger than this when restoring: a configuration backup is small.
 MAX_RESTORE_BYTES = 512 * 1024 * 1024
 
@@ -59,6 +64,60 @@ def backup_dir():
     return state_paths.state_dir() / "backups"
 
 
+def recipient_file():
+    return state_paths.data_dir() / "backup-recipient.pub"
+
+
+def read_recipient():
+    """The public key backups are sealed to, or None when none is set."""
+    try:
+        raw = base64.b64decode(recipient_file().read_text(encoding="ascii").strip(), validate=True)
+    except (OSError, ValueError):
+        return None
+    return raw if len(raw) == 32 else None
+
+
+def parse_key(text):
+    """32 bytes from a base64 key as shown to the operator; BackupError otherwise."""
+    try:
+        raw = base64.b64decode(text.strip(), validate=True)
+    except (ValueError, AttributeError):
+        raise BackupError("not a valid key") from None
+    if len(raw) != 32:
+        raise BackupError("not a valid key")
+    return raw
+
+
+def set_recipient(public):
+    recipient_file().parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".recipient-", dir=recipient_file().parent)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="ascii") as handle:
+            handle.write(base64.b64encode(public).decode("ascii") + "\n")
+        os.replace(temporary, recipient_file())
+    except BaseException:
+        _remove(temporary)
+        raise
+
+
+def new_recipient():
+    """Make a key pair, keep the public half, hand back the private half (never stored)."""
+    private, public = crypto_box.generate_keypair()
+    set_recipient(public)
+    return base64.b64encode(private).decode("ascii"), base64.b64encode(public).decode("ascii")
+
+
+def public_from_private(private):
+    return crypto_box.x25519_public(private)
+
+
+def key_fingerprint(public):
+    import hashlib
+    digest = hashlib.sha256(public).hexdigest()[:32]
+    return ":".join(digest[i:i + 4] for i in range(0, 32, 4))
+
+
 def _excluded(path, state, data):
     """Mini Drive contents and earlier backups are not configuration."""
     for skipped in (state / "backups", data / "files"):
@@ -79,7 +138,7 @@ def _walk(root, state, data):
             yield from _walk(child, state, data)
 
 
-def config_files():
+def config_files(sealed=False):
     """Absolute paths to save, in a stable order."""
     state = state_paths.state_dir()
     data = state_paths.data_dir()
@@ -92,9 +151,11 @@ def config_files():
         if folder.is_dir():
             roots.extend(sorted(folder.glob(pattern)))
     seen, result = set(), []
+    # A plain archive must not carry the key that opens the encrypted state files next to them.
+    withheld = None if sealed else secure_store.key_path()
     for root in roots:
         for path in _walk(root, state, data):
-            if path not in seen:
+            if path not in seen and path != withheld:
                 seen.add(path)
                 result.append(path)
     return result
@@ -121,7 +182,7 @@ def _version():
     return "unknown"
 
 
-def publish(temporary, kind, directory=None):
+def publish(temporary, kind, directory=None, suffix=""):
     """Give a finished file its final name without replacing any other backup.
 
     The name carries the time to the second; when it is taken the time moves
@@ -131,7 +192,7 @@ def publish(temporary, kind, directory=None):
     directory = Path(directory) if directory else backup_dir()
     moment = datetime.now(timezone.utc)
     for _ in range(3600):
-        name = f"config-{moment.strftime('%Y%m%dT%H%M%SZ')}-{kind}.tar.gz"
+        name = f"config-{moment.strftime('%Y%m%dT%H%M%SZ')}-{kind}.tar.gz{suffix}"
         try:
             os.link(temporary, directory / name)
         except FileExistsError:
@@ -149,7 +210,8 @@ def create_backup(kind="manual", directory=None):
     directory = Path(directory) if directory else backup_dir()
     directory.mkdir(parents=True, exist_ok=True)
     os.chmod(directory, 0o700)
-    paths = config_files()
+    recipient = read_recipient()
+    paths = config_files(sealed=recipient is not None)
     descriptor, temporary = tempfile.mkstemp(prefix=".partial-", dir=directory)
     try:
         os.fchmod(descriptor, 0o600)
@@ -170,7 +232,13 @@ def create_backup(kind="manual", directory=None):
                     if not (path.is_dir() or path.is_file()) or path.is_symlink():
                         continue
                     archive.add(path, arcname=str(path).lstrip("/"), recursive=False)
-        name = publish(temporary, kind, directory)
+        if recipient is not None:
+            # Seal to the operator's public key: this host can write the backup but never read it back.
+            with open(temporary, "rb") as handle:
+                sealed = SEALED_MAGIC + crypto_box.seal(recipient, handle.read(), SEAL_AAD)
+            with open(temporary, "wb") as handle:
+                handle.write(sealed)
+        name = publish(temporary, kind, directory, ".sealed" if recipient is not None else "")
     except OSError as exc:
         _remove(temporary)
         raise BackupError("no space left" if exc.errno == errno.ENOSPC else "cannot write backup") from exc
@@ -200,7 +268,7 @@ def list_backups(directory=None):
         if not match or not entry.is_file() or entry.is_symlink():
             continue
         created = datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        items.append({"name": entry.name, "kind": match.group(2),
+        items.append({"name": entry.name, "kind": match.group(2), "sealed": bool(match.group(3)),
                       "created": int(created.timestamp()), "size": entry.stat().st_size})
     items.sort(key=lambda item: item["name"], reverse=True)
     return items
@@ -229,8 +297,34 @@ def prune(kind, keep, directory=None):
     return removed
 
 
+def is_sealed(path):
+    try:
+        with open(path, "rb") as handle:
+            return handle.read(4) == SEALED_MAGIC
+    except OSError:
+        return False
+
+
+def open_sealed_file(path, private_key):
+    """The plain ``.tar.gz`` bytes inside a sealed backup; BackupError for the wrong key or a damaged file."""
+    try:
+        with open(path, "rb") as handle:
+            blob = handle.read()
+        if blob[:4] != SEALED_MAGIC:
+            raise BackupError("not a sealed backup")
+        return crypto_box.open_sealed(private_key, blob[4:], SEAL_AAD)
+    except crypto_box.CryptoError:
+        raise BackupError("wrong key or damaged backup") from None
+    except OSError as exc:
+        raise BackupError("cannot read backup") from exc
+
+
 def validate_archive(path):
-    """Check an uploaded or stored archive; return its manifest."""
+    """Check an uploaded or stored archive; return its manifest (None for a sealed one: only its owner can look inside)."""
+    if is_sealed(path):
+        if Path(path).stat().st_size < 4 + 32 + 12 + 16 + 1:
+            raise BackupError("not a valid backup")
+        return None
     try:
         with tarfile.open(path, "r:gz") as archive:
             manifest = None
@@ -270,8 +364,27 @@ def _system_file_allowed(target):
     return False
 
 
-def restore(path, directory=None):
-    """Put a backup's files back. Takes a ``pre-restore`` backup first."""
+def restore(path, directory=None, private_key=None):
+    """Put a backup's files back. Takes a ``pre-restore`` backup first.
+
+    A sealed backup needs the private key it was sealed for.
+    """
+    plain = None
+    if is_sealed(path):
+        if private_key is None:
+            raise BackupError("this backup is sealed; its private key is needed")
+        descriptor, plain = tempfile.mkstemp(prefix=".unsealed-", dir=Path(path).parent)
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(open_sealed_file(path, private_key))
+            os.chmod(plain, 0o600)
+            return _restore_plain(plain, directory)
+        finally:
+            _remove(plain)
+    return _restore_plain(path, directory)
+
+
+def _restore_plain(path, directory):
     manifest = validate_archive(path)
     before = create_backup("pre-restore", directory)
     count = 0
@@ -312,6 +425,7 @@ def main(argv=None):
     sub.add_parser("list")
     restore_parser = sub.add_parser("restore")
     restore_parser.add_argument("archive")
+    restore_parser.add_argument("--private-key-file", help="file holding the private key of a sealed backup (deleted afterwards)")
     args = parser.parse_args(argv)
     try:
         if args.command == "create":
@@ -323,7 +437,13 @@ def main(argv=None):
             for item in list_backups():
                 print(item["name"], item["size"])
         else:
-            print(json.dumps(restore(args.archive)))
+            key = None
+            if args.private_key_file:
+                try:
+                    key = parse_key(Path(args.private_key_file).read_text(encoding="ascii"))
+                finally:
+                    _remove(args.private_key_file)
+            print(json.dumps(restore(args.archive, private_key=key)))
     except BackupError as exc:
         print("backup failed:", exc, file=sys.stderr)
         return 1

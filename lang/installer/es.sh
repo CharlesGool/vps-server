@@ -99,6 +99,8 @@ case "$key" in
   release_key_changed) fmt='Instalación rechazada: el paquete trae la clave %s, pero este equipo tiene fijada %s. Si confía en el cambio, ejecute de nuevo con VPSSRV_ACCEPT_KEY_CHANGE=%s (o upgrade.py --accept-key-change).\n' ;;
   release_key_missing) fmt='Instalación rechazada: este equipo tiene fijada la clave de versiones %s, pero el paquete no trae ninguna. Elimine %s solo si quiere dejar de exigir firmas.\n' ;;
   release_key_error) fmt='No se pudo comprobar la clave de firma de versiones; no se cambió nada.\n' ;;
+  data_key_created) fmt='Se creó la clave de datos /etc/vps-server/data.key; la consola guarda ahora su estado cifrado. No la incluya en copias junto a los datos.\n' ;;
+  data_key_failed) fmt='No se pudo crear la clave de datos; los archivos de estado siguen en texto plano.\n' ;;
   upgrade_anytls_kept) fmt='Se conserva el nodo anytls existente en el puerto %s; su contraseña no cambia y los clientes configurados siguen funcionando.\n' ;;
   upgrade_proxy_kept) fmt='Se conservan los nodos proxy existentes (%s); sus puertos y credenciales no cambian y los clientes configurados siguen funcionando.\n' ;;
   upgrade_no_new) fmt='Esta versión no añade ajustes nuevos.\n' ;;

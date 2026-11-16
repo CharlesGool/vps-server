@@ -92,7 +92,7 @@ class SettingsMixin:
         addresses = self.context.IP_ALLOWLIST.list_addresses()
         message = self.context.parse_qs(parsed.query).get("msg", [""])[0]
         notices = {"access_ip_added", "access_ip_removed", "access_ip_enabled", "access_ip_disabled",
-                   "client_cert_enabled", "client_cert_disabled", "client_cert_revoked_msg",
+                   "login_mode_saved", "client_cert_revoked_msg",
                    "login_ban_enabled", "login_ban_disabled", "login_ban_cleared",
                    "console_access_enabled", "console_access_disabled", "console_access_added",
                    "console_access_removed", "sessions_revoked", "alerts_saved", "alerts_key_cleared",
@@ -391,7 +391,7 @@ class SettingsMixin:
     def render_client_cert_card(self, t, token):
         esc = self.context.html.escape
         auth = self.context.CLIENT_AUTH
-        required = auth.required()
+        login_mode = auth.mode()
         current = self.client_certificate()
         status = (t["client_cert_current_ok"].format(name=current.get("name", "")) if current
                   else t["client_cert_current_none"])
@@ -411,17 +411,22 @@ class SettingsMixin:
         if not rows:
             rows = f'<li class="muted">{esc(t["client_cert_list_empty"])}</li>'
         hint = "" if current else f'<p class="muted">{esc(t["client_cert_current_none_hint"])}</p>'
+        mode_options = "".join(
+            f'<label class="login-mode-option"><input type="radio" name="mode" value="{m}"'
+            f'{" checked" if m == login_mode else ""}><span><strong>{esc(t["login_mode_" + m])}</strong>'
+            f'<small class="muted">{esc(t["login_mode_" + m + "_help"])}</small></span></label>'
+            for m in self.context.LOGIN_MODES)
         return f'''<section id="security-client-cert" class="access-card access-ip-card">
             <header class="access-card-header"><div><p class="access-eyebrow">{esc(t['access_security'])}</p>
               <h2>{esc(t['access_client_cert'])}</h2></div>{self.context.ui_icon('lock-keyhole')}</header>
             <div class="access-card-body">
             <p>{esc(t['client_cert_intro'])}</p>
             <p>{esc(status)}</p>{hint}{self.render_cert_autoselect(t, current, "autoselect-current") if current else ""}
-            <form method="post" action="/settings/client-cert/toggle" class="access-toggle-form">
-              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-toggle')}">
-              <input type="hidden" name="enabled" value="{'0' if required else '1'}">
-              <span>{esc(t['client_cert_switch'])}</span>
-              <button type="submit" aria-pressed="{'true' if required else 'false'}">{esc(t['access_ip_disable'] if required else t['access_ip_enable'])}</button>
+            <form method="post" action="/settings/client-cert/mode" class="access-mode-form">
+              <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'cert-mode')}">
+              <fieldset class="login-mode-options"><legend>{esc(t['login_mode_title'])}</legend>{mode_options}</fieldset>
+              <p class="muted small">{esc(t['login_mode_hint'])}</p>
+              <button type="submit">{esc(t['login_mode_save'])}</button>
             </form>
             <ul class="access-ip-list">{rows}</ul>
             <form method="post" action="/settings/client-cert/issue" class="access-ip-form">
@@ -532,7 +537,7 @@ class SettingsMixin:
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         action, field = {"/settings/client-cert/issue": ("cert-issue", "name"),
                          "/settings/client-cert/revoke": ("cert-revoke", "serial"),
-                         "/settings/client-cert/toggle": ("cert-toggle", "enabled")}[path]
+                         "/settings/client-cert/mode": ("cert-mode", "mode")}[path]
         if set(form) != {"csrf", field} or any(len(values) != 1 for values in form.values()):
             return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
         if not self.context.hmac.compare_digest(form["csrf"][0],
@@ -554,14 +559,14 @@ class SettingsMixin:
                 self.audit("cert_revoked", value[:8])
                 key = "client_cert_revoked_msg"
             else:
-                if value not in ("0", "1"):
+                # Only a browser that already holds an active certificate may demand one.
+                if value not in self.context.LOGIN_MODES:
                     return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-                # Only a browser that already holds an active certificate may require one.
-                if value == "1" and current is None:
+                if value in ("cert", "both") and current is None:
                     raise self.context.ClientCertError("client_cert_need_current")
-                auth.set_required(value == "1")
-                self.audit("cert_required_on" if value == "1" else "cert_required_off")
-                key = "client_cert_enabled" if value == "1" else "client_cert_disabled"
+                auth.set_mode(value)
+                self.audit("login_mode_changed", value)
+                key = "login_mode_saved"
         except self.context.ClientCertError as exc:
             key = exc.code
         except OSError:
@@ -731,7 +736,7 @@ class SettingsMixin:
                 self.handle_security_verify(lang)
                 return True
         security_path = path == "/settings/security" or path in self.SECURITY_POSTS or path in (
-            "/settings/client-cert/issue", "/settings/client-cert/revoke", "/settings/client-cert/toggle")
+            "/settings/client-cert/issue", "/settings/client-cert/revoke", "/settings/client-cert/mode")
         if security_path and not self.context.security_settings_valid(self.get_cookie("session")):
             if method == "GET":
                 target = "/settings/verify?next=frp" if path.startswith("/frp/") else "/settings/verify"
@@ -746,7 +751,7 @@ class SettingsMixin:
         elif method == "POST" and path in self.SECURITY_POSTS:
             self.handle_settings_post(path)
         elif method == "POST" and path in ("/settings/client-cert/issue", "/settings/client-cert/revoke",
-                                                "/settings/client-cert/toggle"):
+                                                "/settings/client-cert/mode"):
             self.handle_client_cert_post(path, lang)
         else:
             return False

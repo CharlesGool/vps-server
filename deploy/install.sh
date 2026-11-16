@@ -712,6 +712,15 @@ if [ "$UPGRADE" = 1 ] && [ "${VPSSRV_MODULE_ONLY:-0}" != 1 ] && [ -f "$SRC_DIR/s
     msg backup_pre_upgrade_failed
   fi
 fi
+# Encryption at rest: give this host a data key (kept outside the state directory). The console
+# encrypts its own state files with it when it starts; an existing key is never replaced.
+if [ -f "$SRC_DIR/src/web/secure_store.py" ]; then
+  if data_key="$(python3 "$SRC_DIR/src/web/secure_store.py" init 2>/dev/null)"; then
+    [ "$data_key" = created ] && msg data_key_created
+  else
+    msg data_key_failed
+  fi
+fi
 PASSWORD_WAS_PRESENT=0
 [ -f "$VPSSRV_PASSWORD_FILE" ] && PASSWORD_WAS_PRESENT=1
 if [ "$UPGRADE" = 1 ]; then

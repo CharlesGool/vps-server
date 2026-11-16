@@ -18,6 +18,8 @@ import os
 import sys
 import tempfile
 import threading
+
+import secure_store
 from pathlib import Path
 
 try:
@@ -81,7 +83,7 @@ class ConsoleAccess:
             self._enabled, self._networks, self.load_error = False, [], False
             return
         try:
-            document = json.loads(self.path.read_text(encoding="utf-8"))
+            document = json.loads(secure_store.read_text(self.path))
             if (not isinstance(document, dict) or set(document) != {"enabled", "networks"} or
                     not isinstance(document["enabled"], bool) or not isinstance(document["networks"], list) or
                     any(canonical_network(item) != item for item in document["networks"]) or
@@ -96,17 +98,7 @@ class ConsoleAccess:
             self._enabled, self._networks, self.load_error = False, [], True
 
     def _save(self, enabled, networks):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        fd, name = tempfile.mkstemp(prefix=".console-access-", dir=self.path.parent)
-        try:
-            os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as output:
-                output.write(json.dumps({"enabled": enabled, "networks": networks}) + "\n")
-                output.flush()
-                os.fsync(output.fileno())
-            os.replace(name, self.path)
-        finally:
-            Path(name).unlink(missing_ok=True)
+        secure_store.write_text(self.path, json.dumps({"enabled": enabled, "networks": networks}) + "\n")
         self._stamp = None
         self._refresh()
 

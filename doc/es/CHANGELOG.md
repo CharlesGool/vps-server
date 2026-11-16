@@ -26,6 +26,32 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.0 — 2026-11-16
+
+Los datos de estado se guardan cifrados, las copias se pueden cifrar con una clave propia y hay cuatro métodos de acceso. Esta versión migra un formato de datos: el comando de actualización no cambia y se conservan la configuración y los datos, pero para volver a una versión anterior hay que descifrar antes (véase abajo).
+
+#### Nuevo
+
+- **Cifrado de datos.** El instalador crea la clave de datos `/etc/vps-server/data.key` y la consola guarda cifrados la contraseña de administrador, las sesiones, la clave de alertas (Bark), los registros de auditoría, las direcciones que han iniciado sesión, la lista de acceso a la consola, las IP permitidas, el índice de Mini Drive, las tareas programadas, los ajustes de copias, la clave privada TLS y la clave privada de la CA de clientes. Los archivos en claro de una versión anterior se leen tal cual y se convierten en cifrados al arrancar. La página de copias incluye una tarjeta "Cifrado de datos" con el estado. Protege frente a una copia del directorio de estado, una imagen de disco o una copia sin la clave, no frente a quien ya es root en el equipo. La configuración de nodos, FRP, reenvío de dominios y Tailscale la leen esos programas directamente, y los archivos de Mini Drive y la base de datos de visitantes no se cifran.
+- **Cifrado de copias.** Genere un par de claves en la página de copias: el servidor solo guarda la clave pública y las copias nuevas se cifran con ella como `.sealed`, por lo que no puede abrirlas; al restaurar se pide la clave privada que guardó (se muestra una vez y no se almacena). Las copias cifradas llevan la clave de datos y se restauran en cualquier equipo; sin clave pública las copias van en claro y no incluyen la clave de datos.
+- **Cuatro métodos de acceso.** Ajustes > Acceso > Certificados de cliente: solo contraseña, solo certificado, contraseña o certificado, o contraseña + certificado. El antiguo "exigir certificados de cliente" pasa a "solo certificado" y, si estaba desactivado, a "contraseña o certificado". Antes de cambiar a un método que necesita certificado debe haber abierto los ajustes con un certificado activo, para no quedarse fuera.
+
+#### Cambios
+
+- **Antes de volver a una versión anterior a v7.0.0**, ejecute `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all`; `upgrade.py` rechaza una versión anterior mientras existan archivos cifrados. Guarde bien la clave de datos (`secure_store.py export-key`): sin ella no se pueden recuperar los archivos de estado cifrados.
+- La copia de configuración automática previa a la actualización a v7.0.0 sigue en claro (se hace antes de que exista la clave de datos); elimínela cuando la actualización parezca correcta.
+- El acceso con contraseña, con certificado y con "contraseña + certificado" se decide ahora según el método de acceso; se han ajustado las páginas de copias y de seguridad.
+
+#### Verificación
+
+Verificado en una máquina virtual doméstica con la consola real: tras la actualización el instalador creó la clave de datos y al arrancar 10 archivos de estado (incluidas las claves privadas TLS y de la CA) pasaron a estar cifrados, con HTTPS, acceso con certificado y emisión de un certificado nuevo con la clave de CA cifrada funcionando, y el estado se mantuvo tras reiniciar. Se comprobó qué permite y qué rechaza cada uno de los cuatro métodos de acceso (incluido que un dispositivo sin certificado no puede cambiar a un método que lo necesita, contraseñas erróneas y dispositivos sin certificado bloqueados), y se restauró el ajuste original. Una copia en claro no lleva la clave de datos; una copia cifrada es totalmente ilegible, una clave privada ausente, incorrecta o mal formada se rechaza sin cambiar nada, la clave correcta restaura con los servicios en marcha y el archivo temporal de la clave eliminado; subir una copia cifrada funciona. 180 pruebas automáticas, con los vectores de los RFC y contraste con una biblioteca de referencia. El servidor de Macao no se probó antes de esta versión.
+
+#### Problemas conocidos
+
+- Una clave privada de copias o una clave de datos perdida no se puede recuperar; guarde una copia aparte de cada una.
+- La configuración de nodos, FRP, reenvío de dominios y Tailscale, los archivos de Mini Drive y la base de datos de visitantes no se cifran (véase arriba).
+- La clave está en el mismo equipo que los datos, así que no protege frente a quien ya tiene root en él.
+
 ### v6.6.0 — 2026-11-16
 
 Las actualizaciones ahora se verifican: un equipo que ha fijado la clave del mantenedor solo se actualiza a versiones firmadas con ella. El comando de actualización cambia, véase abajo. Se conservan la configuración y los datos.

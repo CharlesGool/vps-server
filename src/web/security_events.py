@@ -16,6 +16,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import secure_store
+
 
 def _atomic_write(path, text):
     path = Path(path)
@@ -43,18 +45,18 @@ class AuditLog:
     def record(self, event, ip="", detail=""):
         entry = {"t": round(time.time(), 3), "event": str(event), "ip": str(ip or ""),
                  "detail": str(detail or "")[:200]}
-        line = json.dumps(entry, ensure_ascii=False) + "\n"
+        line = secure_store.seal_line(json.dumps(entry, ensure_ascii=False), self.path.name) + "\n"
         with self.lock:
             try:
                 self.path.parent.mkdir(parents=True, exist_ok=True)
                 fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
                 with os.fdopen(fd, "a", encoding="utf-8") as output:
                     output.write(line)
-                if self.path.stat().st_size > self.limit * 400:
+                if self.path.stat().st_size > self.limit * 700:
                     lines = self.path.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
                     if len(lines) > self.limit:
                         _atomic_write(self.path, "".join(lines[-self.limit:]))
-            except OSError:
+            except (OSError, ValueError):
                 pass
 
     def recent(self, count=50):
@@ -66,8 +68,8 @@ class AuditLog:
         entries = []
         for line in reversed(lines):
             try:
-                entry = json.loads(line)
-            except ValueError:
+                entry = json.loads(secure_store.open_line(line, self.path.name))
+            except ValueError:     # damaged record, or one this host's key cannot open
                 continue
             if isinstance(entry, dict) and isinstance(entry.get("event"), str):
                 entries.append(entry)
@@ -94,7 +96,7 @@ class KnownLogins:
         self.lock = threading.Lock()
         self.entries = {}
         try:
-            document = json.loads(self.path.read_text(encoding="utf-8"))
+            document = json.loads(secure_store.read_text(self.path))
             if isinstance(document, dict):
                 self.entries = {key: value for key, value in document.items()
                                 if isinstance(key, str) and isinstance(value, (int, float))}
@@ -118,7 +120,7 @@ class KnownLogins:
                 keep = sorted(self.entries, key=self.entries.get, reverse=True)[:self.LIMIT]
                 self.entries = {k: self.entries[k] for k in keep}
             try:
-                _atomic_write(self.path, json.dumps(self.entries) + "\n")
+                secure_store.write_text(self.path, json.dumps(self.entries) + "\n")
             except OSError:
                 pass
             return new
@@ -131,7 +133,7 @@ class KnownLogins:
         with self.lock:
             self.entries = {}
             try:
-                _atomic_write(self.path, "{}\n")
+                secure_store.write_text(self.path, "{}\n")
             except OSError:
                 pass
 
@@ -167,7 +169,7 @@ class BarkAlerts:
         self._last_sent = {}
         if self.path.exists():
             try:
-                document = json.loads(self.path.read_text(encoding="utf-8"))
+                document = json.loads(secure_store.read_text(self.path))
                 if (not isinstance(document, dict) or set(document) != set(self.SETTINGS) or
                         not valid_bark_server(document["server"]) or
                         not (document["key"] == "" or BARK_KEY_RE.fullmatch(document["key"])) or
@@ -196,7 +198,7 @@ class BarkAlerts:
         with self.lock:
             stored = "" if clear_key else (key or self.key)
             document = {"server": server, "key": stored, "new_ip": bool(new_ip), "ban": bool(ban)}
-            _atomic_write(self.path, json.dumps(document) + "\n")
+            secure_store.write_text(self.path, json.dumps(document) + "\n")
             self.server, self.key, self.new_ip, self.ban = server, stored, bool(new_ip), bool(ban)
             self.load_error = False
 

@@ -33,6 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import online_assets  # noqa: E402
 import release_trust as trust  # noqa: E402
+import secure_store  # noqa: E402
 import state_paths  # noqa: E402
 
 DEFAULT_REPO = "CharlesGool/vps-server"
@@ -212,6 +213,11 @@ def run(args, *, state_dir=None, prefix=None, opener=urllib.request.urlopen, ins
         if package_version != tag.lstrip("v"):
             raise UpgradeError(f"the package says {package_version}, not {tag}")
 
+        if trust.version_tuple(package_version) < (7, 0, 0) and secure_store.enabled() \
+                and any(state == "encrypted" for _path, state in secure_store.status()):
+            raise UpgradeError(
+                f"{tag} cannot read the console's encrypted state files (introduced in v7.0.0); first run "
+                f"`python3 {Path(__file__).resolve().parent / 'secure_store.py'} decrypt-all`, then upgrade again")
         if args.dry_run:
             out(f"Would upgrade {current or '?'} -> {tag}.")
             return 0

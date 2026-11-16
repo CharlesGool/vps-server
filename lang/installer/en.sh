@@ -99,6 +99,8 @@ case "$key" in
   release_key_changed) fmt='Refusing to install: the package ships release key %s, but this host has pinned %s. If you trust the change, run again with VPSSRV_ACCEPT_KEY_CHANGE=%s (or upgrade.py --accept-key-change).\n' ;;
   release_key_missing) fmt='Refusing to install: this host has pinned release key %s, but the package ships none. Delete %s only if you mean to stop enforcing signatures.\n' ;;
   release_key_error) fmt='Could not check the release signing key; nothing was changed.\n' ;;
+  data_key_created) fmt='Created the data key /etc/vps-server/data.key; the console now stores its state encrypted. Keep it out of backups that sit beside the data.\n' ;;
+  data_key_failed) fmt='Could not create the data key; state files stay in plain text.\n' ;;
   upgrade_anytls_kept) fmt='Keeping the existing anytls node on port %s — its password is unchanged, so configured clients keep working.\n' ;;
   upgrade_proxy_kept) fmt='Keeping the existing proxy node(s) (%s) — their ports and credentials are unchanged, so configured clients keep working.\n' ;;
   upgrade_no_new) fmt='This version adds no new settings.\n' ;;

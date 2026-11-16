@@ -144,5 +144,82 @@ class BackupTest(unittest.TestCase):
             cb._check_member(bad)
 
 
+class SealedBackupTest(BackupTest):
+    """The same fixtures, with an encryption key on the host and a recipient set for backups."""
+
+    def setUp(self):
+        super().setUp()
+        import secure_store
+        self.store = secure_store
+        os.environ["VPSSRV_DATA_KEY_FILE"] = str(self.etc / "data.key")
+        secure_store._cache.clear()
+        secure_store.init_key()
+
+    def tearDown(self):
+        os.environ.pop("VPSSRV_DATA_KEY_FILE", None)
+        self.store._cache.clear()
+        super().tearDown()
+
+    def test_without_a_recipient_the_data_key_stays_out_of_the_archive(self):
+        name = cb.create_backup("manual", self.out)
+        self.assertFalse(name.endswith(".sealed"))
+        self.assertFalse([n for n in self.names(name) if n.endswith("data.key")])
+        self.assertIn(str(self.etc / "state.json").lstrip("/"), self.names(name))
+
+    def test_with_a_recipient_the_archive_is_sealed_and_carries_the_key(self):
+        private, public = cb.new_recipient()
+        name = cb.create_backup("manual", self.out)
+        self.assertTrue(name.endswith(".tar.gz.sealed"))
+        raw = (self.out / name).read_bytes()
+        self.assertTrue(raw.startswith(cb.SEALED_MAGIC))
+        self.assertNotIn(b"SECRET", raw)
+        self.assertTrue(cb.is_sealed(self.out / name))
+        self.assertEqual([i["sealed"] for i in cb.list_backups(self.out)], [True])
+        self.assertEqual(cb.backup_path(name, self.out).name, name)
+        plain = cb.open_sealed_file(self.out / name, cb.parse_key(private))
+        with tarfile.open(fileobj=io.BytesIO(plain)) as archive:
+            self.assertTrue([m for m in archive.getnames() if m.endswith("data.key")])
+        self.assertEqual(cb.key_fingerprint(cb.parse_key(public)), cb.key_fingerprint(cb.read_recipient()))
+
+    def test_only_the_private_key_restores_a_sealed_backup(self):
+        private, _ = cb.new_recipient()
+        name = cb.create_backup("manual", self.out)
+        (self.state / "certs" / "key.pem").write_text("CHANGED")
+        with self.assertRaises(cb.BackupError):
+            cb.restore(self.out / name, self.out)                                # no key
+        other = cb.base64.b64encode(os.urandom(32)).decode()
+        with self.assertRaises(cb.BackupError):
+            cb.restore(self.out / name, self.out, cb.parse_key(other))          # wrong key
+        self.assertEqual((self.state / "certs" / "key.pem").read_text(), "CHANGED")
+        result = cb.restore(self.out / name, self.out, cb.parse_key(private))
+        self.assertEqual((self.state / "certs" / "key.pem").read_text(), "SECRET")
+        self.assertGreater(result["restored"], 0)
+        self.assertEqual([p.name for p in self.out.iterdir() if p.name.startswith(".unsealed")], [])
+
+    def test_a_damaged_sealed_backup_is_refused(self):
+        private, _ = cb.new_recipient()
+        name = cb.create_backup("manual", self.out)
+        path = self.out / name
+        raw = path.read_bytes()
+        path.write_bytes(raw[:-1] + bytes([raw[-1] ^ 1]))
+        with self.assertRaises(cb.BackupError):
+            cb.restore(path, self.out, cb.parse_key(private))
+        path.write_bytes(cb.SEALED_MAGIC + b"short")
+        with self.assertRaises(cb.BackupError):
+            cb.validate_archive(path)
+
+    def test_keys_are_parsed_strictly(self):
+        for bad in ("", "not base64!!", "AAAA", cb.base64.b64encode(bytes(33)).decode(), None):
+            with self.assertRaises(cb.BackupError, msg=str(bad)):
+                cb.parse_key(bad)
+
+    def test_pruning_and_names_cover_sealed_files(self):
+        cb.new_recipient()
+        names = [cb.create_backup("scheduled", self.out) for _ in range(4)]
+        self.assertEqual(len(set(names)), 4)
+        self.assertEqual(len(cb.prune("scheduled", 2, self.out)), 2)
+        self.assertEqual(len(cb.list_backups(self.out)), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

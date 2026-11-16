@@ -18,6 +18,8 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import secure_store
+
 HISTORY_PER_TASK = 20
 OUTPUT_TAIL = 4096
 MAX_TASKS = 50
@@ -206,26 +208,12 @@ def task_spec(task):
 
 
 def _write_json(path, document):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
-    try:
-        os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(document, handle, ensure_ascii=False)
-            handle.write("\n")
-        os.replace(temporary, path)
-    except BaseException:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
-        raise
+    secure_store.write_text(path, json.dumps(document, ensure_ascii=False) + "\n")
 
 
 def _read_json(path, default):
     try:
-        document = json.loads(Path(path).read_text(encoding="utf-8"))
+        document = json.loads(secure_store.read_text(path))
     except (OSError, ValueError):
         return default
     return document if isinstance(document, type(default)) else default

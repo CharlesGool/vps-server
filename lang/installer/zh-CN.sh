@@ -99,6 +99,8 @@ case "$key" in
   release_key_changed) fmt='拒绝安装: 安装包的发布密钥是 %s, 但这台主机固定的是 %s。确认可信后, 加上 VPSSRV_ACCEPT_KEY_CHANGE=%s 重新运行(或用 upgrade.py --accept-key-change)。\n' ;;
   release_key_missing) fmt='拒绝安装: 这台主机固定了发布密钥 %s, 但安装包没有附带密钥。只有确实要停止校验签名时才删除 %s。\n' ;;
   release_key_error) fmt='无法检查发布签名密钥, 没有做任何改动。\n' ;;
+  data_key_created) fmt='已创建数据密钥 /etc/vps-server/data.key, 控制台此后加密保存状态. 请勿把它和数据放在同一份备份里。\n' ;;
+  data_key_failed) fmt='无法创建数据密钥, 状态文件仍以明文保存。\n' ;;
   upgrade_anytls_kept) fmt='保留现有 anytls 节点，端口 %s —— 密码不变，已配置的客户端继续可用。\n' ;;
   upgrade_proxy_kept) fmt='保留现有 proxy 节点（%s）—— 端口和凭据不变，已配置的客户端继续可用。\n' ;;
   upgrade_no_new) fmt='本版本没有新增配置项。\n' ;;

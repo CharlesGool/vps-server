@@ -4,6 +4,8 @@ Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
 """
 
+import secure_store
+
 
 class AuthMixin:
     def user_agent(self):
@@ -72,11 +74,11 @@ class AuthMixin:
             f'autocomplete="current-password" autofocus required{invalid}')
         # Certificate login: offered whenever this connection presented an active
         # client certificate; once certificates are required it is the only way in.
-        cert_required = self.context.CLIENT_AUTH.required()
+        auth = self.context.CLIENT_AUTH
         cert_button = (f'<form method="post" action="/login/cert" class="login-form login-cert-form">{next_input}'
                        f'<button type="submit" class="login-submit">{self.context.html.escape(t["login_cert"])}</button></form>'
-                       if self.client_certificate() is not None else "")
-        password_form = "" if cert_required else f"""
+                       if auth.cert_login_allowed() and self.client_certificate() is not None else "")
+        password_form = "" if not auth.password_login_allowed() else f"""
             <form method="post" action="/login" class="login-form">
               {next_input}
               {password_field}
@@ -117,7 +119,7 @@ class AuthMixin:
         form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
         submitted = form.get("password", [""])[0]
         next_page = form.get("next", [""])[0]
-        if self.context.CLIENT_AUTH.required():
+        if not self.context.CLIENT_AUTH.password_login_allowed():
             # The password is kept only for re-verifying sensitive actions.
             return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
                                    error=self.context.STRINGS[lang]["login_password_disabled"])
@@ -145,6 +147,9 @@ class AuthMixin:
     def handle_cert_login(self, lang):
         raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
         next_page = self.context.parse_qs(raw.decode("utf-8", errors="replace")).get("next", [""])[0]
+        if not self.context.CLIENT_AUTH.cert_login_allowed():
+            return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
+                                   error=self.context.STRINGS[lang]["login_cert_disabled"])
         if self.client_certificate() is None:
             return self.page_login(lang, None, status=401, next_page=next_page, password_error=False,
                                    error=self.context.STRINGS[lang]["login_cert_missing"])
@@ -291,9 +296,9 @@ def _write_secret_file(context, path, value):
 
 def ensure_admin_password(context, ):
     if context.PASSWORD_FILE.exists():
-        return context.PASSWORD_FILE.read_text().strip()
+        return secure_store.read_text(context.PASSWORD_FILE).strip()
     password = context.secrets.token_urlsafe(15)
-    context._write_secret_file(context.PASSWORD_FILE, password)
+    secure_store.write_text(context.PASSWORD_FILE, password + "\n")
     print(context._log_text('log_admin_password', path=context.PASSWORD_FILE), file=context.sys.stderr)
     return password
 
@@ -338,7 +343,7 @@ class IpAllowlist:
         self.load_error = False
         if self.path.exists():
             try:
-                document = self.context.json.loads(self.path.read_text(encoding="utf-8"))
+                document = self.context.json.loads(secure_store.read_text(self.path))
                 if (not isinstance(document, dict) or
                         set(document) not in ({"allowed_ips"}, {"allowed_ips", "enabled"}) or
                         not isinstance(document.get("enabled", True), bool) or
@@ -367,7 +372,7 @@ class IpAllowlist:
         if not isinstance(enabled, bool):
             raise ValueError("invalid IP access setting")
         with self.lock:
-            self.context._atomic_private_text(self.path, self.context.json.dumps({"allowed_ips": sorted(self.addresses),
+            secure_store.write_text(self.path, self.context.json.dumps({"allowed_ips": sorted(self.addresses),
                                                        "enabled": enabled}) + "\n")
             self.enabled = enabled
             self.load_error = False
@@ -390,7 +395,7 @@ class IpAllowlist:
                     raise ValueError("IP address is not listed")
                 candidate.remove(canonical)
             if candidate != self.addresses:
-                self.context._atomic_private_text(self.path, self.context.json.dumps({"allowed_ips": sorted(candidate),
+                secure_store.write_text(self.path, self.context.json.dumps({"allowed_ips": sorted(candidate),
                                                            "enabled": self.enabled}) + "\n")
                 self.addresses = candidate
                 self.load_error = False
@@ -433,9 +438,9 @@ def ensure_console_port(context, ):
 
 def ensure_session_secret(context, ):
     if context.SECRET_FILE.exists():
-        return context.SECRET_FILE.read_text().strip()
+        return secure_store.read_text(context.SECRET_FILE).strip()
     secret = context.secrets.token_hex(32)
-    context._write_secret_file(context.SECRET_FILE, secret)
+    secure_store.write_text(context.SECRET_FILE, secret + "\n")
     return secret
 
 def ensure_tls_files(context, ):
@@ -501,13 +506,13 @@ def save_sessions(context):
              "sessions": context._sessions, "ip_sessions": context._ip_sessions,
              "security_sessions": context._security_sessions,
              "meta": context._session_meta}
-    context._atomic_private_text(context.SESSION_STATE_FILE, context.json.dumps(state))
+    secure_store.write_text(context.SESSION_STATE_FILE, context.json.dumps(state))
     context._sessions_saved_at = context.time.time()
 
 
 def load_sessions(context):
     try:
-        state = context.json.loads(context.SESSION_STATE_FILE.read_text())
+        state = context.json.loads(secure_store.read_text(context.SESSION_STATE_FILE))
         password_tag = context.hmac.new(context.SESSION_SECRET.encode(),
                        context.ADMIN_PASSWORD.encode(), "sha256").hexdigest()
         if not context.hmac.compare_digest(state["password"], password_tag):
@@ -659,7 +664,7 @@ def change_admin_password(context, replacement):
             replacement != replacement.strip() or any(ord(char) < 32 for char in replacement):
         raise ValueError("invalid new password")
     with context._password_lock:
-        context._atomic_private_text(context.PASSWORD_FILE, replacement + "\n")
+        secure_store.write_text(context.PASSWORD_FILE, replacement + "\n")
         context.ADMIN_PASSWORD = replacement
         with context._sessions_lock:
             context._sessions.clear()

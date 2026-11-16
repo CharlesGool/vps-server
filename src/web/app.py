@@ -75,12 +75,13 @@ from state_paths import (state_dir as host_state_dir, data_dir as host_data_dir,
                          password_file as host_password_file,
                          console_port_file as host_console_port_file,
                          cert_dir as host_cert_dir, install_state_file)
-from client_cert import ClientAuth, ClientCertError
+from client_cert import ClientAuth, ClientCertError, LOGIN_MODES
 from file_share import FileShareError, FileStore
 from app_meter import AppMeter, TrafficBlocked
 from caddy_sites import domains_enabled as caddy_domains_enabled, ip_enabled as caddy_ip_enabled
 from console_access import ConsoleAccess, ConsoleAccessError
 from security_events import AuditLog, KnownLogins, BarkAlerts
+import secure_store
 import terminal_session
 from node_state import read_inventory, _read_json
 from node_inventory import InvalidInventory, advance_reset_interval, normalize_destinations, reset_interval
@@ -1498,7 +1499,7 @@ def _server_context(issued=None):
             return context
         except (OSError, ssl.SSLError):
             pass  # Unreadable or half-written: keep the console's own certificate.
-    context.load_cert_chain(certfile=str(cert), keyfile=str(key))
+    secure_store.load_cert_chain(context, cert, key)
     return context
 
 
@@ -1653,6 +1654,15 @@ def main():
             if active:
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
+        # Encrypt state files written by an older version; the key itself is made by the installer.
+        try:
+            if secure_store.enabled():
+                for migrated in secure_store.migrate():
+                    print(_log_text('log_encrypted_file', name=migrated.name), file=sys.stderr)
+            else:
+                print(_log_text('log_encryption_off'), file=sys.stderr)
+        except (OSError, ValueError) as error:
+            print(_log_text('log_encryption_failed', error=error), file=sys.stderr)
         APP_METER.start()
         SCHEDULER.start()
 

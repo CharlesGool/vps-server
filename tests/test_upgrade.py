@@ -229,6 +229,30 @@ class UpgradeTest(unittest.TestCase):
         self.publish(extra=[(link, None)])
         self.assertEqual(self.go(), 0)
 
+    def test_an_older_version_is_refused_while_state_files_are_encrypted(self):
+        import secure_store
+        os.environ["VPSSRV_STATE_DIR"] = str(self.state)
+        os.environ["VPSSRV_DATA_KEY_FILE"] = str(self.tmp / "data.key")
+        secure_store._cache.clear()
+        try:
+            self.pin()
+            self.publish("v6.9.0")
+            (self.state / "data").mkdir(parents=True, exist_ok=True)
+            self.assertEqual(self.go(allow_downgrade=True, dry_run=True), 0)       # no key yet: nothing to decrypt
+            secure_store.init_key()
+            secure_store.write_text(self.state / "admin_password.txt", "a-long-enough-password\n")
+            with self.assertRaises(up.UpgradeError) as caught:
+                self.go(dry_run=True)
+            self.assertIn("decrypt-all", str(caught.exception))
+            for leftover in self.release.iterdir():                                   # a version that can read them
+                leftover.unlink()
+            self.publish("v7.0.0")
+            self.assertEqual(self.go(dry_run=True), 0)
+        finally:
+            os.environ.pop("VPSSRV_STATE_DIR", None)
+            os.environ.pop("VPSSRV_DATA_KEY_FILE", None)
+            secure_store._cache.clear()
+
     def test_installer_failure_is_passed_on(self):
         self.publish()
         self.pin()

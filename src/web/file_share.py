@@ -21,6 +21,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import secure_store
+
 GIB = 1024 ** 3
 DEFAULT_QUOTA = 5 * GIB
 MIN_QUOTA = 100 * 1024 ** 2
@@ -96,7 +98,7 @@ class FileStore:
 
     def _load(self):
         try:
-            data = json.loads(self.index_path.read_text(encoding="utf-8"))
+            data = json.loads(secure_store.read_text(self.index_path))
         except (OSError, ValueError):
             data = {}
         if not isinstance(data, dict):
@@ -111,10 +113,7 @@ class FileStore:
     def _save(self, data):
         self.root.mkdir(parents=True, exist_ok=True)
         os.chmod(self.root, 0o700)
-        temp = self.index_path.with_suffix(".tmp")
-        temp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-        os.chmod(temp, 0o600)
-        os.replace(temp, self.index_path)
+        secure_store.write_text(self.index_path, json.dumps(data, ensure_ascii=False, indent=1))
 
     def state(self):
         """Index snapshot with expired links dropped and stale jobs closed."""

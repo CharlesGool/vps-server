@@ -40,6 +40,13 @@ from pathlib import Path
 
 LEGACY_CA_CN = "vps-server console client CA"
 
+# How a person may log in to the console:
+#   password  only the password; certificates are ignored
+#   cert      only a client certificate (the password still confirms sensitive actions)
+#   either    the password or a certificate
+#   both      a client certificate on the connection and the password
+LOGIN_MODES = ("password", "cert", "either", "both")
+
 
 def host_label():
     """This host's name, reduced to what an openssl -subj value can carry safely.
@@ -56,8 +63,10 @@ def subject_cn(entry):
 
 try:
     from .state_paths import cert_dir as default_cert_dir
+    from . import secure_store
 except ImportError:  # Installed helpers are copied into one flat directory.
     from state_paths import cert_dir as default_cert_dir
+    import secure_store
 
 
 NAME_LIMIT = 40
@@ -138,7 +147,7 @@ class ClientAuth:
         self.ca_key = self.cert_dir / "client-ca.key"
         self.state_file = self.cert_dir / "client-auth.json"
         self._lock = threading.Lock()
-        self._cache = (None, {"required": False, "certs": []})
+        self._cache = (None, {"required": False, "certs": [], "login_mode": None})
 
     # -- state -------------------------------------------------------------
 
@@ -152,11 +161,13 @@ class ClientAuth:
         """The saved state, re-read only when the file changed (cheap per request)."""
         stamp = self._stamp()
         if stamp != self._cache[0]:
-            data = {"required": False, "certs": []}
+            data = {"required": False, "certs": [], "login_mode": None}
             try:
                 loaded = json.loads(self.state_file.read_text(encoding="utf-8"))
                 if isinstance(loaded, dict):
                     data["required"] = loaded.get("required") is True
+                    if loaded.get("login_mode") in LOGIN_MODES:
+                        data["login_mode"] = loaded["login_mode"]
                     data["certs"] = [item for item in loaded.get("certs", [])
                                      if isinstance(item, dict) and isinstance(item.get("serial"), str)]
                     if isinstance(loaded.get("ca_checked"), str):
@@ -171,8 +182,23 @@ class ClientAuth:
         _write_private(self.state_file, json.dumps(data, ensure_ascii=False, indent=2).encode())
         self._cache = (None, data)
 
+    def mode(self):
+        """The login mode in force. Older installs only had "required": that was ``cert``, else ``either``."""
+        data = self.state()
+        mode = data["login_mode"] or ("cert" if data["required"] else "either")
+        if mode in ("cert", "both") and not self.ca_cert.is_file():
+            return "password"   # nothing can be demanded of a device before a CA exists
+        return mode
+
     def required(self):
-        return self.state()["required"] and self.ca_cert.is_file()
+        """True when every request must present an active client certificate."""
+        return self.mode() in ("cert", "both")
+
+    def password_login_allowed(self):
+        return self.mode() in ("password", "either", "both")
+
+    def cert_login_allowed(self):
+        return self.mode() in ("cert", "either")
 
     def certificates(self):
         return list(self.state()["certs"])
@@ -262,7 +288,7 @@ class ClientAuth:
                           "-subj", f"/CN={LEGACY_CA_CN} {host_label()}",
                           "-addext", "basicConstraints=critical,CA:TRUE",
                           "-addext", "keyUsage=critical,keyCertSign,cRLSign")
-            _write_private(self.ca_key, key.read_bytes())
+            secure_store.write_bytes(self.ca_key, key.read_bytes())   # encrypted when the host has a data key
             _write_private(self.ca_cert, cert.read_bytes(), 0o644)
 
     def _sign_client(self, work, serial, days):
@@ -276,10 +302,15 @@ class ClientAuth:
         self._openssl(work, "req", "-new", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
                       "-nodes", "-keyout", str(work / "client.key"), "-out", str(work / "client.csr"),
                       "-subj", f"/CN={common_name}")
-        self._openssl(work, "x509", "-req", "-in", str(work / "client.csr"),
-                      "-CA", str(self.ca_cert), "-CAkey", str(self.ca_key),
-                      "-set_serial", "0x" + serial, "-days", str(days),
-                      "-sha256", "-extfile", str(work / "ext.cnf"), "-out", str(work / "client.pem"))
+        # openssl needs a path: a decrypted copy lives in ``work`` only until signing is done.
+        signing_key = secure_store.decrypted_copy(self.ca_key, work)
+        try:
+            self._openssl(work, "x509", "-req", "-in", str(work / "client.csr"),
+                          "-CA", str(self.ca_cert), "-CAkey", str(signing_key),
+                          "-set_serial", "0x" + serial, "-days", str(days),
+                          "-sha256", "-extfile", str(work / "ext.cnf"), "-out", str(work / "client.pem"))
+        finally:
+            signing_key.unlink(missing_ok=True)
         return common_name
 
     def self_test(self):
@@ -393,12 +424,18 @@ class ClientAuth:
                 raise ClientCertError("client_cert_error")
             self._save({**data, "certs": certs})
 
-    def set_required(self, required):
+    def set_mode(self, mode):
+        if mode not in LOGIN_MODES:
+            raise ClientCertError("client_cert_error")
         with self._lock:
             data = self.state()
-            if required and not any(not item.get("revoked") for item in data["certs"]):
+            if mode in ("cert", "both") and not any(not item.get("revoked") for item in data["certs"]):
                 raise ClientCertError("client_cert_need_current")
-            self._save({**data, "required": bool(required)})
+            # "required" stays in step so a version that only knows it behaves sensibly.
+            self._save({**data, "login_mode": mode, "required": mode in ("cert", "both")})
+
+    def set_required(self, required):
+        self.set_mode("cert" if required else "either")
 
 
 def main(argv=None):
@@ -416,10 +453,11 @@ def main(argv=None):
         print(f"CA self test: {'ok' if ok else 'FAILED (issuing a certificate replaces the CA)'}")
         return 0 if ok else 1
     if argv == ["disable"]:
-        auth.set_required(False)
-        print("Client certificates are no longer required; password login is enabled again.")
+        auth.set_mode("password")
+        print("Login mode is now password only; client certificates are no longer required.")
         return 0
     state = auth.state()
+    print(f"login mode: {auth.mode()}")
     print(f"required: {'yes' if auth.required() else 'no'}")
     for item in state["certs"]:
         created = time.strftime("%Y-%m-%d", time.localtime(item.get("created", 0)))

@@ -117,3 +117,13 @@ html[dir="rtl"] .motion-switch[aria-checked="true"] span { transform: translateX
 .client-cert-manual { margin-top: var(--compat-size-1); }
 .client-cert-manual > :not(summary) { margin: 0; }
 .client-cert-manual ul { margin: 0; padding-left: var(--compat-size-29); display: grid; gap: var(--compat-size-20); list-style: disc; }
+/* Login method: one radio per way to log in, each with its explanation. */
+.access-mode-form { display: grid; gap: var(--compat-size-14); margin: 0; }
+.login-mode-options { display: grid; gap: var(--compat-size-14); margin: 0; padding: 0; border: 0; min-width: 0; }
+.login-mode-options legend { margin-bottom: var(--compat-size-11); padding: 0; font-weight: var(--font-weight-semibold); }
+.login-mode-option { display: flex; align-items: flex-start; gap: var(--compat-size-11); margin: 0; font-weight: var(--font-weight-normal); cursor: pointer; }
+.login-mode-option input { margin: var(--compat-size-20) 0 0; flex: none; }
+.login-mode-option > span { display: grid; gap: var(--compat-size-20); min-width: 0; }
+.login-mode-option small { font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
+.access-mode-form { margin-bottom: var(--compat-size-24); }
+.access-mode-form > button { justify-self: start; }
