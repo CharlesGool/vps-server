@@ -37,7 +37,10 @@ FORMAT = 1
 MANIFEST = ".vps-server-backup.json"
 KINDS = ("manual", "scheduled", "pre-upgrade", "pre-restore")
 NAME_RE = re.compile(r"config-(\d{8}T\d{6}Z)-(manual|scheduled|pre-upgrade|pre-restore)\.tar\.gz(\.sealed)?")
-SEALED_MAGIC = b"VSB1"
+SEALED_MAGIC = b"VSB1"          # sealed, no key id (backups made before v7.0.1)
+SEALED_MAGIC_2 = b"VSB2"        # sealed; the next 16 bytes say which public key it is sealed to
+KEY_ID_LEN = 16
+RESULT_NAME = "restore-result.json"
 SEAL_AAD = b"vps-server configuration backup"
 # Never larger than this when restoring: a configuration backup is small.
 MAX_RESTORE_BYTES = 512 * 1024 * 1024
@@ -106,6 +109,12 @@ def new_recipient():
     private, public = crypto_box.generate_keypair()
     set_recipient(public)
     return base64.b64encode(private).decode("ascii"), base64.b64encode(public).decode("ascii")
+
+
+def key_id(public):
+    """Short identifier of a public key, stored in the header of a sealed backup."""
+    import hashlib
+    return hashlib.sha256(b"vps-server backup key" + public).digest()[:KEY_ID_LEN]
 
 
 def public_from_private(private):
@@ -235,7 +244,7 @@ def create_backup(kind="manual", directory=None):
         if recipient is not None:
             # Seal to the operator's public key: this host can write the backup but never read it back.
             with open(temporary, "rb") as handle:
-                sealed = SEALED_MAGIC + crypto_box.seal(recipient, handle.read(), SEAL_AAD)
+                sealed = SEALED_MAGIC_2 + key_id(recipient) + crypto_box.seal(recipient, handle.read(), SEAL_AAD)
             with open(temporary, "wb") as handle:
                 handle.write(sealed)
         name = publish(temporary, kind, directory, ".sealed" if recipient is not None else "")
@@ -269,6 +278,7 @@ def list_backups(directory=None):
             continue
         created = datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
         items.append({"name": entry.name, "kind": match.group(2), "sealed": bool(match.group(3)),
+                      "key_match": key_matches(entry) if match.group(3) else None,
                       "created": int(created.timestamp()), "size": entry.stat().st_size})
     items.sort(key=lambda item: item["name"], reverse=True)
     return items
@@ -300,9 +310,36 @@ def prune(kind, keep, directory=None):
 def is_sealed(path):
     try:
         with open(path, "rb") as handle:
-            return handle.read(4) == SEALED_MAGIC
+            return handle.read(4) in (SEALED_MAGIC, SEALED_MAGIC_2)
     except OSError:
         return False
+
+
+def sealed_key_id(path):
+    """The key id a sealed backup names, or None (older format, or not sealed)."""
+    try:
+        with open(path, "rb") as handle:
+            head = handle.read(4 + KEY_ID_LEN)
+    except OSError:
+        return None
+    return head[4:] if head[:4] == SEALED_MAGIC_2 and len(head) == 4 + KEY_ID_LEN else None
+
+
+def key_matches(path):
+    """True/False: sealed to the key now set for backups; None when that cannot be told."""
+    wanted, recipient = sealed_key_id(path), read_recipient()
+    if wanted is None or recipient is None:
+        return None
+    return wanted == key_id(recipient)
+
+
+def _sealed_body(blob):
+    """The sealed box inside a sealed backup file, whichever format it has."""
+    if blob[:4] == SEALED_MAGIC_2:
+        return blob[4 + KEY_ID_LEN:]
+    if blob[:4] == SEALED_MAGIC:
+        return blob[4:]
+    raise BackupError("not a sealed backup")
 
 
 def open_sealed_file(path, private_key):
@@ -310,9 +347,7 @@ def open_sealed_file(path, private_key):
     try:
         with open(path, "rb") as handle:
             blob = handle.read()
-        if blob[:4] != SEALED_MAGIC:
-            raise BackupError("not a sealed backup")
-        return crypto_box.open_sealed(private_key, blob[4:], SEAL_AAD)
+        return crypto_box.open_sealed(private_key, _sealed_body(blob), SEAL_AAD)
     except crypto_box.CryptoError:
         raise BackupError("wrong key or damaged backup") from None
     except OSError as exc:
@@ -416,6 +451,74 @@ def _restore_plain(path, directory):
     return {"restored": count, "before": before, "version": manifest.get("version", "")}
 
 
+def _version_tuple(text):
+    match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", str(text).strip())
+    return tuple(int(part) for part in match.groups()) if match else None
+
+
+def inspect(path, private_key=None):
+    """What restoring ``path`` would do, without doing it.
+
+    A sealed backup can only be looked into with its private key; without one only what its
+    header says (whether it is sealed to the current key) is known. Raises BackupError for a
+    backup that is damaged, unsafe or sealed to another key than ``private_key``.
+    """
+    path = Path(path)
+    sealed = is_sealed(path)
+    info = {"sealed": sealed, "readable": False, "key_match": key_matches(path) if sealed else None,
+            "size": path.stat().st_size}
+    if sealed and private_key is None:
+        return info
+    plain = path
+    unsealed = None
+    try:
+        if sealed:
+            descriptor, name = tempfile.mkstemp(prefix=".inspect-", dir=path.parent)
+            unsealed = Path(name)
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(open_sealed_file(path, private_key))
+            plain = unsealed
+        manifest = validate_archive(plain)
+    finally:
+        if unsealed is not None:
+            _remove(unsealed)
+    here = _version_tuple(_version())
+    theirs = _version_tuple(manifest.get("version", ""))
+    host = str(manifest.get("host", ""))
+    info.update({"readable": True, "host": host, "version": str(manifest.get("version", "")),
+                 "kind": str(manifest.get("kind", "")), "created": int(manifest.get("created", 0) or 0),
+                 "files": int(manifest.get("files", 0) or 0),
+                 "same_host": host == socket.gethostname(),
+                 "newer": bool(here and theirs and theirs > here)})
+    info["risky"] = bool(not info["same_host"] or info["newer"])
+    return info
+
+
+def result_file():
+    return state_paths.state_dir() / RESULT_NAME
+
+
+def write_result(result):
+    descriptor, temporary = tempfile.mkstemp(prefix=".result-", dir=result_file().parent)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(result, handle, ensure_ascii=False)
+        os.replace(temporary, result_file())
+    except BaseException:
+        _remove(temporary)
+        raise
+
+
+def read_result():
+    """The outcome of the last restore, or None."""
+    try:
+        data = json.loads(result_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and isinstance(data.get("ok"), bool) else None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -438,12 +541,22 @@ def main(argv=None):
                 print(item["name"], item["size"])
         else:
             key = None
+            started = int(time.time())
             if args.private_key_file:
                 try:
                     key = parse_key(Path(args.private_key_file).read_text(encoding="ascii"))
+                except BackupError as exc:
+                    write_result({"ok": False, "time": started, "name": Path(args.archive).name, "error": str(exc)})
+                    raise
                 finally:
                     _remove(args.private_key_file)
-            print(json.dumps(restore(args.archive, private_key=key)))
+            try:
+                done = restore(args.archive, private_key=key)
+            except BackupError as exc:
+                write_result({"ok": False, "time": started, "name": Path(args.archive).name, "error": str(exc)})
+                raise
+            write_result({"ok": True, "time": started, "name": Path(args.archive).name, **done})
+            print(json.dumps(done))
     except BackupError as exc:
         print("backup failed:", exc, file=sys.stderr)
         return 1

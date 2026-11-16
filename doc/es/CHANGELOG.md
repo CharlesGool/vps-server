@@ -26,6 +26,30 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.1 — 2026-11-17
+
+Se rehace el flujo de restauración de copias y las claves de copias tienen botones de copiar. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Mejorado
+
+- **Restaurar primero muestra una vista previa y luego pide confirmar.** "Restaurar" abre una vista previa con el equipo de origen, la versión, el tipo, la fecha de creación y el número de archivos de la copia. Una copia de otro equipo o de una versión más nueva se considera de riesgo y hay que marcar la confirmación para restaurarla; el servidor lo vuelve a decidir antes de actuar.
+- **La clave privada solo se necesita al restaurar.** Descargar y subir una copia cifrada no requieren la clave privada (el servidor no la tiene y no puede comprobarla); se introduce en la vista previa tras pulsar "Restaurar", una clave errónea se indica al instante y no se cambia nada. Al subir una copia se pasa directamente a esta vista previa.
+- **Las copias cifradas registran su clave de destino.** Una copia cifrada nueva lleva en la cabecera con qué clave pública está sellada; tras cambiar la clave de copias, las copias cifradas anteriores se marcan como "Otra clave" en la lista. Las copias cifradas del formato anterior se siguen pudiendo restaurar.
+- **El resultado de la restauración es visible.** El resultado (cuántos archivos se restauraron, o por qué falló y que "la configuración actual no se modificó") aparece arriba en la página de copias.
+
+#### Nuevo
+
+- **Botones de copiar junto a las claves de copias.** Al generar una clave de copias, la clave privada y la pública tienen cada una un botón de copiar, con la función de copiar que ya tienen otras páginas de la consola.
+
+#### Verificación
+
+Verificado en una máquina virtual doméstica con la consola real: vistas previas de copias en claro y cifradas; claves privadas erróneas o mal formadas rechazadas al instante sin cambiar datos; la clave correcta restaura con el resultado en la página de copias; tras cambiar el nombre de equipo dentro de una copia, la vista previa avisa y pide marcar la casilla, el servidor se niega a restaurar sin ella sin cambiar nada y con ella la restauración funciona; tras cambiar la clave de copias, una copia cifrada anterior se marca como "Otra clave"; descargar copias en claro o cifradas y subir cifradas no requieren clave privada, y los archivos basura se siguen rechazando. Un clic real en el botón de copiar copia exactamente la clave privada. 195 pruebas automáticas. El servidor de Macao no se probó antes de esta versión.
+
+#### Problemas conocidos
+
+- Una copia cifrada subida no se puede comprobar antes de restaurarla (si está dañada) ni saber qué clave privada necesita (la cabecera anterior no lo registra).
+- Restaurar una copia de otro equipo trae consigo la clave de datos, el método de acceso y los certificados de ese equipo; la vista previa lo avisa y antes se hace una copia del estado actual.
+
 ### v7.0.0 — 2026-11-16
 
 Los datos de estado se guardan cifrados, las copias se pueden cifrar con una clave propia y hay cuatro métodos de acceso. Esta versión migra un formato de datos: el comando de actualización no cambia y se conservan la configuración y los datos, pero para volver a una versión anterior hay que descifrar antes (véase abajo).

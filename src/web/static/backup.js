@@ -50,7 +50,8 @@
         let reply = {};
         try { reply = JSON.parse(request.responseText); } catch (error) { reply = {}; }
         if (request.status === 200 && reply.ok) {
-          window.location.assign('/backup?msg=uploaded');
+          // Straight on to the restore page: it shows what the file holds and asks for the key there.
+          window.location.assign(reply.name ? '/backup/restore?name=' + encodeURIComponent(reply.name) : '/backup?msg=uploaded');
         } else {
           window.location.assign('/backup?error=' + (reply.error === 'invalid' ? 'invalid' : 'failed'));
         }

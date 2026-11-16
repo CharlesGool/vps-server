@@ -1,6 +1,7 @@
 """Configuration backups: contents, retention, safe restore (temp dirs only)."""
 import io
 import os
+import stat
 import sys
 import tarfile
 import tempfile
@@ -171,7 +172,7 @@ class SealedBackupTest(BackupTest):
         name = cb.create_backup("manual", self.out)
         self.assertTrue(name.endswith(".tar.gz.sealed"))
         raw = (self.out / name).read_bytes()
-        self.assertTrue(raw.startswith(cb.SEALED_MAGIC))
+        self.assertTrue(raw.startswith(cb.SEALED_MAGIC_2))
         self.assertNotIn(b"SECRET", raw)
         self.assertTrue(cb.is_sealed(self.out / name))
         self.assertEqual([i["sealed"] for i in cb.list_backups(self.out)], [True])
@@ -207,6 +208,75 @@ class SealedBackupTest(BackupTest):
         path.write_bytes(cb.SEALED_MAGIC + b"short")
         with self.assertRaises(cb.BackupError):
             cb.validate_archive(path)
+
+    def test_sealed_backups_name_their_key_and_older_ones_still_open(self):
+        private, public = cb.new_recipient()
+        name = cb.create_backup("manual", self.out)
+        path = self.out / name
+        self.assertEqual(cb.sealed_key_id(path), cb.key_id(cb.parse_key(public)))
+        self.assertTrue(cb.key_matches(path))
+        # a backup made before v7.0.1 has no key id: it still opens, and nothing can be said about its key
+        plain = cb.open_sealed_file(path, cb.parse_key(private))
+        old = self.out / "config-20200101T000000Z-manual.tar.gz.sealed"
+        old.write_bytes(cb.SEALED_MAGIC + cb.crypto_box.seal(cb.parse_key(public), plain, cb.SEAL_AAD))
+        self.assertIsNone(cb.sealed_key_id(old))
+        self.assertIsNone(cb.key_matches(old))
+        self.assertEqual(cb.open_sealed_file(old, cb.parse_key(private)), plain)
+        self.assertIsNone([i for i in cb.list_backups(self.out) if i["name"] == old.name][0]["key_match"])
+        # after the backup key is replaced, the earlier backups are sealed to another key
+        cb.new_recipient()
+        self.assertFalse(cb.key_matches(path))
+        self.assertFalse([i for i in cb.list_backups(self.out) if i["name"] == name][0]["key_match"])
+
+    def test_inspect_reads_a_plain_backup_and_flags_what_is_risky(self):
+        name = cb.create_backup("manual", self.out)
+        info = cb.inspect(self.out / name)
+        self.assertEqual((info["sealed"], info["readable"], info["same_host"], info["newer"], info["risky"]),
+                         (False, True, True, False, False))
+        self.assertEqual((info["kind"], info["host"]), ("manual", cb.socket.gethostname()))
+        self.assertGreater(info["files"], 0)
+        original = cb.socket.gethostname
+        cb.socket.gethostname = lambda: "some-other-host"
+        try:
+            other = cb.inspect(self.out / name)
+        finally:
+            cb.socket.gethostname = original
+        self.assertEqual((other["same_host"], other["risky"]), (False, True))
+        os.environ["VPSSRV_BACKUP_VERSION"] = "99.0.0"
+        try:
+            newer_name = cb.create_backup("manual", self.out)
+        finally:
+            os.environ.pop("VPSSRV_BACKUP_VERSION", None)
+        newer = cb.inspect(self.out / newer_name)
+        self.assertEqual((newer["version"], newer["newer"], newer["risky"]), ("99.0.0", True, True))
+
+    def test_inspect_a_sealed_backup_needs_its_key_and_leaves_nothing_behind(self):
+        private, _ = cb.new_recipient()
+        name = cb.create_backup("manual", self.out)
+        locked = cb.inspect(self.out / name)
+        self.assertEqual((locked["sealed"], locked["readable"], locked["key_match"]), (True, False, True))
+        self.assertNotIn("host", locked)
+        opened = cb.inspect(self.out / name, cb.parse_key(private))
+        self.assertEqual((opened["readable"], opened["same_host"]), (True, True))
+        with self.assertRaises(cb.BackupError):
+            cb.inspect(self.out / name, cb.parse_key(cb.base64.b64encode(os.urandom(32)).decode()))
+        self.assertEqual([p.name for p in self.out.iterdir() if p.name.startswith(".")], [])
+
+    def test_the_restore_command_records_how_it_went(self):
+        self.assertIsNone(cb.read_result())
+        name = cb.create_backup("manual", self.out)
+        self.assertEqual(cb.main(["restore", str(self.out / name)]), 0)
+        result = cb.read_result()
+        self.assertTrue(result["ok"])
+        self.assertEqual((result["name"], result["restored"] > 0), (name, True))
+        self.assertTrue(result["before"].endswith(".tar.gz"))
+        junk = self.out / "config-20200101T000000Z-manual.tar.gz"
+        junk.write_bytes(b"not a backup")
+        self.assertEqual(cb.main(["restore", str(junk)]), 1)
+        failed = cb.read_result()
+        self.assertFalse(failed["ok"])
+        self.assertEqual(failed["name"], junk.name)
+        self.assertEqual(stat.S_IMODE(os.stat(cb.result_file()).st_mode), 0o600)
 
     def test_keys_are_parsed_strictly(self):
         for bad in ("", "not base64!!", "AAAA", cb.base64.b64encode(bytes(33)).decode(), None):

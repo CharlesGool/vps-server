@@ -103,3 +103,6 @@
 .sched-field input.is-mono { width: var(--compat-size-32); max-width: 100%; }
 .meter[data-sign="negative"] > span { background: var(--success); }
 .total-meter-buttons { display: inline-flex; flex-wrap: wrap; gap: var(--compat-size-11); }
+.backup-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-80)), 1fr)); gap: var(--compat-size-14) var(--compat-size-24); margin: 0; }
+.backup-details dt { color: var(--muted-foreground); font-size: var(--text-sm); }
+.backup-details dd { margin: var(--compat-size-20) 0 0; font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }

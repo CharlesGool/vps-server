@@ -26,6 +26,30 @@ metadata:
 
 ## Changelog
 
+### v7.0.1 — 2026-11-17
+
+The backup restore flow is reworked, and the backup keys get copy buttons. The upgrade command is unchanged and settings and data are kept.
+
+#### Improved
+
+- **Restore previews first, then confirms.** "Restore" opens a preview showing the backup's source host, version, kind, creation time and file count. A backup from another host or a newer version counts as risky and must be ticked to confirm before it is restored; the server decides that again before acting.
+- **The private key is needed only to restore.** Downloading and uploading an encrypted backup need no private key (the server holds none and cannot check it); you enter it on the preview page after clicking "Restore", a wrong key is reported at once and nothing is changed. Uploading a backup goes straight to this preview.
+- **Encrypted backups record their target key.** A new encrypted backup carries which public key it is sealed to in its header; after the backup key is replaced, earlier encrypted backups are marked "Other key" in the list. Encrypted backups in the older format can still be restored.
+- **The restore result is visible.** The outcome (how many files were restored, or why it failed and that "the current configuration was not changed") shows at the top of the Backup page.
+
+#### New
+
+- **Copy buttons beside the backup keys.** After generating a backup key, the private and public keys each get a copy button, using the copy feature other console pages already have.
+
+#### Verification
+
+Verified on a home virtual machine through the real console: previews of plain and encrypted backups; wrong and malformed private keys refused on the spot without changing data; the right key restoring with the result shown on the Backup page; after changing the host name inside a backup, the preview warns and asks for a tick, the server refuses to restore without it and changes nothing, and with it the restore succeeds; after replacing the backup key, an older encrypted backup is marked "Other key"; downloading plain or encrypted backups and uploading encrypted ones need no private key, and junk files are still refused. A real browser click on the copy button copies exactly the private key. 195 automated tests. The Macau host was not exercised before this release.
+
+#### Known issues
+
+- An uploaded encrypted backup cannot be checked for damage before it is restored, nor for which private key it needs (the older header does not record it).
+- Restoring a backup from another host brings that host's data key, login method and certificates with it; the preview warns and the current state is backed up first.
+
 ### v7.0.0 — 2026-11-16
 
 State data is stored encrypted, backups can be encrypted to a key of your own, and there are four login methods. This version migrates a data format: the upgrade command is unchanged and settings and data are kept, but going back to an older version needs a decrypt step first (see below).

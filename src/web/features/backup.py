@@ -21,7 +21,7 @@ import secure_store
 MAX_UPLOAD = 256 * 1024 * 1024
 UPLOAD_IDLE_TIMEOUT = 60
 NOTICES = ("created", "deleted", "settings", "restore_started", "uploaded", "key_set")
-ERRORS = ("failed", "invalid", "not_found", "no_space", "busy", "key_wrong", "key_needed")
+ERRORS = ("failed", "invalid", "not_found", "no_space", "busy", "key_wrong", "key_needed", "ack_needed")
 KIND_KEYS = {"manual": "backup_kind_manual", "scheduled": "backup_kind_scheduled",
              "pre-upgrade": "backup_kind_pre_upgrade", "pre-restore": "backup_kind_pre_restore"}
 # Restart order after a restore: meters first (they take their dependents along),
@@ -116,18 +116,13 @@ class BackupMixin:
                 f'<li class="sched-item"><div class="sched-item-main"><div class="sched-item-title">'
                 f'<span class="tag" data-tone="{tone}">{esc(t[KIND_KEYS[item["kind"]]])}</span>'
                 + (f'<span class="tag" data-tone="success">{esc(t["backup_sealed_tag"])}</span>' if item["sealed"] else '')
+                + (f'<span class="tag" data-tone="warning">{esc(t["backup_other_key_tag"])}</span>' if item["key_match"] is False else '')
                 + f'<span>{esc(local_time(item["created"]))}</span>'
                 f'<span class="sched-item-size">{esc(human_size(item["size"]))}</span></div>'
                 f'<div class="sched-item-meta"><code class="sched-code">{esc(item["name"])}</code></div></div>'
                 f'<div class="sched-item-actions">'
                 f'<a class="files-button" href="/backup/download?name={name}" download>{esc(t["backup_download"])}</a>'
-                f'<form method="post" action="/backup/restore" class="backup-confirm" '
-                f'data-confirm="{esc(t["backup_restore_confirm"], quote=True)}">{hidden}'
-                f'<input type="hidden" name="name" value="{name}">'
-                + (f'<input type="password" name="private_key" class="backup-key-input" autocomplete="off" required '
-                   f'placeholder="{esc(t["backup_restore_key"], quote=True)}" aria-label="{esc(t["backup_restore_key"], quote=True)}">'
-                   if item["sealed"] else '')
-                + f'<button type="submit" class="files-button">{esc(t["backup_restore"])}</button></form>'
+                f'<a class="files-button" href="/backup/restore?name={name}">{esc(t["backup_restore"])}</a>'
                 f'<form method="post" action="/backup/delete" class="backup-confirm" '
                 f'data-confirm="{esc(t["backup_delete_confirm"], quote=True)}">{hidden}'
                 f'<input type="hidden" name="name" value="{name}">'
@@ -177,8 +172,19 @@ class BackupMixin:
             data_state, data_text = f'<span class="tag" data-tone="danger">{esc(t["data_enc_error"])}</span>', t["data_enc_error_text"]
         data_card = (f'<section class="card wide sched-card"><div class="sched-card-head"><h2>{esc(t["data_enc_title"])}</h2>{data_state}</div>'
                      f'<p class="muted small">{esc(data_text)}</p></section>')
+        outcome = config_backup.read_result()
+        result_card = ""
+        if outcome:
+            if outcome["ok"]:
+                text = t["backup_result_ok"].format(files=outcome.get("restored", 0), name=outcome.get("name", ""))
+                tag = f'<span class="tag" data-tone="success">{esc(t["task_status_ok"])}</span>'
+            else:
+                text = t["backup_result_failed"].format(name=outcome.get("name", ""), error=outcome.get("error", ""))
+                tag = f'<span class="tag" data-tone="danger">{esc(t["task_status_failed"])}</span>'
+            result_card = (f'<section class="card wide sched-card"><div class="sched-card-head"><h2>{esc(t["backup_result_title"])}</h2>{tag}</div>'
+                           f'<p class="muted small">{esc(local_time(outcome.get("time", 0)))} · {esc(text)}</p></section>')
         body = (f'<h1>{esc(t["backup"])}</h1><div class="frp-workspace files-page">{"".join(messages)}'
-                f'{schedule}{listing}{key_card}{upload}{data_card}</div>'
+                f'{result_card}{schedule}{listing}{key_card}{upload}{data_card}</div>'
                 '<script src="/static/backup.js" defer></script>')
         return self.send_html(200, self.render_page(t["backup"], body, lang, icon="files", back_href="/"),
                               {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
@@ -198,6 +204,10 @@ class BackupMixin:
             self.handle_backup_settings()
         elif method == "POST" and path == "/backup/delete":
             self.handle_backup_delete()
+        elif method == "GET" and path == "/backup/restore":
+            self.page_backup_restore(lang, query_lang, self.context.parse_qs(parsed.query).get("name", [""])[0])
+        elif method == "POST" and path == "/backup/restore/open":
+            self.handle_backup_restore_open(lang, query_lang)
         elif method == "POST" and path == "/backup/restore":
             self.handle_backup_restore()
         elif method == "POST" and path == "/backup/key/new":
@@ -285,7 +295,7 @@ class BackupMixin:
                     remaining -= len(chunk)
             os.chmod(temporary, 0o600)
             config_backup.validate_archive(temporary)
-            config_backup.publish(temporary, "manual", suffix=".sealed" if config_backup.is_sealed(temporary) else "")
+            stored = config_backup.publish(temporary, "manual", suffix=".sealed" if config_backup.is_sealed(temporary) else "")
         except config_backup.BackupError:
             Path(temporary).unlink(missing_ok=True)
             return self.send_json(400, {"error": "invalid"})
@@ -298,22 +308,110 @@ class BackupMixin:
                 self.connection.settimeout(None)
             except OSError:
                 pass
-        return self.send_json(200, {"ok": True})
+        return self.send_json(200, {"ok": True, "name": stored})
 
-    def handle_backup_restore(self):
+    # -- restore: look first, then confirm ------------------------------------------
+
+    def restore_target(self, name):
+        """(path, None) for a listed backup, or (None, error code)."""
+        try:
+            path = config_backup.backup_path(name)
+            config_backup.validate_archive(path)
+        except config_backup.BackupError:
+            return None, "not_found"
+        return path, None
+
+    def render_restore_page(self, lang, query_lang, path, info, private_key="", error=None, status=200):
+        t = self.context.STRINGS[lang]
+        esc = self.context.html.escape
+        csrf = esc(self.backup_csrf(), quote=True)
+        name = esc(path.name, quote=True)
+        hidden = f'<input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="name" value="{name}">'
+        message = f'<p class="error" role="alert">{esc(t["backup_error_" + error])}</p>' if error else ""
+        back = f'<a class="files-button" href="/backup">{esc(t["task_cancel"])}</a>'
+        if not info["readable"]:
+            # A sealed backup: say what its header says, then ask for the key to look inside.
+            note = ""
+            if info["key_match"] is False:
+                note = f'<p class="error" role="status">{esc(t["backup_restore_other_key"])}</p>'
+            elif info["key_match"] is True:
+                note = f'<p class="muted small">{esc(t["backup_restore_this_key"])}</p>'
+            body = (f'<section class="card wide sched-card"><div class="sched-card-head"><h2>{esc(t["backup_restore_title"])}</h2>'
+                    f'<span class="tag" data-tone="success">{esc(t["backup_sealed_tag"])}</span></div>'
+                    f'<p><code class="sched-code">{esc(path.name)}</code></p>{message}'
+                    f'<p class="muted small">{esc(t["backup_restore_needs_key"])}</p>{note}'
+                    f'<form method="post" action="/backup/restore/open" class="sched-form">{hidden}'
+                    f'<label class="sched-field"><span>{esc(t["backup_restore_key"])}</span>'
+                    f'<input type="password" name="private_key" class="is-mono" autocomplete="off" required spellcheck="false" maxlength="64"></label>'
+                    f'<button type="submit">{esc(t["backup_restore_look"])}</button> {back}</form></section>')
+        else:
+            def row(label, value):
+                return f'<div><dt>{esc(label)}</dt><dd>{esc(str(value))}</dd></div>'
+            details = (row(t["backup_restore_host"], info["host"] or "?") + row(t["backup_restore_version"], info["version"] or "?")
+                       + row(t["backup_restore_kind"], t[KIND_KEYS[info["kind"]]] if info["kind"] in KIND_KEYS else info["kind"])
+                       + row(t["backup_restore_created"], local_time(info["created"])) + row(t["backup_restore_files"], info["files"]))
+            warnings = ""
+            if not info["same_host"]:
+                warnings += f'<p class="error" role="status">{esc(t["backup_restore_warn_host"].format(host=info["host"] or "?"))}</p>'
+            if info["newer"]:
+                warnings += f'<p class="error" role="status">{esc(t["backup_restore_warn_newer"].format(version=info["version"]))}</p>'
+            ack = (f'<label class="sched-check"><input type="checkbox" name="ack" value="1" required>'
+                   f'<span>{esc(t["backup_restore_ack"])}</span></label>' if info["risky"] else "")
+            key_field = (f'<input type="hidden" name="private_key" value="{esc(private_key, quote=True)}">'
+                         if info["sealed"] else "")
+            body = (f'<section class="card wide sched-card"><div class="sched-card-head"><h2>{esc(t["backup_restore_title"])}</h2>'
+                    + (f'<span class="tag" data-tone="success">{esc(t["backup_sealed_tag"])}</span>' if info["sealed"] else "")
+                    + f'</div><p><code class="sched-code">{esc(path.name)}</code></p>{message}'
+                    f'<dl class="backup-details">{details}</dl>{warnings}'
+                    f'<p class="muted small">{esc(t["backup_restore_effect"])}</p>'
+                    f'<form method="post" action="/backup/restore" class="sched-form">{hidden}{key_field}{ack}'
+                    f'<button type="submit" class="danger">{esc(t["backup_restore_go"])}</button> {back}</form></section>')
+        page = f'<h1>{esc(t["backup_restore_title"])}</h1><div class="frp-workspace files-page">{body}</div>'
+        return self.send_html(status, self.render_page(t["backup_restore_title"], page, lang, icon="files", back_href="/backup"),
+                              {**self.maybe_lang_cookie(query_lang), "Cache-Control": "no-store"})
+
+    def page_backup_restore(self, lang, query_lang, name):
+        path, error = self.restore_target(name)
+        if error:
+            return self.backup_done(error=error)
+        shown = self.context.parse_qs(self.context.urlsplit(self.path).query).get("error", [""])[0]
+        return self.render_restore_page(lang, query_lang, path, config_backup.inspect(path),
+                                        error=shown if shown in ("ack_needed",) else None)
+
+    def handle_backup_restore_open(self, lang, query_lang):
         form = self.backup_form(("name", "private_key"))
         if form is None or "name" not in form:
             return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        path, error = self.restore_target(form["name"])
+        if error:
+            return self.backup_done(error=error)
+        try:
+            key = config_backup.parse_key(form.get("private_key", ""))
+            info = config_backup.inspect(path, key)
+        except config_backup.BackupError:
+            return self.render_restore_page(lang, query_lang, path, config_backup.inspect(path), error="key_wrong", status=200)
+        return self.render_restore_page(lang, query_lang, path, info, private_key=form["private_key"].strip())
+
+    def handle_backup_restore(self):
+        form = self.backup_form(("name", "private_key", "ack"))
+        if form is None or "name" not in form:
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        path, error = self.restore_target(form["name"])
+        if error:
+            return self.backup_done(error=error)
         key_file = None
         try:
-            path = config_backup.backup_path(form["name"])
-            config_backup.validate_archive(path)
+            key = None
             if config_backup.is_sealed(path):
                 if not form.get("private_key", "").strip():
                     return self.backup_done(error="key_needed")
-                private = config_backup.parse_key(form["private_key"])
-                # Check the key here so a typo is reported at once instead of failing in the background.
-                config_backup.open_sealed_file(path, private)
+                key = config_backup.parse_key(form["private_key"])
+            # Decided here again, not trusted from the page: a backup from another host or a newer
+            # version is restored only when the operator has said so.
+            info = config_backup.inspect(path, key)
+            if info.get("risky") and form.get("ack") != "1":
+                return self.redirect(f"/backup/restore?name={path.name}&error=ack_needed", {"Cache-Control": "no-store"})
+            if key is not None:
                 descriptor, name = tempfile.mkstemp(prefix=".restore-key-", dir=path.parent)
                 with os.fdopen(descriptor, "w", encoding="ascii") as handle:
                     handle.write(form["private_key"].strip() + "\n")

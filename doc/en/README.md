@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.0.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.0.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.0.1-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.0.1)
 
 ## Documentation
 
@@ -129,10 +129,10 @@ Run as root.
 
 ### Quick Install
 
-Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v7.0.0-linux-amd64-online.tar.gz` as the file name, or run this command:
+Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v7.0.1-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.0/vps-server-v7.0.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.1/vps-server-v7.0.1-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -140,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 Source installs require building the frontend first in `web/` (Node.js 24). The repository does not contain upstream programs such as sing-box, frp, Caddy and Tailscale; like the online package, the installer downloads them and verifies their SHA-256. The private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v7.0.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v7.0.1 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +152,17 @@ bash deploy/install.sh
 The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules. When a GitHub download is still below 200 KB/s after 15 seconds, the install switches to the mirrors gh-proxy.com and ghfast.top (for servers in mainland China), and the download is verified by SHA-256 just the same; set `VPSSRV_GITHUB_MIRROR=https://your.mirror/` to try your own mirror first, or `none` to use no mirror. The install command above also downloads from GitHub; in mainland China you can replace its `https://github.com/` with `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.0/vps-server-v7.0.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.1/vps-server-v7.0.1-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v7.0.0/vps-server-v7.0.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.0.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v7.0.1/vps-server-v7.0.1-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.0.1/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.0.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.0.1-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -300,11 +300,11 @@ v5.1.0 and earlier use the old layout and have no automatic migration. You **MUS
 From v7.0.0:
 
 - **Data encryption.** The installer creates a data key at `/etc/vps-server/data.key` (mode 0600, outside the state directory), and the console then stores its own state files encrypted (ChaCha20-Poly1305): the admin password, the session secret and sessions, the alert (Bark) key, audit records, addresses that have logged in, the console access list, allowed IPs, the Mini Drive index, scheduled tasks and backup settings, and the console's TLS private key and client CA private key. Plain files written by an older version are read as they are and turned into encrypted ones at startup. This protects against a copy of the state directory, a disk image, or a backup without the key; **it does not protect against someone who is already root on the host**, because the service needs the key to run. Node, FRP, domain forwarding and Tailscale configuration must be read directly by sing-box, frps, Caddy and tailscaled, so it is not covered here but by encrypted backups. Mini Drive file contents and the visitor database are not encrypted either. The "Data encryption" card on the Backup page shows the current state.
-- **Backup encryption.** Generate a key pair on the Backup page: the server keeps only the public key and encrypts new backups to it (`.sealed`), so it cannot open them itself; restoring asks for the private key you saved (shown once, never stored). Encrypted backups carry the data key and restore on any host; without a public key, backups are plain and **leave out** the data key (so they restore only on this host). Backups made before a public key is set (including the one taken automatically before the upgrade to v7.0.0) stay plain, so delete them once the upgrade looks fine.
+- **Backup encryption.** Generate a key pair on the Backup page: the server keeps only the public key and encrypts new backups to it (`.sealed`), so it cannot open them itself; restoring asks for the private key you saved (shown once, never stored). Encrypted backups carry the data key and restore on any host; without a public key, backups are plain and **leave out** the data key (so they restore only on this host). Backups made before a public key is set (including the one taken automatically before the upgrade to v7.0.1) stay plain, so delete them once the upgrade looks fine.
 - **Login method.** Choose under Settings > Access > Client certificates: password only, certificate only, password or certificate, or password + certificate. The older "require client certificates" setting becomes "certificate only" automatically, and when it was off it becomes "password or certificate". Before switching to a method that needs a certificate you must have opened the settings with an active certificate, or the change is refused, so you cannot lock yourself out. If you lose the certificate, run `python3 /root/apps/vps-server/src/web/client_cert.py disable` on the server to go back to password only.
 - **Downgrading.** Versions before v7.0.0 cannot read encrypted files. Before going back, run `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all` to turn them into plain files; `upgrade.py` refuses an older version while encrypted files exist. `secure_store.py status` shows each file's state and `secure_store.py export-key` prints the data key (keep it safe: without it the encrypted state files cannot be recovered).
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v7.0.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v7.0.1, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 
