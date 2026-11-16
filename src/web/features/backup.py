@@ -140,7 +140,10 @@ class BackupMixin:
                   f'<form class="file-pick backup-upload" data-csrf="{csrf}" data-max="{MAX_UPLOAD}" '
                   f'data-too-big="{esc(t["backup_error_invalid"], quote=True)}" '
                   f'data-failed="{esc(t["backup_error_failed"], quote=True)}">'
-                  f'<input type="file" accept=".gz,.tar.gz,application/gzip" required>'
+                  f'<label class="files-pick files-button"><input type="file" accept=".gz,.tar.gz,application/gzip" required>'
+                  f'{esc(t["files_choose"])}</label>'
+                  f'<span class="files-pick-name" aria-live="polite" data-empty="{esc(t["files_no_file"], quote=True)}">'
+                  f'{esc(t["files_no_file"])}</span>'
                   f'<button type="submit">{esc(t["backup_upload_button"])}</button>'
                   f'<output role="status"></output></form></section>')
         recipient = config_backup.read_recipient()

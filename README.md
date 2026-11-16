@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v7.0.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.0.2)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v7.0.3-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.0.3)
 
 ## 文档
 
@@ -129,10 +129,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v7.0.2-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v7.0.3-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.2/vps-server-v7.0.2-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.3/vps-server-v7.0.3-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -140,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 源码安装需先在 `web/` 构建前端(Node.js 24). 仓库不含 sing-box, frp, Caddy 和 Tailscale 等上游程序, 安装时像在线版一样联网下载并校验 SHA-256;私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v7.0.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v7.0.3 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +152,17 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载. 从 GitHub 下载 15 秒后仍慢于 200 KB/s 时, 自动改用国内镜像 gh-proxy.com, ghfast.top, 下载内容同样校验 SHA-256; 设置 `VPSSRV_GITHUB_MIRROR=https://你的镜像/` 可优先使用自己的镜像, 设为 `none` 不用镜像. 上面的安装命令本身也从 GitHub 下载, 国内服务器可把其中的 `https://github.com/` 换成 `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.2/vps-server-v7.0.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.0.3/vps-server-v7.0.3-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v7.0.2/vps-server-v7.0.2-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.0.2/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v7.0.3/vps-server-v7.0.3-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.0.3/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.0.2-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.0.3-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -300,11 +300,11 @@ v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备�
 从 v7.0.0 起:
 
 - **数据加密.** 安装器在 `/etc/vps-server/data.key`(权限 0600, 不在状态目录里)创建数据密钥, 控制台随后把自己的状态文件加密保存(ChaCha20-Poly1305): 管理员密码, 会话密钥和会话, 告警(Bark)密钥, 审计记录, 登录过的地址, 控制台访问名单, 允许的 IP, 迷你网盘索引, 定时任务和备份设置, 以及控制台的 TLS 私钥和客户端 CA 私钥. 旧版本写的明文文件会自动读取并在启动时转成加密. 这能防住拷走状态目录, 磁盘镜像或不带密钥的备份; **防不住已经是这台主机 root 的人**, 因为服务运行需要密钥. 节点, FRP, 域名转发和 Tailscale 的配置必须由 sing-box, frps, Caddy 和 tailscaled 直接读取, 不在加密范围, 由加密备份保护. 迷你网盘里的文件和访客数据库也未加密. 备份页的"数据加密"卡片显示当前状态.
-- **备份加密.** 在备份页生成一对密钥: 服务器只保存公钥, 新备份用它加密(`.sealed`), 服务器自己也解不开; 恢复时输入你保存的私钥(只显示一次, 不会保存). 加密备份包含数据密钥, 可在任何主机恢复; 没设公钥时, 备份是明文的, 并且**不含**数据密钥(只能在这台主机上恢复). 设置公钥之前做的备份(包括升级到 v7.0.2 前自动做的那份)仍是明文, 确认升级正常后请删除.
+- **备份加密.** 在备份页生成一对密钥: 服务器只保存公钥, 新备份用它加密(`.sealed`), 服务器自己也解不开; 恢复时输入你保存的私钥(只显示一次, 不会保存). 加密备份包含数据密钥, 可在任何主机恢复; 没设公钥时, 备份是明文的, 并且**不含**数据密钥(只能在这台主机上恢复). 设置公钥之前做的备份(包括升级到 v7.0.3 前自动做的那份)仍是明文, 确认升级正常后请删除.
 - **登录方式.** 设置 > 访问设置 > 客户端证书里选择: 只用密码, 只用证书, 密码或证书(二选一), 密码 + 证书. 旧版本的"要求客户端证书"自动变成"只用证书", 没开的变成"二选一". 切到需要证书的方式前, 必须已经用有效证书打开了设置页, 否则会被拒绝, 避免把自己锁在外面. 忘记证书时, 在服务器上执行 `python3 /root/apps/vps-server/src/web/client_cert.py disable` 恢复为只用密码.
 - **降级.** v7.0.0 之前的版本读不了加密文件. 回退前先执行 `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all` 把它们解回明文; `upgrade.py` 在加密文件存在时会拒绝装更旧的版本. `secure_store.py status` 查看各文件状态, `secure_store.py export-key` 输出数据密钥(请妥善保存, 丢失后加密的状态文件无法恢复).
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v7.0.2, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v7.0.3, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 

@@ -26,6 +26,18 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.3 — 2026-11-17
+
+El botón «Elegir archivo» de la tarjeta de subida de la página Copias de seguridad sigue la plantilla. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Corregido
+
+- **El botón «Elegir archivo» no cumplía las reglas de diseño.** Era el campo de archivo del navegador (distinto en cada navegador y diferente de los demás botones). Ahora es el mismo botón independiente con borde de la página Archivos, con el nombre del archivo elegido al lado («Ningún archivo» si no hay) y el botón Subir a la derecha.
+
+#### Verificación
+
+Se renderizó la página de copias en la VM doméstica y se comprobó el diseño; la comprobación de diseño pasa. No se probó en un navegador real que se muestre el nombre tras elegir ni la redirección tras subir.
+
 ### v7.0.2 — 2026-11-17
 
 Los controles de fecha y hora siguen la plantilla y se corrigen varias tarjetas que no ocupaban todo el ancho. El comando de actualización no cambia y se conservan la configuración y los datos.

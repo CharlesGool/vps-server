@@ -81,8 +81,10 @@
   .task-form { grid-template-columns: minmax(0, 1fr); }
 }
 .file-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-14); margin: 0; }
-.file-pick input[type=file] { flex: 1 1 var(--compat-size-82); width: auto; min-width: 0; margin: 0; padding: var(--compat-size-11); }
+.file-pick input[type=file] { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; opacity: 0; }
+.file-pick .files-pick-name { flex: 1 1 var(--compat-size-82); }
 .file-pick output { color: var(--muted-foreground); font-size: var(--text-sm); }
+.file-pick output:empty { display: none; }
 .sched-field input.is-mono { font-family: var(--font-mono); }
 .sched-field :is(input, select, textarea) { font-weight: var(--font-weight-normal); }
 .sched-field small { font-size: var(--text-sm); font-weight: var(--font-weight-normal); }

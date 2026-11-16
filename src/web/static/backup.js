@@ -36,6 +36,12 @@
     const input = upload.querySelector('input[type=file]');
     const output = upload.querySelector('output');
     const button = upload.querySelector('button');
+    const pickName = upload.querySelector('.files-pick-name');
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      pickName.textContent = file ? file.name : pickName.dataset.empty;
+      pickName.classList.toggle('is-set', Boolean(file));
+    });
     upload.addEventListener('submit', (event) => {
       event.preventDefault();
       const file = input.files[0];

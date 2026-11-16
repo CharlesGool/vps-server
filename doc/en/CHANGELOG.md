@@ -26,6 +26,18 @@ metadata:
 
 ## Changelog
 
+### v7.0.3 — 2026-11-17
+
+The "Choose file" button in the Backup page's upload card follows the template. The upgrade command is unchanged and settings and data are kept.
+
+#### Fixed
+
+- **The "Choose file" button did not follow the design rules.** It was the browser's own file input (different in every browser, unlike the other buttons). It is now the same outlined, separate button as on the Files page, with the chosen file name beside it ("No file chosen" when empty) and the Upload button on the right.
+
+#### Verification
+
+The Backup page was rendered on the home VM and the layout checked; the design check passes. Showing the file name after choosing and the redirect after upload were not exercised in a real browser.
+
 ### v7.0.2 — 2026-11-17
 
 Date and time controls follow the template, and a few cards that did not fill the width are fixed. The upgrade command is unchanged and settings and data are kept.
