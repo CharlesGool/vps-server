@@ -67,22 +67,24 @@ class TrafficMixin:
         """(state, usage per entry id, names) with a due period already started and saved."""
         import total_meter
         now = now or self.context.datetime.now(self.context.timezone.utc)
-        snap, names = total_meter.snapshot(self.total_entries())
+        info = total_meter.snapshot_full(self.total_entries())
         path = self.context.DATA_DIR / "total-traffic.json"
-        state, changed = total_meter.advance(total_meter.read_state(path), snap, now)
+        state, changed = total_meter.advance(total_meter.read_state(path), info, now)
         if changed:
             total_meter.write_state(path, state)
-        return state, snap, names
+        return state, info
 
     def total_meter_bar(self, t):
         """The whole-host traffic bar for the top of the home page; "" if it cannot be computed."""
         import total_meter
         esc = self.context.html.escape
         try:
-            state, snap, names = self.total_state()
+            state, info = self.total_state()
         except (OSError, ValueError, TypeError):
             return ""
-        used, per_entry = total_meter.period_usage(state, snap)
+        measured, per_entry = total_meter.period_usage(state, total_meter.lifetimes(info))
+        offset = total_meter.calibration(state)
+        used = total_meter.calibrated_total(state, measured)
         state_level = total_meter.level(state, used)
         cap = state["cap_bytes"]
         percent = 0 if cap is None else min(100, used * 100 // cap)
@@ -106,14 +108,41 @@ class TrafficMixin:
                 continue
             share = value * 100 / basis if basis else 0
             width = min(100, max(1, round(share)))
+            multiplier = info[identifier]["multiplier"]
+            # Each page counts raw bytes; the total counts what is billed, so say how the two relate.
+            raw = f'{esc(fmt(value // multiplier))} × {multiplier} = ' if multiplier != 1 else ""
             rows.append(
-                f'<li class="source-row"><div class="source-row-head"><span class="source-row-name">{esc(names[identifier])}</span>'
-                f'<span class="source-row-value"><strong>{esc(fmt(value))}</strong> · {share:.1f}%</span></div>'
+                f'<li class="source-row"><div class="source-row-head"><span class="source-row-name">{esc(info[identifier]["name"])}</span>'
+                f'<span class="source-row-value">{raw}<strong>{esc(fmt(value))}</strong> · {share:.1f}%</span></div>'
                 f'<div class="meter is-thin" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{width}" '
-                f'aria-label="{esc(names[identifier], quote=True)}"><span style="width:{width}%"></span></div></li>')
+                f'aria-label="{esc(info[identifier]["name"], quote=True)}"><span style="width:{width}%"></span></div></li>')
+        if offset:
+            # The operator's calibration is its own row and bar, signed, so it is never mistaken for counted traffic.
+            share = abs(offset) * 100 / basis if basis else 0
+            width = min(100, max(1, round(share)))
+            sign = "+" if offset > 0 else "\u2212"
+            label = t["total_calibration_row"].format(date=(state.get("calibrated_at") or "")[:10])
+            rows.append(
+                f'<li class="source-row"><div class="source-row-head"><span class="source-row-name">{esc(label)}</span>'
+                f'<span class="source-row-value"><strong>{sign}{esc(fmt(abs(offset)))}</strong> · {share:.1f}%</span></div>'
+                f'<div class="meter is-thin" data-sign="{"positive" if offset > 0 else "negative"}" role="progressbar" '
+                f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{width}" aria-label="{esc(label, quote=True)}">'
+                f'<span style="width:{width}%"></span></div></li>')
         breakdown = (f'<div class="source-box"><h3>{esc(t["total_by_source"])}</h3>'
+                     f'<p class="total-meter-meta">{esc(t["total_multiplier_note"])}</p>'
                      f'<ul class="source-list">{"".join(rows)}</ul></div>' if rows else "")
         cap_value = "" if cap is None else f'{cap / 1073741824:g}'
+        calibrate = (
+            f'<dialog class="node-access-dialog" id="total-meter-calibrate" aria-labelledby="total-meter-calibrate-title">'
+            f'<form method="post" action="/traffic/total/calibrate">'
+            f'<input type="hidden" name="csrf" value="{self.context.access_csrf_token(self.get_cookie("session"), "traffic:calibrate")}">'
+            f'<h3 id="total-meter-calibrate-title">{esc(t["total_calibrate_title"])}</h3><div class="node-form-grid">'
+            f'<label>{esc(t["total_actual_gib"])}<input type="number" name="actual_gib" min="0" max="100000000" step="any" '
+            f'value="{"" if not offset else f"{used / 1073741824:g}"}"></label></div>'
+            f'<p class="muted small">{esc(t["total_calibrate_measured"].format(value=fmt(measured)))}</p>'
+            f'<p class="muted small">{esc(t["total_calibrate_hint"])}</p>'
+            f'<div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t["node_cancel"])}</button>'
+            f'<button type="submit">{esc(t["total_calibrate_save"])}</button></div></form></dialog>')
         dialog = (
             f'<dialog class="node-access-dialog" id="total-meter-settings" aria-labelledby="total-meter-title">'
             f'<form method="post" action="/traffic/total">'
@@ -127,12 +156,14 @@ class TrafficMixin:
             f'<button type="submit">{esc(t["total_save"])}</button></div></form></dialog>')
         return (f'<section class="card wide total-meter" aria-label="{esc(t["total_title"], quote=True)}">'
                 f'<div class="total-meter-head"><h2>{esc(t["total_title"])}</h2>'
-                f'<button type="button" class="node-action" data-dialog-open="total-meter-settings">{esc(t["total_settings"])}</button></div>'
+                f'<span class="total-meter-buttons">'
+                f'<button type="button" class="node-action" data-dialog-open="total-meter-calibrate">{esc(t["total_calibrate"])}</button>'
+                f'<button type="button" class="node-action" data-dialog-open="total-meter-settings">{esc(t["total_settings"])}</button></span></div>'
                 f'<p class="total-meter-figure">{figure}</p>'
                 f'<div class="meter" data-level="{state_level}" role="progressbar" aria-valuemin="0" aria-valuemax="100" '
                 f'aria-valuenow="{percent}"><span style="width:{percent}%"></span></div>'
                 f'<p class="total-meter-meta">{esc(t["total_since"].format(date=since))} · {esc(reset)}</p>'
-                f'{warning}{notice}{breakdown}{dialog}'
+                f'{warning}{notice}{breakdown}{dialog}{calibrate}'
                 f'<script src="/static/node-controls.js"></script></section>')
 
     def handle_total_settings(self):
@@ -157,9 +188,40 @@ class TrafficMixin:
         try:
             cap, day = total_meter.parse_settings(form["cap_gib"][0], form["reset_day"][0])
             now = self.context.datetime.now(self.context.timezone.utc)
-            state = self.total_state(now)[0]
+            state, info = self.total_state(now)
             total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
-                                    total_meter.apply_settings(state, cap, day, now))
+                                    total_meter.apply_settings(state, cap, day, now, info))
+            result = "done"
+        except (OSError, ValueError, TypeError):
+            result = "failed"
+        return self.redirect(f"/?total={result}", {"Cache-Control": "no-store"})
+
+    def handle_total_calibrate(self):
+        import total_meter
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = 0
+        if not 0 < length <= 1024 or \
+                self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        try:
+            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"),
+                                         strict_parsing=True, keep_blank_values=True)
+        except (UnicodeError, ValueError):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if set(form) != {"csrf", "actual_gib"} or any(len(v) != 1 for v in form.values()):
+            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
+        if not self.context.hmac.compare_digest(
+                form["csrf"][0], self.context.access_csrf_token(self.get_cookie("session"), "traffic:calibrate")):
+            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
+        try:
+            actual = total_meter.parse_actual(form["actual_gib"][0])
+            now = self.context.datetime.now(self.context.timezone.utc)
+            state, info = self.total_state(now)
+            measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
+            total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
+                                    total_meter.apply_calibration(state, actual, measured, now))
             result = "done"
         except (OSError, ValueError, TypeError):
             result = "failed"
@@ -278,5 +340,8 @@ class TrafficMixin:
             return True
         if method == "POST" and path == "/traffic/total":
             self.handle_total_settings()
+            return True
+        if method == "POST" and path == "/traffic/total/calibrate":
+            self.handle_total_calibrate()
             return True
         return False

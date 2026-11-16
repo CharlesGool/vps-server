@@ -1135,5 +1135,13 @@
   "data_enc_error_text": "The encryption status cannot be read; check /etc/vps-server/data.key.",
   "log_encrypted_file": "Now stored encrypted: {name}",
   "log_encryption_off": "No data key; state files are stored in plain text (running the installer again creates one)",
-  "log_encryption_failed": "Could not encrypt state files: {error}"
+  "log_encryption_failed": "Could not encrypt state files: {error}",
+  "total_multiplier_note": "Each figure is billed usage: nodes, FRPS and forwarding count every byte twice (in and out), so it is double what that feature's own page shows. The period runs from the reset day and includes what each source has already used in its current cycle.",
+  "total_calibrate": "Calibrate",
+  "total_calibrate_title": "Calibrate the total",
+  "total_actual_gib": "Usage the provider shows for this period (GiB)",
+  "total_calibrate_measured": "Counted by the console now: {value}.",
+  "total_calibrate_hint": "The count can differ from what the provider bills. Enter the usage shown in the provider's panel for this period; the console stores the difference as a \"calibration\", shows it as its own bar above and includes it in the total; it clears itself when the next period begins. Leave it empty and save to clear the calibration.",
+  "total_calibrate_save": "Save calibration",
+  "total_calibration_row": "Calibration · {date}"
 }

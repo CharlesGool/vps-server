@@ -101,3 +101,5 @@
 .sched-field input.is-mono { min-width: min(100%, var(--compat-size-32)); }
 
 .sched-field input.is-mono { width: var(--compat-size-32); max-width: 100%; }
+.meter[data-sign="negative"] > span { background: var(--success); }
+.total-meter-buttons { display: inline-flex; flex-wrap: wrap; gap: var(--compat-size-11); }

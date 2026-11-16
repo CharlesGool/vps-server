@@ -1135,5 +1135,13 @@
   "data_enc_error_text": "No se puede leer el estado del cifrado; revise /etc/vps-server/data.key.",
   "log_encrypted_file": "Ahora se guarda cifrado: {name}",
   "log_encryption_off": "Sin clave de datos; los archivos de estado se guardan en texto plano (volver a ejecutar el instalador crea una)",
-  "log_encryption_failed": "No se pudieron cifrar los archivos de estado: {error}"
+  "log_encryption_failed": "No se pudieron cifrar los archivos de estado: {error}",
+  "total_multiplier_note": "Cada cifra es el uso facturado: los nodos, FRPS y el reenvío cuentan cada byte dos veces (entrada y salida), así que es el doble de lo que muestra la página de cada función. El periodo cuenta desde el día de reinicio e incluye lo que cada origen ya ha usado en su ciclo actual.",
+  "total_calibrate": "Calibrar",
+  "total_calibrate_title": "Calibrar el total",
+  "total_actual_gib": "Uso que muestra el proveedor en este periodo (GiB)",
+  "total_calibrate_measured": "Contado ahora por la consola: {value}.",
+  "total_calibrate_hint": "El recuento puede diferir de lo que factura el proveedor. Introduzca el uso que muestra el panel del proveedor para este periodo; la consola guarda la diferencia como \"calibración\", la muestra en su propia barra y la incluye en el total; se borra sola al empezar el siguiente periodo. Déjelo vacío y guarde para borrar la calibración.",
+  "total_calibrate_save": "Guardar calibración",
+  "total_calibration_row": "Calibración · {date}"
 }

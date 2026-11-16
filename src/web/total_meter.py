@@ -2,9 +2,15 @@
 
 It adds up what every metered feature already counts (sing-box nodes, FRPS and the
 kernel/app meters in traffic_meter.py and app_meter.py), with the same billing
-multiplier each of them uses. A period starts when the console first records it and
-again on the chosen day of each month (UTC, like the other meters); usage in a
-period is the growth of each entry's lifetime counter since the period began.
+multiplier each of them uses. A period runs from the chosen day of each month (UTC, like the
+other meters). Usage in a period is the growth of each entry's lifetime counter since the
+period began, plus what the entry's own current-cycle counters already show when the period is
+first recorded, so the total agrees with the per-feature pages instead of starting from zero
+at the moment the console first looked.
+
+The count can drift from what the provider bills, so the operator may calibrate it: typing
+the usage the provider shows stores the difference as a separate, signed calibration that is
+shown on its own bar and cleared when the next period begins.
 
 This is a display and a limit marker only: reaching the limit shows a warning and
 does not throttle or stop anything.
@@ -34,16 +40,55 @@ def lifetime_billable(entry):
     return total * entry.get("billable_multiplier", BILLABLE_MULTIPLIER)
 
 
-def snapshot(entries):
-    """({id: lifetime billable bytes}, {id: display name}) for a list of metered entries."""
-    usage, names = {}, {}
+def cycle_billable(entry):
+    """Billable bytes of the entry's current billing cycle (what its own page shows), or None if it has none."""
+    total = 0
+    for key in ("upload_bytes", "download_bytes"):
+        value = entry.get(key)
+        if type(value) is not int or value < 0:
+            return None
+        total += value
+    return total * entry.get("billable_multiplier", BILLABLE_MULTIPLIER)
+
+
+def snapshot_full(entries):
+    """{id: {"lifetime", "cycle", "multiplier", "name"}} for a list of metered entries."""
+    info = {}
     for entry in entries:
         identifier = entry.get("id")
-        if not isinstance(identifier, str) or identifier in usage:
+        if not isinstance(identifier, str) or identifier in info:
             continue
-        usage[identifier] = lifetime_billable(entry)
-        names[identifier] = str(entry.get("name") or identifier)[:64]
-    return usage, names
+        info[identifier] = {"lifetime": lifetime_billable(entry), "cycle": cycle_billable(entry),
+                            "multiplier": entry.get("billable_multiplier", BILLABLE_MULTIPLIER),
+                            "name": str(entry.get("name") or identifier)[:64]}
+    return info
+
+
+def snapshot(entries):
+    """({id: lifetime billable bytes}, {id: display name}) for a list of metered entries."""
+    info = snapshot_full(entries)
+    return ({i: v["lifetime"] for i, v in info.items()}, {i: v["name"] for i, v in info.items()})
+
+
+def lifetimes(info):
+    return {i: v["lifetime"] for i, v in info.items()}
+
+
+def backfilled_baselines(info):
+    """Baselines that make a period count what each entry's current cycle already holds."""
+    return {i: max(0, v["lifetime"] - v["cycle"]) if v["cycle"] is not None else v["lifetime"]
+            for i, v in info.items()}
+
+
+def period_boundary(now, reset_day):
+    """The latest boundary at or before now (00:00 UTC on reset_day), or None when there is no reset."""
+    if not reset_day:
+        return None
+    candidate = now.replace(day=reset_day, hour=0, minute=0, second=0, microsecond=0)
+    if candidate > now:
+        year = candidate.year - (candidate.month == 1)
+        candidate = candidate.replace(year=year, month=(candidate.month - 2) % 12 + 1)
+    return candidate
 
 
 def next_reset(now, reset_day):
@@ -59,17 +104,29 @@ def next_reset(now, reset_day):
     return candidate
 
 
-def new_state(snap, now, cap_bytes=None, reset_day=0):
+DEFAULT_RESET_DAY = 1
+
+
+def new_state(info, now, cap_bytes=None, reset_day=DEFAULT_RESET_DAY):
+    """A period that starts at the latest boundary and already counts each entry's current cycle."""
     nxt = next_reset(now, reset_day)
-    return {"version": 1, "cap_bytes": cap_bytes, "reset_day": reset_day,
-            "period_start": now.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
-            "baselines": dict(snap)}
+    start = period_boundary(now, reset_day) or now
+    return {"version": 3, "cap_bytes": cap_bytes, "reset_day": reset_day,
+            "period_start": start.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
+            "baselines": backfilled_baselines(info), "calibration_bytes": 0, "calibrated_at": None}
 
 
 def validate(state):
-    if not isinstance(state, dict) or set(state) != {"version", "cap_bytes", "reset_day", "period_start",
-                                                     "next_reset_at", "baselines"} or state["version"] != 1:
+    base = {"version", "cap_bytes", "reset_day", "period_start", "next_reset_at", "baselines"}
+    if not isinstance(state, dict) or state.get("version") not in (1, 2, 3) or \
+            set(state) != (base | {"calibration_bytes", "calibrated_at"} if state.get("version") == 3 else base):
         raise ValueError("invalid total traffic state")
+    if state["version"] == 3:
+        offset = state["calibration_bytes"]
+        if type(offset) is not int or abs(offset) > MAX_CAP_BYTES:
+            raise ValueError("invalid calibration")
+        if state["calibrated_at"] is not None:
+            datetime.fromisoformat(state["calibrated_at"])
     cap = state["cap_bytes"]
     if cap is not None and (type(cap) is not int or not 1 <= cap <= MAX_CAP_BYTES):
         raise ValueError("invalid cap")
@@ -86,14 +143,23 @@ def validate(state):
     return state
 
 
-def advance(state, snap, now):
-    """Start a new period when one is due; returns (state, changed)."""
+def advance(state, info, now):
+    """Start a new period when one is due; returns (state, changed).
+
+    A first record, and a version-1 state (whose period began whenever the console happened to
+    look), are rebuilt from the entries' current cycles, keeping the cap and reset day.
+    """
     if state is None:
-        return new_state(snap, now), True
+        return new_state(info, now), True
+    if state["version"] == 1:
+        return new_state(info, now, state["cap_bytes"], state["reset_day"]), True
+    if state["version"] == 2:
+        # A period that was already rebuilt from the cycles; it only lacks the calibration fields.
+        return {**state, "version": 3, "calibration_bytes": 0, "calibrated_at": None}, True
     if state["next_reset_at"] is not None and now >= datetime.fromisoformat(state["next_reset_at"]):
         nxt = next_reset(now, state["reset_day"])
         return {**state, "period_start": now.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
-                "baselines": dict(snap)}, True
+                "baselines": lifetimes(info), "calibration_bytes": 0, "calibrated_at": None}, True
     return state, False
 
 
@@ -102,6 +168,41 @@ def period_usage(state, snap):
     per_entry = {identifier: max(0, value - state["baselines"].get(identifier, 0))
                  for identifier, value in snap.items()}
     return sum(per_entry.values()), per_entry
+
+
+def calibration(state):
+    return state.get("calibration_bytes", 0)
+
+
+def calibrated_total(state, measured):
+    """What the period has used once the operator's calibration is applied (never below zero)."""
+    return max(0, measured + calibration(state))
+
+
+def apply_calibration(state, actual_bytes, measured, now):
+    """Store the difference between the usage the provider shows and what was counted.
+
+    ``actual_bytes`` None clears the calibration. ``measured`` is the count without calibration.
+    """
+    if actual_bytes is None:
+        return {**state, "calibration_bytes": 0, "calibrated_at": None}
+    if type(actual_bytes) is not int or not 0 <= actual_bytes <= MAX_CAP_BYTES:
+        raise ValueError("invalid actual usage")
+    return {**state, "calibration_bytes": actual_bytes - measured, "calibrated_at": now.isoformat()}
+
+
+def parse_actual(actual_gib):
+    """Bytes from the form text; None for blank (clear the calibration); ValueError on anything odd."""
+    text = (actual_gib or "").strip()
+    if not text:
+        return None
+    value = float(text)
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("usage must not be negative")
+    actual = int(value * 1073741824)
+    if actual > MAX_CAP_BYTES:
+        raise ValueError("usage out of range")
+    return actual
 
 
 def level(state, used):
@@ -128,8 +229,11 @@ def parse_settings(cap_gib, reset_day):
     return cap, int(day_text)
 
 
-def apply_settings(state, cap_bytes, reset_day, now):
+def apply_settings(state, cap_bytes, reset_day, now, info=None):
+    """New cap and reset day. A changed reset day re-bases the period on the new boundary."""
     changed_day = state["reset_day"] != reset_day
+    if changed_day and info is not None:
+        return new_state(info, now, cap_bytes, reset_day)
     nxt = next_reset(now, reset_day) if changed_day else (
         datetime.fromisoformat(state["next_reset_at"]) if state["next_reset_at"] else None)
     return {**state, "cap_bytes": cap_bytes, "reset_day": reset_day,

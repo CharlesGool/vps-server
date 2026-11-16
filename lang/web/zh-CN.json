@@ -1135,5 +1135,13 @@
   "data_enc_error_text": "无法读取加密状态, 请检查 /etc/vps-server/data.key.",
   "log_encrypted_file": "已加密保存: {name}",
   "log_encryption_off": "没有数据密钥, 状态文件以明文保存(重新运行安装器会创建)",
-  "log_encryption_failed": "加密状态文件失败: {error}"
+  "log_encryption_failed": "加密状态文件失败: {error}",
+  "total_multiplier_note": "每一项的数值是计费用量: 节点, FRPS 和转发类每个字节计两次(进出各一次), 所以是各自页面上流量的 2 倍. 本周期从重置日算起, 并包含各项当前周期里已经用掉的流量.",
+  "total_calibrate": "校准",
+  "total_calibrate_title": "校准总流量",
+  "total_actual_gib": "服务商显示的本周期已用(GiB)",
+  "total_calibrate_measured": "控制台当前统计: {value}.",
+  "total_calibrate_hint": "统计可能和服务商的计费有偏差. 填入服务商面板上本周期的已用流量, 控制台把差值保存为\"校准\", 在上面单独显示一条, 并计入总量; 下个周期自动清除. 留空并保存可清除校准.",
+  "total_calibrate_save": "保存校准",
+  "total_calibration_row": "校准 · {date}"
 }
