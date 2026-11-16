@@ -275,7 +275,7 @@ class TrafficMixin:
                 f'data-dialog-open="node-access-{identifier}">{esc(t["node_limit_manage"])}</button></div>'
                 f'{self.node_limits_dialog(entry, identifier, self.traffic_csrf(), "/traffic/limits?back=" + back, t)}'
                 f'{script}')
-        return f'<section class="card frp-card traffic-card">{body}</section>' if card else \
+        return f'<section class="card wide frp-card traffic-card">{body}</section>' if card else \
             f'<div class="traffic-card">{body}</div>'
 
     def handle_traffic_limits(self, parsed):

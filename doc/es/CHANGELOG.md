@@ -26,6 +26,27 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.2 — 2026-11-17
+
+Los controles de fecha y hora siguen la plantilla y se corrigen varias tarjetas que no ocupaban todo el ancho. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Mejorado
+
+- **Controles de fecha y hora.** Antes eran los controles propios del navegador (de 12 horas con AM/PM, con un aspecto distinto en cada navegador). Ahora la hora es una entrada segmentada de 24 horas "hora : minuto : segundo" y la fecha una entrada segmentada "año - mes - día" con un calendario emergente (los días pasados aparecen atenuados y no se pueden elegir). Se puede escribir (salta al siguiente segmento tras dos dígitos), cambiar con las flechas arriba y abajo, y los valores fuera de rango se ajustan; se ve igual en todos los navegadores y con el mismo estilo que los desplegables y otros controles. Se usa en la programación de las tareas programadas y de la copia programada.
+
+#### Corregido
+
+- **Tarjetas que no ocupaban todo el ancho.** La tarjeta de "tráfico" de páginas como Tailscale estaba limitada a unos 44rem y la tarjeta de nodo de Singbox a 42rem, dejando un gran espacio vacío a la derecha en pantallas anchas; ahora tienen el ancho del contenido.
+- **Un hueco entre las tarjetas pequeñas dentro de la tarjeta de nodo.** Las tres tarjetas "Puerto / SNI / Destinos accesibles" estaban en una cuadrícula de dos columnas, así que la última ocupaba solo media fila. Ahora se reparten toda la fila según su número, también si es impar; en el móvil siguen siendo dos por fila.
+
+#### Verificación
+
+Los controles nuevos se manejaron en un navegador real en una máquina virtual doméstica: escribir hora, minuto y segundo da 12:30:10, las flechas cambian y limitan el valor y un valor incompleto no se envía; el calendario se abre, los días pasados no se pueden elegir, elegir un día rellena año, mes y día, una fecha no válida (30 de febrero) no se envía y una válida sí. Las mediciones de la página confirman que la tarjeta de nodo de Singbox y la tarjeta de tráfico de Tailscale tienen el ancho del contenido, y se vio la tarjeta de nodo en anchos de escritorio y de móvil. 209 pruebas automáticas; los controles del front-end no tienen prueba automática y se verificaron uno a uno con un script de navegador.
+
+#### Problemas conocidos
+
+- El ajuste "próxima hora de reinicio" del nodo sigue usando el control de fecha y hora del navegador; esta vez no se cambió.
+
 ### v7.0.1 — 2026-11-17
 
 Se rehace el flujo de restauración de copias y las claves de copias tienen botones de copiar. El comando de actualización no cambia y se conservan la configuración y los datos.

@@ -46,7 +46,7 @@
 
 /* Managed nodes group connection, usage, sharing and actions into short sections. */
 .managed-node-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--compat-size-52)), 1fr)); align-items: start; }
-.managed-node-grid > .managed-node { max-width: var(--compat-size-53); }
+.managed-node-grid > .managed-node { max-width: none; }
 .managed-node { padding: 0; container-type: inline-size; }
 .managed-node .proxy-node-header { align-items: center; margin: 0; padding: var(--compat-size-98) var(--compat-size-29); border-bottom: 1px solid var(--border); }
 .managed-node .proxy-node-header h2 { margin-top: var(--compat-size-18); font-size: var(--text-xl); }
@@ -58,11 +58,12 @@
 .managed-node .node-inline-form { margin-top: var(--compat-size-100); text-align: start; }
 .managed-node .node-inline-edit:not([open]) .node-inline-form { display: none; }
 .managed-node .node-connection:has(.node-inline-edit[open]) .proxy-node-facts { display: none; }
-.managed-node .proxy-node-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-1); margin: 0; }
-.managed-node .node-fact { min-width: 0; padding: var(--compat-size-55) var(--compat-size-33); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
+/* Facts wrap and grow: any number of them shares the whole row, so an odd one never leaves a gap. */
+.managed-node .proxy-node-facts { display: flex; flex-wrap: wrap; gap: var(--compat-size-1); margin: 0; }
+.managed-node .node-fact { flex: 1 1 var(--compat-size-54); min-width: 0; padding: var(--compat-size-55) var(--compat-size-33); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--secondary); }
 .managed-node .node-fact dt { color: var(--muted-foreground); font-size: var(--text-sm); }
 .managed-node .node-fact dd { min-width: 0; margin: var(--compat-size-45) 0 0; color: var(--foreground); font-size: var(--text-base); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
-.managed-node .node-fact-secret { grid-column: 1 / -1; }
+.managed-node .node-fact-secret { flex-basis: 100%; }
 .managed-node .node-fact-secret dd { display: flex; align-items: center; justify-content: space-between; gap: var(--compat-size-1); }
 .managed-node .node-fact-secret code { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
 .managed-node .node-fact-secret .copybtn { flex: none; }
@@ -99,8 +100,8 @@
 @media (max-width: 34rem) {
   .managed-node .proxy-node-header { align-items: flex-start; flex-wrap: wrap; }
   .managed-node .node-header-controls { margin-inline-start: auto; }
-  .managed-node .proxy-node-facts, .node-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .managed-node .node-fact-secret { grid-column: 1 / -1; }
+  .node-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .managed-node .node-fact-secret { flex-basis: 100%; }
   .managed-node .node-destructive-actions { margin-inline-start: 0; }
 }
 @media (max-width: 22rem) { .managed-node .node-secondary { flex-wrap: wrap; } }

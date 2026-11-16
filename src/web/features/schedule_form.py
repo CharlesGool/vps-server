@@ -7,6 +7,7 @@ and the time of day down to the second. A one-time schedule is a date and a time
 ``scheduler.normalize_spec`` is the only place that validates the result.
 """
 
+import json
 import time
 
 import scheduler
@@ -80,6 +81,8 @@ def fields_html(context, t, spec):
     month_day = spec.get("day", 1) if mode == "monthly" else 1
     expr = spec.get("expr", "0 3 * * *") if mode == "cron" else "0 3 * * *"
     date = spec.get("date", time.strftime("%Y-%m-%d", time.localtime(time.time() + 3600)))
+    labels = esc(json.dumps({key: t["ctl_" + key] for key in ("hour", "minute", "second", "year", "month", "day", "calendar",
+                                                              "previous", "next")}, ensure_ascii=False), quote=True)
 
     def part(name, body):
         modes = PARTS[name]
@@ -108,9 +111,9 @@ def fields_html(context, t, spec):
                f'<input type="number" name="month_day" min="1" max="28" value="{month_day}">'
                f'<small class="muted">{esc(t["task_month_day_help"])}</small></label>')
         + part("date", f'<label class="sched-field"><span>{esc(t["task_date"])}</span>'
-               f'<input type="date" name="date" value="{esc(date, quote=True)}" min="{time.strftime("%Y-%m-%d")}"></label>')
+               f'<input type="date" name="date" value="{esc(date, quote=True)}" min="{time.strftime("%Y-%m-%d")}" data-labels="{labels}"></label>')
         + part("time", f'<label class="sched-field"><span>{esc(t["task_time"])}</span>'
-               f'<input type="time" name="time" step="1" value="{esc(at, quote=True)}">'
+               f'<input type="time" name="time" step="1" value="{esc(at, quote=True)}" data-labels="{labels}">'
                f'<small class="muted">{esc(t["task_time_help"])}</small></label>')
         + part("cron", f'<label class="sched-field"><span>{esc(t["task_schedule"])}</span>'
                f'<input type="text" name="expr" value="{esc(expr, quote=True)}" maxlength="100" spellcheck="false" class="is-mono">'

@@ -1179,5 +1179,14 @@
   "task_done_ran": "Hecha",
   "task_done_missed": "Perdida",
   "task_error_past": "Esa hora ya pasó; elija una hora futura.",
-  "backup_error_past": "Esa hora ya pasó; elija una hora futura."
+  "backup_error_past": "Esa hora ya pasó; elija una hora futura.",
+  "ctl_hour": "hora",
+  "ctl_minute": "minuto",
+  "ctl_second": "segundo",
+  "ctl_year": "año",
+  "ctl_month": "mes",
+  "ctl_day": "día",
+  "ctl_calendar": "Abrir calendario",
+  "ctl_previous": "Mes anterior",
+  "ctl_next": "Mes siguiente"
 }

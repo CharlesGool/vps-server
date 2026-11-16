@@ -1179,5 +1179,14 @@
   "task_done_ran": "已完成",
   "task_done_missed": "已错过",
   "task_error_past": "这个时间已经过去了, 请选择将来的时间.",
-  "backup_error_past": "这个时间已经过去了, 请选择将来的时间."
+  "backup_error_past": "这个时间已经过去了, 请选择将来的时间.",
+  "ctl_hour": "时",
+  "ctl_minute": "分",
+  "ctl_second": "秒",
+  "ctl_year": "年",
+  "ctl_month": "月",
+  "ctl_day": "日",
+  "ctl_calendar": "打开日历",
+  "ctl_previous": "上个月",
+  "ctl_next": "下个月"
 }

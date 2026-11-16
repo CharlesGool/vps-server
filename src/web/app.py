@@ -1028,6 +1028,7 @@ STATIC_FILES = {
     "/static/third_party/xterm/xterm.css": ("text/css", STATIC_DIR / "third_party" / "xterm" / "xterm.css"),
     "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
     "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
+    "/static/reference-datetime.js": ("application/javascript", STATIC_DIR / "reference-datetime.js"),
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
     "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
     "/static/files.js": ("application/javascript", STATIC_DIR / "files.js"),

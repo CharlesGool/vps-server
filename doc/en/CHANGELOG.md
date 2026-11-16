@@ -26,6 +26,27 @@ metadata:
 
 ## Changelog
 
+### v7.0.2 — 2026-11-17
+
+Date and time controls follow the template, and a few cards that did not fill the width are fixed. The upgrade command is unchanged and settings and data are kept.
+
+#### Improved
+
+- **Date and time controls.** They used to be the browser's own controls (12-hour with AM/PM, looking different in every browser). The time is now a 24-hour "hour : minute : second" segmented input, and the date is a "year - month - day" segmented input with a calendar popover (past days are greyed out and cannot be picked). You can type (it moves to the next segment after two digits), step with the up and down arrow keys, and out-of-range values are clamped; it looks the same in every browser and in the same style as the select and other controls. Used for the schedule of scheduled tasks and the scheduled backup.
+
+#### Fixed
+
+- **Cards that did not fill the width.** The "traffic" card on pages such as Tailscale was limited to about 44rem and the Singbox node card to 42rem, leaving a wide empty area on the right of a wide screen; both now match the content width.
+- **A gap among the small cards inside a node card.** The three small cards "Port / SNI / Reachable targets" sat in a two-column grid, so the last one took only half the row. They now share the whole row by count, an odd number included; on a phone they are still two to a row.
+
+#### Verification
+
+The new controls were operated in a real browser on a home virtual machine: typing hour, minute and second gives 12:30:10, arrow keys step and clamp, and an incomplete value is not submitted; the calendar opens, past days cannot be picked, picking a day fills year, month and day, an invalid date (30 February) is not submitted and a valid one is. Page measurements confirm the Singbox node card and the Tailscale traffic card are as wide as the content, and the node card was viewed at desktop and phone widths. 209 automated tests; the front-end controls have no automated test and were verified item by item with a browser script.
+
+#### Known issues
+
+- The node's "next reset time" setting still uses the browser's own date-time control; it was not changed this time.
+
 ### v7.0.1 — 2026-11-17
 
 The backup restore flow is reworked, and the backup keys get copy buttons. The upgrade command is unchanged and settings and data are kept.

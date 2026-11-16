@@ -1179,5 +1179,14 @@
   "task_done_ran": "Done",
   "task_done_missed": "Missed",
   "task_error_past": "That time has already passed; choose a time in the future.",
-  "backup_error_past": "That time has already passed; choose a time in the future."
+  "backup_error_past": "That time has already passed; choose a time in the future.",
+  "ctl_hour": "hour",
+  "ctl_minute": "minute",
+  "ctl_second": "second",
+  "ctl_year": "year",
+  "ctl_month": "month",
+  "ctl_day": "day",
+  "ctl_calendar": "Open calendar",
+  "ctl_previous": "Previous month",
+  "ctl_next": "Next month"
 }
