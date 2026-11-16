@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.5.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.5.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v6.6.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.6.0)
 
 ## Documentación
 
@@ -129,10 +129,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.5.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v6.6.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -140,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Caddy y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v6.5.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.6.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +152,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos. Si una descarga de GitHub sigue por debajo de 200 KB/s tras 15 segundos, la instalación pasa a los espejos gh-proxy.com y ghfast.top (para servidores en China continental), y la descarga se verifica igualmente con SHA-256; defina `VPSSRV_GITHUB_MIRROR=https://su.espejo/` para probar antes su propio espejo, o `none` para no usar espejos. El comando de instalación de arriba también descarga de GitHub; en China continental puede sustituir su `https://github.com/` por `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.5.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.6.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -282,9 +282,20 @@ Antes de instalar el código de desarrollo, ejecute `npm ci && npm run check` en
 
 Las versiones de esquema 1, v5.1.1 de prueba y v5.2.x, se actualizan con los pasos anteriores. Desde v6.5.0 el instalador guarda primero la configuración en `<raíz del estado>/backups/` antes de cambiar nada (solo configuración, no el código ni los archivos de Mini Drive; se conservan las 3 últimas; un fallo solo avisa). Antes de esa versión, copie a mano la raíz del estado, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, las configuraciones FRPC y la configuración del reenvío de dominios (`/etc/vps-server-caddy`). Extraiga fuera del directorio instalado y use el mismo `PREFIX` y raíz del estado. Se conservan contraseñas, puertos, certificados, sesiones y módulos; el directorio fuente ya no almacena datos persistentes.
 
+### Firmas de actualización
+
+Desde v6.6.0 los paquetes publicados los firma el mantenedor con una clave Ed25519 (sobre `SHA256SUMS`, adjunta como `SHA256SUMS.sig`), y un equipo solo se actualiza a versiones firmadas con la misma clave. Huella de la clave de versiones: `e6d9:e0c2:55dc:3f8c:b673:defd:9043:d5a0`.
+
+- La **primera** actualización a v6.6.0 sigue usando el comando de actualización anterior. El instalador fija la clave que trae el paquete (`config/release-key.pub`) como `<raíz del estado>/release-key.pub` y muestra su huella; compárela con la de arriba.
+- Después, actualice con el comando ya instalado, que verifica la firma primero y no confía en ningún script del paquete nuevo: `python3 /root/apps/vps-server/src/web/upgrade.py` (la última versión por defecto; `--version v6.6.1` para una concreta; `--from DIR` para usar `SHA256SUMS`, `SHA256SUMS.sig` y el paquete ya descargados sin red; `--variant online`; `--dry-run` solo verifica). Se rechaza una firma incorrecta, una suma que no coincide, una versión más antigua o un paquete cuya clave difiera de la fijada.
+- Instalar con el comando antiguo un paquete firmado con otra clave (por ejemplo, de un fork) o sin clave también lo rechaza el instalador. Si el cambio de clave es intencionado, añada `--accept-key-change NUEVA-HUELLA` (o `VPSSRV_ACCEPT_KEY_CHANGE=NUEVA-HUELLA`).
+- Cualquiera puede publicar sus propias versiones con su propia clave; un equipo con su clave fijada no se actualizará a las de otros.
+- Para dejar de exigir firmas (por ejemplo, para volver a una versión anterior a v6.6.0), elimine `<raíz del estado>/release-key.pub`.
+- Los mantenedores firman tras compilar con `python3 tools/sign-release/sign_release.py SHA256SUMS --ssh HOST --key-dir DIR`. La clave privada queda cifrada en otro equipo; solo vuelve la firma.
+
 v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE** respaldar el directorio antiguo y las configuraciones, instalar de nuevo y restaurar manualmente los ajustes necesarios. Si falta el localizador de estado o se detecta el esquema antiguo, se rechaza la actualización directa; no elimine antes el directorio antiguo.
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.5.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v6.6.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

@@ -94,6 +94,11 @@ case "$key" in
   upgrade_keeping) fmt='Se conservan %s ajustes registrados.\n' ;;
   backup_pre_upgrade) fmt='Configuración guardada en %s antes de actualizar.\n' ;;
   backup_pre_upgrade_failed) fmt='No se pudo guardar una copia de la configuración; se continúa con la actualización.\n' ;;
+  release_key_pinned) fmt='Clave de firma de versiones fijada: %s. A partir de ahora este equipo solo instala paquetes firmados con ella.\n' ;;
+  release_key_unsigned) fmt='Este paquete no incluye clave de firma de versiones, así que en este equipo no se exigen firmas de actualización.\n' ;;
+  release_key_changed) fmt='Instalación rechazada: el paquete trae la clave %s, pero este equipo tiene fijada %s. Si confía en el cambio, ejecute de nuevo con VPSSRV_ACCEPT_KEY_CHANGE=%s (o upgrade.py --accept-key-change).\n' ;;
+  release_key_missing) fmt='Instalación rechazada: este equipo tiene fijada la clave de versiones %s, pero el paquete no trae ninguna. Elimine %s solo si quiere dejar de exigir firmas.\n' ;;
+  release_key_error) fmt='No se pudo comprobar la clave de firma de versiones; no se cambió nada.\n' ;;
   upgrade_anytls_kept) fmt='Se conserva el nodo anytls existente en el puerto %s; su contraseña no cambia y los clientes configurados siguen funcionando.\n' ;;
   upgrade_proxy_kept) fmt='Se conservan los nodos proxy existentes (%s); sus puertos y credenciales no cambian y los clientes configurados siguen funcionando.\n' ;;
   upgrade_no_new) fmt='Esta versión no añade ajustes nuevos.\n' ;;

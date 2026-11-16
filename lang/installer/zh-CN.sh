@@ -94,6 +94,11 @@ case "$key" in
   upgrade_keeping) fmt='沿用已记录的 %s 项设置。\n' ;;
   backup_pre_upgrade) fmt='升级前已备份配置到 %s。\n' ;;
   backup_pre_upgrade_failed) fmt='配置备份失败, 继续升级。\n' ;;
+  release_key_pinned) fmt='已固定发布签名密钥: %s。此后这台主机只安装用它签名的安装包。\n' ;;
+  release_key_unsigned) fmt='这个安装包不带发布签名密钥, 这台主机不会强制校验升级签名。\n' ;;
+  release_key_changed) fmt='拒绝安装: 安装包的发布密钥是 %s, 但这台主机固定的是 %s。确认可信后, 加上 VPSSRV_ACCEPT_KEY_CHANGE=%s 重新运行(或用 upgrade.py --accept-key-change)。\n' ;;
+  release_key_missing) fmt='拒绝安装: 这台主机固定了发布密钥 %s, 但安装包没有附带密钥。只有确实要停止校验签名时才删除 %s。\n' ;;
+  release_key_error) fmt='无法检查发布签名密钥, 没有做任何改动。\n' ;;
   upgrade_anytls_kept) fmt='保留现有 anytls 节点，端口 %s —— 密码不变，已配置的客户端继续可用。\n' ;;
   upgrade_proxy_kept) fmt='保留现有 proxy 节点（%s）—— 端口和凭据不变，已配置的客户端继续可用。\n' ;;
   upgrade_no_new) fmt='本版本没有新增配置项。\n' ;;

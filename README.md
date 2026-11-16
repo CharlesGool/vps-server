@@ -4,7 +4,7 @@
 
 在一个 Web 控制台中管理 VPS 测速, 代理, FRP 和 Tailscale, 减少重复的终端操作.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.5.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.5.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE) [![Release](https://img.shields.io/badge/release-v6.6.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v6.6.0)
 
 ## 文档
 
@@ -129,10 +129,10 @@
 
 ### 快速安装
 
-一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.5.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
+一条命令只安装 Web 页面, 其他模块在设置/模块中按需添加. 下面是离线版; 在线版把文件名换成 `vps-server-v6.6.0-linux-amd64-online.tar.gz`, 也可以直接用这条命令:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### 常规安装
@@ -140,7 +140,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 源码安装需先在 `web/` 构建前端(Node.js 24). 仓库不含 sing-box, frp, Caddy 和 Tailscale 等上游程序, 安装时像在线版一样联网下载并校验 SHA-256;私有 nftables 运行库只在完整离线包中提供. `cp` 步骤可省略;需要定制时先编辑 `.env`.
 
 ```bash
-git clone --depth 1 --branch v6.5.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v6.6.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +152,17 @@ bash deploy/install.sh
 只需目标机能联网. 安装包约 4 MB, 其余程序在安装时按所选模块下载. 从 GitHub 下载 15 秒后仍慢于 200 KB/s 时, 自动改用国内镜像 gh-proxy.com, ghfast.top, 下载内容同样校验 SHA-256; 设置 `VPSSRV_GITHUB_MIRROR=https://你的镜像/` 可优先使用自己的镜像, 设为 `none` 不用镜像. 上面的安装命令本身也从 GitHub 下载, 国内服务器可把其中的 `https://github.com/` 换成 `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### 离线安装
 
-在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/vps-server-v6.5.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.5.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
+在联网机器下载 [完整安装包](https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/vps-server-v6.6.0-linux-amd64.tar.gz)和 [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v6.6.0/SHA256SUMS), 传到目标机的 `/root/vps-server-download/`, 然后执行. 目标机只需 Python 3.9+, 不需要联网, curl, Git, tar 或 gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.5.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v6.6.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -282,9 +282,20 @@ python3 /root/apps/vps-server/src/web/client_cert.py disable
 
 布局 1 的 v5.1.1 测试版和 v5.2.x 可按上述安装步骤升级. 从 v6.5.0 起, 安装器在改动任何东西之前会自动把配置备份到 `<状态根>/backups/`(只含配置, 不含程序代码和迷你网盘文件, 保留最近 3 份; 备份失败只警告); 更早的版本升级前请先手动备份状态根, `/etc/vps-server-proxy`, `/etc/vps-server-frps`, FRPC 实例配置与域名转发配置(`/etc/vps-server-caddy`), 再在安装目录之外解包新版本, 使用相同 `PREFIX` 和状态根执行安装. 密码, 端口, 证书, 会话与模块设置按现行布局保留;源码目录不再承担持久数据职责.
 
+### 升级签名
+
+从 v6.6.0 起, 发布的安装包由维护者用 Ed25519 密钥签名(签在 `SHA256SUMS` 上, 附件 `SHA256SUMS.sig`), 主机只升级到用同一把密钥签名的版本. 发布密钥指纹: `e6d9:e0c2:55dc:3f8c:b673:defd:9043:d5a0`.
+
+- **首次**升到 v6.6.0 仍用上面的升级命令. 安装器会把包里的公钥(`config/release-key.pub`)固定到 `<状态根>/release-key.pub` 并打印指纹, 请与上面的指纹核对.
+- 此后升级用已安装的升级命令, 它先验签再安装, 不信任新包里的任何脚本: `python3 /root/apps/vps-server/src/web/upgrade.py`(默认最新版; `--version v6.6.1` 指定版本; `--from 目录` 用已下载的 `SHA256SUMS`, `SHA256SUMS.sig` 和安装包, 不联网; `--variant online` 用在线版; `--dry-run` 只验证). 签名不对, 校验和不符, 版本更旧, 或包里的密钥与固定的不同, 一律拒绝.
+- 直接用旧命令装另一把密钥签名的包(例如别人 fork 的版本), 或装不带密钥的包, 安装器也会拒绝. 确认要换密钥时, 加 `--accept-key-change 新指纹`(或 `VPSSRV_ACCEPT_KEY_CHANGE=新指纹`).
+- 别人可以用自己的密钥发布自己的版本; 固定了你的密钥的主机不会升级到他们的版本.
+- 不再要求签名(例如回退到 v6.6.0 之前的版本)时, 删除 `<状态根>/release-key.pub`.
+- 维护者发布: 构建后用 `python3 tools/sign-release/sign_release.py SHA256SUMS --ssh 主机 --key-dir 目录` 签名. 私钥加密保存在另一台主机上, 只有签名结果传回.
+
 v5.1.0 及更早版本使用旧布局, 不支持自动迁移. **必须**先备份旧安装目录及模块配置, 再全新安装并手动恢复所需设置. 缺少状态定位文件或检测到旧布局时安装器会拒绝原地升级;不要先删除旧目录.
 
-确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.5.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
+确认后台退出码为 `0`, `systemctl is-active vps-server-web` 返回 `active`, 控制台显示 v6.6.0, 原密码可登录, 节点和 FRPC 配置仍存在, 所需模块及端口正常. 自定义服务名时替换命令. 失败时保留日志和备份, 不把部分完成视为升级成功.
 
 ## 卸载
 

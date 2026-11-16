@@ -94,6 +94,11 @@ case "$key" in
   upgrade_keeping) fmt='Carrying %s recorded setting(s) forward.\n' ;;
   backup_pre_upgrade) fmt='Configuration saved to %s before upgrading.\n' ;;
   backup_pre_upgrade_failed) fmt='Could not save a configuration backup; continuing with the upgrade.\n' ;;
+  release_key_pinned) fmt='Release signing key pinned: %s. From now on this host installs only packages signed with it.\n' ;;
+  release_key_unsigned) fmt='This package carries no release signing key, so upgrade signatures are not enforced on this host.\n' ;;
+  release_key_changed) fmt='Refusing to install: the package ships release key %s, but this host has pinned %s. If you trust the change, run again with VPSSRV_ACCEPT_KEY_CHANGE=%s (or upgrade.py --accept-key-change).\n' ;;
+  release_key_missing) fmt='Refusing to install: this host has pinned release key %s, but the package ships none. Delete %s only if you mean to stop enforcing signatures.\n' ;;
+  release_key_error) fmt='Could not check the release signing key; nothing was changed.\n' ;;
   upgrade_anytls_kept) fmt='Keeping the existing anytls node on port %s — its password is unchanged, so configured clients keep working.\n' ;;
   upgrade_proxy_kept) fmt='Keeping the existing proxy node(s) (%s) — their ports and credentials are unchanged, so configured clients keep working.\n' ;;
   upgrade_no_new) fmt='This version adds no new settings.\n' ;;

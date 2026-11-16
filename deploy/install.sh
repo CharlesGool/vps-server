@@ -614,6 +614,27 @@ if has_module web; then
 fi
 
 # ---------------------------------------------------------------------------
+# 1-pre. Who signed this package. A host that has pinned a release key installs
+# only packages that ship that key (upgrade.py has already verified the
+# signature itself); a host that has not pinned one pins the key shipped here.
+# ---------------------------------------------------------------------------
+RELEASE_KEY_ACTION=""
+if [ -f "$SRC_DIR/src/web/release_trust.py" ]; then
+  trust_rc=0
+  trust_out="$(python3 "$SRC_DIR/src/web/release_trust.py" check --state-dir "$STATE_DIR" --package "$SRC_DIR" \
+    --accept "${VPSSRV_ACCEPT_KEY_CHANGE:-}" 2>/dev/null)" || trust_rc=$?
+  read -r trust_verdict trust_new trust_old <<<"$trust_out"
+  case "${trust_verdict:-error}" in
+    pin|accepted) RELEASE_KEY_ACTION=pin ;;
+    ok) ;;
+    unsigned) msg release_key_unsigned ;;
+    changed) die "$(msg release_key_changed "$trust_new" "$trust_old" "$trust_new")" ;;
+    unsigned-refused) die "$(msg release_key_missing "$trust_new" "$STATE_DIR/release-key.pub")" ;;
+    *) die "$(msg release_key_error)" ;;
+  esac
+fi
+
+# ---------------------------------------------------------------------------
 # 1a. An existing install, if there is one.
 # ---------------------------------------------------------------------------
 # Keep the credential snapshot and both child applies in one transaction.
@@ -675,6 +696,11 @@ load_state_env
 load_state_paths
 set_state_defaults
 commit_state_layout
+if [ "$RELEASE_KEY_ACTION" = pin ]; then
+  pinned_print="$(python3 "$SRC_DIR/src/web/release_trust.py" pin --state-dir "$STATE_DIR" --package "$SRC_DIR")" \
+    || die "$(msg release_key_error)"
+  msg release_key_pinned "$pinned_print"
+fi
 # Before an upgrade changes anything, save the configuration (not the code,
 # which GitHub still has, and not Mini Drive files). A failed backup warns but
 # does not stop the upgrade; the three newest pre-upgrade backups are kept.
