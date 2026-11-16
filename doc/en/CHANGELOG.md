@@ -26,6 +26,31 @@ metadata:
 
 ## Changelog
 
+### v6.6.0 — 2026-11-16
+
+Upgrades are now verified: a host that has pinned the maintainer's key upgrades only to releases signed with that key. The upgrade command changes, see below. Settings and data are kept.
+
+#### New
+
+- **Signed releases.** The release's `SHA256SUMS` carries an Ed25519 signature, `SHA256SUMS.sig`. The private key is kept encrypted on another host of the maintainer; the build machine gets back only the signature and never holds the key. Release key fingerprint: `e6d9:e0c2:55dc:3f8c:b673:defd:9043:d5a0`.
+- **A verifying upgrade command.** `python3 /root/apps/vps-server/src/web/upgrade.py` verifies the signature first, then checks the package's SHA-256, unpacks it safely, checks that the version inside matches the tag, and only then runs the new package's installer; it trusts no script inside the new package. A bad signature, a checksum mismatch, an older version, or a package whose key differs from the pinned one is refused. It supports `--version`, `--variant online`, `--from DIR` (use downloaded files, no network) and `--dry-run`.
+- **A pinned release key.** The first time the installer sees a package that ships a key, it pins `config/release-key.pub` as `<state root>/release-key.pub` and prints the fingerprint. From then on the installer also refuses, with the old command, a package from someone's fork or one without a key. A key change needs `--accept-key-change NEW-FINGERPRINT`. Anyone may publish their own builds with their own key; a host pinned to yours will not upgrade to theirs.
+
+#### Changed
+
+- **The first upgrade to v6.6.0 still uses the old upgrade command**; after that use `upgrade.py`. The first pin is trust on first use, so compare the fingerprint the installer prints with the one above.
+- Verification is pure Python from the standard library (RFC 8032), so hosts need no extra dependency.
+
+#### Verification
+
+Rehearsed on a home virtual machine with the real signing key: installing v6.6.0 with the old command pinned the key (mode 0600, fingerprint matching); on the pinned host, installing a package without a key and one with another key with the old command were both refused and the pinned key and version stayed as they were; `upgrade.py` refused a list signed by someone else, a tampered package and an older version, verified the genuine package with `--dry-run`, then upgraded to v6.6.1 with services running and the temporary directory removed. 104 automated tests, including signatures cross-checked against OpenSSL. Downloading directly from GitHub (without `--from`) and the Macau host were not exercised before this release.
+
+#### Known issues
+
+- The pinned fingerprint can for now only be read with `python3 src/web/release_trust.py show --state-dir <state root>`; the console does not show it yet.
+- If the private key is lost, hosts that pinned it can only accept a new key's releases through `--accept-key-change`.
+- Going back to a version before v6.6.0 needs `<state root>/release-key.pub` deleted first.
+
 ### v6.5.0 — 2026-11-16
 
 Configuration backup and scheduled tasks are new, and an upgrade now backs up only the configuration. The upgrade command is unchanged and settings and data are kept.

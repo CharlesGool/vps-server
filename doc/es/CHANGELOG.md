@@ -26,6 +26,31 @@ metadata:
 
 ## Historial de cambios
 
+### v6.6.0 — 2026-11-16
+
+Las actualizaciones ahora se verifican: un equipo que ha fijado la clave del mantenedor solo se actualiza a versiones firmadas con ella. El comando de actualización cambia, véase abajo. Se conservan la configuración y los datos.
+
+#### Nuevo
+
+- **Versiones firmadas.** El `SHA256SUMS` de la versión lleva una firma Ed25519, `SHA256SUMS.sig`. La clave privada se guarda cifrada en otro equipo del mantenedor; la máquina de compilación solo recibe la firma y nunca tiene la clave. Huella de la clave de versiones: `e6d9:e0c2:55dc:3f8c:b673:defd:9043:d5a0`.
+- **Un comando de actualización que verifica.** `python3 /root/apps/vps-server/src/web/upgrade.py` verifica primero la firma, luego el SHA-256 del paquete, lo desempaqueta con seguridad, comprueba que la versión interna coincide con la etiqueta y solo entonces ejecuta el instalador del paquete nuevo; no confía en ningún script del paquete nuevo. Se rechaza una firma incorrecta, una suma que no coincide, una versión más antigua o un paquete cuya clave difiera de la fijada. Admite `--version`, `--variant online`, `--from DIR` (usar archivos ya descargados, sin red) y `--dry-run`.
+- **Clave de versiones fijada.** La primera vez que el instalador ve un paquete con clave, fija `config/release-key.pub` como `<raíz del estado>/release-key.pub` y muestra la huella. Desde entonces el instalador también rechaza, con el comando antiguo, un paquete de un fork o uno sin clave. Un cambio de clave exige `--accept-key-change NUEVA-HUELLA`. Cualquiera puede publicar sus versiones con su clave; un equipo con la suya fijada no se actualizará a las de otros.
+
+#### Cambios
+
+- **La primera actualización a v6.6.0 sigue usando el comando anterior**; después use `upgrade.py`. La primera fijación es confianza en el primer uso: compare la huella que muestra el instalador con la de arriba.
+- La verificación es Python puro de la biblioteca estándar (RFC 8032); los equipos no necesitan dependencias.
+
+#### Verificación
+
+Ensayado en una máquina virtual doméstica con la clave de firma real: instalar v6.6.0 con el comando antiguo fijó la clave (modo 0600, huella coincidente); en el equipo con la clave fijada, instalar con el comando antiguo un paquete sin clave y otro con otra clave se rechazó en ambos casos y la clave y la versión fijadas no cambiaron; `upgrade.py` rechazó una lista firmada por otro, un paquete manipulado y una versión más antigua, verificó el paquete auténtico con `--dry-run` y actualizó a v6.6.1 con los servicios en marcha y el directorio temporal eliminado. 104 pruebas automáticas, con firmas contrastadas con OpenSSL. La descarga directa desde GitHub (sin `--from`) y el servidor de Macao no se probaron antes de esta versión.
+
+#### Problemas conocidos
+
+- La huella fijada por ahora solo se lee con `python3 src/web/release_trust.py show --state-dir <raíz del estado>`; la consola aún no la muestra.
+- Si se pierde la clave privada, los equipos que la fijaron solo pueden aceptar las versiones de una clave nueva mediante `--accept-key-change`.
+- Volver a una versión anterior a v6.6.0 exige borrar antes `<raíz del estado>/release-key.pub`.
+
 ### v6.5.0 — 2026-11-16
 
 Se añaden la copia de configuración y las tareas programadas, y una actualización ahora copia solo la configuración. El comando de actualización no cambia y se conservan la configuración y los datos.
