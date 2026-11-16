@@ -962,6 +962,7 @@
   "files_error_empty": "The file is empty.",
   "files_error_incomplete": "The transfer stopped early; the partial file was discarded.",
   "files_error_url_invalid": "Enter an http or https URL.",
+  "files_error_url_blocked": "This address points at this machine or a link-local address and is not allowed.",
   "files_error_busy": "Three downloads are already running. Wait for them to finish.",
   "files_error_not_found": "Not found; it may have been deleted.",
   "files_error_link_invalid": "Invalid expiry or download limit.",

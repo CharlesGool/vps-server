@@ -30,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import crypto_box  # noqa: E402
+import release_trust  # noqa: E402
 import secure_store  # noqa: E402
 import state_paths  # noqa: E402
 
@@ -428,6 +429,10 @@ def _restore_plain(path, directory):
             if member.name == MANIFEST:
                 continue
             target = Path("/") / member.name
+            if target == release_trust.pinned_path(state_paths.state_dir()):
+                # The key that signs upgrades is pinned on this host; a backup (which may have
+                # come from anywhere) must not be able to swap it for another.
+                continue
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)
                 os.chmod(target, member.mode & 0o777)

@@ -96,6 +96,16 @@ class BackupTest(unittest.TestCase):
         self.assertTrue(any(i["kind"] == "pre-restore" for i in cb.list_backups(self.out)))
         self.assertGreater(result["restored"], 0)
 
+    def test_restore_never_replaces_the_pinned_release_key(self):
+        pinned = self.state / "release-key.pub"
+        pinned.write_text("ed25519 GOOD")
+        name = cb.create_backup("manual", self.out)
+        pinned.write_text("ed25519 PINNED-LATER")
+        (self.state / "certs" / "key.pem").write_text("CHANGED")
+        cb.restore(self.out / name, self.out)
+        self.assertEqual((self.state / "certs" / "key.pem").read_text(), "SECRET")
+        self.assertEqual(pinned.read_text(), "ed25519 PINNED-LATER")
+
     def make(self, entries):
         path = self.tmp / "evil.tar.gz"
         with tarfile.open(path, "w:gz") as archive:

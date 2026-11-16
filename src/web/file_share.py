@@ -10,11 +10,13 @@ Layout under ``<data dir>/files/``: ``index.json`` (files, links, fetch jobs,
 quota) and ``blobs/<id>`` (contents). A write in progress reserves its size
 against the quota so two uploads cannot both squeeze into the last gigabyte.
 """
+import ipaddress
 import json
 import os
 import re
 import secrets
 import shutil
+import socket
 import threading
 import time
 import urllib.parse
@@ -48,6 +50,39 @@ MAX_RATE = 10 * 1024 * GIB
 USER_AGENT = "vps-server-files"
 TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32}")
 ID_RE = re.compile(r"[0-9a-f]{16}")
+
+
+def refuse_internal(url, resolve=socket.getaddrinfo):
+    """Raise ``url_blocked`` when ``url`` points at this host or a link-local address.
+
+    The console fetches a URL on an administrator's behalf; without this check it
+    could be aimed at the loopback services of this very machine or a cloud
+    provider's metadata address (169.254.169.254). Ordinary private LAN addresses
+    stay allowed: downloading from a NAS is a normal use.
+    """
+    host = urllib.parse.urlsplit(url).hostname
+    if not host:
+        raise FileShareError("url_invalid")
+    try:
+        found = resolve(host, None, type=socket.SOCK_STREAM)
+    except OSError:
+        return  # unresolvable: the fetch itself will fail and say so
+    for item in found:
+        address = ipaddress.ip_address(item[4][0].split("%")[0])
+        if getattr(address, "ipv4_mapped", None):
+            address = address.ipv4_mapped
+        if address.is_loopback or address.is_link_local or address.is_unspecified or address.is_multicast:
+            raise FileShareError("url_blocked")
+
+
+class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
+    """Apply the same address check to every redirect target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).scheme not in ("http", "https"):
+            raise FileShareError("url_invalid")
+        refuse_internal(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 class FileShareError(Exception):
@@ -291,6 +326,7 @@ class FileStore:
         parts = urllib.parse.urlsplit(url)
         if parts.scheme not in ("http", "https") or not parts.hostname or len(url) > 2000:
             raise FileShareError("url_invalid")
+        refuse_internal(url)
         with self._lock:
             data = self.state()
             if sum(job.get("state") == "running" for job in data["jobs"]) >= 3:
@@ -321,8 +357,10 @@ class FileStore:
                 self._update_job(write_id, bytes=done)
 
         try:
+            refuse_internal(url)
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(request, timeout=FETCH_TIMEOUT) as response:
+            opener = urllib.request.build_opener(_CheckedRedirects)
+            with opener.open(request, timeout=FETCH_TIMEOUT) as response:
                 length = response.headers.get("Content-Length")
                 total = int(length) if length and length.isdigit() else None
                 name = name_from_url(response.geturl(), response.headers.get("Content-Disposition"))

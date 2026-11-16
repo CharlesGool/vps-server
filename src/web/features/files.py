@@ -13,7 +13,7 @@ from file_share import DEFAULT_LINK_MINUTES, GIB, LINK_MINUTES, UPLOAD_IDLE_TIME
 
 NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
            "files_fetch_started", "files_quota_saved", "files_rate_saved", "files_job_removed", "files_job_cancelled")
-ERRORS = ("no_room", "too_many", "empty", "incomplete", "url_invalid", "busy", "not_found",
+ERRORS = ("no_room", "too_many", "empty", "incomplete", "url_invalid", "url_blocked", "busy", "not_found",
           "link_invalid", "too_many_links", "quota_invalid", "rate_invalid", "traffic_blocked", "cancelled", "interrupted", "network")
 RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 

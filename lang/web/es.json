@@ -962,6 +962,7 @@
   "files_error_empty": "El archivo está vacío.",
   "files_error_incomplete": "La transferencia se cortó; se descartó el archivo parcial.",
   "files_error_url_invalid": "Introduce una URL http o https.",
+  "files_error_url_blocked": "Esta dirección apunta a esta máquina o a una dirección de enlace local y no está permitida.",
   "files_error_busy": "Ya hay tres descargas en curso. Espera a que terminen.",
   "files_error_not_found": "No encontrado; puede que se haya eliminado.",
   "files_error_link_invalid": "Caducidad o límite de descargas no válidos.",

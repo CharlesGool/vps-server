@@ -962,6 +962,7 @@
   "files_error_empty": "文件是空的。",
   "files_error_incomplete": "传输中断，文件不完整，已丢弃。",
   "files_error_url_invalid": "请输入 http 或 https 链接。",
+  "files_error_url_blocked": "这个地址指向本机或链路本地地址, 不允许下载.",
   "files_error_busy": "已有 3 个下载在进行，请等它们完成。",
   "files_error_not_found": "找不到这一项，可能已被删除。",
   "files_error_link_invalid": "有效期或下载次数无效。",

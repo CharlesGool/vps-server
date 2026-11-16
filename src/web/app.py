@@ -1122,6 +1122,11 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     # upload numbers the hand-rolled test used to produce. LibreSpeed's own
     # docs also assume a persistent connection for accurate ping timing.
     protocol_version = "HTTP/1.1"
+    # A client that finished the TLS handshake but then sends nothing (or a body
+    # slower than this per read) is dropped; without it such connections held a
+    # thread and a socket each, forever. The limit applies to each socket
+    # operation, not to a whole transfer, so long downloads are unaffected.
+    timeout = 60
 
     def log_message(self, format, *args):
         pass  # every request is recorded in the visitor log instead
@@ -1438,6 +1443,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 class ProbeHandler(PublicMixin, BaseHTTPRequestHandler):
     """The unauthenticated page on 80 and 443."""
     context = sys.modules[__name__]
+    timeout = 30  # see ConsoleHandler.timeout
 
 
 def serve_forever_in_thread(server):
