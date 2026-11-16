@@ -92,6 +92,8 @@ case "$key" in
   ask_upgrade) fmt='Keep its configuration and upgrade to %s? [Y/n] ' ;;
   reconfigure) fmt='Reconfiguring from scratch. The console password, port, certificates and visitor log are kept either way.\n' ;;
   upgrade_keeping) fmt='Carrying %s recorded setting(s) forward.\n' ;;
+  backup_pre_upgrade) fmt='Configuration saved to %s before upgrading.\n' ;;
+  backup_pre_upgrade_failed) fmt='Could not save a configuration backup; continuing with the upgrade.\n' ;;
   upgrade_anytls_kept) fmt='Keeping the existing anytls node on port %s — its password is unchanged, so configured clients keep working.\n' ;;
   upgrade_proxy_kept) fmt='Keeping the existing proxy node(s) (%s) — their ports and credentials are unchanged, so configured clients keep working.\n' ;;
   upgrade_no_new) fmt='This version adds no new settings.\n' ;;

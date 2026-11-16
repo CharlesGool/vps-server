@@ -1,0 +1,64 @@
+// Backup and Tasks pages: confirmation dialogs, backup upload, schedule presets.
+(() => {
+  document.querySelectorAll('form.backup-confirm[data-confirm]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      if (form.dataset.confirmed === 'true') {
+        delete form.dataset.confirmed;
+        return;
+      }
+      event.preventDefault();
+      const button = event.submitter || form.querySelector('button[type="submit"]');
+      if (await window.vpsConfirm(form.dataset.confirm, button?.textContent.trim())) {
+        form.dataset.confirmed = 'true';
+        form.requestSubmit(event.submitter || undefined);
+      }
+    });
+  });
+
+  const preset = document.getElementById('task-preset');
+  const schedule = document.getElementById('task-schedule');
+  if (preset && schedule) {
+    preset.addEventListener('change', () => {
+      if (preset.value) schedule.value = preset.value;
+    });
+  }
+
+  const upload = document.querySelector('form.backup-upload');
+  if (upload) {
+    const input = upload.querySelector('input[type=file]');
+    const output = upload.querySelector('output');
+    const button = upload.querySelector('button');
+    upload.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > Number(upload.dataset.max)) {
+        output.textContent = upload.dataset.tooBig;
+        return;
+      }
+      const request = new XMLHttpRequest();
+      request.open('POST', '/backup/upload?csrf=' + encodeURIComponent(upload.dataset.csrf));
+      request.setRequestHeader('Content-Type', 'application/octet-stream');
+      request.upload.addEventListener('progress', (progress) => {
+        if (progress.lengthComputable) output.textContent = Math.round(progress.loaded * 100 / progress.total) + '%';
+      });
+      request.addEventListener('load', () => {
+        let reply = {};
+        try { reply = JSON.parse(request.responseText); } catch (error) { reply = {}; }
+        if (request.status === 200 && reply.ok) {
+          window.location.assign('/backup?msg=uploaded');
+        } else {
+          window.location.assign('/backup?error=' + (reply.error === 'invalid' ? 'invalid' : 'failed'));
+        }
+      });
+      request.addEventListener('error', () => {
+        output.textContent = upload.dataset.failed;
+        button.disabled = false;
+        input.disabled = false;
+      });
+      button.disabled = true;
+      input.disabled = true;
+      request.send(file);
+    });
+  }
+})();

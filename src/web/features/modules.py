@@ -500,6 +500,8 @@ class ModulesMixin:
             ("visitors", t["visitors"], "/visitors", "users-round", states["visitors"]),
             ("terminal", t["terminal_title"], "/terminal", "terminal", states["terminal"]),
             ("changelog", t["changelog"], "/changelog", "scroll-text", states["changelog"]),
+            ("backup", t["backup"], "/backup", "archive", True),
+            ("tasks", t["tasks"], "/tasks", "timer", True),
             ("logs", t["module_detailed_logs"], "/settings/logs", "activity", True),
             ("settings", t["settings"], "/settings", "settings-2", True),
         )
@@ -519,7 +521,7 @@ class ModulesMixin:
             if module == "terminal" and not self.context.AUTH_ENABLED:
                 continue
             switch = ""
-            if module not in ("settings", "changelog", "logs"):
+            if module not in ("settings", "changelog", "logs", "backup", "tasks"):
                 action = "disable" if enabled else "enable"
                 available = (module != "web_public" or "web" in installed) and (
                     module != "iperf3" or "iperf3" in installed) and (

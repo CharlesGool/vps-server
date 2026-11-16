@@ -850,6 +850,18 @@ _audit_blocked_seen = {}
 KNOWN_LOGINS = KnownLogins(DATA_DIR / "known-logins.json")
 ALERTS = BarkAlerts(DATA_DIR / "alerts.json",
                     log=lambda error: print(_log_text('log_alert_failed', error=error), file=sys.stderr))
+
+import config_backup  # noqa: E402
+from scheduler import Scheduler  # noqa: E402
+
+
+def _scheduled_backup(keep):
+    name = config_backup.create_backup("scheduled")
+    config_backup.prune("scheduled", keep)
+    return name
+
+
+SCHEDULER = Scheduler(DATA_DIR, backup_action=_scheduled_backup, notify=ALERTS.notify_task)
 # Which source addresses may connect to the console at all. Off by default.
 CONSOLE_ACCESS = ConsoleAccess(DATA_DIR / "console-access.json")
 
@@ -969,7 +981,7 @@ def render_changelog(*args, **kwargs):
     return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download", "shield-check"})
+_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download", "shield-check", "archive"})
 _UI_ICON_CACHE = {}
 
 
@@ -1018,6 +1030,7 @@ STATIC_FILES = {
     "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
     "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
     "/static/files.js": ("application/javascript", STATIC_DIR / "files.js"),
+    "/static/backup.js": ("application/javascript", STATIC_DIR / "backup.js"),
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
     **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
        for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
@@ -1065,6 +1078,8 @@ from features.frp import FrpMixin
 from features.proxy import ProxyMixin
 from features.changelog import ChangelogMixin
 from features.visitors import VisitorsMixin
+from features.backup import BackupMixin
+from features.tasks import TasksMixin
 from features.public import PublicMixin
 
 # Sent on every console response unless the route set its own. Scripts only
@@ -1088,7 +1103,7 @@ SECURITY_HEADERS = (
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
                      PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
-                     ChangelogMixin, VisitorsMixin, BaseHTTPRequestHandler):
+                     ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,
@@ -1382,7 +1397,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
         for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
                       self.route_domains, self.route_files, self.route_traffic, self.route_tailscale, self.route_frp, self.route_iperf,
-                      self.route_portfwd, self.route_visitors, self.route_changelog):
+                      self.route_portfwd, self.route_visitors, self.route_changelog,
+                      self.route_backup, self.route_tasks):
             if route(method, path, parsed, lang, query_lang):
                 return
 
@@ -1638,6 +1654,7 @@ def main():
                 print(_log_text('log_portfwd_reapplied', count=active, path=PORTFWD_STATE_FILE), file=sys.stderr)
         threading.Thread(target=watch_portfwd_switch, args=(stop_event,), daemon=True).start()
         APP_METER.start()
+        SCHEDULER.start()
 
         console.serve_forever()
     except KeyboardInterrupt:
@@ -1654,6 +1671,7 @@ def main():
             except ValueError:
                 pass
         stop_event.set()
+        SCHEDULER.stop()
         terminal_session.hangup_all()
         close_iperf_window()
         if portfwd_enabled():

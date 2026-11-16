@@ -92,6 +92,8 @@ case "$key" in
   ask_upgrade) fmt='沿用它的配置并升级到 %s？[Y/n] ' ;;
   reconfigure) fmt='重新配置。无论哪种方式，控制台密码、端口、证书和访客记录都会保留。\n' ;;
   upgrade_keeping) fmt='沿用已记录的 %s 项设置。\n' ;;
+  backup_pre_upgrade) fmt='升级前已备份配置到 %s。\n' ;;
+  backup_pre_upgrade_failed) fmt='配置备份失败, 继续升级。\n' ;;
   upgrade_anytls_kept) fmt='保留现有 anytls 节点，端口 %s —— 密码不变，已配置的客户端继续可用。\n' ;;
   upgrade_proxy_kept) fmt='保留现有 proxy 节点（%s）—— 端口和凭据不变，已配置的客户端继续可用。\n' ;;
   upgrade_no_new) fmt='本版本没有新增配置项。\n' ;;

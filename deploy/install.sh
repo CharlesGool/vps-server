@@ -675,6 +675,17 @@ load_state_env
 load_state_paths
 set_state_defaults
 commit_state_layout
+# Before an upgrade changes anything, save the configuration (not the code,
+# which GitHub still has, and not Mini Drive files). A failed backup warns but
+# does not stop the upgrade; the three newest pre-upgrade backups are kept.
+if [ "$UPGRADE" = 1 ] && [ "${VPSSRV_MODULE_ONLY:-0}" != 1 ] && [ -f "$SRC_DIR/src/web/config_backup.py" ]; then
+  if backup_name="$(VPSSRV_STATE_DIR="$STATE_DIR" VPSSRV_BACKUP_VERSION="${PREV_VERSION:-}" \
+      python3 "$SRC_DIR/src/web/config_backup.py" create --kind pre-upgrade --keep 3 2>/dev/null)"; then
+    msg backup_pre_upgrade "$STATE_DIR/backups/$backup_name"
+  else
+    msg backup_pre_upgrade_failed
+  fi
+fi
 PASSWORD_WAS_PRESENT=0
 [ -f "$VPSSRV_PASSWORD_FILE" ] && PASSWORD_WAS_PRESENT=1
 if [ "$UPGRADE" = 1 ]; then

@@ -221,6 +221,22 @@ class BarkAlerts:
         except (OSError, ValueError, urllib.error.URLError) as exc:
             return type(exc).__name__
 
+    def notify_task(self, title, body):
+        """A scheduled job failed: send when a Bark key is set, whatever the other switches say."""
+        with self.lock:
+            server, key = self.server, self.key
+        if not key:
+            return False
+
+        def run():
+            try:
+                self._post(server, key, title, body)
+            except (OSError, ValueError, urllib.error.URLError) as exc:
+                self.log(type(exc).__name__)
+
+        threading.Thread(target=run, daemon=True).start()
+        return True
+
     def notify(self, kind, title, body, dedupe=""):
         """Send in the background if ``kind`` ("new_ip" or "ban") is on."""
         with self.lock:

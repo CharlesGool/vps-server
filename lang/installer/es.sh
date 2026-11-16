@@ -92,6 +92,8 @@ case "$key" in
   ask_upgrade) fmt='¿Conservar su configuración y actualizar a %s? [Y/n] ' ;;
   reconfigure) fmt='Reconfigurando desde cero. La contraseña de la consola, el puerto, los certificados y el registro de visitantes se conservan en cualquier caso.\n' ;;
   upgrade_keeping) fmt='Se conservan %s ajustes registrados.\n' ;;
+  backup_pre_upgrade) fmt='Configuración guardada en %s antes de actualizar.\n' ;;
+  backup_pre_upgrade_failed) fmt='No se pudo guardar una copia de la configuración; se continúa con la actualización.\n' ;;
   upgrade_anytls_kept) fmt='Se conserva el nodo anytls existente en el puerto %s; su contraseña no cambia y los clientes configurados siguen funcionando.\n' ;;
   upgrade_proxy_kept) fmt='Se conservan los nodos proxy existentes (%s); sus puertos y credenciales no cambian y los clientes configurados siguen funcionando.\n' ;;
   upgrade_no_new) fmt='Esta versión no añade ajustes nuevos.\n' ;;
