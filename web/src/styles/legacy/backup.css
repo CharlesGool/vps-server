@@ -1,0 +1,98 @@
+/* Home-page total meter, Backup (/backup) and Scheduled tasks (/tasks). */
+
+/* Meter bars: the total and each source share one look. */
+.meter { height: var(--compat-size-11); border-radius: var(--radius-full); background: var(--secondary); overflow: hidden; }
+.meter > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width var(--compat-size-96) ease; }
+.meter.is-thin { height: var(--compat-size-18); }
+.meter[data-level="ok"] > span { background: var(--success); }
+.meter[data-level="warn"] > span { background: var(--warning); }
+.meter[data-level="over"] > span { background: var(--destructive); }
+.total-meter { display: grid; gap: var(--compat-size-14); }
+.total-meter-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-11) var(--compat-size-24); }
+.total-meter-head h2 { margin: 0; font-size: var(--text-lg); }
+.total-meter-figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--compat-size-11) var(--compat-size-14); margin: 0; }
+.total-meter-figure strong { font-size: var(--text-2xl); line-height: var(--leading-tight); font-variant-numeric: tabular-nums; }
+.total-meter-figure span { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.total-meter-meta { margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); }
+.total-meter .error, .total-meter .notice { margin: 0; }
+.source-box { display: grid; gap: var(--compat-size-14); padding-top: var(--compat-size-14); border-top: 1px solid var(--border); }
+.source-box h3 { margin: 0; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); }
+.source-list { display: grid; gap: var(--compat-size-24); margin: 0; padding: 0; list-style: none; }
+.source-row { display: grid; gap: var(--compat-size-18); }
+.source-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--compat-size-14); font-size: var(--text-sm); }
+.source-row-name { min-width: 0; overflow-wrap: anywhere; }
+.source-row-value { flex: none; color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.source-row-value strong { color: var(--foreground); font-weight: var(--font-weight-semibold); }
+
+/* Tags: a small coloured label for a kind or a result. */
+.tag { display: inline-flex; align-items: center; padding: var(--compat-size-45) var(--compat-size-11); border-radius: var(--radius-full); background: var(--secondary); color: var(--secondary-foreground); font-size: var(--text-xs); font-weight: var(--font-weight-semibold); line-height: var(--text-xs--line-height); white-space: nowrap; }
+.tag[data-tone="primary"] { background: var(--compat-color-79); color: var(--accent-foreground); }
+.tag[data-tone="success"] { background: var(--tint-success); color: var(--success); }
+.tag[data-tone="warning"] { background: var(--tint-warning); color: var(--foreground); }
+.tag[data-tone="danger"] { background: var(--tint-danger); color: var(--destructive); }
+
+/* Cards and forms shared by both pages. */
+.sched-card { display: grid; gap: var(--compat-size-14); }
+.sched-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-11) var(--compat-size-24); }
+.sched-card-head h2 { margin: 0; font-size: var(--text-lg); }
+.sched-card > p { margin: 0; }
+.sched-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--compat-size-14) var(--compat-size-24); margin: 0; }
+.sched-field { display: grid; gap: var(--compat-size-18); margin: 0; min-width: 0; }
+.sched-field > span { color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+.sched-field input, .sched-field select, .sched-field textarea { margin: 0; }
+.sched-field input[type=time] { width: var(--compat-size-56); }
+.sched-field input[type=number] { width: var(--compat-size-54); }
+.sched-check { display: inline-flex; align-items: center; gap: var(--compat-size-11); margin: 0; min-height: var(--compat-size-38); font-weight: var(--font-weight-medium); }
+.sched-form button { margin: 0; }
+.sched-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-14); margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); }
+
+/* A list of backups or tasks: one block per item. */
+.sched-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.sched-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--compat-size-14) var(--compat-size-24); padding: var(--compat-size-24) 0; border-top: 1px solid var(--border); }
+.sched-item:first-child { border-top: 0; padding-top: 0; }
+.sched-item:last-child { padding-bottom: 0; }
+.sched-item-main { display: grid; gap: var(--compat-size-18); flex: 1 1 var(--compat-size-82); min-width: 0; }
+.sched-item-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11); min-width: 0; font-weight: var(--font-weight-semibold); }
+.sched-item-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-18) var(--compat-size-14); color: var(--muted-foreground); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.sched-item-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--compat-size-11); margin: 0; }
+.sched-item-actions form { margin: 0; }
+.sched-item-actions :is(a, button) { margin: 0; }
+.sched-code { padding: var(--compat-size-20) var(--compat-size-11); border-radius: var(--radius-sm); background: var(--secondary); color: var(--foreground); font-family: var(--font-mono); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.sched-command { margin: 0; padding: var(--compat-size-11) var(--compat-size-14); border-radius: var(--radius-md); background: var(--muted); color: var(--foreground); font-family: var(--font-mono); font-size: var(--text-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sched-empty { margin: 0; color: var(--muted-foreground); }
+.sched-runs { margin: 0; }
+.sched-runs > summary { cursor: pointer; color: var(--muted-foreground); font-size: var(--text-sm); }
+.sched-run-list { display: grid; gap: var(--compat-size-14); margin: var(--compat-size-14) 0 0; padding: 0; list-style: none; }
+.sched-run { display: grid; gap: var(--compat-size-18); font-size: var(--text-sm); }
+.sched-run-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-14); color: var(--muted-foreground); }
+.sched-output { margin: 0; padding: var(--compat-size-11) var(--compat-size-14); border-radius: var(--radius-md); background: var(--muted); font-family: var(--font-mono); font-size: var(--text-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Add or edit a task. */
+.task-form-card > summary { cursor: pointer; list-style: none; font-size: var(--text-lg); font-weight: var(--font-weight-semibold); }
+.task-form-card > summary::-webkit-details-marker { display: none; }
+.task-form-card[open] > summary { margin-bottom: var(--compat-size-24); }
+.task-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--compat-size-24); margin: 0; }
+.task-form .is-wide { grid-column: 1 / -1; }
+.task-form textarea { min-height: var(--compat-size-80); font-family: var(--font-mono); resize: vertical; }
+.task-form input[type=number] { width: 100%; }
+.task-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11); }
+.task-form-checks { align-self: end; align-items: center; min-height: var(--compat-size-38); display: flex; flex-wrap: wrap; gap: var(--compat-size-11) var(--compat-size-24); }
+@media (max-width: 40rem) {
+  .task-form { grid-template-columns: minmax(0, 1fr); }
+}
+.file-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11) var(--compat-size-14); margin: 0; }
+.file-pick input[type=file] { flex: 1 1 var(--compat-size-82); width: auto; min-width: 0; margin: 0; padding: var(--compat-size-11); }
+.file-pick output { color: var(--muted-foreground); font-size: var(--text-sm); }
+.sched-field input.is-mono { font-family: var(--font-mono); }
+.sched-field :is(input, select, textarea) { font-weight: var(--font-weight-normal); }
+.sched-field small { font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
+.sched-field input[type=time] { width: var(--compat-size-80); }
+.sched-item-size { color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--font-weight-normal); }
+.task-form-card > summary::before { content: "+"; display: inline-block; width: var(--compat-size-29); color: var(--primary); }
+.task-form-card[open] > summary::before { content: "\2212"; }
+.sched-mode[hidden] { display: none; }
+.sched-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--compat-size-11); }
+.sched-inline input[type=number] { width: var(--compat-size-54); margin: 0; }
+.sched-inline select { width: auto; min-width: var(--compat-size-54); margin: 0; }
+.sched-days { display: flex; flex-wrap: wrap; gap: var(--compat-size-11) var(--compat-size-24); }
+.sched-when { color: var(--foreground); font-weight: var(--font-weight-medium); }

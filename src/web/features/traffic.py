@@ -39,9 +39,6 @@ def kernel_entries():
     return {entry["key"]: entry for entry in state["nodes"]}, ledger
 
 
-LEVEL_COLORS = {"none": "#5b8def", "ok": "#2e9e5b", "warn": "#d9a21b", "over": "#d64545"}
-
-
 class TrafficMixin:
     def total_entries(self):
         """Every metered entry the console can read: nodes, FRPS, kernel meters and app meters."""
@@ -89,24 +86,33 @@ class TrafficMixin:
         state_level = total_meter.level(state, used)
         cap = state["cap_bytes"]
         percent = 0 if cap is None else min(100, used * 100 // cap)
-        color = LEVEL_COLORS[state_level]
         fmt = total_meter.format_bytes
-        headline = (f'{fmt(used)} / {fmt(cap)} ({used * 100 / cap:.1f}%)' if cap is not None
-                    else f'{fmt(used)} · {t["total_no_cap"]}')
+        figure = (f'<strong>{esc(fmt(used))}</strong><span>/ {esc(fmt(cap))} ({used * 100 / cap:.1f}%)</span>' if cap is not None
+                  else f'<strong>{esc(fmt(used))}</strong><span>{esc(t["total_no_cap"])}</span>')
         since = state["period_start"][:10]
         reset = (t["total_next_reset"].format(date=state["next_reset_at"][:10]) if state["next_reset_at"]
                  else t["total_no_reset"])
         warning = {"over": t["total_over"], "warn": t["total_warn"]}.get(state_level, "")
-        warning = (f'<p class="error" role="status" style="margin:.4rem 0 0">{esc(warning)}</p>' if warning else "")
+        warning = f'<p class="error" role="status">{esc(warning)}</p>' if warning else ""
         query = self.context.parse_qs(self.context.urlsplit(self.path).query).get("total", [""])[0]
-        notice = (f'<p class="{"notice" if query == "done" else "error"}" role="status" style="margin:.4rem 0 0">'
+        notice = (f'<p class="{"notice" if query == "done" else "error"}" role="status">'
                   f'{esc(t["node_settings_done" if query == "done" else "node_settings_failed"])}</p>'
                   if query in ("done", "failed") else "")
-        rows = "".join(f'<li style="display:flex;justify-content:space-between;gap:1rem"><span>{esc(names[i])}</span>'
-                       f'<span>{esc(fmt(v))}</span></li>'
-                       for i, v in sorted(per_entry.items(), key=lambda item: -item[1]) if v)
-        breakdown = (f'<details style="margin-top:.5rem"><summary>{esc(t["total_by_source"])}</summary>'
-                     f'<ul style="list-style:none;margin:.4rem 0 0;padding:0">{rows}</ul></details>' if rows else "")
+        # Each source gets a bar like the total: its share of the cap, or of the total without a cap.
+        basis = cap if cap is not None else used
+        rows = []
+        for identifier, value in sorted(per_entry.items(), key=lambda item: -item[1]):
+            if not value:
+                continue
+            share = value * 100 / basis if basis else 0
+            width = min(100, max(1, round(share)))
+            rows.append(
+                f'<li class="source-row"><div class="source-row-head"><span class="source-row-name">{esc(names[identifier])}</span>'
+                f'<span class="source-row-value"><strong>{esc(fmt(value))}</strong> · {share:.1f}%</span></div>'
+                f'<div class="meter is-thin" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{width}" '
+                f'aria-label="{esc(names[identifier], quote=True)}"><span style="width:{width}%"></span></div></li>')
+        breakdown = (f'<div class="source-box"><h3>{esc(t["total_by_source"])}</h3>'
+                     f'<ul class="source-list">{"".join(rows)}</ul></div>' if rows else "")
         cap_value = "" if cap is None else f'{cap / 1073741824:g}'
         dialog = (
             f'<dialog class="node-access-dialog" id="total-meter-settings" aria-labelledby="total-meter-title">'
@@ -119,15 +125,13 @@ class TrafficMixin:
             f'</div><p class="muted small">{esc(t["total_hint"])}</p>'
             f'<div class="node-dialog-actions"><button type="button" class="node-dialog-cancel" data-dialog-close>{esc(t["node_cancel"])}</button>'
             f'<button type="submit">{esc(t["total_save"])}</button></div></form></dialog>')
-        return (f'<section class="card total-meter" aria-label="{esc(t["total_title"], quote=True)}">'
-                f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">'
-                f'<h2 style="margin:0;font-size:1.05rem">{esc(t["total_title"])}</h2>'
+        return (f'<section class="card wide total-meter" aria-label="{esc(t["total_title"], quote=True)}">'
+                f'<div class="total-meter-head"><h2>{esc(t["total_title"])}</h2>'
                 f'<button type="button" class="node-action" data-dialog-open="total-meter-settings">{esc(t["total_settings"])}</button></div>'
-                f'<p style="margin:.4rem 0;font-size:1.25rem;font-weight:600">{esc(headline)}</p>'
-                f'<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}" '
-                f'style="height:10px;border-radius:5px;background:rgba(127,127,127,.25);overflow:hidden">'
-                f'<span style="display:block;height:100%;width:{percent}%;background:{color}"></span></div>'
-                f'<p class="muted small" style="margin:.4rem 0 0">{esc(t["total_since"].format(date=since))} · {esc(reset)}</p>'
+                f'<p class="total-meter-figure">{figure}</p>'
+                f'<div class="meter" data-level="{state_level}" role="progressbar" aria-valuemin="0" aria-valuemax="100" '
+                f'aria-valuenow="{percent}"><span style="width:{percent}%"></span></div>'
+                f'<p class="total-meter-meta">{esc(t["total_since"].format(date=since))} · {esc(reset)}</p>'
                 f'{warning}{notice}{breakdown}{dialog}'
                 f'<script src="/static/node-controls.js"></script></section>')
 

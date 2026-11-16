@@ -135,6 +135,76 @@ def parse_backup_settings(enabled, at, keep):
     return {"enabled": bool(enabled), "time": at, "keep": int(keep)}
 
 
+UNIT_SECONDS = {"minutes": 60, "hours": 3600, "days": 86400}
+INTERVAL_MAX_SECONDS = 366 * 86400
+MODES = ("interval", "daily", "weekly", "monthly", "cron")
+TIME_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)")
+
+
+def normalize_spec(spec):
+    """A schedule choice as stored: ``interval``, ``daily``, ``weekly``, ``monthly`` or ``cron``.
+
+    A bare string is a cron expression (the older form). Raises ScheduleError.
+    """
+    if isinstance(spec, str):
+        spec = {"mode": "cron", "expr": spec}
+    if not isinstance(spec, dict) or spec.get("mode") not in MODES:
+        raise ScheduleError("invalid schedule")
+    mode = spec["mode"]
+    if mode == "interval":
+        try:
+            n = int(spec.get("n"))
+        except (TypeError, ValueError):
+            raise ScheduleError("invalid interval") from None
+        unit = spec.get("unit")
+        if unit not in UNIT_SECONDS or n < 1 or n * UNIT_SECONDS[unit] > INTERVAL_MAX_SECONDS:
+            raise ScheduleError("invalid interval")
+        return {"mode": "interval", "n": n, "unit": unit}
+    if mode == "cron":
+        expr = spec.get("expr")
+        parse_cron(expr)
+        return {"mode": "cron", "expr": expr.strip()}
+    at = spec.get("time")
+    match = TIME_RE.fullmatch(at) if isinstance(at, str) else None
+    if not match:
+        raise ScheduleError("invalid time")
+    if mode == "daily":
+        return {"mode": "daily", "time": at}
+    if mode == "weekly":
+        days = spec.get("days")
+        if not isinstance(days, list) or not days or any(
+                not isinstance(d, int) or isinstance(d, bool) or not 0 <= d <= 6 for d in days):
+            raise ScheduleError("invalid days")
+        return {"mode": "weekly", "days": sorted(set(days)), "time": at}
+    day = spec.get("day")
+    if not isinstance(day, int) or isinstance(day, bool) or not 1 <= day <= 28:
+        raise ScheduleError("invalid day")
+    return {"mode": "monthly", "day": day, "time": at}
+
+
+def cron_for(spec):
+    """The cron expression for a non-interval spec; None for an interval."""
+    mode = spec["mode"]
+    if mode == "interval":
+        return None
+    if mode == "cron":
+        return spec["expr"]
+    hour, minute = (int(part) for part in spec["time"].split(":"))
+    if mode == "daily":
+        return f"{minute} {hour} * * *"
+    if mode == "weekly":
+        return f"{minute} {hour} * * " + ",".join(str(d) for d in spec["days"])
+    return f"{minute} {hour} {spec['day']} * *"
+
+
+def task_spec(task):
+    """The spec of a stored task, also for tasks saved before specs existed."""
+    try:
+        return normalize_spec(task.get("spec") or task.get("schedule"))
+    except ScheduleError:
+        return None
+
+
 def _write_json(path, document):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -187,8 +257,8 @@ class Scheduler:
     def _save_tasks(self, tasks):
         _write_json(self.tasks_path, {"version": 1, "tasks": tasks})
 
-    def add_task(self, name, schedule, command, timeout=TIMEOUT_DEFAULT, notify=True, enabled=True):
-        task = self._checked(None, name, schedule, command, timeout, notify, enabled)
+    def add_task(self, name, spec, command, timeout=TIMEOUT_DEFAULT, notify=True, enabled=True):
+        task = self._checked(None, name, spec, command, timeout, notify, enabled, int(self.clock()))
         with self.lock:
             tasks = self.tasks()
             if len(tasks) >= MAX_TASKS:
@@ -197,12 +267,13 @@ class Scheduler:
             self._save_tasks(tasks)
         return task["id"]
 
-    def edit_task(self, task_id, name, schedule, command, timeout, notify, enabled):
+    def edit_task(self, task_id, name, spec, command, timeout, notify, enabled):
         with self.lock:
             tasks = self.tasks()
             for index, task in enumerate(tasks):
                 if task.get("id") == task_id:
-                    tasks[index] = self._checked(task_id, name, schedule, command, timeout, notify, enabled)
+                    tasks[index] = self._checked(task_id, name, spec, command, timeout, notify, enabled,
+                                                 int(self.clock()))
                     self._save_tasks(tasks)
                     return
         raise ScheduleError("unknown task")
@@ -229,14 +300,15 @@ class Scheduler:
             _write_json(self.runs_path, runs)
 
     @staticmethod
-    def _checked(task_id, name, schedule, command, timeout, notify, enabled):
+    def _checked(task_id, name, spec, command, timeout, notify, enabled, now):
         if not valid_name(name) or not valid_command(command):
             raise ScheduleError("invalid task")
-        parse_cron(schedule)
+        spec = normalize_spec(spec)
         timeout = int(timeout)
         if not TIMEOUT_MIN <= timeout <= TIMEOUT_MAX:
             raise ScheduleError("invalid timeout")
-        return {"id": task_id or secrets.token_hex(4), "name": name.strip(), "schedule": schedule.strip(),
+        return {"id": task_id or secrets.token_hex(4), "name": name.strip(), "spec": spec,
+                "schedule": cron_for(spec) or "", "anchor": now,
                 "command": command, "timeout": timeout, "notify": bool(notify), "enabled": bool(enabled)}
 
     # -- backup settings -------------------------------------------------
@@ -342,29 +414,55 @@ class Scheduler:
 
     # -- loop ----------------------------------------------------------------
 
+    def _set_anchor(self, task_id, stamp):
+        with self.lock:
+            tasks = self.tasks()
+            for task in tasks:
+                if task.get("id") == task_id:
+                    task["anchor"] = int(stamp)
+                    self._save_tasks(tasks)
+                    return
+
     def tick(self, now=None):
-        """Start whatever is due in this minute; once per minute."""
-        moment = datetime.fromtimestamp(now if now is not None else self.clock())
+        """Start whatever is due. Interval tasks are checked on every call; cron tasks once per minute."""
+        stamp = now if now is not None else self.clock()
+        moment = datetime.fromtimestamp(stamp)
         minute = moment.replace(second=0, microsecond=0)
-        if minute == self._last_minute:
-            return []
+        new_minute = minute != self._last_minute
         self._last_minute = minute
         started = []
         for task in self.tasks():
             if not task.get("enabled"):
                 continue
-            try:
-                due = matches(parse_cron(task["schedule"]), minute)
-            except (ScheduleError, KeyError):
+            spec = task_spec(task)
+            if spec is None:
                 continue
-            if due:
+            if spec["mode"] == "interval":
+                anchor = task.get("anchor")
+                if not isinstance(anchor, int):
+                    self._set_anchor(task["id"], stamp)
+                    continue
+                if stamp >= anchor + spec["n"] * UNIT_SECONDS[spec["unit"]]:
+                    # The next interval counts from now, so a long outage makes one run, not a burst.
+                    self._set_anchor(task["id"], stamp)
+                    self.start_async(self.run_task, task["id"])
+                    started.append(task["id"])
+            elif new_minute and matches(parse_cron(cron_for(spec)), minute) \
+                    and not self._ran_since(task["id"], minute.timestamp()):
                 self.start_async(self.run_task, task["id"])
                 started.append(task["id"])
-        settings = self.backup_settings()
-        if settings["enabled"] and minute.strftime("%H:%M") == settings["time"]:
-            self.start_async(self.run_backup)
-            started.append("backup")
+        if new_minute:
+            settings = self.backup_settings()
+            if settings["enabled"] and minute.strftime("%H:%M") == settings["time"] \
+                    and not self._ran_since("backup", minute.timestamp()):
+                self.start_async(self.run_backup)
+                started.append("backup")
         return started
+
+    def _ran_since(self, task_id, stamp):
+        """True when a scheduled run already started in this minute (the console restarted inside it)."""
+        last = self.last_run(task_id)
+        return bool(last and last.get("trigger") == "schedule" and last["started"] >= stamp)
 
     def start(self):
         if self._thread:
@@ -384,9 +482,16 @@ class Scheduler:
         self._stop.set()
 
     def next_for(self, task):
+        spec = task_spec(task)
+        if spec is None:
+            return None
+        if spec["mode"] == "interval":
+            anchor = task.get("anchor")
+            base = anchor if isinstance(anchor, int) else self.clock()
+            return int(base + spec["n"] * UNIT_SECONDS[spec["unit"]])
         try:
-            moment = next_run(task["schedule"], datetime.fromtimestamp(self.clock()))
-        except (ScheduleError, KeyError):
+            moment = next_run(cron_for(spec), datetime.fromtimestamp(self.clock()))
+        except ScheduleError:
             return None
         return int(moment.timestamp()) if moment else None
 
@@ -395,4 +500,4 @@ class Scheduler:
         if not settings["enabled"]:
             return None
         hour, minute = (int(part) for part in settings["time"].split(":"))
-        return self.next_for({"schedule": f"{minute} {hour} * * *"})
+        return self.next_for({"spec": {"mode": "cron", "expr": f"{minute} {hour} * * *"}})

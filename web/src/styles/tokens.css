@@ -42,6 +42,8 @@
   --font-weight-semibold: 600;
 
   /* 字号阶梯: 正文 base; 标题从大到小 3xl, 2xl, xl, lg; 辅助文字 sm */
+  --text-xs: 12px;
+  --text-xs--line-height: 1.4;
   --text-sm: 14px;
   --text-sm--line-height: 1.5;
   --text-base: 16px;
@@ -167,11 +169,15 @@
   --destructive: oklch(0.55 0.2 27);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.55 0.13 150);
+  --warning: oklch(0.62 0.14 75);
   --border: oklch(0.9 0.01 var(--theme-h));
   --input: oklch(0.86 0.012 var(--theme-h));
   --ring: oklch(0.6 var(--theme-c) var(--theme-h));
   --overlay: oklch(0.2 0.01 var(--theme-h) / 0.4);
   color-scheme: light;
+  --tint-success: color-mix(in srgb, var(--success) 14%, var(--card));
+  --tint-warning: color-mix(in srgb, var(--warning) 18%, var(--card));
+  --tint-danger: color-mix(in srgb, var(--destructive) 12%, var(--card));
 }
 
 /* 深色模式 */
@@ -193,11 +199,15 @@
   --destructive: oklch(0.65 0.19 25);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.72 0.13 150);
+  --warning: oklch(0.78 0.14 80);
   --border: oklch(0.3 0.012 var(--theme-h));
   --input: oklch(0.34 0.014 var(--theme-h));
   --ring: oklch(0.65 var(--theme-c) var(--theme-h));
   --overlay: oklch(0 0 0 / 0.55);
   color-scheme: dark;
+  --tint-success: color-mix(in srgb, var(--success) 22%, var(--card));
+  --tint-warning: color-mix(in srgb, var(--warning) 24%, var(--card));
+  --tint-danger: color-mix(in srgb, var(--destructive) 22%, var(--card));
 }
 
 /* Compatibility tokens for server-rendered network forms: dimensions, layers and status variants. */

@@ -82,31 +82,41 @@ class BackupMixin:
         settings = engine.backup_settings()
         last = engine.last_run("backup")
         following = engine.next_backup()
+        tones = {"ok": "success", "failed": "danger", "timeout": "warning", "skipped": ""}
         if last:
-            last_text = (f'{esc(local_time(last["started"]))} · '
-                         f'{esc(t["task_status_" + last["status"]])}')
+            last_text = (f'{esc(t["backup_last"])}: {esc(local_time(last["started"]))} '
+                         f'<span class="tag" data-tone="{tones[last["status"]]}">{esc(t["task_status_" + last["status"]])}</span>')
         else:
-            last_text = esc(t["backup_never"])
-        schedule = (f'<section class="card frp-card"><h2 class="frp-instances-heading">{esc(t["backup_schedule"])}</h2>'
-                    f'<p class="files-meta">{esc(t["backup_schedule_help"])}</p>'
-                    f'<form method="post" action="/backup/settings" class="files-inline" style="flex-wrap:wrap;gap:.75rem;align-items:center">{hidden}'
-                    f'<label><input type="checkbox" name="enabled" value="1"{" checked" if settings["enabled"] else ""}> '
-                    f'{esc(t["backup_enabled"])}</label>'
-                    f'<label>{esc(t["backup_time"])} <input type="time" name="time" value="{esc(settings["time"], quote=True)}" required></label>'
-                    f'<label>{esc(t["backup_keep"])} <input type="number" name="keep" min="1" max="{scheduler.BACKUP_KEEP_MAX}" '
-                    f'value="{settings["keep"]}" required></label>'
-                    f'<button type="submit" class="files-button">{esc(t["backup_save"])}</button></form>'
-                    f'<p class="files-meta">{esc(t["backup_last"])}: {last_text}'
-                    + (f' · {esc(t["backup_next"])}: {esc(local_time(following))}' if following else '')
-                    + f' · {esc(time.tzname[0])}</p></section>')
+            last_text = f'{esc(t["backup_last"])}: {esc(t["backup_never"])}'
+        state_tag = (f'<span class="tag" data-tone="success">{esc(settings["time"])} · '
+                     f'{esc(t["backup_keep"])} {settings["keep"]}</span>' if settings["enabled"]
+                     else f'<span class="tag">{esc(t["task_disabled"])}</span>')
+        schedule = (f'<section class="card wide sched-card"><div class="sched-card-head">'
+                    f'<h2>{esc(t["backup_schedule"])}</h2>{state_tag}</div>'
+                    f'<p class="muted small">{esc(t["backup_schedule_help"])}</p>'
+                    f'<form method="post" action="/backup/settings" class="sched-form">{hidden}'
+                    f'<label class="sched-check"><input type="checkbox" name="enabled" value="1"{" checked" if settings["enabled"] else ""}>'
+                    f'<span>{esc(t["backup_enabled"])}</span></label>'
+                    f'<label class="sched-field"><span>{esc(t["backup_time"])}</span>'
+                    f'<input type="time" name="time" value="{esc(settings["time"], quote=True)}" required></label>'
+                    f'<label class="sched-field"><span>{esc(t["backup_keep"])}</span>'
+                    f'<input type="number" name="keep" min="1" max="{scheduler.BACKUP_KEEP_MAX}" value="{settings["keep"]}" required></label>'
+                    f'<button type="submit">{esc(t["backup_save"])}</button></form>'
+                    f'<p class="sched-status">{last_text}'
+                    + (f'<span>{esc(t["backup_next"])}: {esc(local_time(following))}</span>' if following else '')
+                    + f'<span>{esc(time.tzname[0])}</span></p></section>')
 
         rows = []
         for item in config_backup.list_backups():
             name = esc(item["name"], quote=True)
+            tone = {"manual": "", "scheduled": "primary", "pre-upgrade": "success", "pre-restore": "warning"}[item["kind"]]
             rows.append(
-                f'<li class="files-row"><div class="files-row-main"><strong>{esc(t[KIND_KEYS[item["kind"]]])}</strong>'
-                f'<p class="files-meta">{esc(local_time(item["created"]))} · {esc(human_size(item["size"]))} · '
-                f'<code>{esc(item["name"])}</code></p></div><div class="files-row-actions">'
+                f'<li class="sched-item"><div class="sched-item-main"><div class="sched-item-title">'
+                f'<span class="tag" data-tone="{tone}">{esc(t[KIND_KEYS[item["kind"]]])}</span>'
+                f'<span>{esc(local_time(item["created"]))}</span>'
+                f'<span class="sched-item-size">{esc(human_size(item["size"]))}</span></div>'
+                f'<div class="sched-item-meta"><code class="sched-code">{esc(item["name"])}</code></div></div>'
+                f'<div class="sched-item-actions">'
                 f'<a class="files-button" href="/backup/download?name={name}" download>{esc(t["backup_download"])}</a>'
                 f'<form method="post" action="/backup/restore" class="backup-confirm" '
                 f'data-confirm="{esc(t["backup_restore_confirm"], quote=True)}">{hidden}'
@@ -117,21 +127,21 @@ class BackupMixin:
                 f'<input type="hidden" name="name" value="{name}">'
                 f'<button type="submit" class="files-button files-danger">{esc(t["backup_delete"])}</button></form>'
                 f'</div></li>')
-        listing = (f'<section class="card frp-card"><div class="files-usage-head">'
-                   f'<h2 class="frp-instances-heading">{esc(t["backup_list"])}</h2>'
-                   f'<form method="post" action="/backup/create">{hidden}'
-                   f'<button type="submit" class="files-button">{esc(t["backup_create"])}</button></form></div>'
-                   f'<p class="files-meta">{esc(t["backup_contents"])}</p>'
-                   + (f'<ul class="files-list">{"".join(rows)}</ul>' if rows else
-                      f'<p class="files-empty">{esc(t["backup_empty"])}</p>') + '</section>')
-        upload = (f'<section class="card frp-card"><h2 class="frp-instances-heading">{esc(t["backup_upload"])}</h2>'
-                  f'<p class="files-meta">{esc(t["backup_upload_help"])}</p>'
-                  f'<form class="backup-upload" data-csrf="{csrf}" data-max="{MAX_UPLOAD}" '
+        listing = (f'<section class="card wide sched-card"><div class="sched-card-head">'
+                   f'<h2>{esc(t["backup_list"])}</h2>'
+                   f'<form method="post" action="/backup/create" style="margin:0">{hidden}'
+                   f'<button type="submit">{esc(t["backup_create"])}</button></form></div>'
+                   f'<p class="muted small">{esc(t["backup_contents"])}</p>'
+                   + (f'<ul class="sched-list">{"".join(rows)}</ul>' if rows else
+                      f'<p class="sched-empty">{esc(t["backup_empty"])}</p>') + '</section>')
+        upload = (f'<section class="card wide sched-card"><div class="sched-card-head"><h2>{esc(t["backup_upload"])}</h2></div>'
+                  f'<p class="muted small">{esc(t["backup_upload_help"])}</p>'
+                  f'<form class="file-pick backup-upload" data-csrf="{csrf}" data-max="{MAX_UPLOAD}" '
                   f'data-too-big="{esc(t["backup_error_invalid"], quote=True)}" '
                   f'data-failed="{esc(t["backup_error_failed"], quote=True)}">'
-                  f'<input type="file" accept=".gz,.tar.gz,application/gzip" required> '
-                  f'<button type="submit" class="files-button">{esc(t["backup_upload_button"])}</button>'
-                  f' <output role="status"></output></form></section>')
+                  f'<input type="file" accept=".gz,.tar.gz,application/gzip" required>'
+                  f'<button type="submit">{esc(t["backup_upload_button"])}</button>'
+                  f'<output role="status"></output></form></section>')
         body = (f'<h1>{esc(t["backup"])}</h1><div class="frp-workspace files-page">{"".join(messages)}'
                 f'{schedule}{listing}{upload}</div>'
                 '<script src="/static/backup.js" defer></script>')

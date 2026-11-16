@@ -15,12 +15,16 @@
     });
   });
 
-  const preset = document.getElementById('task-preset');
-  const schedule = document.getElementById('task-schedule');
-  if (preset && schedule) {
-    preset.addEventListener('change', () => {
-      if (preset.value) schedule.value = preset.value;
-    });
+  // Task form: show only the fields of the chosen way to schedule.
+  const mode = document.getElementById('task-mode');
+  if (mode) {
+    const show = () => {
+      document.querySelectorAll('.sched-mode').forEach((group) => {
+        group.hidden = group.dataset.mode !== mode.value;
+      });
+    };
+    mode.addEventListener('change', show);
+    show();
   }
 
   const upload = document.querySelector('form.backup-upload');
