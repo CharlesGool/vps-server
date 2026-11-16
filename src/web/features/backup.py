@@ -346,12 +346,12 @@ class BackupMixin:
         esc = self.context.html.escape
         body = (f'<h1>{esc(t["backup_key_page_title"])}</h1><div class="frp-workspace files-page">'
                 f'<section class="card wide sched-card"><p class="error" role="alert">{esc(t["backup_key_page_text"])}</p>'
-                f'<label class="sched-field"><span>{esc(t["backup_key_private"])}</span>'
-                f'<input type="text" readonly value="{esc(private, quote=True)}" class="is-mono" onfocus="this.select()"></label>'
-                f'<label class="sched-field"><span>{esc(t["backup_key_public"])} · '
-                f'{esc(config_backup.key_fingerprint(config_backup.parse_key(public)))}</span>'
-                f'<input type="text" readonly value="{esc(public, quote=True)}" class="is-mono" onfocus="this.select()"></label>'
-                f'<p><a class="files-button" href="/backup">{esc(t["backup_key_done"])}</a></p></section></div>')
+                + self.context.render_copyable(t, t["backup_key_private"], private, "backup-private-key")
+                + self.context.render_copyable(
+                    t, f'{t["backup_key_public"]} · {config_backup.key_fingerprint(config_backup.parse_key(public))}',
+                    public, "backup-public-key")
+                + f'<p><a class="files-button" href="/backup">{esc(t["backup_key_done"])}</a></p></section></div>'
+                + '<script src="/static/copy.js"></script>')
         return self.send_html(200, self.render_page(t["backup_key_page_title"], body, lang, icon="files", back_href="/backup"),
                               {"Cache-Control": "no-store"})
 
