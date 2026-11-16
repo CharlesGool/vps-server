@@ -187,7 +187,10 @@ def run(args, *, state_dir=None, prefix=None, opener=urllib.request.urlopen, ins
             if trust.file_sha256(archive) != expected:
                 raise UpgradeError("the package does not match the checksum list")
         else:
-            online_assets._download(release_url(args.repo, tag, name), archive, expected)
+            try:
+                online_assets._download(release_url(args.repo, tag, name), archive, expected)
+            except RuntimeError as error:   # every source failed, or the download did not match its checksum
+                raise UpgradeError(str(error)) from None
         out("Package checksum OK.")
 
         root = safe_extract(archive, work / "unpacked")

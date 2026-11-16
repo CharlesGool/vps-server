@@ -236,6 +236,58 @@ class UpgradeTest(unittest.TestCase):
                       out=self.log.append)
         self.assertEqual(code, 7)
 
+    def test_a_failed_download_is_a_clean_refusal_not_a_traceback(self):
+        self.pin()
+        self.publish()
+        (self.release / "SHA256SUMS").unlink()          # forces the network path below
+        calls = []
+
+        def failing_opener(request, timeout=0):
+            calls.append(request.full_url)
+            raise OSError("timed out")
+
+        args = self.args(source=None, version="v6.6.0")
+        with self.assertRaises(up.UpgradeError):
+            up.run(args, state_dir=self.state, prefix=self.prefix, opener=failing_opener, out=self.log.append)
+        self.assertTrue(calls)
+        self.assertEqual([p.name for p in self.prefix.parent.iterdir() if p.name.startswith(".vps-server-upgrade")], [])
+
+    def test_a_download_that_fails_its_checksum_is_a_clean_refusal(self):
+        self.pin()
+        name = self.publish()
+        original = up.online_assets._download
+
+        def broken(url, destination, expected, **kwargs):
+            raise RuntimeError("download failed: " + url)
+
+        up.online_assets._download = broken
+        try:
+            args = self.args(source=None, version="v6.6.0")
+            small = {"SHA256SUMS": (self.release / "SHA256SUMS").read_bytes(),
+                     "SHA256SUMS.sig": (self.release / "SHA256SUMS.sig").read_bytes()}
+
+            class Response:
+                def __init__(self, data):
+                    self.data = data
+
+                def read(self, limit=-1):
+                    return self.data
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *exc):
+                    return False
+
+            def opener(request, timeout=0):
+                return Response(small[request.full_url.rsplit("/", 1)[1]])
+
+            with self.assertRaises(up.UpgradeError):
+                up.run(args, state_dir=self.state, prefix=self.prefix, opener=opener, out=self.log.append)
+        finally:
+            up.online_assets._download = original
+        self.assertTrue(name)
+
     def test_name_and_url_helpers(self):
         self.assertEqual(up.package_name("v1.2.3", "online"), "vps-server-v1.2.3-linux-amd64-online.tar.gz")
         self.assertEqual(up.release_url("a/b", "v1.2.3", "SHA256SUMS"),
