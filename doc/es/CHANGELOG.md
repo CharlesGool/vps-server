@@ -26,6 +26,29 @@ metadata:
 
 ## Historial de cambios
 
+### v6.4.0 — 2026-11-16
+
+FRP incorpora el modo stcp, los nodos de Singbox pueden limitar a dónde se conectan, la página de inicio muestra una barra de tráfico total y un fallo breve de nft ya no detiene frps ni el proxy. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Nuevo
+
+- **FRP admite stcp.** Un proxy tcp abre el servicio de su casa directamente en la IP pública y el puerto, accesible para cualquiera; un proxy stcp requiere una clave secreta y se accede mediante un visitor en otra máquina. Las instancias FRPC pueden añadir proxies stcp y visitors (solo escuchan en 127.0.0.1); la clave debe tener al menos 16 caracteres y nunca se vuelve a mostrar.
+- **Alcance de acceso de los nodos de Singbox.** Cada nodo puede no tener restricciones, solo internet (se rechazan loopback, red local y direcciones locales) o limitarse a IP, IP:puerto, rangos CIDR o dominios concretos. Las reglas se escriben en las rutas de sing-box y se eliminan con el nodo; las demás reglas escritas a mano se conservan.
+- **Barra de tráfico total en la página de inicio.** La parte superior muestra el tráfico combinado de todos los elementos medidos del periodo actual, con un límite total configurable (GiB) y un día de reinicio mensual (1-28). Por ahora el límite solo muestra un aviso; no limita ni desconecta al superarse.
+
+#### Corregido
+
+- **Un fallo breve de nft detenía frps y el proxy.** Los medidores terminaban en la primera llamada fallida a nft, y frps y el proxy dependen de ellos, por lo que todo se detenía y no se recuperaba. Los medidores de FRPS y de nodos ahora reintentan durante 60 segundos, tiempo en el que los límites ya instalados siguen vigentes; solo un fallo más largo los detiene, como estaba previsto.
+
+#### Verificación
+
+STCP y el alcance de acceso de los nodos se verificaron de extremo a extremo en una máquina virtual doméstica: la clave correcta conecta, una incorrecta se rechaza, los puertos de visitor escuchan solo en loopback y un nodo restringido rechaza de verdad loopback y red local. La corrección de los medidores se verificó con inyección de fallos: un fallo de nft de 20 segundos no interrumpió los servicios de nodos y uno de 76 segundos aún los detiene. La barra total se verificó con la consola real. Hay 34 pruebas automáticas.
+
+#### Problemas conocidos
+
+- El límite total solo avisa; si nadie abre la página de inicio al cambiar de mes, el nuevo periodo empieza algo tarde.
+- En Debian 11 (nftables 0.9.8), crear o eliminar una instancia FRPC puede bloquear nft ocasionalmente; el reintento cubre los fallos breves.
+
 ### v6.3.3 — 2026-11-12
 
 El paquete en línea ya se instala en servidores de China continental. El comando de actualización no cambia y se conservan la configuración y los datos.

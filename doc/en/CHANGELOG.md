@@ -26,6 +26,29 @@ metadata:
 
 ## Changelog
 
+### v6.4.0 — 2026-11-16
+
+FRP gains stcp mode, Singbox nodes can restrict where they may connect, the home page gets a total traffic bar, and a short nft failure no longer stops frps and the proxy. The upgrade command is unchanged and settings and data are kept.
+
+#### New
+
+- **FRP supports stcp.** A tcp proxy opens your home service directly on the public IP and port, reachable by anyone; an stcp proxy needs a secret key and is reached through a visitor on another machine. FRPC instances can add stcp proxies and visitors (listening on 127.0.0.1 only); the key must be at least 16 characters and is never shown again.
+- **Singbox node access scope.** Each node can be unrestricted, internet-only (loopback, LAN and local addresses refused), or limited to specific IPs, IP:port, CIDR ranges or domains. The rules are written into the sing-box routes and removed with the node; other hand-written route rules are kept.
+- **Total traffic bar on the home page.** The top of the home page shows the combined traffic of all metered items for the current period, with a settable total cap (GiB) and monthly reset day (1-28). The cap only shows a warning for now; it does not throttle or disconnect when exceeded.
+
+#### Fixed
+
+- **A short nft failure stopped frps and the proxy.** The meters exited on the first failed nft call, and frps and the proxy depend on them, so all stopped together and did not recover. The FRPS and node meters now retry for 60 seconds, during which the installed limits stay in force; only a failure longer than that stops them, as designed.
+
+#### Verification
+
+STCP and node access scope were verified end to end on a home virtual machine: the right key connects, a wrong key is refused, visitor ports listen on loopback only, and a restricted node really refuses loopback and LAN. The meter fix was verified with fault injection: a 20-second nft failure left node services running, a 76-second failure still stops them. The total bar was verified through the real console. There are 34 automated tests.
+
+#### Known issues
+
+- The total cap only warns; if nobody opens the home page when the month rolls over, the new period starts a little late.
+- On Debian 11 (nftables 0.9.8), creating or deleting an FRPC instance can occasionally crash nft; the retry covers short failures.
+
 ### v6.3.3 — 2026-11-12
 
 The online package now installs on servers in mainland China. The upgrade command is unchanged and settings and data are kept.
