@@ -26,6 +26,25 @@ metadata:
 
 ## Historial de cambios
 
+### v7.0.4 — 2026-11-17
+
+Refuerzo de seguridad: se corrigen tres problemas hallados en una revisión de código. El comando de actualización no cambia y se conservan la configuración y los datos.
+
+#### Seguridad
+
+- **Tiempos de espera de lectura.** Tras el handshake TLS, un cliente silencioso o muy lento podía mantener un hilo y una conexión para siempre, y con suficientes la consola dejaba de responder (sin necesidad de certificado). Ahora las conexiones se cierran tras 60 s (consola) o 30 s (página pública 80/443) sin datos; el límite es por lectura o escritura, así que las descargas largas y las pruebas de velocidad no se ven afectadas.
+- **«Descargar desde URL» ya no puede apuntar a esta máquina ni a una dirección de metadatos de la nube.** Se rechazan las direcciones de bucle local (127.x, ::1), de enlace local (169.254.x, que incluye los metadatos de la nube), no especificadas y multicast, también cuando una redirección lleva a ellas; las direcciones de la LAN siguen funcionando. Un mensaje nuevo lo explica.
+- **Restaurar una copia ya no sobrescribe la clave de publicación fijada.** `release-key.pub` de una copia se omite al restaurar, así que una copia subida no puede cambiar la clave de firma en la que confía este host.
+
+#### Verificación
+
+Seis pruebas nuevas y una de copias; pasa toda la suite. En la VM doméstica, una conexión que envió media petición y calló se cerró a los 60 s, y las páginas de la consola funcionan. La comprobación de direcciones solo tiene pruebas unitarias; la VM doméstica tiene la página Archivos desactivada, así que no se probó en una página real.
+
+#### Problemas conocidos
+
+- La comprobación de direcciones se hace antes de empezar la descarga; no protege frente a un nombre que se resuelva distinto después (DNS rebinding).
+- Restaurar una copia aún puede escribir unidades systemd dentro del conjunto permitido; requiere acceso de administrador.
+
 ### v7.0.3 — 2026-11-17
 
 El botón «Elegir archivo» de la tarjeta de subida de la página Copias de seguridad sigue la plantilla. El comando de actualización no cambia y se conservan la configuración y los datos.

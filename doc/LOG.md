@@ -80,7 +80,7 @@ metadata:
 
 ## 交接
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.0.3(标签 `v7.0.3`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.0.4(标签 `v7.0.4`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
@@ -116,6 +116,7 @@ v6.3.1(2026-11-12, `b0fd00f`, `83c397d`): FRPC 流量条目按服务器合并(`f
 v6.3.2(2026-11-12, `7b082c2`, `58948e2`): IP 证书页安装目标 `ipcert`(装 Caddy, 域名转发保持关闭, 开 IP 证书); 内网 IPv4 时经 `www.cloudflare.com/cdn-cgi/trace` 取一对一 NAT 的公网 IPv4(`caddy_sites.nat_address`). 一台阿里云服务器已升级并取得 IP 证书(见 `doc/CHANGELOG.md`).
 v7.0.2(2026-11-17): 日期和时间控件改为模板风格, 修正流量卡片和节点卡片没有铺满(见 `doc/CHANGELOG.md`).
 v7.0.3(2026-11-17): 备份页"选择文件"按钮改为模板风格(见 `doc/CHANGELOG.md`).
+v7.0.4(2026-11-17): 安全加固: 连接读超时, 从网址下载拒绝本机/链路本地地址, 恢复备份不覆盖已固定的发布公钥(见 `doc/CHANGELOG.md`).
 
 v7.0.1(2026-11-17): 备份恢复先预览再确认, 私钥只在恢复时要, 恢复结果可见, 备份密钥复制按钮(见 `doc/CHANGELOG.md`).
 

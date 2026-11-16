@@ -26,6 +26,25 @@ metadata:
 
 ## Changelog
 
+### v7.0.4 — 2026-11-17
+
+Security hardening: three issues found in a code review are fixed. The upgrade command is unchanged and settings and data are kept.
+
+#### Security
+
+- **Connection read timeouts.** After the TLS handshake a silent or very slow client could hold a thread and a connection forever, and enough of them made the console unresponsive (no certificate needed). Connections now drop after 60 s (console) or 30 s (public 80/443 page) without data; the limit is per read or write, so long downloads and speed tests are unaffected.
+- **"Fetch from URL" can no longer be aimed at this machine or a cloud metadata address.** Loopback (127.x, ::1), link-local (169.254.x, which includes cloud metadata), unspecified and multicast addresses are refused, also when a redirect leads there; LAN addresses still work. A new message explains: "This address points at this machine or a link-local address and is not allowed."
+- **Restoring a backup no longer overwrites the pinned release key.** `release-key.pub` in a backup is skipped on restore, so an uploaded backup cannot swap the signing key this host trusts.
+
+#### Verification
+
+Six new tests and one backup test; the whole suite passes. On the home VM a connection that sent half a request and then stayed silent was closed after 60 s, and the console pages work. The address check is covered by unit tests only; the home VM has the Files page off, so it was not exercised on a real page.
+
+#### Known issues
+
+- The address check runs before the download starts; it does not defend against a name that resolves differently afterwards (DNS rebinding).
+- Restoring a backup can still write systemd units inside the allowed set; this needs administrator access.
+
 ### v7.0.3 — 2026-11-17
 
 The "Choose file" button in the Backup page's upload card follows the template. The upgrade command is unchanged and settings and data are kept.
