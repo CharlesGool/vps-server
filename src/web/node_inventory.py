@@ -164,9 +164,11 @@ def access_rules(tag: str, access: dict[str, Any], direct: str) -> list[dict[str
     return rules
 
 
-def apply_access(config: dict[str, Any], nodes: list[dict[str, Any]]) -> dict[str, Any]:
-    """Replace the generated per-node rules in config["route"]; other rules are kept."""
-    node_tags = {node["inbound"]["tag"] for node in nodes}
+def apply_access(config: dict[str, Any], nodes: list[dict[str, Any]], removed_tags: Any = ()) -> dict[str, Any]:
+    """Replace the generated per-node rules in config["route"]; other rules are kept.
+
+    removed_tags are inbound tags of nodes just deleted, whose rules must go with them."""
+    node_tags = {node["inbound"]["tag"] for node in nodes} | set(removed_tags)
     route = config.setdefault("route", {})
     kept = [rule for rule in route.get("rules", [])
             if not (isinstance(rule, dict) and isinstance(rule.get("inbound"), list) and
