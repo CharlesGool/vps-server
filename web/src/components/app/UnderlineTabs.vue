@@ -64,7 +64,7 @@ watch([model, () => props.tabs], () => nextTick(measure), { deep: true })
   <div>
     <div class="relative">
       <div ref="list" role="tablist" :aria-label="label" class="flex gap-6 border-b border-border" @keydown="onKeydown">
-        <button data-ui-control
+        <button
           v-for="(tab, index) in tabs"
           :id="`${id}-tab-${tab.value}`"
           :key="tab.value"
@@ -82,6 +82,7 @@ watch([model, () => props.tabs], () => nextTick(measure), { deep: true })
         </button>
       </div>
       <span
+        data-tab-indicator
         class="indicator pointer-events-none absolute bottom-0 left-0 bg-primary"
         :class="{ animated: ready }"
         :style="{ width: `${indicator.width}px`, transform: `translateX(${indicator.x}px)` }"

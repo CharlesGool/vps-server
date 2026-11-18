@@ -1,28 +1,5 @@
-@layer theme, base, legacy, components, utilities;
 @import "tailwindcss";
 @import "./tokens.css";
-@import "./legacy/modules.css" layer(legacy);
-@import "./legacy/select.css" layer(legacy);
-@import "./legacy/shell.css" layer(legacy);
-@import "./legacy/frp.css" layer(legacy);
-@import "./legacy/components.css" layer(legacy);
-@import "./legacy/login.css" layer(legacy);
-@import "./legacy/settings.css" layer(legacy);
-@import "./legacy/forms.css" layer(legacy);
-@import "./legacy/feedback.css" layer(legacy);
-@import "./legacy/dashboard.css" layer(legacy);
-@import "./legacy/speedtest.css" layer(legacy);
-@import "./legacy/visitors.css" layer(legacy);
-@import "./legacy/changelog.css" layer(legacy);
-@import "./legacy/iperf.css" layer(legacy);
-@import "./legacy/data-layout.css" layer(legacy);
-@import "./legacy/proxy.css" layer(legacy);
-@import "./legacy/responsive.css" layer(legacy);
-@import "./legacy/nodes.css" layer(legacy);
-@import "./legacy/files.css" layer(legacy);
-@import "./legacy/backup.css" layer(legacy);
-@import "./alignment.css" layer(legacy);
-@import "./unlayered.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -31,6 +8,16 @@
     transition:
       --theme-h var(--duration-theme) var(--ease-standard),
       --theme-c var(--duration-theme) var(--ease-standard);
+  }
+
+  /* 始终显示纵向滚动条: 页面长短变化(如进入变更日志)时内容不左右移动, 顶栏和底栏的底色也延伸到滚动条旁 */
+  html {
+    overflow-y: scroll;
+  }
+  /* 弹出层(下拉框, 对话框)锁定滚动时会给 body 加上滚动条宽度的右边距; 滚动条一直在 html 上, 所以去掉它, 否则打开下拉框时画面左右抖动 */
+  body {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
   }
 
   html,
@@ -59,5 +46,104 @@
       transition-duration: 0s !important;
       animation-duration: 0s !important;
     }
+  }
+}
+
+@layer components {
+  /* 页面是卡片栅格(CardGrid): 列数 1, 2, 4 按容器宽度选择(列宽不小于 --card-min-width, 即 224 px, 列间距 24 px;
+     容器查询里不能用变量, 断点 472, 968 px 由 e2e 测试核对). 没有 3 列: 页面按 4 列设计, 3 列时占 2 列的卡片旁边总会空出一列;
+     2 能整除 4, 4 列时排满的行在 2 列时也排满. 卡片占 cols 列(默认 1), 高度由内容决定, 同一行卡片拉齐到最高的那张;
+     rows 让卡片跨几行(旁边放几张矮卡片), col 指定起始列(只在 4 列布局中生效). 页头不是卡片, 占满一行.
+     间距只有三档: 标签到控件 8 px, 卡片内块之间 16 px, 卡片内边距和卡片之间 24 px. 栅格和间距只在这里和 tokens.css 定义. */
+  [data-card-grid] {
+    container-type: inline-size;
+  }
+  [data-card-cells] {
+    --cols: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    gap: var(--space-card);
+    grid-auto-flow: row dense;
+    align-items: stretch;
+  }
+  @container (min-width: 472px) {
+    [data-card-cells] {
+      --cols: 2;
+    }
+  }
+  @container (min-width: 968px) {
+    [data-card-cells] {
+      --cols: 4;
+    }
+    [data-card][data-col] {
+      grid-column: var(--c) / span var(--col-span);
+    }
+  }
+  [data-form-scope] {
+    display: contents;
+  }
+  [data-layout="page-header"] {
+    grid-column: 1 / -1;
+  }
+  [data-card] {
+    --col-span: min(var(--w, 1), var(--cols));
+    min-width: 0;
+    grid-column: span var(--col-span);
+    grid-row: span var(--h, 1);
+  }
+
+  /* 卡片内: 12 栏, 块之间 16 px, 内边距 24 px. 块默认占满一行; span 指定栏数, start 指定起始栏, rows 跨几行 */
+  [data-card-body] {
+    display: grid;
+    grid-template-columns: repeat(var(--card-columns), minmax(0, 1fr));
+    gap: var(--space-field);
+    padding: var(--space-card);
+    align-content: start;
+  }
+  [data-card-body] > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  [data-card-body] > [data-span] {
+    grid-column: span var(--span);
+    grid-row: span var(--rows, 1);
+  }
+  [data-card-body] > [data-span][data-start] {
+    grid-column: var(--start) / span var(--span);
+  }
+  /* 卡片标题紧贴说明: 标题和说明是一组, 中间 8 px */
+  [data-card-body] > [data-card-title]:has(+ [data-card-description]) {
+    margin-bottom: calc(var(--space-label) - var(--space-field));
+  }
+
+  /* 按钮行: 按钮宽度随文字(不小于 --button-min-width), 默认靠右, 主按钮放最后; align="start" 靠左; block 时每个按钮占满一行(如登录卡) */
+  [data-card-body] > [data-form-actions] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-label);
+  }
+  [data-card-body] > [data-form-actions][data-align="start"] {
+    justify-content: flex-start;
+  }
+  [data-form-actions] > * {
+    min-width: var(--button-min-width);
+  }
+  [data-card-body] > [data-form-actions][data-block] {
+    flex-direction: column;
+    gap: var(--space-field);
+  }
+
+  /* 窄容器(720 px 以下)里块不再并排: 指定了 span 的块各占一行(指定 start 的除外) */
+  @container (max-width: 719px) {
+    [data-card-body] > [data-span]:not([data-start]) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* 设置行样式(SettingRow, SwitchField): 相邻两行之间有分隔线 */
+  [data-card-body] > [data-row-style] + [data-row-style] {
+    border-top-width: 1px;
+    padding-top: var(--space-field);
   }
 }

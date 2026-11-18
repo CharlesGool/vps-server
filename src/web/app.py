@@ -154,6 +154,9 @@ def _read_version():
     committed release copy when Git metadata is absent. A build that cannot
     establish what it is says so rather than guessing.
     """
+    # Test runs pin the version the frontend was built with.
+    if os.environ.get("VPSSRV_VERSION"):
+        return os.environ["VPSSRV_VERSION"]
     installed_stamp = BASE_DIR / "VERSION"
     if installed_stamp.is_file():
         try:
@@ -179,7 +182,7 @@ def _read_version():
 
 
 def display_version(version):
-    return version if version.startswith(("dev-", "test-")) else f"v{version}"
+    return f"v{version}" if version[:1].isdigit() else version
 
 
 VERSION = _read_version()
@@ -1014,8 +1017,8 @@ CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
     "/static/boot.js": ("application/javascript", STATIC_DIR / "boot.js"),
-    "/static/ui.js": ("application/javascript", STATIC_DIR / "ui.js" if (STATIC_DIR / "ui.js").exists() else BASE_DIR / "web/dist/ui.js"),
-    "/static/style.css": ("text/css", STATIC_DIR / "ui.css" if (STATIC_DIR / "ui.css").exists() else BASE_DIR / "web/dist/ui.css"),
+    "/static/ui.js": ("application/javascript", STATIC_DIR / "ui.js" if (STATIC_DIR / "ui.js").exists() else BASE_DIR / "web-legacy/dist/ui.js"),
+    "/static/style.css": ("text/css", STATIC_DIR / "ui.css" if (STATIC_DIR / "ui.css").exists() else BASE_DIR / "web-legacy/dist/ui.css"),
     "/static/password-fields.js": ("application/javascript", STATIC_DIR / "password-fields.js"),
     "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
     "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
@@ -1083,6 +1086,7 @@ from features.visitors import VisitorsMixin
 from features.backup import BackupMixin
 from features.tasks import TasksMixin
 from features.public import PublicMixin
+from features.spa import SpaMixin, is_spa_page
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1105,7 +1109,7 @@ SECURITY_HEADERS = (
 
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
                      PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
-                     ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, BaseHTTPRequestHandler):
+                     ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, SpaMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,
@@ -1284,6 +1288,12 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def do_POST(self):
         self._dispatch("POST")
 
+    def do_PUT(self):
+        self._dispatch("PUT")
+
+    def do_DELETE(self):
+        self._dispatch("DELETE")
+
     def do_HEAD(self):
         # Only download links answer HEAD (curl -I, download managers);
         # every other route would send a body HEAD must not carry.
@@ -1301,7 +1311,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._body_started = False
         # A rejected form can leave its POST body unread. Never parse those
         # bytes as the next HTTP/1.1 request on the same connection.
-        self._close_after_response = method == "POST" and path != "/speedtest/empty"
+        self._close_after_response = method in ("POST", "PUT", "DELETE") and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
         if ((TRUST_PROXY or is_loopback(self.client_address[0]))
@@ -1347,6 +1357,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def _route(self, method, path, parsed):
         if path.startswith("/static/") or path in ("/speedtest_worker.js", "/favicon.ico"):
             return self.serve_static(path)
+        if method == "GET" and self.serve_spa_file(path):
+            return
 
         if self.route_proxy_public(method, path):
             return
@@ -1363,6 +1375,14 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         # With auth off there is nothing to log in or out of: a login form
         # that accepts nothing and a logout link that ends no session are
         # both dead ends, so send those paths back to the dashboard.
+        if self.route_api(method, path):
+            return
+        if method in ("PUT", "DELETE"):
+            return self.send_html(405, "Method not allowed", {"Cache-Control": "no-store"})
+        if method == "GET" and is_spa_page(path) and not (path == "/login" and not AUTH_ENABLED):
+            # The page itself asks /api/session and goes to /login when needed.
+            return self.serve_spa_page()
+
         if path in ("/login", "/login/ip", "/login/cert", "/logout") and not AUTH_ENABLED:
             return self.redirect("/")
         if path.startswith("/settings") and not AUTH_ENABLED:
@@ -1372,10 +1392,9 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return
 
         if not self.is_authenticated():
-            destination = ("/login?next=changelog" if path == "/changelog" else
-                           "/login?next=preferences" if path == "/settings" else
-                           "/login?next=terminal" if path == "/terminal" else
-                           "/login?next=settings" if path.startswith("/settings") else "/login")
+            # The single-page login returns to ?redirect= after signing in.
+            destination = ("/login" if path == "/" or method != "GET" else
+                           "/login?redirect=" + quote(path + (f"?{parsed.query}" if parsed.query else ""), safe="/"))
             return self.redirect(destination)
 
         page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
@@ -1464,6 +1483,11 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
     answering. Here a slow or silent client only holds its own thread, and
     gives up after TLS_HANDSHAKE_SECONDS.
     """
+
+    # socketserver listens with a backlog of 5. The single-page console loads
+    # a dozen script and style files at once; with several tabs open the
+    # kernel then drops connections and the browser gives up on them.
+    request_queue_size = 128
 
     def __init__(self, address, handler, ssl_context):
         super().__init__(address, handler)

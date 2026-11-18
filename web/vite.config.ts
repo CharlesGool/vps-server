@@ -14,21 +14,21 @@ function buildVersion(): string {
   }
 }
 
+const base = (process.env.APP_BASE_PATH || '/').replace(/\/?$/, '/')
+
 export default defineConfig({
-  base: '/static/',
-  build: {lib: {entry: 'src/main.ts', formats: ['es'], fileName: () => 'ui.js', cssFileName: 'ui'}, sourcemap: false},
+  base,
   plugins: [vue(), tailwindcss()],
-  define: { __APP_VERSION__: JSON.stringify(buildVersion()),
-    'process.env.NODE_ENV': JSON.stringify('production'),
-    __VUE_OPTIONS_API__: false, __VUE_PROD_DEVTOOLS__: false,
-    __VUE_I18N_FULL_INSTALL__: true, __VUE_I18N_LEGACY_API__: false,
-    __INTLIFY_PROD_DEVTOOLS__: false,
-  },
+  define: { __APP_VERSION__: JSON.stringify(buildVersion()) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@lang': fileURLToPath(new URL('../lang/web', import.meta.url)),
+      '@lang': fileURLToPath(new URL('../lang/ui', import.meta.url)),
     },
   },
-  server: { fs: { allow: ['..'] } },
+  server: {
+    fs: { allow: ['..'] },
+    // 开发时 API 请求转发到 Python 控制台(HTTPS 自签名证书)
+    proxy: { [`${base}api`]: { target: `https://127.0.0.1:${process.env.API_PORT || 8080}`, secure: false } },
+  },
 })

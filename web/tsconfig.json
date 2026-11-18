@@ -13,7 +13,7 @@
     "noEmit": true,
     "jsx": "preserve",
     "types": ["vite/client", "node"],
-    "paths": { "@/*": ["./src/*"], "@lang/*": ["../lang/web/*"] }
+    "paths": { "@/*": ["./src/*"], "@lang/*": ["../lang/ui/*"] }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "playwright.config.ts", "e2e/**/*.ts"]
 }

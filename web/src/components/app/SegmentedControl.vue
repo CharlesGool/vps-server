@@ -1,13 +1,14 @@
 <script setup lang="ts" generic="T extends string">
 import { ref } from 'vue'
 
-// 不超过 5 个互斥选项; 超过时改用 ThemeSelect 这类列表框组件.
+// 2 到 5 个很短的互斥选项; 选项带说明时用 RadioField, 6 到 10 个用 SelectMenu. 开/关两项改用 SwitchField.
+// 占满所在栏, 选项均分.
 const props = defineProps<{ options: { value: T; label: string }[]; label: string }>()
 const model = defineModel<T>({ required: true })
 const buttons = ref<HTMLButtonElement[]>([])
 
 if (import.meta.env.DEV && props.options.length > 5) {
-  console.warn('SegmentedControl: more than 5 options, use a listbox component')
+  console.warn('SegmentedControl: more than 5 options, use SelectMenu')
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -24,8 +25,14 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div role="radiogroup" :aria-label="label" class="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" @keydown="onKeydown">
-    <button data-ui-control
+  <div
+    role="radiogroup"
+    data-control
+    :aria-label="label"
+    class="flex flex-wrap gap-1 rounded-md bg-muted p-1"
+    @keydown="onKeydown"
+  >
+    <button
       v-for="option in options"
       :key="option.value"
       ref="buttons"
@@ -33,8 +40,8 @@ function onKeydown(event: KeyboardEvent) {
       role="radio"
       :aria-checked="option.value === model"
       :tabindex="option.value === model ? 0 : -1"
-      class="h-8 rounded-sm px-3 text-sm font-medium transition-colors"
-      :class="option.value === model ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+      class="h-8 rounded-sm px-1 text-sm font-medium whitespace-nowrap transition-colors"
+      :class="['flex-1', option.value === model ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground']"
       @click="model = option.value"
     >
       {{ option.label }}

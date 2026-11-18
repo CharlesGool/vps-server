@@ -55,6 +55,9 @@ metadata:
 
 | 日期 | 决策 | 状态 | 原因 |
 | --- | --- | --- | --- |
+| 2026-11-18 | Web UI 前端完整迁移到最新 Web UI 起始模板(Vue 单页, 模板全部组件, 设计检查和 e2e 视觉测试), 后端保持 Python 和现有登录体系(密码, 客户端证书, 四种登录方式, IP 白名单, 访问限制): Python 按模板的 `/api/session`, `login`, `login/ip`, `logout`, `security/*` 接口约定提供 JSON 接口并提供前端资源, 业务逻辑不变. 豁免 all-in-one Web UI 用户约定 `使用模板` 规则 7(必须使用模板的 `cmd/server/`, `internal/server/`, `internal/auth/`, 禁止另写登录), 范围仅限本项目. | 接受 | 用户要求按最新规范改所有界面并选择完整迁移, 但只换 Web UI 前端, 后端不变. |
+| 2026-11-18 | 为适配 Python 后端, 修改模板的 `web/playwright.config.ts`(启动临时状态目录的 Python 控制台, HTTPS 自签名)和 `web/scripts/check-server.mjs`(运行 Python 单元测试), 以及 `web/e2e/` 中与 vps-server 登录体系确实不同的断言. 豁免 all-in-one Web UI 用户约定 `设计检查` 规则 2 中禁止修改这些文件的规定; 布局, 栅格, 尺寸, 无障碍和视觉检查不改. | 接受 | 用户同意; 模板的测试配置只支持 Go 后端. |
+| 2026-11-18 | 迁移在 `feat/webui-template` 分支上分阶段进行; 迁移期间旧前端移到 `web-legacy/`, 未迁移的页面仍由 Python 生成并使用旧前端资源, 全部迁移后删除. | 接受 | 约 25 个页面, 需要跨会话完成; 分支上每个阶段都保持可用. |
 | 2026-11-05 | 主机没有能读取规则的 nftables 时, 安装器(离线版和在线版)和控制台模块任务都用 apt 自动安装 `nftables` 后再检查. | 接受 | 用户要求装 Singbox 时一并装好, 不再让用户到终端执行命令. |
 | 2026-11-05 | 控制台支持 TLS 客户端证书登录: 自建 CA 按设备签发 `.p12`, 开启"要求客户端证书"后禁用密码登录, 密码只用于敏感操作的二次验证;root 可用 `client_cert.py disable` 恢复. | 接受 | 用户要求用公钥/私钥方式代替密码;IP 加自签名证书下浏览器 Passkey 不可用, 客户端证书可用. |
 | 2026-11-05 | 控制台只提供 HTTPS, 忽略 `VPSSRV_CONSOLE_TLS=0`, 原 HTTP 安装升级时改为 HTTPS. 取代 2026-10-13 的"升级保留原设置". | 接受 | 用户要求强制 HTTPS. |

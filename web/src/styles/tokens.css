@@ -10,6 +10,11 @@
   inherits: true;
   initial-value: 255;
 }
+@property --col-span {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 1;
+}
 @property --theme-c {
   syntax: "<number>";
   inherits: true;
@@ -30,6 +35,18 @@
   --blur-*: initial;
   --ease-*: initial;
   --animate-*: initial;
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s ease-in-out infinite;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
   --leading-*: initial;
   --tracking-*: initial;
   --container-*: initial;
@@ -42,23 +59,18 @@
   --font-weight-semibold: 600;
 
   /* 字号阶梯: 正文 base; 标题从大到小 3xl, 2xl, xl, lg; 辅助文字 sm */
-  --text-xs: 12px;
-  --text-xs--line-height: 1.4;
   --text-sm: 14px;
-  --text-sm--line-height: 1.5;
+  --text-sm--line-height: 24px;
   --text-base: 16px;
-  --text-base--line-height: 1.5;
+  --text-base--line-height: 24px;
   --text-lg: 18px;
-  --text-lg--line-height: 1.5;
+  --text-lg--line-height: 24px;
   --text-xl: 20px;
-  --text-xl--line-height: 1.4;
+  --text-xl--line-height: 24px;
   --text-2xl: 24px;
-  --text-2xl--line-height: 1.3;
+  --text-2xl--line-height: 32px;
   --text-3xl: 30px;
-  --text-3xl--line-height: 1.25;
-  --leading-none: 1;
-  --leading-tight: 1.25;
-  --leading-normal: 1.5;
+  --text-3xl--line-height: 40px;
 
   /* 间距: 只用整数倍, 如 p-1 = 4 px, p-4 = 16 px, h-9 = 36 px, h-12 = 48 px */
   --spacing: 4px;
@@ -82,10 +94,11 @@
 
   /* 容器宽度: max-w-<name> */
   --container-content: 1200px;
-  --container-reading: 720px;
-  --container-login: 480px;
-  --container-toast: 460px;
+  --container-control: 320px;
+  --container-toast: 560px;
   --container-tip: 280px;
+  --container-dialog: 520px;
+  --container-drawer: 400px;
 }
 
 /* 语义颜色: 页面只用这些名字, 如 bg-card, text-muted-foreground, border-border */
@@ -109,10 +122,22 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-on-surface: var(--success-on-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-on-surface: var(--warning-on-surface);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-destructive-on-surface: var(--destructive-on-surface);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-overlay: var(--overlay);
+  /* 图表: 多组数据按顺序取 chart-1 到 chart-4; 第一组是主题色 */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
 }
 
 /* 动效时长和非 Tailwind 尺寸, 组件内用 var() 引用 */
@@ -124,13 +149,31 @@
   --duration-resize: 620ms;
   --duration-slider: 720ms;
   --resize-settle: 180ms;
-  --toast-lifetime: 3000ms;
+  --toast-lifetime: 4000ms;
   --toast-lifetime-error: 8000ms;
   --tab-indicator-height: 2px;
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
-  --card-min-width: 240px;
-  --toast-enter-offset: 16px;
+  /* 版式: 测试从这里读取并与渲染结果比对; 组件用对应的 Tailwind 工具类实现(见 doc 的 `栅格和尺寸`).
+     页面是卡片栅格: 列宽不小于 --card-min-width, 最多 --card-max-columns 列, 列间距 --space-card; 卡片高度由内容决定, 同一行卡片等高.
+     卡片内边距 --space-card, 卡片内是 --card-columns 栏, 块之间(横向和纵向)间距 --space-field, 标签到控件 --space-label.
+     输入类控件宽度由所占的栏决定, 按钮宽度随文字, 不小于 --button-min-width, 不大于 --button-max-width. */
+  --card-min-width: 224px;
+  --card-columns: 12;
+  --card-max-columns: 4;
+  --space-label: 8px;
+  --space-field: 16px;
+  --space-card: 24px;
+  --button-min-width: 96px;
+  --button-max-width: 320px;
+  --row-unit: 8px;
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 48px;
+  --area-height-md: 96px;
+  --area-height-lg: 160px;
+  --touch-target-min: 24px;
+  --toast-enter-offset: -16px;
   --toast-enter-scale: 0.96;
 }
 
@@ -168,16 +211,23 @@
   --accent-foreground: oklch(0.38 var(--theme-c) var(--theme-h));
   --destructive: oklch(0.55 0.2 27);
   --destructive-foreground: oklch(0.99 0 0);
+  --destructive-surface: oklch(0.96 0.03 27);
+  --destructive-on-surface: oklch(0.42 0.16 27);
   --success: oklch(0.55 0.13 150);
-  --warning: oklch(0.62 0.14 75);
+  --warning: oklch(0.7 0.15 75);
+  --warning-surface: oklch(0.97 0.04 85);
+  --warning-on-surface: oklch(0.42 0.1 70);
+  --success-surface: oklch(0.96 0.04 150);
+  --success-on-surface: oklch(0.38 0.1 150);
   --border: oklch(0.9 0.01 var(--theme-h));
   --input: oklch(0.86 0.012 var(--theme-h));
   --ring: oklch(0.6 var(--theme-c) var(--theme-h));
   --overlay: oklch(0.2 0.01 var(--theme-h) / 0.4);
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.62 0.12 calc(var(--theme-h) + 150));
+  --chart-3: oklch(0.7 0.13 75);
+  --chart-4: oklch(0.6 0.1 calc(var(--theme-h) + 270));
   color-scheme: light;
-  --tint-success: color-mix(in srgb, var(--success) 14%, var(--card));
-  --tint-warning: color-mix(in srgb, var(--warning) 18%, var(--card));
-  --tint-danger: color-mix(in srgb, var(--destructive) 12%, var(--card));
 }
 
 /* 深色模式 */
@@ -197,169 +247,22 @@
   --accent: oklch(0.3 calc(var(--theme-c) * 0.6) var(--theme-h));
   --accent-foreground: oklch(0.88 var(--theme-c) var(--theme-h));
   --destructive: oklch(0.65 0.19 25);
-  --destructive-foreground: oklch(0.99 0 0);
+  --destructive-foreground: oklch(0.18 0.02 25);
+  --destructive-surface: oklch(0.27 0.06 25);
+  --destructive-on-surface: oklch(0.88 0.07 25);
   --success: oklch(0.72 0.13 150);
   --warning: oklch(0.78 0.14 80);
+  --warning-surface: oklch(0.28 0.05 75);
+  --warning-on-surface: oklch(0.88 0.09 85);
+  --success-surface: oklch(0.26 0.05 150);
+  --success-on-surface: oklch(0.88 0.09 150);
   --border: oklch(0.3 0.012 var(--theme-h));
   --input: oklch(0.34 0.014 var(--theme-h));
   --ring: oklch(0.65 var(--theme-c) var(--theme-h));
   --overlay: oklch(0 0 0 / 0.55);
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.74 0.11 calc(var(--theme-h) + 150));
+  --chart-3: oklch(0.8 0.12 75);
+  --chart-4: oklch(0.72 0.1 calc(var(--theme-h) + 270));
   color-scheme: dark;
-  --tint-success: color-mix(in srgb, var(--success) 22%, var(--card));
-  --tint-warning: color-mix(in srgb, var(--warning) 24%, var(--card));
-  --tint-danger: color-mix(in srgb, var(--destructive) 22%, var(--card));
-}
-
-/* Compatibility tokens for server-rendered network forms: dimensions, layers and status variants. */
-:root {
-  --compat-size-1: .6rem;
-  --compat-size-2: 72px;
-  --compat-size-3: 12px;
-  --compat-size-4: 24px;
-  --compat-size-5: 40px;
-  --compat-size-6: 32px;
-  --compat-size-7: 480px;
-  --compat-size-8: 56px;
-  --compat-size-9: 1.5rem;
-  --compat-size-10: 28px;
-  --compat-size-11: .5rem;
-  --compat-size-12: 44px;
-  --compat-size-13: .45rem;
-  --compat-size-14: .75rem;
-  --compat-size-15: .4rem;
-  --compat-size-16: 17rem;
-  --compat-size-17: 3.2rem;
-  --compat-size-18: .35rem;
-  --compat-size-19: 6rem;
-  --compat-size-20: .25rem;
-  --compat-size-21: 2.35rem;
-  --compat-size-22: .3rem;
-  --compat-size-23: .55rem;
-  --compat-size-24: 1rem;
-  --compat-size-25: 1.35rem;
-  --compat-size-26: .85rem;
-  --compat-size-27: 135rem;
-  --compat-size-28: 44rem;
-  --compat-size-29: 1.25rem;
-  --compat-size-30: 2rem;
-  --compat-size-31: -1px;
-  --compat-size-32: 18rem;
-  --compat-size-33: .8rem;
-  --compat-size-34: 1.4rem;
-  --compat-size-35: 5.5rem;
-  --compat-size-36: 3.4rem;
-  --compat-size-37: 12rem;
-  --compat-size-38: 2.75rem;
-  --compat-size-39: 2px;
-  --compat-size-40: 13rem;
-  --compat-size-41: 15rem;
-  --compat-size-42: .65rem;
-  --compat-size-43: 16rem;
-  --compat-size-44: 3.5rem;
-  --compat-size-45: .2rem;
-  --compat-size-46: 2.25rem;
-  --compat-size-47: 2.3rem;
-  --compat-color-48: #17242c;
-  --compat-color-49: #f1f5f6;
-  --compat-color-50: color-mix(in srgb,var(--terminal-fg) 15%,transparent);
-  --compat-color-51: color-mix(in srgb,var(--terminal-bg) 85%,var(--terminal-fg));
-  --compat-size-52: 20rem;
-  --compat-size-53: 42rem;
-  --compat-size-54: 7rem;
-  --compat-size-55: .7rem;
-  --compat-size-56: 8rem;
-  --compat-size-57: 34rem;
-  --compat-size-58: .15rem;
-  --compat-color-59: #f5f7f6;
-  --compat-color-60: #1d2d35;
-  --compat-color-61: #52636b;
-  --compat-color-62: #d8e1e0;
-  --compat-color-63: #365779;
-  --compat-color-64: #236b4d;
-  --compat-color-65: #eef3f2;
-  --compat-size-66: 16px;
-  --compat-size-67: 36rem;
-  --compat-size-68: 2.5rem;
-  --compat-color-69: white;
-  --compat-shadow-70: 0 10px 32px rgba(23,45,52,.06);
-  --compat-tracking-71: 0;
-  --compat-size-72: .1rem;
-  --compat-size-73: 3px;
-  --compat-size-74: 1.15em;
-  --layer-75: 20;
-  --compat-size-76: 14rem;
-  --compat-size-77: 1.6rem;
-  --compat-size-78: 1.45rem;
-  --compat-color-79: color-mix(in srgb, var(--primary) 12%, var(--card));
-  --compat-size-80: 11rem;
-  --layer-81: 25;
-  --compat-size-82: 22rem;
-  --compat-size-83: 2.6rem;
-  --compat-size-84: 75rem;
-  --compat-size-85: 9px;
-  --compat-size-86: -2px;
-  --layer-87: 30;
-  --compat-size-88: 6px;
-  --compat-size-89: 5px;
-  --compat-shadow-90: 0 12px 28px rgba(26,42,54,.16);
-  --compat-size-91: 68rem;
-  --compat-size-92: 38rem;
-  --compat-size-93: 3rem;
-  --compat-shadow-94: inset 0 0 0 1px var(--primary);
-  --compat-shadow-95: 0 1px 3px color-mix(in srgb, var(--foreground) 25%, transparent);
-  --compat-size-96: .18s;
-  --compat-size-97: -1.35rem;
-  --compat-size-98: 1.2rem;
-  --compat-size-99: 1.3rem;
-  --compat-size-100: .9rem;
-  --compat-size-101: .2s;
-  --compat-size-102: 7.375rem;
-  --compat-size-103: -6px;
-  --compat-size-104: 26rem;
-  --compat-size-105: 10rem;
-  --compat-size-106: 3.75rem;
-  --compat-color-107: color-mix(in srgb, var(--primary) 4%, var(--card));
-  --compat-size-108: 3.1rem;
-  --compat-size-109: 1.8rem;
-  --compat-size-110: -1.25rem;
-  --layer-111: 1;
-  --compat-size-112: 1.1rem;
-  --compat-size-113: -.9rem;
-  --compat-size-114: 1.75rem;
-  --compat-size-115: 0.4rem;
-  --compat-size-116: 0.35rem;
-  --compat-size-117: 0.5rem;
-  --compat-size-118: 0.75rem;
-  --compat-size-119: 0.15rem;
-  --compat-size-120: 0.3rem;
-  --compat-size-121: 0.55rem;
-  --compat-color-122: color-mix(in srgb, var(--success) 12%, transparent);
-  --compat-color-123: color-mix(in srgb, var(--destructive) 10%, transparent);
-  --compat-size-124: .125rem;
-  --compat-size-125: 3.25rem;
-  --compat-size-126: 1.875rem;
-  --compat-size-127: .16s;
-  --compat-size-128: .39rem;
-  --compat-shadow-129: 0 1px 3px color-mix(in srgb, var(--foreground) 30%, transparent);
-  --compat-size-130: 1.77rem;
-  --compat-shadow-131: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
-  --compat-size-132: -0.5rem;
-  --compat-size-133: 5rem;
-  --compat-size-134: 0.9rem;
-  --compat-size-135: 0.7rem;
-  --compat-size-136: 0.8rem;
-  --compat-size-137: 0.28rem;
-  --compat-size-138: 0.46rem;
-  --compat-size-139: 0.38rem;
-  --compat-size-140: 0.42rem;
-  --compat-color-141: color-mix(in srgb, var(--primary) 24%, transparent);
-  --compat-color-142: color-mix(in srgb, var(--destructive) 88%, black);
-  --compat-color-143: color-mix(in srgb, var(--foreground) 52%, transparent);
-  --compat-size-144: -1.4rem;
-  --compat-size-145: 1.15rem;
-  --compat-size-146: 1.68rem;
-  --compat-size-147: 0.2rem;
-  --compat-size-148: 4.5rem;
-  --compat-size-149: 0ms;
-  --compat-size-150: 160px;
 }

@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/web/scripts/stop-check.mjs\"",
+            "timeout": 900
+          }
+        ]
+      }
     ]
   }
 }
