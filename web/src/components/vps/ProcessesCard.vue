@@ -86,6 +86,10 @@ async function confirmKill() {
   if (done !== undefined) showToast(t('vps.processes.signalled', { pid: target.pid }), 'success')
   await load()
 }
+// 确认对话框先关闭再发出 confirm: 关闭时先不清空要操作的对象, 等 confirm 处理完再清
+function clearLater(clear: () => void) {
+  setTimeout(clear)
+}
 </script>
 
 <template>
@@ -121,7 +125,7 @@ async function confirmKill() {
     :confirm-label="pending?.force ? t('vps.processes.kill') : t('vps.processes.terminate')"
     danger
     @confirm="confirmKill"
-    @update:open="(open: boolean) => { if (!open) pending = null }"
+    @update:open="(open: boolean) => { if (!open) clearLater(() => (pending = null)) }"
   />
   </PageSection>
 </template>

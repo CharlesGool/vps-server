@@ -191,6 +191,10 @@ async function save() {
     showToast(t('vps.fleet.added', { name: add.value.name }), 'success')
   }
 }
+// 确认对话框先关闭再发出 confirm: 关闭时先不清空要操作的对象, 等 confirm 处理完再清
+function clearLater(clear: () => void) {
+  setTimeout(clear)
+}
 </script>
 
 <template>
@@ -252,7 +256,7 @@ async function save() {
       :description="batch ? t(`vps.fleet.batchConfirm.${batch}`) : ''"
       :confirm-label="batch ? t(`vps.fleet.batch.${batch}`, { n: selected.length }) : ''"
       @confirm="runBatch"
-      @update:open="(value: boolean) => { if (!value) batch = null }"
+      @update:open="(open: boolean) => { if (!open) clearLater(() => (batch = null)) }"
     />
     <ConfirmDialog
       :open="removing !== null"
@@ -261,7 +265,7 @@ async function save() {
       :confirm-label="t('vps.fleet.remove')"
       danger
       @confirm="remove"
-      @update:open="(value: boolean) => { if (!value) removing = null }"
+      @update:open="(open: boolean) => { if (!open) clearLater(() => (removing = null)) }"
     />
 
     <AppDialog v-model:open="detailsOpen" :title="details?.name ?? ''">

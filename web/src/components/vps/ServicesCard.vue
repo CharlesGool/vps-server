@@ -112,6 +112,10 @@ function confirmPending() {
   pending.value = null
   if (target) void run(target.unit, target.action)
 }
+// 确认对话框先关闭再发出 confirm: 关闭时先不清空要操作的对象, 等 confirm 处理完再清
+function clearLater(clear: () => void) {
+  setTimeout(clear)
+}
 </script>
 
 <template>
@@ -144,7 +148,7 @@ function confirmPending() {
     :confirm-label="pending ? t(`vps.services.${pending.action}`) : ''"
     danger
     @confirm="confirmPending"
-    @update:open="(open: boolean) => { if (!open) pending = null }"
+    @update:open="(open: boolean) => { if (!open) clearLater(() => (pending = null)) }"
   />
 
   <SideDrawer v-model:open="logOpen" :title="log?.unit ?? ''" :description="t('vps.services.logHelp')">
