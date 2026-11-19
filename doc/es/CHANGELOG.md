@@ -26,6 +26,47 @@ metadata:
 
 ## Historial de cambios
 
+### v7.1.0 — 2026-11-19
+
+La consola pasa a un nuevo diseño de una sola página, con varias funciones surgidas del uso real. El backend, la configuración y los formatos de datos siguen siendo compatibles; el comando de actualización no cambia y la configuración y los datos se conservan.
+
+#### Cambiado
+
+- **Todas las páginas usan la nueva interfaz.** Inicio, ajustes, seguridad, módulos, registros detallados, prueba de velocidad, iPerf 3, reenvío de puertos, visitantes recientes, terminal, Mini Drive, copia y restauración, tareas programadas, Tailscale, reenvío de dominios (con su registro de accesos), certificado IP, FRPS, FRPC y nodos Singbox comparten ahora una interfaz de una sola página con tarjetas, temas claro/oscuro y tres idiomas. El servidor solo ofrece una API JSON; las antiguas páginas generadas en el servidor se han eliminado y las direcciones antiguas (como `/anytls` y `/frp/client/edit`) llevan a las nuevas.
+- **La barra superior muestra la etiqueta del servidor.** La etiqueta de Ajustes aparece junto a la versión y se puede seleccionar y copiar; los títulos de las pestañas empiezan por ella, así se distinguen varias consolas.
+- **Los enlaces del pie muestran su destino** (github/CharlesGool, etc.) en lugar de solo "Autor" y "Repositorio".
+- **Las dos tarjetas de Mini Drive se llaman** "Descarga remota" y "Subida local".
+- **Tailscale muestra solo la cuenta cuando el nombre de la tailnet es el mismo** (como en las cuentas personales); la tailnet de una organización sigue mostrando ambas filas.
+
+#### Añadido
+
+- **Reinicios de tráfico según el calendario.** Los límites de tráfico de cada función y el total de Inicio pueden reiniciarse en días de la semana elegidos, un día del mes o un día del año, a una hora elegida (hora local del servidor), con las mismas reglas que las tareas programadas; una función también puede reiniciarse una sola vez. El antiguo "cada N días/meses/años" y el "día del mes (UTC)" del total siguen funcionando hasta que se cambien en la página.
+- **Fechas más flexibles en las tareas programadas.** Las programaciones mensuales aceptan los días 1 a 31 (en un mes más corto, su último día) y hay un tipo anual.
+- **Varias claves de envío de Bark** (una por dispositivo); cada aviso se envía a todas. La página muestra los cuatro primeros y cuatro últimos caracteres de cada clave para distinguirlas, y cada una se puede eliminar.
+- **Los registros de certificados de cliente revocados se pueden eliminar.** La lista de certificados tiene una columna de estado y se pagina a partir de 10 filas.
+- **Cada origen del tráfico total de Inicio tiene una barra de uso.**
+
+#### Corregido
+
+- **La biblioteca de traducción de la interfaz vuelve a una versión con las correcciones de seguridad.** Al pasar a la nueva interfaz, la plantilla devolvió vue-i18n a 11.4.13 (v5.6.1 la había subido a 11.4.18 por dos avisos XSS); ahora es 11.4.23. El código nunca usa entradas del usuario como plantilla de traducción, así que no era explotable.
+- Las instancias FRPC con nombre en chino no cargaban su tráfico en la página de edición.
+- En la tabla de dispositivos de Tailscale, la IPv4 y la IPv6 de un dispositivo aparecían juntas en una línea.
+- Los botones "Gestionar módulos", "Ver registros" y "Abrir ajustes de seguridad" de Ajustes no estaban alineados a la derecha; en tarjetas lado a lado, los botones inferiores ahora quedan a la misma altura.
+- Los grupos del historial de cambios escritos como un párrafo (como "Verificación") no se mostraban; ahora sí, y los grupos vacíos muestran "-".
+- Una petición JSON con un sustituto aislado fallaba con 500 al usar un campo; ahora se rechaza (400).
+
+#### Verificación
+
+Todas las comprobaciones automáticas pasan: comprobación de diseño, de tipos, 1637 pruebas en navegador (capturas, maquetación y accesibilidad) y 240 pruebas unitarias de Python. Una instalación limpia en un contenedor Debian 13 desechable superó 77 comprobaciones de la API. Las versiones de prueba se instalaron sobre la máquina virtual de pruebas de casa y el VPS de producción de Macao (Debian 11) y se revisaron página por página en un navegador real: verificación de administrador, un comando en el terminal, prueba de conexión y edición de FRPC, activar y ejecutar la prueba de velocidad, instalar iperf3 y abrir y cerrar su ventana, cambiar de idioma, los diálogos de tráfico total y de límites de tráfico, y las listas de certificados y claves de Bark; los 12 comentarios del servidor de Macao se corrigieron y confirmaron.
+
+Sin verificar en un servidor real: que un reinicio de calendario llegue a su momento (solo pruebas unitarias), envíos reales a varias claves de Bark, operaciones de reenvío de dominios con datos reales, restaurar una copia e iniciar sesión en Tailscale.
+
+#### Problemas conocidos
+
+- Al volver a una versión anterior: un total con la nueva programación de reinicio empieza un periodo nuevo, varias claves de Bark se tratan como no configuradas y las versiones anteriores no entienden el nuevo formato de reinicio por función.
+- Parte del texto chino heredado mezcla puntuación de ancho completo y medio; la ayuda del modo de inicio de sesión muestra comillas invertidas literales alrededor de un comando.
+- Las tareas programadas y las copias solo se pueden fijar al minuto en la página (el servidor sigue admitiendo segundos).
+
 ### v7.0.5 — 2026-11-17
 
 Correcciones de diseño en la sección de tráfico de la página FRPS. El comando de actualización no cambia y se conservan la configuración y los datos.

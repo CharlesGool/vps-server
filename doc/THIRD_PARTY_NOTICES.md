@@ -46,7 +46,7 @@ metadata:
 
 核验日期为既有出处核验日期;2026-10-05 发布重新校验固定构件, 未重做全部上游溯源. 未修改 frp, Caddy, Singbox, LibreSpeed 和二维码库的上游构件. 本项目无第三方 Python 包, 图像数据集或模型权重. Python, systemd, 主机 OpenSSL 库(Python TLS 使用), iptables 等由系统提供, 安装器检查最低版本, 不随锁文件锁定, 其许可和安全更新由发行版渠道管理.
 
-新增的 Vue 前端使用 Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 和 tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), class-variance-authority 0.7.1 (Apache-2.0). 精确依赖及下载来源见 [npm 锁文件](../web/package-lock.json). 用途为共享界面组件和编译后的浏览器资源;版权归属以上游原文为准. 核验日期: 2026-10-06. 分发时保留版权和许可原文;构建脚本把依赖许可和带版本/源码下载地址的清单复制到 `web/dist/licenses/`, 安装及离线包均保留该目录. 构建工具的许可也一并附带, 不表示这些工具在 VPS 运行.
+新增的 Vue 前端使用 Vue 3.5.43, vue-i18n 11.4.23, vue-router 5.3.1, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 和 tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC), class-variance-authority 0.7.1 和 @internationalized/date 3.12.4 (Apache-2.0). 精确依赖及下载来源见 [npm 锁文件](../web/package-lock.json). 用途为共享界面组件和编译后的浏览器资源;版权归属以上游原文为准. 核验日期: 2026-10-06. 分发时保留版权和许可原文;构建脚本把依赖许可和带版本/源码下载地址的清单复制到 `web/dist/licenses/`, 安装及离线包均保留该目录. 构建工具的许可也一并附带, 不表示这些工具在 VPS 运行.
 
 ### 许可证文本
 

@@ -26,6 +26,47 @@ metadata:
 
 ## Changelog
 
+### v7.1.0 — 2026-11-19
+
+The console moves to a new single-page design, plus several features from real use. The backend, configuration and data formats stay compatible; the upgrade command is unchanged and configuration and data are kept.
+
+#### Changed
+
+- **Every page uses the new interface.** Home, settings, security, modules, detailed logs, speed test, iPerf 3, port forwarding, recent visitors, terminal, Mini Drive, backup and restore, scheduled tasks, Tailscale, domain forwarding (with its access log), IP certificate, FRPS, FRPC and Singbox nodes now share one card-based single-page interface with light/dark themes and three languages. The server only provides a JSON API; the old server-rendered pages are gone, and old addresses (such as `/anytls` and `/frp/client/edit`) lead to the new pages.
+- **The header shows the server label.** The label set in Settings appears next to the version and can be selected and copied; browser tab titles start with it, so several consoles are easy to tell apart.
+- **Footer links show where they go** (github/CharlesGool and so on) instead of only "Author" and "Repository".
+- **The two Mini Drive cards are renamed** "Remote download" and "Local upload".
+- **Tailscale shows only the account when the tailnet name is the same** (as it is for personal accounts); an organization's tailnet still shows both rows.
+
+#### Added
+
+- **Traffic resets on the calendar.** Each feature's traffic limits and the total on Home can reset on chosen weekdays, a day of the month or a day of the year, at a chosen time (server local time), with the same rules as scheduled tasks; a single feature can also reset once. The older "every N days/months/years" and the total's "day of the month (UTC)" keep working until changed on the page.
+- **More flexible scheduled-task dates.** Monthly schedules accept days 1 to 31 (in a shorter month, its last day), and schedules gain a yearly kind.
+- **Several Bark push keys** (one per device); every alert goes to all of them. The page shows each key's first and last four characters to tell them apart, and each can be deleted.
+- **Revoked client-certificate records can be deleted.** The certificate list gains a status column and pages at 10 rows.
+- **Each source of the total traffic on Home has a usage bar.**
+
+#### Fixed
+
+- **The UI translation library is back on a release with the security fixes.** Moving to the new interface brought vue-i18n back to 11.4.13 from the template (v5.6.1 had moved to 11.4.18 for two XSS advisories); it is now 11.4.23. The code never uses user input as a translation template, so this was not exploitable.
+- FRPC instances with Chinese names failed to load their traffic on the edit page.
+- In the Tailscale device table, a device's IPv4 and IPv6 ran together on one line.
+- The "Manage modules", "View logs" and "Open security settings" buttons in Settings were not right-aligned; in cards side by side, the bottom buttons now line up.
+- Changelog groups written as a paragraph (such as "Verification") were not shown; now they are, and empty groups show "-".
+- A JSON request with a lone surrogate failed with 500 when a field was used; it is now refused (400).
+
+#### Verification
+
+All automated checks pass: design check, type check, 1637 browser tests (screenshots, layout and accessibility checks) and 240 Python unit tests. A fresh install in a throwaway Debian 13 container passed 77 API checks. Test builds were installed over the home test VM and the production VPS in Macau (Debian 11) and checked page by page in a real browser: admin verification, a terminal command, FRPC connection test and editing, turning on and running the speed test, installing iperf3 and opening and closing its window, switching languages, the total traffic and traffic limit dialogs, and the certificate and Bark key lists; all 12 items of feedback from the Macau host were fixed and confirmed.
+
+Not verified on a real host: a calendar reset actually falling due (unit tests only), real pushes to several Bark keys, domain forwarding operations on real data, restoring a backup, and logging in to Tailscale.
+
+#### Known issues
+
+- Downgrading: a total using the new reset schedule starts a new period, several Bark keys are treated as not set, and older versions do not understand the new per-feature reset format.
+- Some carried-over Chinese text mixes full-width and half-width punctuation; the login mode help shows literal backticks around a command.
+- Scheduled tasks and backups can only be set to the minute on the page (the server still supports seconds).
+
 ### v7.0.5 — 2026-11-17
 
 Layout fixes for the traffic section of the FRPS page. The upgrade command is unchanged and settings and data are kept.
