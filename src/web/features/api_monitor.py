@@ -4,7 +4,9 @@ import time
 
 import sysmon
 
-# History is shown as 12 two-hour buckets (the chart) and 24 hourly ones (the card trend lines).
+# History is shown as the last 15 minutes, one point a minute (the monitor page's charts and card
+# lines); the token API also gives 24 hours as 12 two-hour and 24 hourly averages.
+RECENT_BUCKETS = 15
 CHART_BUCKETS = 12
 TREND_BUCKETS = 24
 
@@ -48,6 +50,7 @@ class MonitorApiMixin:
         points = monitor.points()
         snapshot["chart"] = buckets(points, CHART_BUCKETS)
         snapshot["trend"] = buckets(points, TREND_BUCKETS)
+        snapshot["recent"] = buckets(points, RECENT_BUCKETS, span=RECENT_BUCKETS * 60)
         snapshot["live"] = monitor.live_points()
         hour_ago = next((point for point in reversed(points) if point[0] <= time.time() - 3600), None)
         snapshot["hourAgo"] = {"cpu": hour_ago[1], "memory": hour_ago[2]} if hour_ago else None

@@ -5,6 +5,7 @@ const hours = (count: number, step: number) => Array.from({ length: count }, (_,
 
 const chart = hours(12, 7200).map((time, index) => [time, 8 + ((index * 7) % 23), 41 + ((index * 3) % 9), 120_000 + index * 9_000, 30_000 + index * 2_500])
 const live = Array.from({ length: 12 }, (_, index) => [NOW - (12 - index) * 5, 10 + ((index * 7) % 9), 44 + (index % 3), 150_000 + ((index * 13_000) % 60_000), 35_000 + ((index * 4_000) % 12_000)])
+const recent = Array.from({ length: 15 }, (_, index) => [NOW - (15 - index) * 60, 9 + ((index * 5) % 13), 43 + (index % 4), 140_000 + ((index * 11_000) % 50_000), 33_000 + ((index * 3_000) % 9_000)])
 const trend = hours(24, 3600).map((time, index) => [time, 6 + ((index * 5) % 19), 40 + ((index * 2) % 11), 100_000, 25_000])
 
 const DISKS = [
@@ -25,6 +26,7 @@ export const MONITOR_SAMPLE = {
   chart,
   trend,
   live,
+  recent,
   hourAgo: { cpu: 10.1, memory: 44.2 },
   time: NOW,
 }

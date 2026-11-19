@@ -675,7 +675,7 @@
     },
     "monitor": {
       "title": "资源监控",
-      "description": "CPU, 内存, 硬盘, 网络和温度, 以及最近 24 小时的走势.",
+      "description": "CPU, 内存, 硬盘, 网络和温度, 以及最近 15 分钟的走势.",
       "cpu": "CPU",
       "memory": "内存",
       "disk": "硬盘",
@@ -685,7 +685,7 @@
       "diskFree": "剩余 {free}",
       "usageChart": "CPU 和内存",
       "trafficChart": "网络速率",
-      "chartNote": "最近 24 小时, 每 2 小时的平均值.",
+      "chartNote": "最近 15 分钟, 每分钟的平均值.",
       "disks": "磁盘",
       "mount": "挂载点",
       "fsType": "文件系统",

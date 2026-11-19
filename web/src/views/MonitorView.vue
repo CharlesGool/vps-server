@@ -36,7 +36,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const percent = (used: number, total: number) => (total ? Math.round((used * 1000) / total) / 10 : 0)
 const memoryPercent = computed(() => (data.value ? percent(data.value.memory.used, data.value.memory.total) : 0))
-const trend = (column: 1 | 2) => (data.value?.trend ?? []).map((row) => row[column]).filter((value): value is number => value != null)
+const trend = (column: 1 | 2) => (data.value?.recent ?? []).map((row) => row[column]).filter((value): value is number => value != null)
 
 const cards = computed(() => {
   const value = data.value
@@ -55,9 +55,10 @@ const cards = computed(() => {
   ]
 })
 
-// 两组图: 实时(最近 1 分钟, 每 5 秒一个点)和 24 小时(每 2 小时的平均值). 24 小时图只画有数据的时段, 刚安装时只有最近几段.
+// 两组图: 实时(最近 1 分钟, 每 5 秒一个点)和最近 15 分钟(每分钟的平均值, 15 个点; 用户要求 15 分钟, 比模板建议的横轴 12 项多 3 项,
+// 放不下的横轴文字由 TrendChart 隔项显示). 只画有数据的分钟, 刚启动时只有最近几分钟. 卡片里的小折线也是这 15 分钟.
 const live = computed(() => data.value?.live ?? [])
-const day = computed(() => (data.value?.chart ?? []).filter((row) => row[1] != null))
+const day = computed(() => (data.value?.recent ?? []).filter((row) => row[1] != null))
 const usage = (rows: HistoryRow[]) => [
   { name: t('vps.monitor.cpu'), values: rows.map((row) => row[1] ?? 0) },
   { name: t('vps.monitor.memory'), values: rows.map((row) => row[2] ?? 0) },

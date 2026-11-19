@@ -675,7 +675,7 @@
     },
     "monitor": {
       "title": "Resources",
-      "description": "CPU, memory, disks, network and temperatures, with the last 24 hours.",
+      "description": "CPU, memory, disks, network and temperatures, with the last 15 minutes.",
       "cpu": "CPU",
       "memory": "Memory",
       "disk": "Disk",
@@ -685,7 +685,7 @@
       "diskFree": "{free} free",
       "usageChart": "CPU and memory",
       "trafficChart": "Network rate",
-      "chartNote": "Last 24 hours, averaged over 2 hours.",
+      "chartNote": "The last 15 minutes, averaged per minute.",
       "disks": "Disks",
       "mount": "Mount point",
       "fsType": "File system",

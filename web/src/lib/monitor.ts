@@ -27,6 +27,7 @@ export interface Monitor {
   chart: HistoryRow[]
   trend: HistoryRow[]
   live: HistoryRow[]
+  recent: HistoryRow[]
   hourAgo: { cpu: number; memory: number } | null
 }
 
