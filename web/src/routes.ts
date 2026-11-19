@@ -21,9 +21,6 @@ export interface AppRoute {
   public?: boolean
 }
 
-// 还由 Python 生成的旧页面(迁移中): 不进入单页路由, 导航到这些路径时整页跳转. 迁移完一页就从这里删掉.
-export const LEGACY_PATHS: string[] = []
-
 export function appRoutes(features: typeof FEATURES = FEATURES, showcase = SHOWCASE): AppRoute[] {
   const routes: AppRoute[] = []
   if (features.dashboard) {
@@ -36,10 +33,10 @@ export function appRoutes(features: typeof FEATURES = FEATURES, showcase = SHOWC
   routes.push(
     { path: '/settings', name: 'settings', view: 'settings', titleKey: 'page.settings', icon: 'settings' },
     { path: '/settings/modules', name: 'modules', view: 'modules', titleKey: 'page.modules', icon: 'modules' },
-    { path: '/backup/restore', name: 'restore', view: 'restore', titleKey: 'legacy.backup_restore_title', icon: 'restore' },
-    { path: '/closed', name: 'closed', view: 'closed', titleKey: 'legacy.module_closed_title', icon: 'closed' },
-    { path: '/domains/log', name: 'domainslog', view: 'domainslog', titleKey: 'legacy.domains_access_log', icon: 'domainslog' },
-    { path: '/frpc/edit', name: 'frpcedit', view: 'frpcedit', titleKey: 'legacy.frp_client_heading', icon: 'frpcedit' },
+    { path: '/backup/restore', name: 'restore', view: 'restore', titleKey: 'console.backup_restore_title', icon: 'restore' },
+    { path: '/closed', name: 'closed', view: 'closed', titleKey: 'console.module_closed_title', icon: 'closed' },
+    { path: '/domains/log', name: 'domainslog', view: 'domainslog', titleKey: 'console.domains_access_log', icon: 'domainslog' },
+    { path: '/frpc/edit', name: 'frpcedit', view: 'frpcedit', titleKey: 'console.frp_client_heading', icon: 'frpcedit' },
     { path: '/settings/logs', name: 'logs', view: 'logs', titleKey: 'page.logs', icon: 'logs' },
     { path: '/changelog', name: 'changelog', view: 'changelog', titleKey: 'page.changelog', icon: 'changelog', public: true },
   )
@@ -62,5 +59,5 @@ export function appRoutes(features: typeof FEATURES = FEATURES, showcase = SHOWC
       routes.push({ path: `/scenes/${scene}`, name: `scenes-${scene}`, view: `showcase-scenes-${scene}`, titleKey: `page.showcaseScenes${key}`, icon: 'showcase' })
     }
   }
-  return routes.filter((route) => !LEGACY_PATHS.includes(route.path))
+  return routes
 }

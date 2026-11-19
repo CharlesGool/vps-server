@@ -20,21 +20,6 @@ class IperfClient:
         self._results_lock = threading.Lock()
         self._results = {}
 
-    def remember_result(self, session, result, values):
-        """Keep one short-lived result for the redirect back to the form."""
-        now = time.monotonic()
-        with self._results_lock:
-            self._results = {key: entry for key, entry in self._results.items()
-                             if now - entry[0] < 120}
-            if len(self._results) >= 32:
-                oldest = min(self._results, key=lambda key: self._results[key][0])
-                del self._results[oldest]
-            self._results[session] = (now, result, values)
-
-    def take_result(self, session):
-        with self._results_lock:
-            entry = self._results.pop(session, None)
-        return (entry[1], entry[2]) if entry and time.monotonic() - entry[0] < 120 else (None, None)
 
     def run(self, host, port, protocol, direction, seconds, mbps):
         """Run one bounded test; return a display-ready status and metrics."""

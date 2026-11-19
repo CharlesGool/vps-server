@@ -30,13 +30,13 @@ onMounted(load)
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.terminal_title')" :description="t('vps.terminal.description')" />
+    <PageHeader :title="t('console.terminal_title')" :description="t('vps.terminal.description')" />
     <PageSection v-if="state === 'loading'" :cols="4">
       <LoadingState />
     </PageSection>
     <AdminVerify v-else-if="state === 'verify' || state === 'ip'" :ip-only="state === 'ip'" @verified="load" />
     <PageSection v-else :cols="4" :title="t('vps.terminal.session')">
-      <TerminalScreen :token="token" :label="t('legacy.terminal_title')" />
+      <TerminalScreen :token="token" :label="t('console.terminal_title')" />
     </PageSection>
   </CardGrid>
 </template>

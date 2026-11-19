@@ -70,7 +70,7 @@ async function change(body: Record<string, unknown>) {
     return true
   } catch (err) {
     saving.value = false
-    if (!isSignedOut(err)) showToast(t('legacy.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
     return false
   }
 }
@@ -88,7 +88,7 @@ function poll(job: string, next: string) {
         return
       }
       saving.value = false
-      showToast(t(state === 'done' ? 'legacy.frp_saved' : 'legacy.frp_save_failed'), state === 'done' ? 'success' : 'destructive')
+      showToast(t(state === 'done' ? 'console.frp_saved' : 'console.frp_save_failed'), state === 'done' ? 'success' : 'destructive')
       if (state === 'done' && next !== name.value) await router.replace({ path: '/frpc/edit', query: { name: next } })
       else if (state === 'done') await load()
       resolve()
@@ -106,9 +106,9 @@ async function submitCreate() {
 
 // ---- 服务器 ----
 const serverFacts = computed(() => [
-  { key: 'server', label: t('legacy.frp_server_ip') },
-  { key: 'port', label: t('legacy.proxy_port') },
-  { key: 'token', label: t('legacy.frps_token') },
+  { key: 'server', label: t('console.frp_server_ip') },
+  { key: 'port', label: t('console.proxy_port') },
+  { key: 'token', label: t('console.frps_token') },
 ])
 const serverOpen = ref(false)
 const server = ref({ server: '', port: 7000, token: '' })
@@ -135,10 +135,10 @@ async function rename() {
 
 // ---- 代理 ----
 const proxyColumns = computed(() => [
-  { key: 'name', label: t('legacy.proxy_name') },
-  { key: 'type', label: t('legacy.proxy_type') },
+  { key: 'name', label: t('console.proxy_name') },
+  { key: 'type', label: t('console.proxy_type') },
   { key: 'local', label: t('vps.frpc.local'), mono: true },
-  { key: 'remote', label: t('legacy.frp_server_port'), mono: true },
+  { key: 'remote', label: t('console.frp_server_port'), mono: true },
   { key: 'action', label: t('vps.files.actions'), align: 'end' as const },
 ])
 const types = [
@@ -162,16 +162,16 @@ async function saveProxy() {
   if (await change(body)) proxyOpen.value = false
 }
 const proxyActions = computed(() => [
-  { key: 'edit', label: t('legacy.frp_edit_proxy') },
-  { key: 'delete', label: t('legacy.frp_delete_proxy'), danger: true },
+  { key: 'edit', label: t('console.frp_edit_proxy') },
+  { key: 'delete', label: t('console.frp_delete_proxy'), danger: true },
 ])
 
 // ---- 访问者 ----
 const visitorColumns = computed(() => [
-  { key: 'name', label: t('legacy.proxy_name') },
-  { key: 'serverName', label: t('legacy.frp_visitor_target') },
-  { key: 'listen', label: t('legacy.frp_visitor_listen'), mono: true },
-  { key: 'secret', label: t('legacy.frp_secret_key') },
+  { key: 'name', label: t('console.proxy_name') },
+  { key: 'serverName', label: t('console.frp_visitor_target') },
+  { key: 'listen', label: t('console.frp_visitor_listen'), mono: true },
+  { key: 'secret', label: t('console.frp_secret_key') },
   { key: 'action', label: t('vps.files.actions'), align: 'end' as const },
 ])
 const visitorOpen = ref(false)
@@ -204,26 +204,26 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
 
 <template>
   <CardGrid>
-    <PageHeader :title="name || t('legacy.frp_new_client')" :trail="[{ to: '/frpc', label: t('legacy.frp_client_heading') }]" />
+    <PageHeader :title="name || t('console.frp_new_client')" :trail="[{ to: '/frpc', label: t('console.frp_client_heading') }]" />
 
     <!-- 新建实例 -->
     <CardForm v-if="!name" @submit.prevent="submitCreate">
-      <PageSection :cols="4" :title="t('legacy.frp_server_settings')">
-        <FormField v-slot="field" :label="t('legacy.frp_instance_name')" :span="6">
+      <PageSection :cols="4" :title="t('console.frp_server_settings')">
+        <FormField v-slot="field" :label="t('console.frp_instance_name')" :span="6">
           <Input :id="field.id" v-model="create.name" maxlength="32" autocomplete="off" />
         </FormField>
-        <FormField v-slot="field" :label="t('legacy.frp_server_ip')" :span="6">
+        <FormField v-slot="field" :label="t('console.frp_server_ip')" :span="6">
           <Input :id="field.id" v-model="create.server" autocomplete="off" />
         </FormField>
-        <FormField v-slot="field" :label="t('legacy.proxy_port')" :span="6">
+        <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
           <NumberField :id="field.id" v-model="create.port" :min="1" :max="65535" :grouping="false" />
         </FormField>
-        <FormField v-slot="field" :label="t('legacy.frps_token')" :span="6">
+        <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
           <PasswordInput :id="field.id" v-model="create.token" maxlength="128" autocomplete="new-password" />
         </FormField>
-        <AlertBanner v-if="saving" tone="info">{{ t('legacy.frp_saving') }}</AlertBanner>
+        <AlertBanner v-if="saving" tone="info">{{ t('console.frp_saving') }}</AlertBanner>
         <FormActions>
-          <Button type="submit" :disabled="saving || !create.name.trim() || !create.server.trim() || !create.token"><Plus aria-hidden="true" />{{ t('legacy.frp_new_client') }}</Button>
+          <Button type="submit" :disabled="saving || !create.name.trim() || !create.server.trim() || !create.token"><Plus aria-hidden="true" />{{ t('console.frp_new_client') }}</Button>
         </FormActions>
       </PageSection>
     </CardForm>
@@ -233,29 +233,29 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     </PageSection>
 
     <template v-else>
-      <PageSection :cols="4" :title="t('legacy.frp_server_settings')">
-        <AlertBanner v-if="saving" tone="info">{{ t('legacy.frp_saving') }}</AlertBanner>
-        <AlertBanner v-if="!data.supported" tone="warning">{{ t('legacy.frp_unsupported_config') }}</AlertBanner>
+      <PageSection :cols="4" :title="t('console.frp_server_settings')">
+        <AlertBanner v-if="saving" tone="info">{{ t('console.frp_saving') }}</AlertBanner>
+        <AlertBanner v-if="!data.supported" tone="warning">{{ t('console.frp_unsupported_config') }}</AlertBanner>
         <DescriptionList v-else :items="serverFacts">
           <template v-for="item in serverFacts" :key="item.key" #[`value-${item.key}`]>
             <PrivateValue :source="`frpc:${name}`" :field="item.key" :label="item.label" />
           </template>
         </DescriptionList>
         <FormActions>
-          <Button variant="outline" :disabled="saving" @click="((newName = name), (renameOpen = true))">{{ t('legacy.frp_rename_client') }}</Button>
-          <Button v-if="data.supported" variant="outline" :disabled="saving" @click="openServer"><Pencil aria-hidden="true" />{{ t('legacy.frp_edit_target') }}</Button>
+          <Button variant="outline" :disabled="saving" @click="((newName = name), (renameOpen = true))">{{ t('console.frp_rename_client') }}</Button>
+          <Button v-if="data.supported" variant="outline" :disabled="saving" @click="openServer"><Pencil aria-hidden="true" />{{ t('console.frp_edit_target') }}</Button>
         </FormActions>
       </PageSection>
 
       <TrafficCard :feature="`frpc:${name}`" />
 
       <template v-if="data.supported">
-        <PageSection :cols="4" :title="t('legacy.frp_proxy_list_heading')">
-          <DataTable :columns="proxyColumns" :rows="data.proxies ?? []" row-key="name" :caption="t('legacy.frp_proxy_list_heading')" :empty="t('legacy.frp_no_proxies')">
+        <PageSection :cols="4" :title="t('console.frp_proxy_list_heading')">
+          <DataTable :columns="proxyColumns" :rows="data.proxies ?? []" row-key="name" :caption="t('console.frp_proxy_list_heading')" :empty="t('console.frp_no_proxies')">
             <template #cell-type="{ row }">{{ row.type.toUpperCase() }}</template>
             <template #cell-local="{ row }">{{ row.localIP }}:{{ row.localPort }}</template>
             <template #cell-remote="{ row, value }">
-              <PrivateValue v-if="row.type === 'stcp'" :source="`frpc:${name}`" :field="`proxy-secret:${data.proxies!.indexOf(row)}`" :label="`${t('legacy.frp_secret_key')} ${row.name}`" />
+              <PrivateValue v-if="row.type === 'stcp'" :source="`frpc:${name}`" :field="`proxy-secret:${data.proxies!.indexOf(row)}`" :label="`${t('console.frp_secret_key')} ${row.name}`" />
               <template v-else>{{ value ?? row.remotePort }}</template>
             </template>
             <template #cell-action="{ row }">
@@ -263,102 +263,102 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
             </template>
           </DataTable>
           <FormActions>
-            <Button :disabled="saving" @click="openProxy(null)"><Plus aria-hidden="true" />{{ t('legacy.frp_add_proxy') }}</Button>
+            <Button :disabled="saving" @click="openProxy(null)"><Plus aria-hidden="true" />{{ t('console.frp_add_proxy') }}</Button>
           </FormActions>
         </PageSection>
 
-        <PageSection :cols="4" :title="t('legacy.frp_visitor_heading')" :description="t('legacy.frp_visitor_note')">
-          <DataTable :columns="visitorColumns" :rows="data.visitors ?? []" row-key="name" :caption="t('legacy.frp_visitor_heading')" :empty="t('vps.frpc.noVisitors')">
+        <PageSection :cols="4" :title="t('console.frp_visitor_heading')" :description="t('console.frp_visitor_note')">
+          <DataTable :columns="visitorColumns" :rows="data.visitors ?? []" row-key="name" :caption="t('console.frp_visitor_heading')" :empty="t('vps.frpc.noVisitors')">
             <template #cell-listen="{ row }">{{ row.bindAddr }}:{{ row.bindPort }}</template>
             <template #cell-secret="{ row }">
-              <PrivateValue :source="`frpc:${name}`" :field="`visitor-secret:${data.visitors!.indexOf(row)}`" :label="`${t('legacy.frp_secret_key')} ${row.name}`" />
+              <PrivateValue :source="`frpc:${name}`" :field="`visitor-secret:${data.visitors!.indexOf(row)}`" :label="`${t('console.frp_secret_key')} ${row.name}`" />
             </template>
             <template #cell-action="{ row }">
               <ActionMenu icon-only :label="`${t('component.moreActions')} ${row.name}`" :items="proxyActions" @select="(key: string) => rowAction(key, 'visitor', data!.visitors!.indexOf(row))" />
             </template>
           </DataTable>
           <FormActions>
-            <Button variant="outline" :disabled="saving" @click="openVisitor(null)"><Plus aria-hidden="true" />{{ t('legacy.frp_add_visitor') }}</Button>
+            <Button variant="outline" :disabled="saving" @click="openVisitor(null)"><Plus aria-hidden="true" />{{ t('console.frp_add_visitor') }}</Button>
           </FormActions>
         </PageSection>
       </template>
     </template>
 
-    <AppDialog v-model:open="serverOpen" :title="t('legacy.frp_edit_target')">
-      <FormField v-slot="field" :label="t('legacy.frp_server_ip')">
+    <AppDialog v-model:open="serverOpen" :title="t('console.frp_edit_target')">
+      <FormField v-slot="field" :label="t('console.frp_server_ip')">
         <Input :id="field.id" v-model="server.server" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.proxy_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
         <NumberField :id="field.id" v-model="server.port" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frps_token')" :span="6">
+      <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
         <PasswordInput :id="field.id" v-model="server.token" maxlength="128" autocomplete="new-password" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="serverOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="saving || !server.server.trim() || !server.token" @click="saveServer"><Save aria-hidden="true" />{{ t('legacy.frp_save') }}</Button>
+        <Button variant="outline" @click="serverOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="saving || !server.server.trim() || !server.token" @click="saveServer"><Save aria-hidden="true" />{{ t('console.frp_save') }}</Button>
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="renameOpen" :title="t('legacy.frp_rename_client')">
-      <FormField v-slot="field" :label="t('legacy.frp_instance_name')">
+    <AppDialog v-model:open="renameOpen" :title="t('console.frp_rename_client')">
+      <FormField v-slot="field" :label="t('console.frp_instance_name')">
         <Input :id="field.id" v-model="newName" maxlength="32" autocomplete="off" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="renameOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="saving || !newName.trim() || newName.trim() === name" @click="rename">{{ t('legacy.frp_save') }}</Button>
+        <Button variant="outline" @click="renameOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="saving || !newName.trim() || newName.trim() === name" @click="rename">{{ t('console.frp_save') }}</Button>
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="proxyOpen" :title="proxyIndex === null ? t('legacy.frp_add_proxy') : t('legacy.frp_edit_proxy')">
-      <FormField v-slot="field" :label="t('legacy.proxy_name')" :span="6">
+    <AppDialog v-model:open="proxyOpen" :title="proxyIndex === null ? t('console.frp_add_proxy') : t('console.frp_edit_proxy')">
+      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6">
         <Input :id="field.id" v-model="proxy.name" maxlength="64" autocomplete="off" />
       </FormField>
-      <FormField :label="t('legacy.proxy_type')" group :span="6">
-        <SegmentedControl v-model="proxy.type" :options="types" :label="t('legacy.proxy_type')" />
+      <FormField :label="t('console.proxy_type')" group :span="6">
+        <SegmentedControl v-model="proxy.type" :options="types" :label="t('console.proxy_type')" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frp_local_ip')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_local_ip')" :span="6">
         <Input :id="field.id" v-model="proxy.localIP" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frp_local_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_local_port')" :span="6">
         <NumberField :id="field.id" v-model="proxy.localPort" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-if="proxy.type === 'stcp'" v-slot="field" :label="t('legacy.frp_secret_key')" :help="t('legacy.frp_secret_keep')">
+      <FormField v-if="proxy.type === 'stcp'" v-slot="field" :label="t('console.frp_secret_key')" :help="t('console.frp_secret_keep')">
         <PasswordInput :id="field.id" v-model="proxy.secretKey" maxlength="128" autocomplete="new-password" />
       </FormField>
-      <FormField v-else v-slot="field" :label="t('legacy.frp_server_port')">
+      <FormField v-else v-slot="field" :label="t('console.frp_server_port')">
         <NumberField :id="field.id" v-model="proxy.remotePort" :min="0" :max="65535" :grouping="false" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="proxyOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="saving || !proxy.name.trim()" @click="saveProxy">{{ t('legacy.frp_save') }}</Button>
+        <Button variant="outline" @click="proxyOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="saving || !proxy.name.trim()" @click="saveProxy">{{ t('console.frp_save') }}</Button>
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="visitorOpen" :title="visitorIndex === null ? t('legacy.frp_add_visitor') : t('legacy.frp_edit_proxy')" :description="t('legacy.frp_visitor_note')">
-      <FormField v-slot="field" :label="t('legacy.proxy_name')" :span="6">
+    <AppDialog v-model:open="visitorOpen" :title="visitorIndex === null ? t('console.frp_add_visitor') : t('console.frp_edit_proxy')" :description="t('console.frp_visitor_note')">
+      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6">
         <Input :id="field.id" v-model="visitor.name" maxlength="64" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frp_visitor_target')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_visitor_target')" :span="6">
         <Input :id="field.id" v-model="visitor.serverName" maxlength="64" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frp_visitor_bind_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_visitor_bind_port')" :span="6">
         <NumberField :id="field.id" v-model="visitor.bindPort" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frp_secret_key')" :span="6" :help="visitorIndex === null ? undefined : t('legacy.frp_secret_keep')">
+      <FormField v-slot="field" :label="t('console.frp_secret_key')" :span="6" :help="visitorIndex === null ? undefined : t('console.frp_secret_keep')">
         <PasswordInput :id="field.id" v-model="visitor.secretKey" maxlength="128" autocomplete="new-password" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="visitorOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="saving || !visitor.name.trim() || (visitorIndex === null && !visitor.secretKey)" @click="saveVisitor">{{ t('legacy.frp_save') }}</Button>
+        <Button variant="outline" @click="visitorOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="saving || !visitor.name.trim() || (visitorIndex === null && !visitor.secretKey)" @click="saveVisitor">{{ t('console.frp_save') }}</Button>
       </template>
     </AppDialog>
 
     <ConfirmDialog
       v-model:open="deleteOpen"
-      :title="t('legacy.frp_delete_proxy')"
-      :description="t('legacy.frp_delete_confirm')"
-      :confirm-label="t('legacy.frp_delete_proxy')"
+      :title="t('console.frp_delete_proxy')"
+      :description="t('console.frp_delete_confirm')"
+      :confirm-label="t('console.frp_delete_proxy')"
       danger
       @confirm="deleting && change({ name, section: deleting.section, index: deleting.index })"
     />

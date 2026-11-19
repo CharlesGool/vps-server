@@ -66,7 +66,7 @@ case "$key" in
   modules_are) fmt='模块：%s\n' ;;
   port_busy) fmt='端口 %s 已被其他进程占用。\n先腾出来，或用 VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT 换端口，\n或设 VPSSRV_PUBLIC_ENABLE=0 跳过公开页。查占用：\n  ss -lntp "( sport = :%s )"\n' ;;
   port_busy_public_warn) fmt='警告：端口 %s 已被其他进程占用，公开页暂时无法监听该端口；控制台和其他模块不受影响。\n释放端口后在首页重新开启公开页，或用 VPSSRV_PUBLIC_ENABLE=0 关闭它。查占用：\n  ss -lntp "( sport = :%s )"\n' ;;
-  ui_bundle_missing) fmt='缺少前端构建产物 web/dist/ui.js 和 ui.css，安装在修改任何内容前停止。\n请使用完整安装包，或先在 web/ 目录执行 npm ci && npm run check（需要 Node.js 24）。\n' ;;
+  ui_bundle_missing) fmt='缺少前端构建产物 web/dist/index.html，安装在修改任何内容前停止。\n请使用完整安装包，或先在 web/ 目录执行 npm ci && npm run build（需要 Node.js 24）。\n' ;;
   iperf_installing) fmt='正在从发行版仓库安装 iperf3 ...\n' ;;
   iperf_failed) fmt='iperf3 安装失败（apt 输出见上）。安装已停止；请修复软件源后重新运行脚本。\n' ;;
   openssl_bundle_failed) fmt='随附的 openssl 缺失或校验不符，安装已停止；请重新下载完整的安装包。\n' ;;

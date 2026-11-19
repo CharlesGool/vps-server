@@ -61,7 +61,7 @@ function apply(value: Backup, fresh = false) {
     keep.value = value.settings.keep
     ready.value = true
   }
-  if (value.message) showToast(t(`legacy.backup_msg_${value.message}`), 'success')
+  if (value.message) showToast(t(`console.backup_msg_${value.message}`), 'success')
 }
 onMounted(async () => {
   try {
@@ -72,8 +72,8 @@ onMounted(async () => {
 })
 const errorText = (err: unknown) => {
   const code = err instanceof ApiError ? err.code : 'failed'
-  const key = `legacy.backup_error_${code}`
-  return t(key) === key ? t('legacy.backup_error_failed') : t(key)
+  const key = `console.backup_error_${code}`
+  return t(key) === key ? t('console.backup_error_failed') : t(key)
 }
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
@@ -99,17 +99,17 @@ const size = (value: number) => {
 const page = ref(1)
 const rows = computed(() => (data.value?.backups ?? []).slice((page.value - 1) * 10, page.value * 10))
 const columns = computed(() => [
-  { key: 'created', label: t('legacy.backup_restore_created'), mono: true },
-  { key: 'kind', label: t('legacy.backup_restore_kind') },
+  { key: 'created', label: t('console.backup_restore_created'), mono: true },
+  { key: 'kind', label: t('console.backup_restore_kind') },
   { key: 'size', label: t('vps.files.size'), align: 'end' as const, mono: true },
   { key: 'action', label: t('vps.files.actions'), align: 'end' as const },
 ])
 // 每行的操作在菜单里: 下载, 恢复(打开恢复页), 删除(先确认)
 const router = useRouter()
 const rowActions = computed(() => [
-  { key: 'download', label: t('legacy.backup_download') },
-  { key: 'restore', label: t('legacy.backup_restore') },
-  { key: 'delete', label: t('legacy.backup_delete'), danger: true },
+  { key: 'download', label: t('console.backup_download') },
+  { key: 'restore', label: t('console.backup_restore') },
+  { key: 'delete', label: t('console.backup_delete'), danger: true },
 ])
 // 确认对话框关闭时先于 confirm 事件改 open, 所以要删除的项单独保存
 const deleting = ref<string>()
@@ -182,57 +182,57 @@ async function upload() {
 const lastText = computed(() => {
   const value = data.value
   if (!value) return ''
-  const last = value.last ? `${value.last.started} · ${t(`legacy.task_status_${value.last.status}`)}` : t('legacy.backup_never')
-  return `${t('legacy.backup_last')}: ${last}${value.next ? ` · ${t('legacy.backup_next')}: ${value.next}` : ''}`
+  const last = value.last ? `${value.last.started} · ${t(`console.task_status_${value.last.status}`)}` : t('console.backup_never')
+  return `${t('console.backup_last')}: ${last}${value.next ? ` · ${t('console.backup_next')}: ${value.next}` : ''}`
 })
 const dataText = computed(() => {
   const value = data.value?.data
   if (!value) return ''
-  if (value.state === 'on') return t('legacy.data_enc_on_text', { encrypted: value.encrypted, total: value.total })
-  return t(value.state === 'off' ? 'legacy.data_enc_off_text' : 'legacy.data_enc_error_text')
+  if (value.state === 'on') return t('console.data_enc_on_text', { encrypted: value.encrypted, total: value.total })
+  return t(value.state === 'off' ? 'console.data_enc_off_text' : 'console.data_enc_error_text')
 })
 </script>
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.backup')" :description="t('vps.backup.description')" />
+    <PageHeader :title="t('console.backup')" :description="t('vps.backup.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
     </PageSection>
 
     <template v-else>
-      <PageSection v-if="data.result" :cols="4" :title="t('legacy.backup_result_title')">
+      <PageSection v-if="data.result" :cols="4" :title="t('console.backup_result_title')">
         <AlertBanner :tone="data.result.ok ? 'success' : 'destructive'">
           {{ data.result.time }} ·
-          {{ data.result.ok ? t('legacy.backup_result_ok', { files: data.result.restored, name: data.result.name }) : t('legacy.backup_result_failed', { name: data.result.name, error: data.result.error }) }}
+          {{ data.result.ok ? t('console.backup_result_ok', { files: data.result.restored, name: data.result.name }) : t('console.backup_result_failed', { name: data.result.name, error: data.result.error }) }}
         </AlertBanner>
       </PageSection>
 
       <!-- 定时备份 -->
       <CardForm @submit.prevent="send('backup/settings', { enabled, spec, keep }, 'PUT')">
-        <PageSection :cols="4" :title="t('legacy.backup_schedule')" :description="t('legacy.backup_schedule_help')">
-          <CheckboxField v-model="enabled" :label="t('legacy.backup_enabled')" />
+        <PageSection :cols="4" :title="t('console.backup_schedule')" :description="t('console.backup_schedule_help')">
+          <CheckboxField v-model="enabled" :label="t('console.backup_enabled')" />
           <ScheduleFields v-if="ready" v-model="spec" :timezone="data.timezone" />
-          <FormField v-slot="field" :label="t('legacy.backup_keep')">
+          <FormField v-slot="field" :label="t('console.backup_keep')">
             <NumberField :id="field.id" v-model="keep" :min="1" :max="data.keepMax" />
           </FormField>
           <p class="text-sm text-muted-foreground">
             {{ lastText }}
           </p>
           <FormActions>
-            <Button type="submit" :disabled="busy"><Save aria-hidden="true" />{{ t('legacy.backup_save') }}</Button>
+            <Button type="submit" :disabled="busy"><Save aria-hidden="true" />{{ t('console.backup_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
       <!-- 备份列表 -->
-      <PageSection :cols="4" :title="t('legacy.backup_list')" :description="t('legacy.backup_contents')">
-        <DataTable :columns="columns" :rows="rows" row-key="name" :caption="t('legacy.backup_list')" :empty="t('legacy.backup_empty')">
+      <PageSection :cols="4" :title="t('console.backup_list')" :description="t('console.backup_contents')">
+        <DataTable :columns="columns" :rows="rows" row-key="name" :caption="t('console.backup_list')" :empty="t('console.backup_empty')">
           <template #cell-kind="{ row }">
-            <StatusBadge :tone="KIND_TONES[row.kind]">{{ t(`legacy.backup_kind_${KIND_KEYS[row.kind]}`) }}</StatusBadge>
-            <StatusBadge v-if="row.sealed" tone="success">{{ t('legacy.backup_sealed_tag') }}</StatusBadge>
-            <StatusBadge v-if="row.keyMatch === false" tone="warning">{{ t('legacy.backup_other_key_tag') }}</StatusBadge>
+            <StatusBadge :tone="KIND_TONES[row.kind]">{{ t(`console.backup_kind_${KIND_KEYS[row.kind]}`) }}</StatusBadge>
+            <StatusBadge v-if="row.sealed" tone="success">{{ t('console.backup_sealed_tag') }}</StatusBadge>
+            <StatusBadge v-if="row.keyMatch === false" tone="warning">{{ t('console.backup_other_key_tag') }}</StatusBadge>
           </template>
           <template #cell-size="{ row }">{{ size(row.size) }}</template>
           <template #cell-action="{ row }">
@@ -241,54 +241,54 @@ const dataText = computed(() => {
         </DataTable>
         <PaginationBar v-if="data.backups.length > 10" v-model="page" :total="data.backups.length" />
         <FormActions>
-          <Button :disabled="busy" @click="send('backup/create', {})"><Plus aria-hidden="true" />{{ t('legacy.backup_create') }}</Button>
+          <Button :disabled="busy" @click="send('backup/create', {})"><Plus aria-hidden="true" />{{ t('console.backup_create') }}</Button>
         </FormActions>
       </PageSection>
 
       <!-- 备份加密 -->
       <CardForm @submit.prevent="savePublic">
-        <PageSection :cols="2" :title="t('legacy.backup_enc_title')">
+        <PageSection :cols="2" :title="t('console.backup_enc_title')">
           <InlineGroup>
-            <StatusBadge :tone="data.encryption.on ? 'success' : 'warning'">{{ t(data.encryption.on ? 'legacy.backup_enc_on' : 'legacy.backup_enc_off') }}</StatusBadge>
+            <StatusBadge :tone="data.encryption.on ? 'success' : 'warning'">{{ t(data.encryption.on ? 'console.backup_enc_on' : 'console.backup_enc_off') }}</StatusBadge>
           </InlineGroup>
           <p class="text-sm text-muted-foreground">
-            {{ data.encryption.on ? t('legacy.backup_enc_on_text', { fp: data.encryption.fingerprint }) : t('legacy.backup_enc_off_text') }}
+            {{ data.encryption.on ? t('console.backup_enc_on_text', { fp: data.encryption.fingerprint }) : t('console.backup_enc_off_text') }}
           </p>
-          <FormField v-slot="field" :label="t('legacy.backup_enc_own')">
-            <Input :id="field.id" v-model="publicKey" maxlength="64" spellcheck="false" autocomplete="off" class="font-mono" :placeholder="t('legacy.backup_enc_own_placeholder')" />
+          <FormField v-slot="field" :label="t('console.backup_enc_own')">
+            <Input :id="field.id" v-model="publicKey" maxlength="64" spellcheck="false" autocomplete="off" class="font-mono" :placeholder="t('console.backup_enc_own_placeholder')" />
           </FormField>
           <FormActions>
             <ConfirmDialog
               v-if="data.encryption.on"
-              :title="t('legacy.backup_enc_generate')"
-              :description="t('legacy.backup_enc_regenerate_confirm')"
-              :confirm-label="t('legacy.backup_enc_generate')"
+              :title="t('console.backup_enc_generate')"
+              :description="t('console.backup_enc_regenerate_confirm')"
+              :confirm-label="t('console.backup_enc_generate')"
               @confirm="generateKey"
             >
               <template #trigger>
-                <Button type="button" variant="outline" :disabled="busy"><KeyRound aria-hidden="true" />{{ t('legacy.backup_enc_generate') }}</Button>
+                <Button type="button" variant="outline" :disabled="busy"><KeyRound aria-hidden="true" />{{ t('console.backup_enc_generate') }}</Button>
               </template>
             </ConfirmDialog>
-            <Button v-else type="button" variant="outline" :disabled="busy" @click="generateKey"><KeyRound aria-hidden="true" />{{ t('legacy.backup_enc_generate') }}</Button>
-            <Button type="submit" :disabled="busy || !publicKey.trim()">{{ t('legacy.backup_save') }}</Button>
+            <Button v-else type="button" variant="outline" :disabled="busy" @click="generateKey"><KeyRound aria-hidden="true" />{{ t('console.backup_enc_generate') }}</Button>
+            <Button type="submit" :disabled="busy || !publicKey.trim()">{{ t('console.backup_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
       <!-- 上传备份 -->
       <CardForm @submit.prevent="upload">
-        <PageSection :cols="2" :title="t('legacy.backup_upload')" :description="t('legacy.backup_upload_help')">
-          <FileUpload v-model="picked" accept=".gz,.sealed,application/gzip" :max-size="268435456" :label="t('legacy.backup_upload')" />
+        <PageSection :cols="2" :title="t('console.backup_upload')" :description="t('console.backup_upload_help')">
+          <FileUpload v-model="picked" accept=".gz,.sealed,application/gzip" :max-size="268435456" :label="t('console.backup_upload')" />
           <FormActions>
-            <Button type="submit" :disabled="busy || !picked.length"><Upload aria-hidden="true" />{{ t('legacy.backup_upload_button') }}</Button>
+            <Button type="submit" :disabled="busy || !picked.length"><Upload aria-hidden="true" />{{ t('console.backup_upload_button') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
-      <PageSection :cols="4" :title="t('legacy.data_enc_title')" :description="dataText">
+      <PageSection :cols="4" :title="t('console.data_enc_title')" :description="dataText">
         <InlineGroup>
           <StatusBadge :tone="data.data.state === 'on' ? 'success' : data.data.state === 'off' ? 'warning' : 'destructive'">
-            {{ t(`legacy.data_enc_${data.data.state}`) }}
+            {{ t(`console.data_enc_${data.data.state}`) }}
           </StatusBadge>
         </InlineGroup>
       </PageSection>
@@ -296,23 +296,23 @@ const dataText = computed(() => {
 
     <ConfirmDialog
       v-model:open="deleteOpen"
-      :title="t('legacy.backup_delete')"
-      :description="t('legacy.backup_delete_confirm')"
-      :confirm-label="t('legacy.backup_delete')"
+      :title="t('console.backup_delete')"
+      :description="t('console.backup_delete_confirm')"
+      :confirm-label="t('console.backup_delete')"
       danger
       @confirm="confirmDelete"
     />
 
-    <AppDialog v-model:open="keyOpen" :title="t('legacy.backup_key_page_title')">
-      <AlertBanner tone="warning">{{ t('legacy.backup_key_page_text') }}</AlertBanner>
-      <FormField v-slot="field" :label="t('legacy.backup_key_private')">
+    <AppDialog v-model:open="keyOpen" :title="t('console.backup_key_page_title')">
+      <AlertBanner tone="warning">{{ t('console.backup_key_page_text') }}</AlertBanner>
+      <FormField v-slot="field" :label="t('console.backup_key_private')">
         <CopyField :id="field.id" :value="newKey?.private ?? ''" />
       </FormField>
-      <FormField v-slot="field" :label="`${t('legacy.backup_key_public')} · ${newKey?.fingerprint ?? ''}`">
+      <FormField v-slot="field" :label="`${t('console.backup_key_public')} · ${newKey?.fingerprint ?? ''}`">
         <CopyField :id="field.id" :value="newKey?.public ?? ''" />
       </FormField>
       <template #footer>
-        <Button @click="keyDone">{{ t('legacy.backup_key_done') }}</Button>
+        <Button @click="keyDone">{{ t('console.backup_key_done') }}</Button>
       </template>
     </AppDialog>
   </CardGrid>

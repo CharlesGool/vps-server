@@ -69,6 +69,24 @@ class SpaMixin:
         self.end_headers()
         self.wfile.write(data)
 
+    def notice_page(self, status, title, text, lang, headers=None):
+        """A small standalone page for the few answers that are not the single-page UI
+        (an unknown path, a device without the required certificate). Light and dark follow the system."""
+        esc = self.context.html.escape
+        html_lang = {"zh_cn": "zh-CN", "en": "en", "es": "es"}.get(lang, "en")
+        page = (f'<!doctype html><html lang="{html_lang}"><head><meta charset="utf-8">'
+                f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+                f'<title>{esc(title)}</title><link rel="icon" href="/favicon.svg">'
+                '<style>:root{color-scheme:light dark;--bg:#f7f8fb;--card:#fff;--fg:#1d2433;--muted:#5b6474;--line:#dde2ea}'
+                '@media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b23;--fg:#e6e9ef;--muted:#a0a8b6;--line:#2a303b}}'
+                'body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);'
+                'font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}'
+                'main{box-sizing:border-box;width:min(100% - 32px,480px);padding:24px;border:1px solid var(--line);'
+                'border-radius:12px;background:var(--card)}h1{margin:0 0 8px;font-size:24px;line-height:32px}'
+                'p{margin:0;color:var(--muted)}a{color:inherit}</style></head>'
+                f'<body><main><h1>{esc(title)}</h1><p>{esc(text)}</p></main></body></html>')
+        return self.send_html(status, page, {"Cache-Control": "no-store", **(headers or {})})
+
     # -- JSON helpers ----------------------------------------------------------
 
     def api_error(self, status, code, **extra):

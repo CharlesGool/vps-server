@@ -33,23 +33,23 @@ onMounted(async () => {
 })
 const pageRows = computed(() => (rows.value ?? []).slice((page.value - 1) * 10, page.value * 10))
 const columns = computed(() => [
-  { key: 'time', label: t('legacy.domains_log_time'), mono: true },
-  { key: 'client', label: t('legacy.domains_log_client'), mono: true },
-  { key: 'method', label: t('legacy.domains_log_method') },
-  { key: 'path', label: t('legacy.domains_log_path'), mono: true },
-  { key: 'status', label: t('legacy.domains_log_status'), align: 'end' as const, mono: true },
-  { key: 'duration', label: t('legacy.domains_log_duration'), align: 'end' as const, mono: true },
+  { key: 'time', label: t('console.domains_log_time'), mono: true },
+  { key: 'client', label: t('console.domains_log_client'), mono: true },
+  { key: 'method', label: t('console.domains_log_method') },
+  { key: 'path', label: t('console.domains_log_path'), mono: true },
+  { key: 'status', label: t('console.domains_log_status'), align: 'end' as const, mono: true },
+  { key: 'duration', label: t('console.domains_log_duration'), align: 'end' as const, mono: true },
 ])
 </script>
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.domains_access_log')" :description="host || undefined" :trail="[{ to: '/domains', label: t('legacy.domains') }]" />
+    <PageHeader :title="t('console.domains_access_log')" :description="host || undefined" :trail="[{ to: '/domains', label: t('console.domains') }]" />
     <PageSection v-if="!rows && !missing" :cols="4">
       <LoadingState />
     </PageSection>
-    <PageSection v-else :cols="4" :title="host || t('legacy.domains_access_log')" :description="t('legacy.domains_log_note')">
-      <DataTable :columns="columns" :rows="pageRows" row-key="id" :caption="t('legacy.domains_access_log')" :empty="t('legacy.domains_log_empty')">
+    <PageSection v-else :cols="4" :title="host || t('console.domains_access_log')" :description="t('console.domains_log_note')">
+      <DataTable :columns="columns" :rows="pageRows" row-key="id" :caption="t('console.domains_access_log')" :empty="t('console.domains_log_empty')">
         <template #cell-status="{ row }">
           <StatusBadge v-if="row.status !== null" :tone="row.status >= 400 ? 'destructive' : 'success'">{{ row.status }}</StatusBadge>
         </template>

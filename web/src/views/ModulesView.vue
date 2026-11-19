@@ -33,7 +33,7 @@ const { t } = useI18n()
 const data = ref<Modules>()
 const sending = ref(false)
 
-const TITLES: Record<string, string> = { iperf3: 'legacy.iperf', proxy_nodes: 'legacy.proxy', caddy: 'legacy.domains' }
+const TITLES: Record<string, string> = { iperf3: 'console.iperf', proxy_nodes: 'console.proxy', caddy: 'console.domains' }
 const NAMES: Record<string, string> = { frps: 'FRPS', frpc: 'FRPC', tailscale: 'Tailscale' }
 const title = (key: string) => NAMES[key] ?? t(TITLES[key] ?? key)
 
@@ -54,9 +54,9 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const ERRORS: Record<string, string> = {
   module_busy: 'vps.dashboard.busy',
-  module_job_failed: 'legacy.module_job_failed',
-  module_source_missing: 'legacy.module_source_missing',
-  module_tailscale_asset_missing: 'legacy.module_tailscale_asset_missing',
+  module_job_failed: 'console.module_job_failed',
+  module_source_missing: 'console.module_source_missing',
+  module_tailscale_asset_missing: 'console.module_tailscale_asset_missing',
 }
 async function manage(module: string, action: 'install' | 'uninstall') {
   if (sending.value) return
@@ -74,7 +74,7 @@ async function manage(module: string, action: 'install' | 'uninstall') {
 }
 
 const status = (item: ModuleInfo) =>
-  !item.installed ? t('legacy.module_not_installed') : item.enabled ? t('legacy.module_enabled') : t('legacy.module_disabled')
+  !item.installed ? t('console.module_not_installed') : item.enabled ? t('console.module_enabled') : t('console.module_disabled')
 const tone = (item: ModuleInfo) => (!item.installed ? 'neutral' : item.enabled ? 'success' : 'warning')
 </script>
 
@@ -85,7 +85,7 @@ const tone = (item: ModuleInfo) => (!item.installed ? 'neutral' : item.enabled ?
     <PageSection v-if="data?.job" :cols="4" :title="t('vps.dashboard.job')">
       <AlertBanner :tone="data.job.state === 'failed' ? 'destructive' : data.job.state === 'done' ? 'success' : 'info'" role="status">{{ data.job.text }}</AlertBanner>
       <!-- 安装输出: 最后 20 行, 可以用键盘滚动 -->
-      <LogOutput v-if="data.progress" :text="data.progress" :label="t('legacy.module_progress')" />
+      <LogOutput v-if="data.progress" :text="data.progress" :label="t('console.module_progress')" />
     </PageSection>
 
     <PageSection v-if="!data" :cols="4">
@@ -101,19 +101,19 @@ const tone = (item: ModuleInfo) => (!item.installed ? 'neutral' : item.enabled ?
         <ConfirmDialog
           v-if="item.installed"
           :title="t('vps.modules.uninstallTitle', { name: title(item.key) })"
-          :description="t('legacy.module_uninstall_confirm', { name: title(item.key) })"
-          :confirm-label="t('legacy.module_uninstall')"
+          :description="t('console.module_uninstall_confirm', { name: title(item.key) })"
+          :confirm-label="t('console.module_uninstall')"
           danger
           @confirm="manage(item.key, 'uninstall')"
         >
           <template #trigger>
             <Button variant="destructive" :disabled="sending || data?.busy" :aria-label="t('vps.modules.uninstall', { name: title(item.key) })">
-              <Trash2 aria-hidden="true" />{{ t('legacy.module_uninstall') }}
+              <Trash2 aria-hidden="true" />{{ t('console.module_uninstall') }}
             </Button>
           </template>
         </ConfirmDialog>
         <Button v-else :disabled="sending || data?.busy" :aria-label="t('vps.modules.install', { name: title(item.key) })" @click="manage(item.key, 'install')">
-          <Download aria-hidden="true" />{{ t('legacy.module_install') }}
+          <Download aria-hidden="true" />{{ t('console.module_install') }}
         </Button>
       </FormActions>
     </PageSection>

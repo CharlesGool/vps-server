@@ -61,7 +61,7 @@ const busy = ref(false)
 
 function apply(value: Proxy) {
   data.value = value
-  if (value.message) showToast(t(`legacy.${value.message}`), 'success')
+  if (value.message) showToast(t(`console.${value.message}`), 'success')
 }
 async function load() {
   try {
@@ -77,7 +77,7 @@ async function send(path: string, body: unknown, method = 'POST') {
     apply(await api<Proxy>(path, { method, body }))
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t(err instanceof ApiError && err.code === 'invalid_destinations' ? 'vps.proxy.invalidDestinations' : 'legacy.node_settings_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t(err instanceof ApiError && err.code === 'invalid_destinations' ? 'vps.proxy.invalidDestinations' : 'console.node_settings_failed'), 'destructive')
     return false
   } finally {
     busy.value = false
@@ -89,12 +89,12 @@ const summary = computed(() => {
   return t('vps.proxy.summary', { total: nodes.length, active: nodes.filter((node) => node.active).length })
 })
 const status = (node: Node) =>
-  !node.enabled ? { tone: 'neutral' as const, key: 'legacy.node_disabled' } : node.active ? { tone: 'success' as const, key: 'legacy.node_active' } : { tone: 'warning' as const, key: 'legacy.node_stopped' }
+  !node.enabled ? { tone: 'neutral' as const, key: 'console.node_disabled' } : node.active ? { tone: 'success' as const, key: 'console.node_active' } : { tone: 'warning' as const, key: 'console.node_stopped' }
 const facts = (node: Node) => [
-  { key: 'port', label: t('legacy.proxy_port') },
-  { key: 'credential', label: t('legacy.node_credential') },
-  { key: 'sni', label: t('legacy.proxy_sni'), value: node.sni === null ? t('legacy.node_not_applicable') : node.sni || '—' },
-  { key: 'route', label: t('legacy.node_route_label'), value: node.route },
+  { key: 'port', label: t('console.proxy_port') },
+  { key: 'credential', label: t('console.node_credential') },
+  { key: 'sni', label: t('console.proxy_sni'), value: node.sni === null ? t('console.node_not_applicable') : node.sni || '—' },
+  { key: 'route', label: t('console.node_route_label'), value: node.route },
   ...(data.value?.addresses ?? []).map((item) => ({ key: `address-${item.index}`, label: item.label })),
   ...(data.value?.share ? [{ key: 'share', label: t('vps.proxy.share') }] : []),
 ]
@@ -105,7 +105,7 @@ async function importClash(node: Node) {
   try {
     window.location.href = `clash://install-config?url=${encodeURIComponent(await shareUrl(node))}`
   } catch {
-    showToast(t('legacy.private_value_failed'), 'destructive')
+    showToast(t('console.private_value_failed'), 'destructive')
   }
 }
 const qr = ref<{ name: string; text: string }>()
@@ -119,7 +119,7 @@ async function showQr(node: Node) {
   try {
     qr.value = { name: node.name, text: `clash://install-config?url=${encodeURIComponent(await shareUrl(node))}` }
   } catch {
-    showToast(t('legacy.private_value_failed'), 'destructive')
+    showToast(t('console.private_value_failed'), 'destructive')
   }
 }
 
@@ -134,7 +134,7 @@ function openEdit(node: Node) {
 }
 async function saveEdit() {
   const port = edit.value.port.trim()
-  if (port && !/^\d+$/.test(port)) return showToast(t('legacy.node_settings_failed'), 'destructive')
+  if (port && !/^\d+$/.test(port)) return showToast(t('console.node_settings_failed'), 'destructive')
   const body = { id: editing.value!.id, name: edit.value.name.trim(), port: port ? Number(port) : null, credential: edit.value.credential, sni: edit.value.sni }
   if (await send('proxy/edit', body, 'PUT')) editOpen.value = false
 }
@@ -143,9 +143,9 @@ async function saveEdit() {
 const accessOpen = ref(false)
 const access = ref({ mode: 'all' as Node['access']['mode'], destinations: '' })
 const accessModes = computed(() => [
-  { value: 'all' as const, label: t('legacy.node_route_all') },
-  { value: 'internet' as const, label: t('legacy.node_route_internet') },
-  { value: 'custom' as const, label: t('legacy.node_route_custom') },
+  { value: 'all' as const, label: t('console.node_route_all') },
+  { value: 'internet' as const, label: t('console.node_route_internet') },
+  { value: 'custom' as const, label: t('console.node_route_custom') },
 ])
 function openAccess(node: Node) {
   editing.value = node
@@ -161,7 +161,7 @@ const create = ref({ protocol: 'anytls', name: '', port: '', credential: '', sni
 const protocolOptions = computed(() => (data.value?.protocols ?? []).map((value) => ({ value, label: value })))
 async function submitCreate() {
   const port = create.value.port.trim()
-  if (port && !/^\d+$/.test(port)) return showToast(t('legacy.node_settings_failed'), 'destructive')
+  if (port && !/^\d+$/.test(port)) return showToast(t('console.node_settings_failed'), 'destructive')
   const ok = await send('proxy/create', { ...create.value, name: create.value.name.trim(), port: port ? Number(port) : null })
   if (ok) create.value = { protocol: create.value.protocol, name: '', port: '', credential: '', sni: 'www.bing.com' }
 }
@@ -169,21 +169,21 @@ async function submitCreate() {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.proxy_heading')" :description="data?.nodes ? summary : t('vps.proxy.description')" />
+    <PageHeader :title="t('console.proxy_heading')" :description="data?.nodes ? summary : t('vps.proxy.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
     </PageSection>
 
-    <ModuleInstall v-else-if="!data.installed" module="proxy_nodes" :name="t('legacy.proxy')" @installed="load" />
+    <ModuleInstall v-else-if="!data.installed" module="proxy_nodes" :name="t('console.proxy')" @installed="load" />
 
-    <PageSection v-else-if="!data.available" :cols="4" :title="t('legacy.proxy_heading')">
-      <AlertBanner tone="destructive">{{ t('legacy.node_state_unavailable') }}</AlertBanner>
+    <PageSection v-else-if="!data.available" :cols="4" :title="t('console.proxy_heading')">
+      <AlertBanner tone="destructive">{{ t('console.node_state_unavailable') }}</AlertBanner>
     </PageSection>
 
     <template v-else>
       <PageSection v-if="!data.nodes?.length" :cols="4" :title="t('vps.proxy.nodes')">
-        <EmptyState :icon="Route" :title="t('legacy.node_empty')" />
+        <EmptyState :icon="Route" :title="t('console.node_empty')" />
       </PageSection>
 
       <PageSection v-for="node in data.nodes" :key="node.id" :cols="4" :title="`#${node.number} · ${node.name}`">
@@ -199,10 +199,10 @@ async function submitCreate() {
         />
         <DescriptionList :items="facts(node)">
           <template #value-port>
-            <PrivateValue :source="node.id" field="port" :label="`${t('legacy.proxy_port')} ${node.name}`" />
+            <PrivateValue :source="node.id" field="port" :label="`${t('console.proxy_port')} ${node.name}`" />
           </template>
           <template #value-credential>
-            <PrivateValue :source="node.id" field="credential" :label="`${t('legacy.node_credential')} ${node.name}`" />
+            <PrivateValue :source="node.id" field="credential" :label="`${t('console.node_credential')} ${node.name}`" />
           </template>
           <template v-for="item in data.addresses ?? []" :key="item.index" #[`value-address-${item.index}`]>
             <PrivateValue :source="`interface-${item.index}`" field="address" :label="item.label" />
@@ -217,84 +217,84 @@ async function submitCreate() {
             v-if="data.share"
             :label="t('vps.proxy.share')"
             :items="[
-              { key: 'import', label: t('legacy.node_clash_import') },
-              { key: 'qr', label: t('legacy.node_clash_qr') },
+              { key: 'import', label: t('console.node_clash_import') },
+              { key: 'qr', label: t('console.node_clash_qr') },
             ]"
             @select="(key: string) => (key === 'import' ? importClash(node) : showQr(node))"
           />
-          <ConfirmDialog :title="t('legacy.node_delete')" :description="t('legacy.node_delete_confirm')" :confirm-label="t('legacy.node_delete')" danger @confirm="send('proxy/delete', { id: node.id, confirm: true })">
+          <ConfirmDialog :title="t('console.node_delete')" :description="t('console.node_delete_confirm')" :confirm-label="t('console.node_delete')" danger @confirm="send('proxy/delete', { id: node.id, confirm: true })">
             <template #trigger>
-              <Button variant="destructive" :disabled="busy" :aria-label="`${t('legacy.node_delete')} ${node.name}`">{{ t('legacy.node_delete') }}</Button>
+              <Button variant="destructive" :disabled="busy" :aria-label="`${t('console.node_delete')} ${node.name}`">{{ t('console.node_delete') }}</Button>
             </template>
           </ConfirmDialog>
-          <ConfirmDialog :title="t('legacy.node_random_reset')" :description="t('legacy.node_random_confirm')" :confirm-label="t('legacy.node_random_reset')" danger @confirm="send('proxy/reset', { id: node.id, confirm: true })">
+          <ConfirmDialog :title="t('console.node_random_reset')" :description="t('console.node_random_confirm')" :confirm-label="t('console.node_random_reset')" danger @confirm="send('proxy/reset', { id: node.id, confirm: true })">
             <template #trigger>
-              <Button variant="destructive" :disabled="busy" :aria-label="`${t('legacy.node_random_reset')} ${node.name}`">{{ t('legacy.node_random_reset') }}</Button>
+              <Button variant="destructive" :disabled="busy" :aria-label="`${t('console.node_random_reset')} ${node.name}`">{{ t('console.node_random_reset') }}</Button>
             </template>
           </ConfirmDialog>
-          <Button variant="outline" :disabled="busy" @click="openAccess(node)"><Route aria-hidden="true" />{{ t('legacy.node_route_manage') }}</Button>
-          <Button variant="outline" :disabled="busy" @click="openEdit(node)"><Pencil aria-hidden="true" />{{ t('legacy.node_manage') }}</Button>
+          <Button variant="outline" :disabled="busy" @click="openAccess(node)"><Route aria-hidden="true" />{{ t('console.node_route_manage') }}</Button>
+          <Button variant="outline" :disabled="busy" @click="openEdit(node)"><Pencil aria-hidden="true" />{{ t('console.node_manage') }}</Button>
         </FormActions>
       </PageSection>
 
       <CardForm v-if="data.protocols?.length" @submit.prevent="submitCreate">
-        <PageSection :cols="4" :title="t('legacy.node_create')">
-          <FormField :label="t('legacy.node_protocol')" group>
-            <SegmentedControl v-model="create.protocol" :options="protocolOptions" :label="t('legacy.node_protocol')" />
+        <PageSection :cols="4" :title="t('console.node_create')">
+          <FormField :label="t('console.node_protocol')" group>
+            <SegmentedControl v-model="create.protocol" :options="protocolOptions" :label="t('console.node_protocol')" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.node_name')" :span="6">
+          <FormField v-slot="field" :label="t('console.node_name')" :span="6">
             <Input :id="field.id" v-model="create.name" maxlength="64" autocomplete="off" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.proxy_port')" :span="6">
-            <Input :id="field.id" v-model="create.port" inputmode="numeric" maxlength="5" :placeholder="t('legacy.node_random_port')" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
+            <Input :id="field.id" v-model="create.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_random_port')" autocomplete="off" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.node_credential')" :span="create.protocol === 'shadowsocks' ? 12 : 6">
-            <PasswordInput :id="field.id" v-model="create.credential" autocomplete="new-password" :placeholder="t('legacy.node_credential_random')" />
+          <FormField v-slot="field" :label="t('console.node_credential')" :span="create.protocol === 'shadowsocks' ? 12 : 6">
+            <PasswordInput :id="field.id" v-model="create.credential" autocomplete="new-password" :placeholder="t('console.node_credential_random')" />
           </FormField>
-          <FormField v-if="create.protocol !== 'shadowsocks'" v-slot="field" :label="t('legacy.proxy_sni')" :span="6">
-            <Input :id="field.id" v-model="create.sni" maxlength="253" :placeholder="t('legacy.node_sni_optional')" autocomplete="off" />
+          <FormField v-if="create.protocol !== 'shadowsocks'" v-slot="field" :label="t('console.proxy_sni')" :span="6">
+            <Input :id="field.id" v-model="create.sni" maxlength="253" :placeholder="t('console.node_sni_optional')" autocomplete="off" />
           </FormField>
           <FormActions>
-            <Button type="submit" :disabled="busy || !create.name.trim()"><Plus aria-hidden="true" />{{ t('legacy.node_create') }}</Button>
+            <Button type="submit" :disabled="busy || !create.name.trim()"><Plus aria-hidden="true" />{{ t('console.node_create') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
     </template>
 
-    <AppDialog v-model:open="editOpen" :title="`${t('legacy.node_manage')} ${editing?.name ?? ''}`">
-      <FormField v-slot="field" :label="t('legacy.node_name')" :span="6">
+    <AppDialog v-model:open="editOpen" :title="`${t('console.node_manage')} ${editing?.name ?? ''}`">
+      <FormField v-slot="field" :label="t('console.node_name')" :span="6">
         <Input :id="field.id" v-model="edit.name" maxlength="64" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.proxy_port')" :span="6">
-        <Input :id="field.id" v-model="edit.port" inputmode="numeric" maxlength="5" :placeholder="t('legacy.node_keep_port')" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
+        <Input :id="field.id" v-model="edit.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_keep_port')" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.node_credential')" :span="editing?.sni === null ? 12 : 6">
-        <PasswordInput :id="field.id" v-model="edit.credential" autocomplete="new-password" :placeholder="t('legacy.node_keep_credential')" />
+      <FormField v-slot="field" :label="t('console.node_credential')" :span="editing?.sni === null ? 12 : 6">
+        <PasswordInput :id="field.id" v-model="edit.credential" autocomplete="new-password" :placeholder="t('console.node_keep_credential')" />
       </FormField>
-      <FormField v-if="editing?.sni !== null" v-slot="field" :label="t('legacy.proxy_sni')" :span="6">
+      <FormField v-if="editing?.sni !== null" v-slot="field" :label="t('console.proxy_sni')" :span="6">
         <Input :id="field.id" v-model="edit.sni" maxlength="253" autocomplete="off" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="editOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="busy || !edit.name.trim()" @click="saveEdit">{{ t('legacy.node_save_settings') }}</Button>
+        <Button variant="outline" @click="editOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="busy || !edit.name.trim()" @click="saveEdit">{{ t('console.node_save_settings') }}</Button>
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="accessOpen" :title="`${t('legacy.node_route_manage')} ${editing?.name ?? ''}`" :description="t('legacy.node_route_hint')">
-      <FormField :label="t('legacy.node_route_label')" group>
-        <RadioField v-model="access.mode" :options="accessModes" :label="t('legacy.node_route_label')" />
+    <AppDialog v-model:open="accessOpen" :title="`${t('console.node_route_manage')} ${editing?.name ?? ''}`" :description="t('console.node_route_hint')">
+      <FormField :label="t('console.node_route_label')" group>
+        <RadioField v-model="access.mode" :options="accessModes" :label="t('console.node_route_label')" />
       </FormField>
-      <FormField v-if="access.mode === 'custom'" v-slot="field" :label="t('legacy.node_route_destinations')">
+      <FormField v-if="access.mode === 'custom'" v-slot="field" :label="t('console.node_route_destinations')">
         <Textarea :id="field.id" v-model="access.destinations" maxlength="8000" spellcheck="false" :placeholder="t('vps.proxy.destinationsExample')" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="accessOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="busy" @click="saveAccess">{{ t('legacy.node_route_save') }}</Button>
+        <Button variant="outline" @click="accessOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="busy" @click="saveAccess">{{ t('console.node_route_save') }}</Button>
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="qrOpen" :title="`${t('legacy.node_clash_qr')} ${qr?.name ?? ''}`">
-      <QrCode v-if="qr" :text="qr.text" :label="`${t('legacy.node_clash_qr')} ${qr.name}`" />
+    <AppDialog v-model:open="qrOpen" :title="`${t('console.node_clash_qr')} ${qr?.name ?? ''}`">
+      <QrCode v-if="qr" :text="qr.text" :label="`${t('console.node_clash_qr')} ${qr.name}`" />
     </AppDialog>
 
   </CardGrid>

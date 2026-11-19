@@ -46,7 +46,7 @@ const GOOD = ['portfwd_added', 'portfwd_removed', 'portfwd_enabled', 'portfwd_di
 
 function apply(value: Portfwd) {
   data.value = value
-  if (value.message) showToast(t(`legacy.${value.message}`, { max: value.max }), GOOD.includes(value.message) ? 'success' : 'destructive')
+  if (value.message) showToast(t(`console.${value.message}`, { max: value.max }), GOOD.includes(value.message) ? 'success' : 'destructive')
 }
 onMounted(async () => {
   try {
@@ -72,16 +72,16 @@ const PROTOCOLS = { tcp: 'TCP', udp: 'UDP', both: 'TCP+UDP' } as const
 const protocolOptions = (Object.keys(PROTOCOLS) as (keyof typeof PROTOCOLS)[]).map((value) => ({ value, label: PROTOCOLS[value] }))
 const state = (rule: Rule) =>
   rule.applied
-    ? { tone: 'success' as const, text: t('legacy.portfwd_state_on') }
+    ? { tone: 'success' as const, text: t('console.portfwd_state_on') }
     : rule.enabled
-      ? { tone: 'destructive' as const, text: t('legacy.portfwd_state_failed') }
-      : { tone: 'neutral' as const, text: t('legacy.portfwd_state_off') }
+      ? { tone: 'destructive' as const, text: t('console.portfwd_state_failed') }
+      : { tone: 'neutral' as const, text: t('console.portfwd_state_off') }
 const facts = computed(() => [
   { key: 'state', label: t('vps.modules.status') },
-  { key: 'protocol', label: t('legacy.portfwd_protocol') },
-  { key: 'public', label: t('legacy.portfwd_public_port') },
-  { key: 'host', label: t('legacy.portfwd_target_host'), mono: true },
-  { key: 'target', label: t('legacy.portfwd_target_port') },
+  { key: 'protocol', label: t('console.portfwd_protocol') },
+  { key: 'public', label: t('console.portfwd_public_port') },
+  { key: 'host', label: t('console.portfwd_target_host'), mono: true },
+  { key: 'target', label: t('console.portfwd_target_port') },
 ])
 
 // ---- 添加规则 ----
@@ -94,7 +94,7 @@ async function add() {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.portfwd_heading')" :description="t('vps.portfwd.description')" />
+    <PageHeader :title="t('console.portfwd_heading')" :description="t('vps.portfwd.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
@@ -102,7 +102,7 @@ async function add() {
 
     <template v-else>
       <PageSection v-if="!data.rules.length" :cols="4" :title="t('vps.portfwd.rules')">
-        <EmptyState :icon="Route" :title="t('legacy.portfwd_none')" />
+        <EmptyState :icon="Route" :title="t('console.portfwd_none')" />
       </PageSection>
 
       <PageSection v-for="rule in data.rules" :key="rule.id" :cols="4" :title="rule.label || rule.id">
@@ -112,11 +112,11 @@ async function add() {
           </template>
           <template #value-protocol>{{ PROTOCOLS[rule.protocol] }}</template>
           <template #value-public>
-            <PrivateValue :source="`forward-${rule.id}`" field="public-port" :label="t('legacy.portfwd_public_port')" />
+            <PrivateValue :source="`forward-${rule.id}`" field="public-port" :label="t('console.portfwd_public_port')" />
           </template>
           <template #value-host>{{ rule.targetHost }}</template>
           <template #value-target>
-            <PrivateValue :source="`forward-${rule.id}`" field="target-port" :label="t('legacy.portfwd_target_port')" />
+            <PrivateValue :source="`forward-${rule.id}`" field="target-port" :label="t('console.portfwd_target_port')" />
           </template>
         </DescriptionList>
         <TrafficCard :feature="`portfwd:${rule.id}`" inline />
@@ -124,44 +124,44 @@ async function add() {
           <ConfirmDialog
             :title="t('vps.portfwd.deleteTitle', { name: rule.label || rule.id })"
             :description="t('vps.portfwd.deleteDescription')"
-            :confirm-label="t('legacy.portfwd_delete')"
+            :confirm-label="t('console.portfwd_delete')"
             danger
             @confirm="send('portfwd/delete', { id: rule.id })"
           >
             <template #trigger>
-              <Button variant="destructive" :disabled="busy"><Trash2 aria-hidden="true" />{{ t('legacy.portfwd_delete') }}</Button>
+              <Button variant="destructive" :disabled="busy"><Trash2 aria-hidden="true" />{{ t('console.portfwd_delete') }}</Button>
             </template>
           </ConfirmDialog>
           <Button variant="outline" :disabled="busy" @click="send(rule.enabled ? 'portfwd/disable' : 'portfwd/enable', { id: rule.id })">
-            <component :is="rule.enabled ? PowerOff : Power" aria-hidden="true" />{{ rule.enabled ? t('legacy.portfwd_disable') : t('legacy.portfwd_enable') }}
+            <component :is="rule.enabled ? PowerOff : Power" aria-hidden="true" />{{ rule.enabled ? t('console.portfwd_disable') : t('console.portfwd_enable') }}
           </Button>
         </FormActions>
       </PageSection>
 
       <CardForm v-if="data.canAdd" @submit.prevent="add">
-        <PageSection :cols="4" :title="t('legacy.portfwd_add')" :description="t('legacy.portfwd_howto')">
-          <FormField v-slot="field" :label="t('legacy.portfwd_label')" :span="4">
+        <PageSection :cols="4" :title="t('console.portfwd_add')" :description="t('console.portfwd_howto')">
+          <FormField v-slot="field" :label="t('console.portfwd_label')" :span="4">
             <Input :id="field.id" v-model="form.label" maxlength="80" autocomplete="off" />
           </FormField>
-          <FormField :label="t('legacy.portfwd_protocol')" group :span="8">
-            <SegmentedControl v-model="form.protocol" :options="protocolOptions" :label="t('legacy.portfwd_protocol')" />
+          <FormField :label="t('console.portfwd_protocol')" group :span="8">
+            <SegmentedControl v-model="form.protocol" :options="protocolOptions" :label="t('console.portfwd_protocol')" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.portfwd_public_port')" :span="4">
+          <FormField v-slot="field" :label="t('console.portfwd_public_port')" :span="4">
             <NumberField :id="field.id" v-model="form.publicPort" :min="0" :max="65535" :grouping="false" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.portfwd_target_host')" :span="4">
+          <FormField v-slot="field" :label="t('console.portfwd_target_host')" :span="4">
             <Input :id="field.id" v-model="form.targetHost" inputmode="decimal" placeholder="100.x.x.x" autocomplete="off" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.portfwd_target_port')" :span="4">
+          <FormField v-slot="field" :label="t('console.portfwd_target_port')" :span="4">
             <NumberField :id="field.id" v-model="form.targetPort" :min="0" :max="65535" :grouping="false" />
           </FormField>
           <FormActions>
-            <Button type="submit" :disabled="busy"><Plus aria-hidden="true" />{{ t('legacy.portfwd_add') }}</Button>
+            <Button type="submit" :disabled="busy"><Plus aria-hidden="true" />{{ t('console.portfwd_add') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
-      <PageSection v-else :cols="4" :title="t('legacy.portfwd_add')">
-        <AlertBanner tone="warning">{{ t('legacy.portfwd_module_disabled') }}</AlertBanner>
+      <PageSection v-else :cols="4" :title="t('console.portfwd_add')">
+        <AlertBanner tone="warning">{{ t('console.portfwd_module_disabled') }}</AlertBanner>
       </PageSection>
     </template>
   </CardGrid>

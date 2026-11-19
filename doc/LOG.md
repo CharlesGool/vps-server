@@ -55,9 +55,10 @@ metadata:
 
 | 日期 | 决策 | 状态 | 原因 |
 | --- | --- | --- | --- |
+| 2026-11-19 | 截图和布局检查里随运行或主机变化的内容(终端连接, 最近访问者, 迷你网盘, 备份, 定时任务, 截图测试中的安全设置)以及测试服务器没装的模块(Tailscale, 域名转发, IP 证书, FRPS, FRPC, Singbox)改用 `web/e2e/support.ts` 的固定样例; 项目自己的功能测试 `web/e2e/vps-*.spec.ts` 在 Playwright 第三个项目 `vps` 上连真实控制台; 测试浏览器固定 UTC 时区. 豁免 all-in-one Web UI 用户约定 `设计检查` 规则 2 中禁止修改 e2e 支持文件的规定, 范围仅限这些样例, 第三个项目和时区; 检查规则本身不改. | 接受 | 这些内容每次运行都不同(时间, 磁盘空间, 登录会话数), 截图对比无法稳定; 真实流程另有测试覆盖. |
 | 2026-11-18 | Web UI 前端完整迁移到最新 Web UI 起始模板(Vue 单页, 模板全部组件, 设计检查和 e2e 视觉测试), 后端保持 Python 和现有登录体系(密码, 客户端证书, 四种登录方式, IP 白名单, 访问限制): Python 按模板的 `/api/session`, `login`, `login/ip`, `logout`, `security/*` 接口约定提供 JSON 接口并提供前端资源, 业务逻辑不变. 豁免 all-in-one Web UI 用户约定 `使用模板` 规则 7(必须使用模板的 `cmd/server/`, `internal/server/`, `internal/auth/`, 禁止另写登录), 范围仅限本项目. | 接受 | 用户要求按最新规范改所有界面并选择完整迁移, 但只换 Web UI 前端, 后端不变. |
 | 2026-11-18 | 为适配 Python 后端, 修改模板的 `web/playwright.config.ts`(启动临时状态目录的 Python 控制台, HTTPS 自签名)和 `web/scripts/check-server.mjs`(运行 Python 单元测试), 以及 `web/e2e/` 中与 vps-server 登录体系确实不同的断言. 豁免 all-in-one Web UI 用户约定 `设计检查` 规则 2 中禁止修改这些文件的规定; 布局, 栅格, 尺寸, 无障碍和视觉检查不改. | 接受 | 用户同意; 模板的测试配置只支持 Go 后端. |
-| 2026-11-18 | 迁移在 `feat/webui-template` 分支上分阶段进行; 迁移期间旧前端移到 `web-legacy/`, 未迁移的页面仍由 Python 生成并使用旧前端资源, 全部迁移后删除. | 接受 | 约 25 个页面, 需要跨会话完成; 分支上每个阶段都保持可用. |
+| 2026-11-18 | 迁移在 `feat/webui-template` 分支上分阶段进行; 迁移期间旧前端移到 `web-legacy/`, 未迁移的页面仍由 Python 生成并使用旧前端资源, 全部迁移后删除(2026-11-19 已删除). | 接受 | 约 25 个页面, 需要跨会话完成; 分支上每个阶段都保持可用. |
 | 2026-11-05 | 主机没有能读取规则的 nftables 时, 安装器(离线版和在线版)和控制台模块任务都用 apt 自动安装 `nftables` 后再检查. | 接受 | 用户要求装 Singbox 时一并装好, 不再让用户到终端执行命令. |
 | 2026-11-05 | 控制台支持 TLS 客户端证书登录: 自建 CA 按设备签发 `.p12`, 开启"要求客户端证书"后禁用密码登录, 密码只用于敏感操作的二次验证;root 可用 `client_cert.py disable` 恢复. | 接受 | 用户要求用公钥/私钥方式代替密码;IP 加自签名证书下浏览器 Passkey 不可用, 客户端证书可用. |
 | 2026-11-05 | 控制台只提供 HTTPS, 忽略 `VPSSRV_CONSOLE_TLS=0`, 原 HTTP 安装升级时改为 HTTPS. 取代 2026-10-13 的"升级保留原设置". | 接受 | 用户要求强制 HTTPS. |
@@ -83,15 +84,11 @@ metadata:
 
 ## 交接
 
-**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`, `api_modules.py`, `api_traffic.py`, `api_speedtest.py`, `api_iperf.py`, `api_portfwd.py`, `api_visitors.py`, `api_terminal.py`, `api_files.py`, `api_schedule.py`, `api_closed.py`, `api_tailscale.py`, `api_domains.py`, `api_frp.py`, `api_proxy.py`); 已迁移全部页面: 主页, 登录, 设置, 安全设置, 变更日志, 模块管理, 详细日志, 测速, iPerf 3, 端口转发, 最近访问者, 终端, 迷你网盘, 备份(含恢复页), 定时任务, 功能已关闭页, Tailscale, 域名转发(含访问日志页), IP 证书, FRPS, FRPC(实例表格和编辑页 `/frpc/edit`, 旧地址 `/frp/client/edit` 转过去; 修改作为后台任务轮询结果), Singbox 节点(`/anytls` 仍由服务器转到 `/proxy`); 项目组件另有 `QrCode`(随附的 qrcode-generator); 新增共享组件 `ModuleCard`(带开关的入口卡片)和 `LogOutput`(日志框); 项目组件在 `web/src/components/vps/`(只组合模板组件): `TrafficCard`(各计量功能的流量卡片和限制对话框), `PrivateValue`(默认遮住的端口/凭据/命令, 经 `/api/private-value` 取值), `ModuleInstall`(功能页上模块未安装时的安装卡片), `AdminVerify`(敏感页面前的管理员密码验证), `TerminalScreen`(xterm 终端), `ScheduleFields`(备份和定时任务共用的计划字段); 功能被关闭时页面和接口转到 `/closed`(`closed_page_module`, 接口返回 `feature_closed`); 项目自己的端到端测试 `web/e2e/vps-*.spec.ts` 在第三个控制台实例(Playwright 项目 `vps`)上运行, 不影响截图; 截图和布局检查里随运行变化的内容换成固定样例(`e2e/support.ts` 的 `stableServer`: 终端连接, 最近访问者, 迷你网盘), 测试浏览器固定 UTC 时区, 测试服务器打开默认关闭的迷你网盘; `npm run check` 全部通过(1637 项, 另 57 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
+**Web UI 迁移到最新模板已完成, 待实测和合并(分支 `feat/webui-template`, 2026-11-18 至 2026-11-19).** 决策见上表 2026-11-18 三条和 2026-11-19 一条, 结构见 [DESIGN](DESIGN.md). 全部页面已是 Vue 单页: 主页, 登录, 设置, 安全设置, 变更日志, 模块管理, 详细日志, 测速, iPerf 3, 端口转发, 最近访问者, 终端, 迷你网盘, 备份(含恢复页), 定时任务, 功能已关闭页, Tailscale, 域名转发(含访问日志页), IP 证书, FRPS, FRPC(实例表格和编辑页 `/frpc/edit`), Singbox 节点. Python 的页面渲染, 旧表单处理, `src/web/static/` 下的旧脚本, 图标, 字体和每页图标, `web-legacy/` 都已删除(约 5000 行); 服务器只保留 JSON 接口和 DESIGN 里列出的几个端点. 安装器和 `build_offline.py` 改为检查并复制整个 `web/dist`(检查 `index.html`). 界面文本里沿用的原有译文改名为 `console` 命名空间, 删掉了页面不用的键. `npm run check` 全部通过, Python 单元测试 232 个通过. 本机开发环境的做法见私有笔记 `.local/notes.md`.
 
-剩余步骤(每页: 在 `features/api_<页>.py` 写接口, 在 `SPA_PAGES` 和 `features.ts`(设置子页在 `routes.ts`)登记, 用模板组件写 `views/<页>View.vue`, 需要的旧译文用 `legacy` 命名空间复制到 `lang/ui/`, 跑 `npm run check` 并看图审查, 提交):
-- [x] `/settings/modules`(模块安装卸载和进度), `/settings/logs`
-- [x] `/speedtest`, `/iperf`, `/portfwd`, `/visitors`, `/terminal`(xterm), `/files`(迷你网盘)
-- [x] `/proxy`, `/frps`, `/frpc`, `/frpc/edit`, `/tailscale`, `/domains`, `/ipcert`; Tailscale 的运行日志改到详细日志页
-- [x] `/backup`, `/tasks`, `/closed`; 各页的流量限制对话框(`TrafficCard`); `/public/http`, `/public/https` 只是转到对外地址, 留在服务器
-- [ ] 全部迁移后: 删除 `web-legacy/`, Python 的 HTML 渲染和 `src/web/static/*.js`, `lang/web/` 中不再使用的键, `LEGACY_PATHS` 和 `navigation.spec.ts` 的临时跳过; 安装器(`deploy/install.sh` 检查和复制 `web/dist`)和 `build_offline.py` 改为复制整个 `web/dist` 并用 `APP_VERSION` 构建; 三语言 README/DESIGN/CHANGELOG; 测试主机实测; `--no-ff` 合并回 `main`
-- [ ] 已知小问题: 复用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号; `lang/ui` 的 `legacy` 命名空间按前缀复制了不少用不到的键, 收尾时删掉页面没有引用的键; 随附的 LibreSpeed Worker 在很短的测速里偶尔有延迟启动的连接在结束后才启动并报错(只在控制台显示, 不影响结果; 测试服务器每方向只用一个连接避开)
+剩余步骤:
+- [ ] 用 `APP_VERSION=<版本> npm run build` 构建, 用离线包在测试主机上安装或升级, 逐页实测(尤其需要真实模块的: 模块安装卸载, Singbox 节点, FRPS/FRPC 保存任务, 域名转发, IP 证书, Tailscale 登录, 端口转发, 备份恢复, 定时任务运行); 实测通过后 `--no-ff` 合并回 `main`, 并写 CHANGELOG(三语言).
+- [ ] 已知小问题: 沿用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号; 随附的 LibreSpeed Worker 在很短的测速里偶尔有延迟启动的连接在结束后才启动并报错(只在浏览器控制台显示, 不影响结果); `lang/web/` 仍有只有旧页面用过的键(服务器生成的文本还在用这个文件, 键名大多是运行时拼出来的, 没有清理); 定时任务和定时备份的时间在新界面里精确到分钟(服务器仍支持到秒).
 
 当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.0.5(标签 `v7.0.5`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 

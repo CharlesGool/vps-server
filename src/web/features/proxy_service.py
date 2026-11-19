@@ -15,9 +15,6 @@ def _cert_common_name(context, path):
     except (OSError, ValueError, StopIteration, AttributeError):  # private CPython helper
         return ""
 
-def anytls_installed(context, ):
-    """Whether the unified proxy configuration contains an AnyTLS inbound."""
-    return anytls_node(context) is not None
 
 def anytls_node(context, ):
     """The installed node's parameters, or None if the module is not installed."""
@@ -48,11 +45,6 @@ def anytls_clash_line(context, node, host, name):
         f'skip-cert-verify: true, udp: true }}'
     )
 
-def anytls_share_link(context, node, host, name):
-    return (
-        f'anytls://{context.quote(node["password"], safe="")}@{host}:{node["port"]}'
-        f'?insecure=1&sni={node["sni"]}#{context.quote(name, safe="")}'
-    )
 
 def local_addresses(context, ):
     """[(interface, address)] for real interfaces.
@@ -95,9 +87,6 @@ def address_entries(context, t):
         seen.add(tailscale)
     return entries
 
-def node_csrf_token(context, session, protocol):
-    return context.hmac.new(context.SESSION_SECRET.encode(),
-                    f"node-apply:{session}:{protocol}".encode(), "sha256").hexdigest()
 
 def node_control_apply(context, request):
     """Send one ID-based edit to the privileged transactional helper."""
@@ -131,9 +120,6 @@ def node_control_apply(context, request):
         return False
     return True
 
-def proxy_installed(context, ):
-    """Cheap check for the nav and the dashboard tile — no parsing, no subprocess."""
-    return context.PROXY_CONFIG.is_file()
 
 def proxy_nodes(context, ):
     """[{type, port, secret}] for every installed protocol, in display order.
@@ -141,7 +127,7 @@ def proxy_nodes(context, ):
     `secret` is the uuid for vmess/vless or the password for trojan/
     shadowsocks — one field name regardless of protocol, since exactly one of
     "the identifier IS the credential" is true for all four and the caller
-    (page_proxy) already knows which is which from `type`.
+    already knows which is which from `type`.
     """
     try:
         config = context.json.loads(context.PROXY_CONFIG.read_text())
@@ -238,22 +224,3 @@ def clash_profile(context, node, host):
             "proxy-groups:\n  - name: NODE\n    type: select\n    proxies:\n"
             f"      - {name}\n      - DIRECT\n"
             "rules:\n  - MATCH,NODE\n")
-
-def proxy_share_link(context, node, sni, host, name):
-    proto, port, secret = node["type"], node["port"], node["secret"]
-    if proto == "vmess":
-        payload = {
-            "v": "2", "ps": name, "add": host, "port": str(port), "id": secret,
-            "aid": "0", "net": "tcp", "type": "none", "host": "", "path": "",
-            "tls": "tls", "sni": sni, "scy": "auto",
-        }
-        blob = context.base64.b64encode(context.json.dumps(payload).encode()).decode()
-        return f"vmess://{blob}"
-    if proto == "vless":
-        return (f'vless://{secret}@{host}:{port}?encryption=none&security=tls'
-                f'&sni={context.quote(sni, safe="")}&allowInsecure=1&type=tcp#{context.quote(name, safe="")}')
-    if proto == "trojan":
-        return (f'trojan://{context.quote(secret, safe="")}@{host}:{port}'
-                f'?sni={context.quote(sni, safe="")}&allowInsecure=1#{context.quote(name, safe="")}')
-    blob = context.base64.b64encode(f"2022-blake3-aes-128-gcm:{secret}".encode()).decode()
-    return f"ss://{blob}@{host}:{port}#{context.quote(name, safe='')}"

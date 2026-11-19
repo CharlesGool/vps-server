@@ -34,22 +34,22 @@ const route = useRoute()
 const router = useRouter()
 
 const LABELS: Record<Source, string> = {
-  all: 'legacy.logs_source_all',
-  modules: 'legacy.logs_source_modules',
+  all: 'console.logs_source_all',
+  modules: 'console.logs_source_modules',
   web: 'vps.logs.web',
-  proxy: 'legacy.logs_source_proxy',
+  proxy: 'console.logs_source_proxy',
   frps: 'FRPS',
   frpc: 'FRPC',
   tailscale: 'Tailscale',
-  caddy: 'legacy.domains',
+  caddy: 'console.domains',
 }
 const label = (source: Source) => (LABELS[source].includes('.') ? t(LABELS[source]) : LABELS[source])
 const LEVEL_LABELS: Record<Level, string> = {
-  all: 'legacy.logs_level_all',
-  err: 'legacy.logs_level_error',
-  warning: 'legacy.logs_level_warning',
-  info: 'legacy.logs_level_info',
-  debug: 'legacy.logs_level_debug',
+  all: 'console.logs_level_all',
+  err: 'console.logs_level_error',
+  warning: 'console.logs_level_warning',
+  info: 'console.logs_level_info',
+  debug: 'console.logs_level_debug',
 }
 const sourceOptions = computed(() => SOURCES.map((value) => ({ value, label: label(value) })))
 const levelOptions = computed(() => LEVELS.map((value) => ({ value, label: t(LEVEL_LABELS[value]) })))
@@ -87,7 +87,7 @@ async function clear() {
   clearing.value = true
   try {
     await api('logs/clear', { method: 'POST', body: { source: source.value } })
-    showToast(t('legacy.logs_clear_done'), 'success')
+    showToast(t('console.logs_clear_done'), 'success')
     await load()
   } catch (err) {
     if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
@@ -105,13 +105,13 @@ async function clear() {
       <FormField v-slot="field" :label="t('vps.logs.source')" :span="6">
         <SelectMenu :id="field.id" v-model="source" :options="sourceOptions" :label="t('vps.logs.source')" />
       </FormField>
-      <FormField v-if="filterable" :label="t('legacy.logs_level')" group :span="6">
-        <RadioField v-model="level" :options="levelOptions" :label="t('legacy.logs_level')" />
+      <FormField v-if="filterable" :label="t('console.logs_level')" group :span="6">
+        <RadioField v-model="level" :options="levelOptions" :label="t('console.logs_level')" />
       </FormField>
       <FormActions>
-        <ConfirmDialog :title="t('vps.logs.clearTitle')" :description="t('legacy.logs_clear_confirm')" :confirm-label="t('legacy.logs_clear')" danger @confirm="clear">
+        <ConfirmDialog :title="t('vps.logs.clearTitle')" :description="t('console.logs_clear_confirm')" :confirm-label="t('console.logs_clear')" danger @confirm="clear">
           <template #trigger>
-            <Button variant="outline" :disabled="clearing"><Eraser aria-hidden="true" />{{ t('legacy.logs_clear') }}</Button>
+            <Button variant="outline" :disabled="clearing"><Eraser aria-hidden="true" />{{ t('console.logs_clear') }}</Button>
           </template>
         </ConfirmDialog>
         <Button variant="outline" :disabled="loading" @click="load"><RefreshCw aria-hidden="true" />{{ t('vps.logs.refresh') }}</Button>
@@ -124,9 +124,9 @@ async function clear() {
 
     <PageSection v-for="section in data?.sections ?? []" :key="section.source" :cols="4" :title="label(section.source)">
       <LogOutput
-        :text="section.text === null ? t('legacy.logs_unavailable') : section.text"
+        :text="section.text === null ? t('console.logs_unavailable') : section.text"
         :label="label(section.source)"
-        :empty="t('legacy.logs_empty')"
+        :empty="t('console.logs_empty')"
       />
     </PageSection>
   </CardGrid>

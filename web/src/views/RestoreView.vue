@@ -50,8 +50,8 @@ const error = ref('')
 
 const errorText = (err: unknown) => {
   const code = err instanceof ApiError ? err.code : 'failed'
-  const text = t(`legacy.backup_error_${code}`)
-  return text === `legacy.backup_error_${code}` ? t('legacy.backup_error_failed') : text
+  const text = t(`console.backup_error_${code}`)
+  return text === `console.backup_error_${code}` ? t('console.backup_error_failed') : text
 }
 async function inspect(withKey = false) {
   busy.value = true
@@ -60,7 +60,7 @@ async function inspect(withKey = false) {
     info.value = await api<Info>('backup/inspect', { method: 'POST', body: { name: name.value, privateKey: withKey ? key.value : '' } })
   } catch (err) {
     if (err instanceof ApiError && err.code === 'not_found') {
-      showToast(t('legacy.backup_error_not_found'), 'destructive')
+      showToast(t('console.backup_error_not_found'), 'destructive')
       return router.replace('/backup')
     }
     if (!isSignedOut(err)) error.value = errorText(err)
@@ -77,11 +77,11 @@ const details = computed(() => {
   const value = info.value
   if (!value?.readable) return []
   return [
-    { key: 'host', label: t('legacy.backup_restore_host'), value: value.host || '?' },
-    { key: 'version', label: t('legacy.backup_restore_version'), value: value.version || '?' },
-    { key: 'kind', label: t('legacy.backup_restore_kind'), value: value.kind && KINDS[value.kind] ? t(`legacy.backup_kind_${KINDS[value.kind]}`) : (value.kind ?? '') },
-    { key: 'created', label: t('legacy.backup_restore_created'), value: value.created ?? '—' },
-    { key: 'files', label: t('legacy.backup_restore_files'), value: String(value.files ?? 0) },
+    { key: 'host', label: t('console.backup_restore_host'), value: value.host || '?' },
+    { key: 'version', label: t('console.backup_restore_version'), value: value.version || '?' },
+    { key: 'kind', label: t('console.backup_restore_kind'), value: value.kind && KINDS[value.kind] ? t(`console.backup_kind_${KINDS[value.kind]}`) : (value.kind ?? '') },
+    { key: 'created', label: t('console.backup_restore_created'), value: value.created ?? '—' },
+    { key: 'files', label: t('console.backup_restore_files'), value: String(value.files ?? 0) },
   ]
 })
 async function restore() {
@@ -89,7 +89,7 @@ async function restore() {
   error.value = ''
   try {
     await api('backup/restore', { method: 'POST', body: { name: name.value, privateKey: key.value, ack: ack.value } })
-    showToast(t('legacy.backup_msg_restore_started'), 'success')
+    showToast(t('console.backup_msg_restore_started'), 'success')
     await router.push('/backup')
   } catch (err) {
     if (!isSignedOut(err)) error.value = errorText(err)
@@ -101,13 +101,13 @@ async function restore() {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.backup_restore_title')" :description="name" :trail="[{ to: '/backup', label: t('legacy.backup') }]" />
+    <PageHeader :title="t('console.backup_restore_title')" :description="name" :trail="[{ to: '/backup', label: t('console.backup') }]" />
 
-    <PageSection v-if="!name" :cols="4" :title="t('legacy.backup_restore_title')">
+    <PageSection v-if="!name" :cols="4" :title="t('console.backup_restore_title')">
       <EmptyState :icon="ArchiveRestore" :title="t('vps.backup.pick')" />
       <FormActions>
         <Button as-child variant="outline">
-          <RouterLink to="/backup">{{ t('legacy.backup_list') }}</RouterLink>
+          <RouterLink to="/backup">{{ t('console.backup_list') }}</RouterLink>
         </Button>
       </FormActions>
     </PageSection>
@@ -118,32 +118,32 @@ async function restore() {
 
     <!-- 加密备份: 先输入私钥查看内容 -->
     <CardForm v-else-if="!info.readable" @submit.prevent="inspect(true)">
-      <PageSection :cols="2" :col="2" :title="t('legacy.backup_restore_title')" :description="t('legacy.backup_restore_needs_key')">
+      <PageSection :cols="2" :col="2" :title="t('console.backup_restore_title')" :description="t('console.backup_restore_needs_key')">
         <AlertBanner v-if="error" tone="destructive">{{ error }}</AlertBanner>
-        <AlertBanner v-if="info.keyMatch === false" tone="warning">{{ t('legacy.backup_restore_other_key') }}</AlertBanner>
-        <p v-else-if="info.keyMatch" class="text-sm text-muted-foreground">{{ t('legacy.backup_restore_this_key') }}</p>
-        <FormField v-slot="field" :label="t('legacy.backup_restore_key')">
+        <AlertBanner v-if="info.keyMatch === false" tone="warning">{{ t('console.backup_restore_other_key') }}</AlertBanner>
+        <p v-else-if="info.keyMatch" class="text-sm text-muted-foreground">{{ t('console.backup_restore_this_key') }}</p>
+        <FormField v-slot="field" :label="t('console.backup_restore_key')">
           <PasswordInput :id="field.id" v-model="key" autocomplete="off" spellcheck="false" maxlength="64" />
         </FormField>
         <FormActions>
-          <Button type="submit" :disabled="busy || !key.trim()"><Eye aria-hidden="true" />{{ t('legacy.backup_restore_look') }}</Button>
+          <Button type="submit" :disabled="busy || !key.trim()"><Eye aria-hidden="true" />{{ t('console.backup_restore_look') }}</Button>
         </FormActions>
       </PageSection>
     </CardForm>
 
-    <PageSection v-else :cols="2" :col="2" :title="t('legacy.backup_restore_title')" :description="t('legacy.backup_restore_effect')">
+    <PageSection v-else :cols="2" :col="2" :title="t('console.backup_restore_title')" :description="t('console.backup_restore_effect')">
       <AlertBanner v-if="error" tone="destructive">{{ error }}</AlertBanner>
       <DescriptionList :items="details" />
-      <AlertBanner v-if="info.sameHost === false" tone="warning">{{ t('legacy.backup_restore_warn_host', { host: info.host || '?' }) }}</AlertBanner>
-      <AlertBanner v-if="info.newer" tone="warning">{{ t('legacy.backup_restore_warn_newer', { version: info.version }) }}</AlertBanner>
-      <CheckboxField v-if="info.risky" v-model="ack" :label="t('legacy.backup_restore_ack')" />
+      <AlertBanner v-if="info.sameHost === false" tone="warning">{{ t('console.backup_restore_warn_host', { host: info.host || '?' }) }}</AlertBanner>
+      <AlertBanner v-if="info.newer" tone="warning">{{ t('console.backup_restore_warn_newer', { version: info.version }) }}</AlertBanner>
+      <CheckboxField v-if="info.risky" v-model="ack" :label="t('console.backup_restore_ack')" />
       <FormActions>
         <Button as-child variant="outline">
-          <RouterLink to="/backup">{{ t('legacy.task_cancel') }}</RouterLink>
+          <RouterLink to="/backup">{{ t('console.task_cancel') }}</RouterLink>
         </Button>
-        <ConfirmDialog :title="t('legacy.backup_restore_title')" :description="t('legacy.backup_restore_effect')" :confirm-label="t('legacy.backup_restore_go')" danger @confirm="restore">
+        <ConfirmDialog :title="t('console.backup_restore_title')" :description="t('console.backup_restore_effect')" :confirm-label="t('console.backup_restore_go')" danger @confirm="restore">
           <template #trigger>
-            <Button variant="destructive" :disabled="busy || (info.risky && !ack)"><ArchiveRestore aria-hidden="true" />{{ t('legacy.backup_restore_go') }}</Button>
+            <Button variant="destructive" :disabled="busy || (info.risky && !ack)"><ArchiveRestore aria-hidden="true" />{{ t('console.backup_restore_go') }}</Button>
           </template>
         </ConfirmDialog>
       </FormActions>

@@ -52,9 +52,9 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const ERRORS: Record<string, string> = {
   module_busy: 'vps.dashboard.busy',
-  module_job_failed: 'legacy.module_job_failed',
-  module_source_missing: 'legacy.module_source_missing',
-  module_tailscale_asset_missing: 'legacy.module_tailscale_asset_missing',
+  module_job_failed: 'console.module_job_failed',
+  module_source_missing: 'console.module_source_missing',
+  module_tailscale_asset_missing: 'console.module_tailscale_asset_missing',
 }
 async function install() {
   if (sending.value) return
@@ -73,9 +73,9 @@ async function install() {
 </script>
 
 <template>
-  <PageSection :cols="2" :col="2" :title="name" :description="t('legacy.module_not_installed')">
+  <PageSection :cols="2" :col="2" :title="name" :description="t('console.module_not_installed')">
     <AlertBanner v-if="job" :tone="job.state === 'failed' ? 'destructive' : job.state === 'done' ? 'success' : 'info'" role="status">{{ job.text }}</AlertBanner>
-    <LogOutput v-if="job && data?.progress" :text="data.progress" :label="t('legacy.module_progress')" />
+    <LogOutput v-if="job && data?.progress" :text="data.progress" :label="t('console.module_progress')" />
     <AlertBanner v-if="item?.needs && !job" tone="warning">{{ item.needs }}</AlertBanner>
     <FormActions>
       <Button :disabled="sending || !data || data.busy" @click="install">

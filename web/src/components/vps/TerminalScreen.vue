@@ -85,6 +85,6 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <AlertBanner v-if="disconnected" tone="warning">{{ t('legacy.terminal_disconnected') }}</AlertBanner>
+  <AlertBanner v-if="disconnected" tone="warning">{{ t('console.terminal_disconnected') }}</AlertBanner>
   <div ref="screen" :aria-label="label" class="overflow-hidden rounded-md border border-border bg-muted p-2 text-foreground" />
 </template>

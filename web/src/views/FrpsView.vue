@@ -41,10 +41,10 @@ async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
   try {
     data.value = await api<Frps>(path, { method, body })
-    showToast(t('legacy.frp_saved'), 'success')
+    showToast(t('console.frp_saved'), 'success')
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('legacy.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
     return false
   } finally {
     busy.value = false
@@ -52,9 +52,9 @@ async function send(path: string, body: unknown, method = 'POST') {
 }
 
 const facts = computed(() => [
-  { key: 'bind', label: t('legacy.frps_bind'), value: data.value?.node?.bind, mono: true },
-  { key: 'port', label: t('legacy.proxy_port') },
-  { key: 'token', label: t('legacy.frps_token') },
+  { key: 'bind', label: t('console.frps_bind'), value: data.value?.node?.bind, mono: true },
+  { key: 'port', label: t('console.proxy_port') },
+  { key: 'token', label: t('console.frps_token') },
 ])
 const addressItems = computed(() => (data.value?.node?.addresses ?? []).map((item) => ({ key: String(item.index), label: item.label })))
 
@@ -68,14 +68,14 @@ function openEdit() {
 }
 async function save() {
   const value = port.value.trim()
-  if (value && !/^\d+$/.test(value)) return showToast(t('legacy.frp_save_failed'), 'destructive')
+  if (value && !/^\d+$/.test(value)) return showToast(t('console.frp_save_failed'), 'destructive')
   if (await send('frps/save', { port: value ? Number(value) : null, token: token.value }, 'PUT')) editOpen.value = false
 }
 </script>
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.frps_heading')" :description="t('vps.frps.description')" />
+    <PageHeader :title="t('console.frps_heading')" :description="t('vps.frps.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
@@ -84,28 +84,28 @@ async function save() {
     <ModuleInstall v-else-if="!data.installed || !data.node" module="frps" name="FRPS" @installed="load" />
 
     <template v-else>
-      <PageSection :cols="4" title="FRPS" :description="t('legacy.frp_server_edit_note')">
+      <PageSection :cols="4" title="FRPS" :description="t('console.frp_server_edit_note')">
         <SwitchField
           :model-value="data.node.running"
           :label="t('vps.frps.running')"
-          :description="t(data.node.running ? 'legacy.node_active' : 'legacy.frp_not_running')"
+          :description="t(data.node.running ? 'console.node_active' : 'console.frp_not_running')"
           :disabled="busy"
           @update:model-value="(value: boolean) => send('frps/toggle', { enable: value })"
         />
         <DescriptionList :items="facts">
           <template #value-port>
-            <PrivateValue source="frps" field="port" :label="t('legacy.proxy_port')" />
+            <PrivateValue source="frps" field="port" :label="t('console.proxy_port')" />
           </template>
           <template #value-token>
-            <PrivateValue source="frps" field="credential" :label="t('legacy.frps_token')" />
+            <PrivateValue source="frps" field="credential" :label="t('console.frps_token')" />
           </template>
         </DescriptionList>
         <FormActions>
-          <Button variant="outline" :disabled="busy" @click="openEdit"><Pencil aria-hidden="true" />{{ t('legacy.frp_edit_server') }}</Button>
+          <Button variant="outline" :disabled="busy" @click="openEdit"><Pencil aria-hidden="true" />{{ t('console.frp_edit_server') }}</Button>
         </FormActions>
       </PageSection>
 
-      <PageSection v-if="addressItems.length" :cols="4" :title="t('legacy.frp_addresses')" :description="t('legacy.frp_address_note')">
+      <PageSection v-if="addressItems.length" :cols="4" :title="t('console.frp_addresses')" :description="t('console.frp_address_note')">
         <DescriptionList :items="addressItems">
           <template v-for="item in addressItems" :key="item.key" #[`value-${item.key}`]>
             <PrivateValue :source="`interface-${item.key}`" field="address" :label="item.label" />
@@ -116,16 +116,16 @@ async function save() {
       <TrafficCard feature="frps" />
     </template>
 
-    <AppDialog v-model:open="editOpen" :title="t('legacy.frp_edit_server')" :description="t('legacy.frp_server_edit_note')">
-      <FormField v-slot="field" :label="t('legacy.proxy_port')" :span="6">
-        <Input :id="field.id" v-model="port" inputmode="numeric" maxlength="5" :placeholder="t('legacy.frp_port_keep')" autocomplete="off" />
+    <AppDialog v-model:open="editOpen" :title="t('console.frp_edit_server')" :description="t('console.frp_server_edit_note')">
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
+        <Input :id="field.id" v-model="port" inputmode="numeric" maxlength="5" :placeholder="t('console.frp_port_keep')" autocomplete="off" />
       </FormField>
-      <FormField v-slot="field" :label="t('legacy.frps_token')" :span="6">
-        <PasswordInput :id="field.id" v-model="token" maxlength="128" autocomplete="new-password" :placeholder="t('legacy.frp_token_keep')" />
+      <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
+        <PasswordInput :id="field.id" v-model="token" maxlength="128" autocomplete="new-password" :placeholder="t('console.frp_token_keep')" />
       </FormField>
       <template #footer>
-        <Button variant="outline" @click="editOpen = false">{{ t('legacy.node_cancel') }}</Button>
-        <Button :disabled="busy" @click="save">{{ t('legacy.frp_save') }}</Button>
+        <Button variant="outline" @click="editOpen = false">{{ t('console.node_cancel') }}</Button>
+        <Button :disabled="busy" @click="save">{{ t('console.frp_save') }}</Button>
       </template>
     </AppDialog>
   </CardGrid>

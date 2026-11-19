@@ -1,4 +1,4 @@
-"""Auth pages and actions for the operator console.
+"""Sign-in bookkeeping (audit, alerts, limiter outcomes), the certificate-required notice and state helpers.
 
 Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
@@ -56,238 +56,12 @@ class AuthMixin:
                                        self._alert_text(body_key, ip=event["key"], seconds=event["seconds"]),
                                        dedupe=event["scope"] + ":" + event["key"])
 
-    def page_login(self, lang, query_lang, status=200, error=None, next_page="", password_error=True):
-        t = self.context.STRINGS[lang]
-        if not error and self.context.parse_qs(self.context.urlsplit(self.path).query).get("ip") == ["unavailable"]:
-            error = t["login_ip_unavailable"]
-            password_error = False
-        error_html = f'<p class="error" id="login-error" role="alert">{self.context.html.escape(error)}</p>' if error else ""
-        invalid = ' aria-invalid="true" aria-describedby="login-error"' if error and password_error else ""
-        next_page = next_page if next_page in ("settings", "preferences", "changelog", "terminal") else ""
-        next_input = f'<input type="hidden" name="next" value="{next_page}">' if next_page else ""
-        changed = ('<p class="notice" role="status">' + self.context.html.escape(t["password_changed"]) + '</p>'
-                   if self.context.parse_qs(self.context.urlsplit(self.path).query).get("changed") == ["1"] else "")
-        ip_button = (f'<form method="post" action="/login/ip" class="login-ip-form">'
-                     f'<button type="submit">{self.context.html.escape(t["login_ip_access"])}</button></form>')
-        password_field = self.context.render_password_field(
-            t, "login-password", t["password"], "password",
-            f'autocomplete="current-password" autofocus required{invalid}')
-        # Certificate login: offered whenever this connection presented an active
-        # client certificate; once certificates are required it is the only way in.
-        auth = self.context.CLIENT_AUTH
-        cert_button = (f'<form method="post" action="/login/cert" class="login-form login-cert-form">{next_input}'
-                       f'<button type="submit" class="login-submit">{self.context.html.escape(t["login_cert"])}</button></form>'
-                       if auth.cert_login_allowed() and self.client_certificate() is not None else "")
-        password_form = "" if not auth.password_login_allowed() else f"""
-            <form method="post" action="/login" class="login-form">
-              {next_input}
-              {password_field}
-              <button type="submit" class="login-submit">{self.context.html.escape(t['login'])}</button>
-            </form>"""
-        language_menu = (
-            f'<div class="login-language-field app-login-language">'
-            f'<details class="language-menu login-language-menu"><summary '
-            f'aria-label="{self.context.html.escape(t["login_language"], quote=True)}: {self.context.html.escape(self.context.LANG_NAMES[lang], quote=True)}">'
-            f'{self.context.html.escape(self.context.LANG_NAMES[lang])}</summary>'
-            f'<div class="language-options">{self.context.render_lang_switcher(lang, "&next=" + next_page if next_page else "")}</div>'
-            f'</details></div>')
-        body = f"""
-        <div class="login-shell">
-          <div class="login-panel app-login-card">
-            <span class="login-mark" aria-hidden="true">{self.context.ui_icon('lock-keyhole')}</span>
-            <h1>{self.context.html.escape(t['login_heading'])}</h1>
-            {changed}{error_html}
-            {cert_button}{password_form}
-            {ip_button}
-            <div class="login-footer app-login-footer"><a class="login-version app-login-version" href="/changelog">{self.context.html.escape(self.context.VERSION_LABEL)}</a>{language_menu}</div>
-          </div>
-        </div>
-        """
-        headers = self.maybe_lang_cookie(query_lang)
-        self.send_html(status, self.render_page(t['login'], body, lang, show_nav=False, bare=True), headers)
-
-    def handle_login(self, lang):
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        ip = self.client_ip()
-        allowed, retry_after = self.context.LOGIN_LIMITER.check(ip)
-        if not allowed:
-            self.audit("login_blocked")
-            return self.page_login(
-                lang, None, status=429,
-                error=self.context.STRINGS[lang]["login_locked"].format(seconds=retry_after),
-            )
-        form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
-        submitted = form.get("password", [""])[0]
-        next_page = form.get("next", [""])[0]
-        if not self.context.CLIENT_AUTH.password_login_allowed():
-            # The password is kept only for re-verifying sensitive actions.
-            return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
-                                   error=self.context.STRINGS[lang]["login_password_disabled"])
-        if self.context.hmac.compare_digest(submitted.encode("utf-8"), self.context.ADMIN_PASSWORD.encode("utf-8")):
-            self.login_succeeded("password")
-            previous = self.get_cookie("session")
-            if previous:
-                self.context.destroy_session(previous)
-            token = self.context.create_session(security_verified=True, ip=ip, agent=self.user_agent(),
-                                                method="password")
-            cookie = (
-                f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
-                f"Max-Age={self.context.SESSION_TTL_SECONDS}"
-            )
-            destination = ("/settings/security" if next_page == "settings" else
-                           "/settings" if next_page == "preferences" else
-                           "/terminal" if next_page == "terminal" else
-                           "/changelog" if next_page == "changelog" else "/")
-            return self.redirect(destination,
-                                 {"Set-Cookie": cookie})
-        self.login_failed("login_fail")
-        self.page_login(lang, None, status=401, error=self.context.STRINGS[lang]["wrong_password"],
-                        next_page=next_page)
-
-    def handle_cert_login(self, lang):
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        next_page = self.context.parse_qs(raw.decode("utf-8", errors="replace")).get("next", [""])[0]
-        if not self.context.CLIENT_AUTH.cert_login_allowed():
-            return self.page_login(lang, None, status=403, next_page=next_page, password_error=False,
-                                   error=self.context.STRINGS[lang]["login_cert_disabled"])
-        if self.client_certificate() is None:
-            return self.page_login(lang, None, status=401, next_page=next_page, password_error=False,
-                                   error=self.context.STRINGS[lang]["login_cert_missing"])
-        previous = self.get_cookie("session")
-        if previous:
-            self.context.destroy_session(previous)
-        # Not security-verified: the terminal and security settings still ask for the password.
-        self.login_succeeded("certificate")
-        token = self.context.create_session(ip=self.client_ip(), agent=self.user_agent(), method="certificate")
-        cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
-                  f"Max-Age={self.context.SESSION_TTL_SECONDS}")
-        destination = ("/settings/verify" if next_page == "settings" else
-                       "/settings" if next_page == "preferences" else
-                       "/settings/verify?next=terminal" if next_page == "terminal" else
-                       "/changelog" if next_page == "changelog" else "/")
-        return self.redirect(destination, {"Set-Cookie": cookie, "Cache-Control": "no-store"})
 
     def page_client_cert_required(self, lang):
         t = self.context.STRINGS[lang]
-        esc = self.context.html.escape
-        body = f"""
-        <div class="login-shell">
-          <div class="login-panel app-login-card">
-            <span class="login-mark" aria-hidden="true">{self.context.ui_icon('lock-keyhole')}</span>
-            <h1>{esc(t['client_cert_required_title'])}</h1>
-            <p class="muted client-cert-gate-text">{esc(t['client_cert_required_text'])}</p>
-          </div>
-        </div>
-        """
         self._close_after_response = True
         self.close_connection = True
-        return self.send_html(403, self.render_page(t['client_cert_required_title'], body, lang,
-                                                    show_nav=False, bare=True),
-                              {"Cache-Control": "no-store"})
-
-    def handle_ip_login(self, lang):
-        if (self.context.TRUST_PROXY or self.caddy_proxied()
-                or not self.context.IP_ALLOWLIST.contains(self.client_address[0])):
-            return self.redirect("/login?ip=unavailable&next=settings",
-                                 {"Cache-Control": "no-store"})
-        self.login_succeeded("ip")
-        token = self.context.create_ip_session(self.client_address[0], self.user_agent())
-        cookie = (f"session={token}; {self.context.SESSION_COOKIE_ATTRS}; "
-                  f"Max-Age={self.context.SESSION_TTL_SECONDS}")
-        return self.redirect("/", {"Set-Cookie": cookie, "Cache-Control": "no-store"})
-
-    def page_security_verify(self, lang, error=None, status=200, next_page=""):
-        t = self.context.STRINGS[lang]
-        token = self.get_cookie("session")
-        password_field = self.context.render_password_field(
-            t, "security-password", t["password"], "password",
-            'autocomplete="current-password" required autofocus')
-        body = f'''<div class="access-workspace access-verify-workspace"><section class="card access-card">
-          <h1>{self.context.html.escape(t['access_verify_heading'])}</h1>
-          {f'<p class="error" role="alert">{self.context.html.escape(error)}</p>' if error else ''}
-          <form class="access-verify-form" method="post" action="/settings/verify" autocomplete="off">
-            <input type="hidden" name="csrf" value="{self.context.access_csrf_token(token, 'verify')}">
-            <input type="hidden" name="next" value="{self.context.html.escape(next_page, quote=True)}">
-            {password_field}
-            <button type="submit">{self.context.html.escape(t['access_verify_button'])}</button>
-          </form></section></div>'''
-        return self.send_html(status,
-                              self.render_page(t['access_verify_heading'], body, lang,
-                                               active="home" if next_page == "terminal" else "settings",
-                                               back_href='/' if next_page == "terminal" else '/settings'),
-                              {"Cache-Control": "no-store"})
-
-    def handle_security_verify(self, lang):
-        token = self.get_cookie("session")
-        if not self.is_authenticated():
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/x-www-form-urlencoded":
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        try:
-            length = int(self.headers.get("Content-Length", ""))
-            if not 0 < length <= self.context.LOGIN_BODY_LIMIT:
-                raise ValueError
-            form = self.context.parse_qs(self.rfile.read(length).decode("utf-8"),
-                            keep_blank_values=True, strict_parsing=True)
-            if set(form) not in ({"csrf", "password"}, {"csrf", "password", "next"}) or any(len(values) != 1 for values in form.values()):
-                raise ValueError
-        except (UnicodeError, ValueError):
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        if not self.context.hmac.compare_digest(form["csrf"][0], self.context.access_csrf_token(token, "verify")):
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        next_page = form.get("next", [""])[0]
-        if next_page not in ("", "frp", "terminal"):
-            return self.send_html(400, "Invalid request", {"Cache-Control": "no-store"})
-        ip = self.client_ip()
-        allowed, retry_after = self.context.LOGIN_LIMITER.check(ip)
-        if not allowed:
-            self.audit("verify_blocked")
-            return self.page_security_verify(lang,
-                                             error=self.context.STRINGS[lang]["login_locked"].format(seconds=retry_after),
-                                             status=429, next_page=next_page)
-        if not self.context.hmac.compare_digest(form["password"][0].encode("utf-8"),
-                                                self.context.ADMIN_PASSWORD.encode("utf-8")):
-            self.login_failed("verify_fail")
-            return self.page_security_verify(lang, error=self.context.STRINGS[lang]["wrong_password"], status=401, next_page=next_page)
-        self.context.LOGIN_LIMITER.record_success(ip)
-        self.audit("verify_ok", next_page)
-        method = self.context._session_meta.get(token, {}).get("method", "password")
-        self.context.destroy_session(token)
-        new_token = self.context.create_session(security_verified=True, ip=ip, agent=self.user_agent(),
-                                                method=method)
-        cookie = (f"session={new_token}; {self.context.SESSION_COOKIE_ATTRS}; "
-                  f"Max-Age={self.context.SESSION_TTL_SECONDS}")
-        return self.redirect("/frpc" if next_page == "frp" else "/terminal" if next_page == "terminal" else "/settings/security",
-                             {"Set-Cookie": cookie, "Cache-Control": "no-store"})
-
-    def handle_logout(self):
-        token = self.get_cookie("session")
-        if token:
-            if self.context.session_valid(token) or token in self.context._ip_sessions:
-                self.audit("logout")
-            self.context.destroy_session(token)
-        cookie = f"session=; {self.context.SESSION_COOKIE_ATTRS}; Max-Age=0"
-        self.redirect("/login", {"Set-Cookie": cookie})
-
-
-
-
-    def route_login(self, method, path, parsed, lang, query_lang):
-        if method == "GET" and path == "/login":
-            next_page = self.context.parse_qs(parsed.query).get("next", [""])[0]
-            self.page_login(lang, query_lang, next_page=next_page)
-        elif method == "POST" and path == "/login":
-            self.handle_login(lang)
-        elif method == "POST" and path == "/login/ip":
-            self.handle_ip_login(lang)
-        elif method == "POST" and path == "/login/cert":
-            self.handle_cert_login(lang)
-        elif method == "GET" and path == "/logout":
-            self.handle_logout()
-        else:
-            return False
-        return True
-
+        return self.notice_page(403, t["client_cert_required_title"], t["client_cert_required_text"], lang)
 
 
 def _write_secret_file(context, path, value):
@@ -508,34 +282,6 @@ def save_sessions(context):
              "meta": context._session_meta}
     secure_store.write_text(context.SESSION_STATE_FILE, context.json.dumps(state))
     context._sessions_saved_at = context.time.time()
-
-
-def load_sessions(context):
-    try:
-        state = context.json.loads(secure_store.read_text(context.SESSION_STATE_FILE))
-        password_tag = context.hmac.new(context.SESSION_SECRET.encode(),
-                       context.ADMIN_PASSWORD.encode(), "sha256").hexdigest()
-        if not context.hmac.compare_digest(state["password"], password_tag):
-            return
-        now = context.time.time()
-        context._sessions.update({token: expiry for token, expiry in state["sessions"].items()
-                                  if isinstance(token, str) and isinstance(expiry, (int, float)) and expiry > now})
-        context._ip_sessions.update({token: (entry[0], entry[1])
-                                     for token, entry in state["ip_sessions"].items()
-                                     if isinstance(token, str) and isinstance(entry, list) and len(entry) == 2
-                                     and isinstance(entry[0], str) and isinstance(entry[1], (int, float)) and entry[1] > now})
-        context._security_sessions.update({token: expiry for token, expiry in state["security_sessions"].items()
-                                           if token in context._sessions and isinstance(expiry, (int, float)) and expiry > now})
-        meta = state.get("meta", {})
-        if isinstance(meta, dict):
-            for token, entry in meta.items():
-                if ((token in context._sessions or token in context._ip_sessions) and isinstance(entry, dict)
-                        and all(isinstance(entry.get(field), (int, float)) for field in ("created", "seen"))
-                        and all(isinstance(entry.get(field), str) for field in ("ip", "agent", "method"))):
-                    context._session_meta[token] = {field: entry[field] for field in
-                                                    ("created", "seen", "ip", "agent", "method")}
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
 
 
 def _idle_expired(context, token, now):
@@ -924,3 +670,31 @@ def ip_scope(context, ip):
     if addr.is_private or addr.is_link_local:
         return "private"
     return "public"
+
+
+def load_sessions(context):
+    try:
+        state = context.json.loads(secure_store.read_text(context.SESSION_STATE_FILE))
+        password_tag = context.hmac.new(context.SESSION_SECRET.encode(),
+                       context.ADMIN_PASSWORD.encode(), "sha256").hexdigest()
+        if not context.hmac.compare_digest(state["password"], password_tag):
+            return
+        now = context.time.time()
+        context._sessions.update({token: expiry for token, expiry in state["sessions"].items()
+                                  if isinstance(token, str) and isinstance(expiry, (int, float)) and expiry > now})
+        context._ip_sessions.update({token: (entry[0], entry[1])
+                                     for token, entry in state["ip_sessions"].items()
+                                     if isinstance(token, str) and isinstance(entry, list) and len(entry) == 2
+                                     and isinstance(entry[0], str) and isinstance(entry[1], (int, float)) and entry[1] > now})
+        context._security_sessions.update({token: expiry for token, expiry in state["security_sessions"].items()
+                                           if token in context._sessions and isinstance(expiry, (int, float)) and expiry > now})
+        meta = state.get("meta", {})
+        if isinstance(meta, dict):
+            for token, entry in meta.items():
+                if ((token in context._sessions or token in context._ip_sessions) and isinstance(entry, dict)
+                        and all(isinstance(entry.get(field), (int, float)) for field in ("created", "seen"))
+                        and all(isinstance(entry.get(field), str) for field in ("ip", "agent", "method"))):
+                    context._session_meta[token] = {field: entry[field] for field in
+                                                    ("created", "seen", "ip", "agent", "method")}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass

@@ -55,45 +55,45 @@ watch([kind, mode, n, unit, time, days, day, date, expr], () => {
   else spec.value = { mode: 'cron', expr: expr.value }
 })
 
-const kinds = computed(() => (['recurring', 'once'] as const).map((value) => ({ value, label: t(`legacy.task_kind_${value}`) })))
-const modes = computed(() => (['interval', 'daily', 'weekly', 'monthly', 'cron'] as const).map((value) => ({ value, label: t(`legacy.task_mode_${value}`) })))
-const units = computed(() => (['minutes', 'hours', 'days'] as const).map((value) => ({ value, label: t(`legacy.task_unit_${value}`) })))
+const kinds = computed(() => (['recurring', 'once'] as const).map((value) => ({ value, label: t(`console.task_kind_${value}`) })))
+const modes = computed(() => (['interval', 'daily', 'weekly', 'monthly', 'cron'] as const).map((value) => ({ value, label: t(`console.task_mode_${value}`) })))
+const units = computed(() => (['minutes', 'hours', 'days'] as const).map((value) => ({ value, label: t(`console.task_unit_${value}`) })))
 // 星期一在前, 星期日在后
-const weekdays = computed(() => [1, 2, 3, 4, 5, 6, 0].map((value) => ({ value: String(value), label: t(`legacy.task_dayfull_${value}`) })))
+const weekdays = computed(() => [1, 2, 3, 4, 5, 6, 0].map((value) => ({ value: String(value), label: t(`console.task_dayfull_${value}`) })))
 const showTime = computed(() => kind.value === 'once' || ['daily', 'weekly', 'monthly'].includes(mode.value))
 // 每天和只执行一次时时间独占一行; 每周和每月时和星期/日期并排
 const timeSpan = computed<6 | 12>(() => (kind.value === 'once' || mode.value === 'daily' ? 12 : 6))
-const timeHelp = computed(() => `${t('legacy.task_timezone')}: ${props.timezone}`)
+const timeHelp = computed(() => `${t('console.task_timezone')}: ${props.timezone}`)
 </script>
 
 <template>
-  <FormField :label="t('legacy.task_kind')" group :span="6">
-    <SegmentedControl v-model="kind" :options="kinds" :label="t('legacy.task_kind')" />
+  <FormField :label="t('console.task_kind')" group :span="6">
+    <SegmentedControl v-model="kind" :options="kinds" :label="t('console.task_kind')" />
   </FormField>
-  <FormField v-if="kind === 'once'" v-slot="field" :label="t('legacy.task_date')" :span="6">
-    <DateTimePicker :id="field.id" v-model="date" :label="t('legacy.task_date')" />
+  <FormField v-if="kind === 'once'" v-slot="field" :label="t('console.task_date')" :span="6">
+    <DateTimePicker :id="field.id" v-model="date" :label="t('console.task_date')" />
   </FormField>
-  <FormField v-else :label="t('legacy.task_mode')" group :span="6">
-    <RadioField v-model="mode" :options="modes" :label="t('legacy.task_mode')" />
+  <FormField v-else :label="t('console.task_mode')" group :span="6">
+    <RadioField v-model="mode" :options="modes" :label="t('console.task_mode')" />
   </FormField>
   <template v-if="kind === 'recurring' && mode === 'interval'">
-    <FormField v-slot="field" :label="t('legacy.task_every')" :span="6">
+    <FormField v-slot="field" :label="t('console.task_every')" :span="6">
       <NumberField :id="field.id" v-model="n" :min="1" :max="9999" />
     </FormField>
-    <FormField :label="t('legacy.task_unit')" group :span="6">
-      <SegmentedControl v-model="unit" :options="units" :label="t('legacy.task_unit')" />
+    <FormField :label="t('console.task_unit')" group :span="6">
+      <SegmentedControl v-model="unit" :options="units" :label="t('console.task_unit')" />
     </FormField>
   </template>
-  <FormField v-if="kind === 'recurring' && mode === 'weekly'" v-slot="field" :label="t('legacy.task_weekdays')" :span="6">
-    <ComboboxField :id="field.id" v-model="days" :options="weekdays" :label="t('legacy.task_weekdays')" multiple />
+  <FormField v-if="kind === 'recurring' && mode === 'weekly'" v-slot="field" :label="t('console.task_weekdays')" :span="6">
+    <ComboboxField :id="field.id" v-model="days" :options="weekdays" :label="t('console.task_weekdays')" multiple />
   </FormField>
-  <FormField v-if="kind === 'recurring' && mode === 'monthly'" v-slot="field" :label="t('legacy.task_month_day')" :help="t('legacy.task_month_day_help')" :span="6">
+  <FormField v-if="kind === 'recurring' && mode === 'monthly'" v-slot="field" :label="t('console.task_month_day')" :help="t('console.task_month_day_help')" :span="6">
     <NumberField :id="field.id" v-model="day" :min="1" :max="28" />
   </FormField>
-  <FormField v-if="showTime" v-slot="field" :label="t('legacy.task_time')" :help="timeHelp" :span="timeSpan">
-    <DateTimePicker :id="field.id" v-model="time" mode="time" :label="t('legacy.task_time')" />
+  <FormField v-if="showTime" v-slot="field" :label="t('console.task_time')" :help="timeHelp" :span="timeSpan">
+    <DateTimePicker :id="field.id" v-model="time" mode="time" :label="t('console.task_time')" />
   </FormField>
-  <FormField v-if="kind === 'recurring' && mode === 'cron'" v-slot="field" :label="t('legacy.task_schedule')" :help="t('legacy.task_schedule_help')">
+  <FormField v-if="kind === 'recurring' && mode === 'cron'" v-slot="field" :label="t('console.task_schedule')" :help="t('console.task_schedule_help')">
     <Input :id="field.id" v-model="expr" maxlength="100" spellcheck="false" autocomplete="off" class="font-mono" />
   </FormField>
 </template>

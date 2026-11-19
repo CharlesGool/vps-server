@@ -112,9 +112,9 @@ const dateTime = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyl
 const time = (seconds: number) => dateTime.value.format(new Date(seconds * 1000))
 const date = (seconds: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(seconds * 1000))
 function duration(seconds: number) {
-  if (seconds >= 3600) return t('legacy.security_hours', { count: seconds % 3600 === 0 ? seconds / 3600 : Math.round(seconds / 360) / 10 })
-  if (seconds >= 60 && seconds % 60 === 0) return t('legacy.security_minutes', { count: seconds / 60 })
-  return t('legacy.security_seconds', { count: seconds })
+  if (seconds >= 3600) return t('console.security_hours', { count: seconds % 3600 === 0 ? seconds / 3600 : Math.round(seconds / 360) / 10 })
+  if (seconds >= 60 && seconds % 60 === 0) return t('console.security_minutes', { count: seconds / 60 })
+  return t('console.security_seconds', { count: seconds })
 }
 const fileHref = (file: DownloadFile) => `data:${file.type};base64,${file.data}`
 
@@ -136,7 +136,7 @@ function expire() {
 }
 onBeforeUnmount(() => clearTimeout(expiryTimer))
 
-// 服务器返回的错误代码: 模板的通用代码用 security.*, 其余沿用控制台原有的提示(legacy.*)
+// 服务器返回的错误代码: 模板的通用代码用 security.*, 其余沿用控制台原有的提示(console.*)
 const ERRORS: Record<string, string> = {
   invalid_password: 'login.invalidPassword',
   password_mismatch: 'security.mismatch',
@@ -150,7 +150,7 @@ function errorText(err: unknown) {
   if (err instanceof ApiError && err.code === 'too_many_attempts') return t('login.tooManyAttempts', { seconds: Number(err.data.retryAfter ?? 0) })
   const code = err instanceof ApiError ? err.code : ''
   if (ERRORS[code]) return t(ERRORS[code]!)
-  if (code && t(`legacy.${code}`) !== `legacy.${code}`) return t(`legacy.${code}`)
+  if (code && t(`console.${code}`) !== `console.${code}`) return t(`console.${code}`)
   return t('security.failed')
 }
 
@@ -237,17 +237,17 @@ async function addAddress() {
 
 // ---- 登录方式和客户端证书 ----
 const modeOptions = computed(() =>
-  (security.value?.certificates.modes ?? []).map((value) => ({ value, label: t(`legacy.login_mode_${value}`), description: t(`legacy.login_mode_${value}_help`) })),
+  (security.value?.certificates.modes ?? []).map((value) => ({ value, label: t(`console.login_mode_${value}`), description: t(`console.login_mode_${value}_help`) })),
 )
 async function saveMode() {
   modeError.value = ''
-  if (await update('login-mode', 'PUT', { mode: loginMode.value }, (message) => (modeError.value = message))) showToast(t('legacy.login_mode_saved'), 'success')
+  if (await update('login-mode', 'PUT', { mode: loginMode.value }, (message) => (modeError.value = message))) showToast(t('console.login_mode_saved'), 'success')
 }
 const certRows = computed(() =>
   (security.value?.certificates.items ?? []).map((item) => ({ ...item, serialShort: item.serial.slice(0, 8), createdText: date(item.created) })),
 )
 const certColumns = computed(() => [
-  { key: 'name', label: t('legacy.client_cert_name') },
+  { key: 'name', label: t('console.client_cert_name') },
   { key: 'serialShort', label: t('vps.security.serial'), mono: true },
   { key: 'createdText', label: t('vps.security.created') },
   { key: 'action', label: t('security.actions'), align: 'end' as const },
@@ -273,7 +273,7 @@ const loginBanEnabled = computed({
 const banRows = computed(() =>
   (security.value?.loginBan.sources ?? []).map((row) => ({
     ...row,
-    counts: t('legacy.login_ban_counts', { recent: row.recent, total: row.total, triggered: row.triggered }),
+    counts: t('console.login_ban_counts', { recent: row.recent, total: row.total, triggered: row.triggered }),
     lastText: time(row.last),
   })),
 )
@@ -285,12 +285,12 @@ const banColumns = computed(() => [
 ])
 const banRule = computed(() => {
   const ban = security.value?.loginBan
-  return ban ? t('legacy.login_ban_rule', { window: ban.window, count: ban.maxAttempts, first: duration(ban.lockout), max: duration(ban.lockoutMax) }) : ''
+  return ban ? t('console.login_ban_rule', { window: ban.window, count: ban.maxAttempts, first: duration(ban.lockout), max: duration(ban.lockoutMax) }) : ''
 })
 const globalRule = computed(() => {
   const ban = security.value?.loginBan
   return ban && ban.globalMaxAttempts > 0
-    ? t('legacy.login_global_rule', { window: ban.window, count: ban.globalMaxAttempts, duration: duration(ban.globalLockout) })
+    ? t('console.login_global_rule', { window: ban.window, count: ban.globalMaxAttempts, duration: duration(ban.globalLockout) })
     : ''
 })
 
@@ -313,13 +313,13 @@ async function addNetwork(value = network.value.trim()) {
 const sessionsIntro = computed(() => {
   const s = security.value?.sessions
   if (!s) return ''
-  return s.idle > 0 ? t('legacy.sessions_intro', { ttl: duration(s.ttl), idle: duration(s.idle) }) : t('legacy.sessions_intro_no_idle', { ttl: duration(s.ttl) })
+  return s.idle > 0 ? t('console.sessions_intro', { ttl: duration(s.ttl), idle: duration(s.idle) }) : t('console.sessions_intro_no_idle', { ttl: duration(s.ttl) })
 })
 const sessionRows = computed(() =>
   (security.value?.sessions.items ?? []).map((row) => ({
     ...row,
-    deviceText: row.device || t('legacy.sessions_unknown_device'),
-    methodText: t(`legacy.sessions_method_${row.method}`),
+    deviceText: row.device || t('console.sessions_unknown_device'),
+    methodText: t(`console.sessions_method_${row.method}`),
     createdText: time(row.created),
     seenText: time(row.seen),
   })),
@@ -347,11 +347,11 @@ async function saveAlerts() {
   )
   if (ok) {
     alertKey.value = ''
-    showToast(t('legacy.alerts_saved'), 'success')
+    showToast(t('console.alerts_saved'), 'success')
   }
 }
 async function testAlerts() {
-  if (await update('alerts/test', 'POST')) showToast(t('legacy.alerts_test_sent'), 'success')
+  if (await update('alerts/test', 'POST')) showToast(t('console.alerts_test_sent'), 'success')
 }
 
 // ---- 安全记录: 每页 10 条 ----
@@ -359,10 +359,10 @@ const auditRows = computed(() =>
   (security.value?.audit ?? []).map((entry, index) => {
     const detail = String(entry.detail ?? '')
     const banned = ['ban', 'global_ban', 'ban_observed', 'global_ban_observed'].includes(entry.event) && /^\d+$/.test(detail)
-    const method = `legacy.sessions_method_${detail}`
+    const method = `console.sessions_method_${detail}`
     return {
       id: index,
-      eventText: t(`legacy.audit_${entry.event}`) === `legacy.audit_${entry.event}` ? entry.event : t(`legacy.audit_${entry.event}`),
+      eventText: t(`console.audit_${entry.event}`) === `console.audit_${entry.event}` ? entry.event : t(`console.audit_${entry.event}`),
       ip: entry.ip ?? '',
       detailText: banned ? duration(Number(detail)) : detail && t(method) !== method ? t(method) : detail,
       timeText: time(entry.t),
@@ -410,7 +410,7 @@ const auditColumns = computed(() => [
           <template #info>
             <InfoTip :label="t('security.ipRangesLabel')" :text="t('security.ipRanges')" />
           </template>
-          <AlertBanner v-if="security.ipAccess.loadError" tone="destructive">{{ t('legacy.access_load_error') }}</AlertBanner>
+          <AlertBanner v-if="security.ipAccess.loadError" tone="destructive">{{ t('console.access_load_error') }}</AlertBanner>
           <SwitchField v-model="ipAccessEnabled" :label="t('security.enableIpAccess')" :disabled="busy" />
           <DataTable :columns="addressColumns" :rows="addressRows" row-key="address" :caption="t('security.allowlistTitle')" :empty="t('security.empty')">
             <template #cell-action="{ row }">
@@ -445,55 +445,55 @@ const auditColumns = computed(() => [
 
       <!-- 登录方式: 单选组和保存 -->
       <CardForm @submit.prevent="saveMode">
-        <PageSection :cols="4" :title="t('vps.security.loginMethod')" :description="t('legacy.login_mode_hint')">
+        <PageSection :cols="4" :title="t('vps.security.loginMethod')" :description="t('console.login_mode_hint')">
           <!-- 卡片标题已经是"登录方式", 单选组的标签只给读屏 -->
-          <FormField :label="t('legacy.login_mode_title')" group hide-label :error="modeError">
-            <RadioField v-model="loginMode" :options="modeOptions" :label="t('legacy.login_mode_title')" :disabled="busy" />
+          <FormField :label="t('console.login_mode_title')" group hide-label :error="modeError">
+            <RadioField v-model="loginMode" :options="modeOptions" :label="t('console.login_mode_title')" :disabled="busy" />
           </FormField>
           <FormActions>
-            <Button type="submit" :disabled="busy || loginMode === security.certificates.mode">{{ t('legacy.login_mode_save') }}</Button>
+            <Button type="submit" :disabled="busy || loginMode === security.certificates.mode">{{ t('console.login_mode_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
       <!-- 客户端证书: 当前连接的证书, 证书列表, 签发 -->
       <CardForm @submit.prevent="issueCert">
-        <PageSection :cols="4" :title="t('legacy.access_client_cert')" :description="t('legacy.client_cert_intro')">
+        <PageSection :cols="4" :title="t('console.access_client_cert')" :description="t('console.client_cert_intro')">
           <AlertBanner v-if="security.certificates.current" tone="success">
-            {{ t('legacy.client_cert_current_ok', { name: security.certificates.current.name }) }}
+            {{ t('console.client_cert_current_ok', { name: security.certificates.current.name }) }}
           </AlertBanner>
-          <AlertBanner v-else tone="info" :title="t('legacy.client_cert_current_none')">{{ t('legacy.client_cert_current_none_hint') }}</AlertBanner>
-          <GroupBlock v-if="security.certificates.currentSetup.length" :title="t('legacy.client_cert_autoselect')">
-            <p class="text-sm text-muted-foreground">{{ t('legacy.client_cert_autoselect_help') }}</p>
+          <AlertBanner v-else tone="info" :title="t('console.client_cert_current_none')">{{ t('console.client_cert_current_none_hint') }}</AlertBanner>
+          <GroupBlock v-if="security.certificates.currentSetup.length" :title="t('console.client_cert_autoselect')">
+            <p class="text-sm text-muted-foreground">{{ t('console.client_cert_autoselect_help') }}</p>
             <FormActions align="start">
               <Button v-for="file in security.certificates.currentSetup" :key="file.name" as-child variant="outline">
-                <a :href="fileHref(file)" :download="file.name" :title="t(`legacy.client_cert_setup_${file.system}`)">
-                  <Download aria-hidden="true" />{{ t(`legacy.client_cert_setup_label_${file.system}`) }}
+                <a :href="fileHref(file)" :download="file.name" :title="t(`console.client_cert_setup_${file.system}`)">
+                  <Download aria-hidden="true" />{{ t(`console.client_cert_setup_label_${file.system}`) }}
                 </a>
               </Button>
             </FormActions>
           </GroupBlock>
-          <DataTable :columns="certColumns" :rows="certRows" row-key="serial" :caption="t('legacy.access_client_cert')" :empty="t('legacy.client_cert_list_empty')">
+          <DataTable :columns="certColumns" :rows="certRows" row-key="serial" :caption="t('console.access_client_cert')" :empty="t('console.client_cert_list_empty')">
             <template #cell-action="{ row }">
-              <StatusBadge v-if="row.revoked">{{ t('legacy.client_cert_revoked') }}</StatusBadge>
+              <StatusBadge v-if="row.revoked">{{ t('console.client_cert_revoked') }}</StatusBadge>
               <ConfirmDialog
                 v-else
                 :title="t('vps.security.revokeTitle', { name: String(row.name) })"
                 :description="t('vps.security.revokeDescription')"
-                :confirm-label="t('legacy.client_cert_revoke')"
+                :confirm-label="t('console.client_cert_revoke')"
                 danger
                 @confirm="revokeCert(String(row.serial))"
               >
                 <template #trigger>
                   <Button variant="outline" size="sm" :disabled="busy">
                     <Trash2 aria-hidden="true" />
-                    {{ t('legacy.client_cert_revoke') }}
+                    {{ t('console.client_cert_revoke') }}
                   </Button>
                 </template>
               </ConfirmDialog>
             </template>
           </DataTable>
-          <SettingRow v-slot="field" :label="t('legacy.client_cert_name')" :description="t('vps.security.issueDescription')" :error="certError">
+          <SettingRow v-slot="field" :label="t('console.client_cert_name')" :description="t('vps.security.issueDescription')" :error="certError">
             <InputAction
               :id="field.id"
               v-model="certName"
@@ -501,7 +501,7 @@ const auditColumns = computed(() => [
               autocomplete="off"
               :aria-invalid="field.invalid"
               :aria-describedby="field.describedby"
-              :action-label="t('legacy.client_cert_issue')"
+              :action-label="t('console.client_cert_issue')"
               :action-icon="BadgePlus"
               :action-disabled="busy || !certName.trim()"
             />
@@ -510,30 +510,30 @@ const auditColumns = computed(() => [
       </CardForm>
 
       <!-- 登录失败封禁 -->
-      <PageSection :cols="4" :title="t('legacy.login_ban_heading')" :description="banRule">
-        <AlertBanner v-if="security.loginBan.loadError" tone="destructive">{{ t('legacy.login_ban_load_error') }}</AlertBanner>
+      <PageSection :cols="4" :title="t('console.login_ban_heading')" :description="banRule">
+        <AlertBanner v-if="security.loginBan.loadError" tone="destructive">{{ t('console.login_ban_load_error') }}</AlertBanner>
         <AlertBanner v-if="security.loginBan.globalState !== 'normal'" :tone="security.loginBan.globalState === 'banned' ? 'destructive' : 'warning'">
-          {{ t(security.loginBan.globalState === 'banned' ? 'legacy.login_global_active' : 'legacy.login_global_flagged', { seconds: security.loginBan.globalRemaining }) }}
+          {{ t(security.loginBan.globalState === 'banned' ? 'console.login_global_active' : 'console.login_global_flagged', { seconds: security.loginBan.globalRemaining }) }}
         </AlertBanner>
         <p v-if="globalRule" class="text-sm text-muted-foreground">{{ globalRule }}</p>
-        <SwitchField v-model="loginBanEnabled" :label="t('legacy.login_ban_switch')" :description="t('legacy.login_ban_observe_hint')" :disabled="busy" />
-        <DataTable :columns="banColumns" :rows="banRows" row-key="ip" :caption="t('legacy.login_ban_heading')" :empty="t('legacy.login_ban_empty')">
+        <SwitchField v-model="loginBanEnabled" :label="t('console.login_ban_switch')" :description="t('console.login_ban_observe_hint')" :disabled="busy" />
+        <DataTable :columns="banColumns" :rows="banRows" row-key="ip" :caption="t('console.login_ban_heading')" :empty="t('console.login_ban_empty')">
           <template #cell-state="{ row }">
-            <StatusBadge v-if="row.state === 'banned'" tone="destructive">{{ t('legacy.login_ban_state_banned', { seconds: row.remaining }) }}</StatusBadge>
-            <StatusBadge v-else-if="row.state === 'flagged'" tone="warning">{{ t('legacy.login_ban_state_flagged', { seconds: row.remaining }) }}</StatusBadge>
-            <StatusBadge v-else>{{ t('legacy.login_ban_state_normal') }}</StatusBadge>
+            <StatusBadge v-if="row.state === 'banned'" tone="destructive">{{ t('console.login_ban_state_banned', { seconds: row.remaining }) }}</StatusBadge>
+            <StatusBadge v-else-if="row.state === 'flagged'" tone="warning">{{ t('console.login_ban_state_flagged', { seconds: row.remaining }) }}</StatusBadge>
+            <StatusBadge v-else>{{ t('console.login_ban_state_normal') }}</StatusBadge>
           </template>
         </DataTable>
         <FormActions>
           <ConfirmDialog
-            :title="t('legacy.login_ban_clear')"
+            :title="t('console.login_ban_clear')"
             :description="t('vps.security.clearBanDescription')"
-            :confirm-label="t('legacy.login_ban_clear')"
+            :confirm-label="t('console.login_ban_clear')"
             danger
             @confirm="update('login-ban/clear', 'POST')"
           >
             <template #trigger>
-              <Button variant="destructive" :disabled="busy || !banRows.length">{{ t('legacy.login_ban_clear') }}</Button>
+              <Button variant="destructive" :disabled="busy || !banRows.length">{{ t('console.login_ban_clear') }}</Button>
             </template>
           </ConfirmDialog>
         </FormActions>
@@ -541,18 +541,18 @@ const auditColumns = computed(() => [
 
       <!-- 控制台访问限制 -->
       <CardForm @submit.prevent="addNetwork()">
-        <PageSection :cols="4" :title="t('legacy.console_access_heading')" :description="t('legacy.console_access_intro')">
-          <AlertBanner v-if="security.consoleAccess.loadError" tone="destructive">{{ t('legacy.console_access_load_error') }}</AlertBanner>
+        <PageSection :cols="4" :title="t('console.console_access_heading')" :description="t('console.console_access_intro')">
+          <AlertBanner v-if="security.consoleAccess.loadError" tone="destructive">{{ t('console.console_access_load_error') }}</AlertBanner>
           <AlertBanner :tone="security.consoleAccess.currentListed ? 'success' : 'info'">
             {{
-              t('legacy.console_access_current', {
+              t('console.console_access_current', {
                 ip: security.consoleAccess.current,
-                state: t(security.consoleAccess.currentListed ? 'legacy.console_access_listed' : 'legacy.console_access_unlisted'),
+                state: t(security.consoleAccess.currentListed ? 'console.console_access_listed' : 'console.console_access_unlisted'),
               })
             }}
           </AlertBanner>
-          <SwitchField v-model="consoleAccessEnabled" :label="t('legacy.console_access_switch')" :disabled="busy" />
-          <DataTable :columns="networkColumns" :rows="networkRows" row-key="network" :caption="t('legacy.console_access_heading')" :empty="t('legacy.console_access_empty')">
+          <SwitchField v-model="consoleAccessEnabled" :label="t('console.console_access_switch')" :disabled="busy" />
+          <DataTable :columns="networkColumns" :rows="networkRows" row-key="network" :caption="t('console.console_access_heading')" :empty="t('console.console_access_empty')">
             <template #cell-action="{ row }">
               <Button
                 variant="outline"
@@ -580,42 +580,42 @@ const auditColumns = computed(() => [
               :action-disabled="busy || !network.trim()"
             />
           </SettingRow>
-          <SettingRow v-if="!security.consoleAccess.currentListed" :label="t('legacy.console_access_add_current')" :description="security.consoleAccess.current" group>
+          <SettingRow v-if="!security.consoleAccess.currentListed" :label="t('console.console_access_add_current')" :description="security.consoleAccess.current" group>
             <FormActions>
-              <Button type="button" variant="outline" :disabled="busy" @click="addNetwork(security.consoleAccess.current)">{{ t('legacy.console_access_add_current') }}</Button>
+              <Button type="button" variant="outline" :disabled="busy" @click="addNetwork(security.consoleAccess.current)">{{ t('console.console_access_add_current') }}</Button>
             </FormActions>
           </SettingRow>
-          <SettingRow v-slot="field" :label="t('vps.security.recovery')" :description="t('legacy.console_access_recovery')">
+          <SettingRow v-slot="field" :label="t('vps.security.recovery')" :description="t('console.console_access_recovery')">
             <CopyField :id="field.id" :value="security.consoleAccess.recovery" />
           </SettingRow>
         </PageSection>
       </CardForm>
 
       <!-- 登录设备 -->
-      <PageSection :cols="4" :title="t('legacy.sessions_heading')" :description="sessionsIntro">
-        <DataTable :columns="sessionColumns" :rows="sessionPageRows" row-key="id" :caption="t('legacy.sessions_heading')" :empty="t('legacy.sessions_empty')">
+      <PageSection :cols="4" :title="t('console.sessions_heading')" :description="sessionsIntro">
+        <DataTable :columns="sessionColumns" :rows="sessionPageRows" row-key="id" :caption="t('console.sessions_heading')" :empty="t('console.sessions_empty')">
           <template #cell-deviceText="{ row }">
             {{ row.deviceText }}
-            <StatusBadge v-if="row.current" tone="info">{{ t('legacy.sessions_current') }}</StatusBadge>
+            <StatusBadge v-if="row.current" tone="info">{{ t('console.sessions_current') }}</StatusBadge>
           </template>
           <template #cell-action="{ row }">
             <Button v-if="!row.current" variant="outline" size="sm" :disabled="busy" @click="update('sessions/revoke', 'POST', { id: String(row.id) })">
               <LogOut aria-hidden="true" />
-              {{ t('legacy.sessions_revoke') }}
+              {{ t('console.sessions_revoke') }}
             </Button>
           </template>
         </DataTable>
         <PaginationBar v-if="sessionRows.length > 10" v-model="sessionPage" :total="sessionRows.length" />
         <FormActions v-if="hasOtherSessions">
           <ConfirmDialog
-            :title="t('legacy.sessions_revoke_others')"
+            :title="t('console.sessions_revoke_others')"
             :description="t('vps.security.revokeOthersDescription')"
-            :confirm-label="t('legacy.sessions_revoke_others')"
+            :confirm-label="t('console.sessions_revoke_others')"
             danger
             @confirm="update('sessions/revoke-others', 'POST')"
           >
             <template #trigger>
-              <Button variant="destructive" :disabled="busy">{{ t('legacy.sessions_revoke_others') }}</Button>
+              <Button variant="destructive" :disabled="busy">{{ t('console.sessions_revoke_others') }}</Button>
             </template>
           </ConfirmDialog>
         </FormActions>
@@ -623,51 +623,51 @@ const auditColumns = computed(() => [
 
       <!-- Bark 提醒: 一个表单 -->
       <CardForm @submit.prevent="saveAlerts">
-        <PageSection :cols="4" :title="t('legacy.alerts_heading')" :description="t('legacy.alerts_intro')">
-          <AlertBanner v-if="security.alerts.loadError" tone="destructive">{{ t('legacy.alerts_load_error') }}</AlertBanner>
+        <PageSection :cols="4" :title="t('console.alerts_heading')" :description="t('console.alerts_intro')">
+          <AlertBanner v-if="security.alerts.loadError" tone="destructive">{{ t('console.alerts_load_error') }}</AlertBanner>
           <AlertBanner :tone="security.alerts.configured ? 'success' : 'info'">
-            {{ t(security.alerts.configured ? 'legacy.alerts_status_on' : 'legacy.alerts_status_off') }}
+            {{ t(security.alerts.configured ? 'console.alerts_status_on' : 'console.alerts_status_off') }}
           </AlertBanner>
-          <FormField v-slot="field" :label="t('legacy.alerts_server')" :span="6">
+          <FormField v-slot="field" :label="t('console.alerts_server')" :span="6">
             <Input :id="field.id" v-model="alertServer" maxlength="200" spellcheck="false" autocomplete="off" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.alerts_key')" :span="6" :error="alertError">
+          <FormField v-slot="field" :label="t('console.alerts_key')" :span="6" :error="alertError">
             <PasswordInput
               :id="field.id"
               v-model="alertKey"
               maxlength="128"
               autocomplete="off"
-              :placeholder="security.alerts.configured ? t('legacy.alerts_key_keep') : ''"
+              :placeholder="security.alerts.configured ? t('console.alerts_key_keep') : ''"
               :aria-invalid="field.invalid"
               :aria-describedby="field.describedby"
             />
           </FormField>
-          <CheckboxField v-model="alertNewIp" :label="t('legacy.alerts_on_new_ip')" :span="6" />
-          <CheckboxField v-model="alertBan" :label="t('legacy.alerts_on_ban')" :span="6" />
+          <CheckboxField v-model="alertNewIp" :label="t('console.alerts_on_new_ip')" :span="6" />
+          <CheckboxField v-model="alertBan" :label="t('console.alerts_on_ban')" :span="6" />
           <FormActions>
             <ConfirmDialog
               v-if="security.alerts.configured"
-              :title="t('legacy.alerts_clear_key')"
+              :title="t('console.alerts_clear_key')"
               :description="t('vps.security.clearKeyDescription')"
-              :confirm-label="t('legacy.alerts_clear_key')"
+              :confirm-label="t('console.alerts_clear_key')"
               danger
               @confirm="update('alerts/clear-key', 'POST')"
             >
               <template #trigger>
-                <Button type="button" variant="destructive" :disabled="busy">{{ t('legacy.alerts_clear_key') }}</Button>
+                <Button type="button" variant="destructive" :disabled="busy">{{ t('console.alerts_clear_key') }}</Button>
               </template>
             </ConfirmDialog>
             <Button v-if="security.alerts.configured" type="button" variant="outline" :disabled="busy" @click="testAlerts">
-              <Send aria-hidden="true" />{{ t('legacy.alerts_test') }}
+              <Send aria-hidden="true" />{{ t('console.alerts_test') }}
             </Button>
-            <Button type="submit" :disabled="busy || !alertServer.trim()">{{ t('legacy.alerts_save') }}</Button>
+            <Button type="submit" :disabled="busy || !alertServer.trim()">{{ t('console.alerts_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
       <!-- 安全记录: 最近 50 条, 每页 10 条 -->
-      <PageSection :cols="4" :title="t('legacy.audit_heading')" :description="t('legacy.audit_intro')">
-        <DataTable :columns="auditColumns" :rows="auditPageRows" row-key="id" :caption="t('legacy.audit_heading')" :empty="t('legacy.audit_empty')" />
+      <PageSection :cols="4" :title="t('console.audit_heading')" :description="t('console.audit_intro')">
+        <DataTable :columns="auditColumns" :rows="auditPageRows" row-key="id" :caption="t('console.audit_heading')" :empty="t('console.audit_empty')" />
         <PaginationBar v-if="auditRows.length > 10" v-model="auditPage" :total="auditRows.length" />
       </PageSection>
 
@@ -698,34 +698,34 @@ const auditColumns = computed(() => [
     </template>
 
     <!-- 刚签发的证书: 证书包密码只显示这一次 -->
-    <AppDialog v-if="issued" v-model:open="issuedOpen" :title="t('legacy.client_cert_issued_heading')" :description="t('legacy.client_cert_issued_text')">
-      <FormField v-slot="field" :label="t('legacy.client_cert_password')">
+    <AppDialog v-if="issued" v-model:open="issuedOpen" :title="t('console.client_cert_issued_heading')" :description="t('console.client_cert_issued_text')">
+      <FormField v-slot="field" :label="t('console.client_cert_password')">
         <CopyField :id="field.id" :value="issued.password" />
       </FormField>
-      <GroupBlock :title="t('legacy.client_cert_steps_title')">
+      <GroupBlock :title="t('console.client_cert_steps_title')">
         <ol class="list-decimal pl-6 text-sm">
-          <li>{{ t('legacy.client_cert_step_setup') }}</li>
-          <li>{{ t('legacy.client_cert_step_restart') }}</li>
-          <li>{{ t('legacy.client_cert_step_verify') }}</li>
+          <li>{{ t('console.client_cert_step_setup') }}</li>
+          <li>{{ t('console.client_cert_step_restart') }}</li>
+          <li>{{ t('console.client_cert_step_verify') }}</li>
         </ol>
       </GroupBlock>
       <FormActions v-if="issued.setup.length" align="start">
         <Button v-for="file in issued.setup" :key="file.name" as-child variant="outline">
-          <a :href="fileHref(file)" :download="file.name" :title="t(`legacy.client_cert_setup_${file.system}`)">
-            <Download aria-hidden="true" />{{ t(`legacy.client_cert_setup_label_${file.system}`) }}
+          <a :href="fileHref(file)" :download="file.name" :title="t(`console.client_cert_setup_${file.system}`)">
+            <Download aria-hidden="true" />{{ t(`console.client_cert_setup_label_${file.system}`) }}
           </a>
         </Button>
       </FormActions>
-      <GroupBlock :title="t('legacy.client_cert_manual')">
-        <p class="text-sm">{{ t('legacy.client_cert_step_download') }}</p>
-        <p class="text-sm">{{ t('legacy.client_cert_step_import') }}</p>
+      <GroupBlock :title="t('console.client_cert_manual')">
+        <p class="text-sm">{{ t('console.client_cert_step_download') }}</p>
+        <p class="text-sm">{{ t('console.client_cert_step_import') }}</p>
         <ul class="list-disc pl-6 text-sm text-muted-foreground">
-          <li v-for="system in ['windows', 'macos', 'android', 'ios', 'firefox']" :key="system">{{ t(`legacy.client_cert_os_${system}`) }}</li>
+          <li v-for="system in ['windows', 'macos', 'android', 'ios', 'firefox']" :key="system">{{ t(`console.client_cert_os_${system}`) }}</li>
         </ul>
       </GroupBlock>
       <template #footer>
         <Button as-child variant="outline">
-          <a :href="fileHref(issued.bundle)" :download="issued.bundle.name"><Download aria-hidden="true" />{{ t('legacy.client_cert_download') }}</a>
+          <a :href="fileHref(issued.bundle)" :download="issued.bundle.name"><Download aria-hidden="true" />{{ t('console.client_cert_download') }}</a>
         </Button>
         <Button type="button" @click="issuedOpen = false">{{ t('vps.common.done') }}</Button>
       </template>

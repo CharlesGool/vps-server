@@ -64,39 +64,39 @@ onMounted(async () => {
 
 const entry = computed(() => data.value?.entry ?? null)
 const STATES = {
-  blocked: { key: 'legacy.node_blocked', tone: 'destructive' },
-  limited: { key: 'legacy.node_limited', tone: 'warning' },
-  unknown: { key: 'legacy.node_meter_unknown', tone: 'neutral' },
-  normal: { key: 'legacy.node_normal', tone: 'success' },
+  blocked: { key: 'console.node_blocked', tone: 'destructive' },
+  limited: { key: 'console.node_limited', tone: 'warning' },
+  unknown: { key: 'console.node_meter_unknown', tone: 'neutral' },
+  normal: { key: 'console.node_normal', tone: 'success' },
 } as const
 
-const speed = (bps: number | null) => (bps == null ? t('legacy.node_unlimited') : `${bps / 1e6} Mbps`)
+const speed = (bps: number | null) => (bps == null ? t('console.node_unlimited') : `${bps / 1e6} Mbps`)
 const utc = (iso: string) => `${iso.slice(0, 16).replace('T', ' ')} UTC`
 function validity(seconds: number) {
-  if (seconds <= 0) return t('legacy.node_validity_expired')
-  if (seconds < 86400) return t('legacy.node_remaining_hours', { count: Math.max(1, Math.ceil(seconds / 3600)) })
-  return t('legacy.node_remaining_days', { count: Math.max(1, Math.ceil(seconds / 86400)) })
+  if (seconds <= 0) return t('console.node_validity_expired')
+  if (seconds < 86400) return t('console.node_remaining_hours', { count: Math.max(1, Math.ceil(seconds / 3600)) })
+  return t('console.node_remaining_days', { count: Math.max(1, Math.ceil(seconds / 86400)) })
 }
 const items = computed(() => {
   const value = entry.value
   if (!value) return []
   const list = [
-    { key: 'upload', label: t('legacy.node_upload'), value: `${formatBytes(value.upload)} · ${speed(value.uploadLimitBps)}` },
-    { key: 'download', label: t('legacy.node_download'), value: `${formatBytes(value.download)} · ${speed(value.downloadLimitBps)}` },
+    { key: 'upload', label: t('console.node_upload'), value: `${formatBytes(value.upload)} · ${speed(value.uploadLimitBps)}` },
+    { key: 'download', label: t('console.node_download'), value: `${formatBytes(value.download)} · ${speed(value.downloadLimitBps)}` },
     {
       key: 'cap',
-      label: t('legacy.node_cap'),
+      label: t('console.node_cap'),
       value:
         value.capBytes == null
-          ? t('legacy.node_unlimited')
-          : `${value.capBytes / 1073741824} GiB · ${t(value.multiplier === 2 ? 'legacy.node_billed_usage' : 'legacy.node_billed_usage_once', { value: formatBytes(value.billed) })}`,
+          ? t('console.node_unlimited')
+          : `${value.capBytes / 1073741824} GiB · ${t(value.multiplier === 2 ? 'console.node_billed_usage' : 'console.node_billed_usage_once', { value: formatBytes(value.billed) })}`,
     },
-    { key: 'reset', label: t('legacy.node_next_reset'), value: value.nextResetAt ? utc(value.nextResetAt) : t('legacy.node_no_reset') },
+    { key: 'reset', label: t('console.node_next_reset'), value: value.nextResetAt ? utc(value.nextResetAt) : t('console.node_no_reset') },
   ]
-  if (value.remainingSeconds != null) list.push({ key: 'validity', label: t('legacy.node_validity'), value: validity(value.remainingSeconds) })
+  if (value.remainingSeconds != null) list.push({ key: 'validity', label: t('console.node_validity'), value: validity(value.remainingSeconds) })
   return list
 })
-const help = computed(() => ({ once: 'legacy.traffic_help_once', twice: 'legacy.traffic_help_twice', tailscale: 'legacy.traffic_help_tailscale' })[data.value?.help ?? 'once'])
+const help = computed(() => ({ once: 'console.traffic_help_once', twice: 'console.traffic_help_twice', tailscale: 'console.traffic_help_tailscale' })[data.value?.help ?? 'once'])
 
 // ---- 流量限制对话框 ----
 const open = ref(false)
@@ -134,20 +134,20 @@ function edit() {
   open.value = true
 }
 const capActions = computed(() => [
-  { value: 'throttle' as const, label: t('legacy.node_cap_slow') },
-  { value: 'block' as const, label: t('legacy.node_cap_block') },
+  { value: 'throttle' as const, label: t('console.node_cap_slow') },
+  { value: 'block' as const, label: t('console.node_cap_block') },
 ])
 // "指定时间"只在已经设置了一次性重置时提供(与原页面相同)
 const resetModes = computed(() => [
-  { value: 'none' as const, label: t('legacy.node_reset_none') },
-  { value: 'repeat' as const, label: t('legacy.node_reset_repeat') },
-  ...(entry.value?.resetMode === 'once' ? [{ value: 'once' as const, label: t('legacy.node_reset_once') }] : []),
+  { value: 'none' as const, label: t('console.node_reset_none') },
+  { value: 'repeat' as const, label: t('console.node_reset_repeat') },
+  ...(entry.value?.resetMode === 'once' ? [{ value: 'once' as const, label: t('console.node_reset_once') }] : []),
 ])
 const expiryModes = computed(() => [
-  { value: 'none' as const, label: t('legacy.node_validity_none') },
-  { value: 'set' as const, label: t('legacy.node_validity_set') },
+  { value: 'none' as const, label: t('console.node_validity_none') },
+  { value: 'set' as const, label: t('console.node_validity_set') },
 ])
-const units = computed(() => (['days', 'months', 'years'] as const).map((value) => ({ value, label: t(`legacy.node_${value}`) })))
+const units = computed(() => (['days', 'months', 'years'] as const).map((value) => ({ value, label: t(`console.node_${value}`) })))
 
 async function save() {
   busy.value = true
@@ -155,9 +155,9 @@ async function save() {
   try {
     data.value = await api<Traffic>('traffic/limits', { method: 'PUT', body: { key: props.feature, ...form.value } })
     open.value = false
-    showToast(t('legacy.node_settings_done'), 'success')
+    showToast(t('console.node_settings_done'), 'success')
   } catch (err) {
-    error.value = t(err instanceof ApiError && err.code === 'invalid_limits' ? 'vps.traffic.invalid' : 'legacy.node_settings_failed')
+    error.value = t(err instanceof ApiError && err.code === 'invalid_limits' ? 'vps.traffic.invalid' : 'console.node_settings_failed')
   } finally {
     busy.value = false
   }
@@ -168,61 +168,61 @@ async function save() {
   <component
     :is="inline ? GroupBlock : PageSection"
     v-if="entry"
-    v-bind="inline ? { title: t('legacy.node_traffic') } : { cols: 4, title: t('legacy.node_traffic'), description: t(help) }"
+    v-bind="inline ? { title: t('console.node_traffic') } : { cols: 4, title: t('console.node_traffic'), description: t(help) }"
   >
     <p v-if="inline" class="text-sm text-muted-foreground">{{ t(help) }}</p>
     <div>
       <StatusBadge :tone="STATES[entry.state].tone">{{ t(STATES[entry.state].key) }}</StatusBadge>
     </div>
     <DescriptionList :items="items" />
-    <p v-if="data?.sharedWith" class="text-sm text-muted-foreground">{{ t('legacy.traffic_frpc_shared', { names: data.sharedWith }) }}</p>
+    <p v-if="data?.sharedWith" class="text-sm text-muted-foreground">{{ t('console.traffic_frpc_shared', { names: data.sharedWith }) }}</p>
     <FormActions>
-      <Button variant="outline" @click="edit"><SlidersHorizontal aria-hidden="true" />{{ t('legacy.traffic_limit_manage') }}</Button>
+      <Button variant="outline" @click="edit"><SlidersHorizontal aria-hidden="true" />{{ t('console.traffic_limit_manage') }}</Button>
     </FormActions>
   </component>
 
-  <AppDialog v-model:open="open" :title="t('legacy.traffic_limit_manage')">
+  <AppDialog v-model:open="open" :title="t('console.traffic_limit_manage')">
     <AlertBanner v-if="error" tone="destructive">{{ error }}</AlertBanner>
-    <FormField v-slot="field" :label="t('legacy.node_cap_gib')" :span="4">
-      <Input :id="field.id" v-model="form.capGib" inputmode="decimal" :placeholder="t('legacy.node_unlimited')" />
+    <FormField v-slot="field" :label="t('console.node_cap_gib')" :span="4">
+      <Input :id="field.id" v-model="form.capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
     </FormField>
-    <FormField v-slot="field" :label="t('legacy.node_upload_speed')" :span="4">
-      <Input :id="field.id" v-model="form.uploadMbps" inputmode="decimal" :placeholder="t('legacy.node_unlimited')" />
+    <FormField v-slot="field" :label="t('console.node_upload_speed')" :span="4">
+      <Input :id="field.id" v-model="form.uploadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
     </FormField>
-    <FormField v-slot="field" :label="t('legacy.node_download_speed')" :span="4">
-      <Input :id="field.id" v-model="form.downloadMbps" inputmode="decimal" :placeholder="t('legacy.node_unlimited')" />
+    <FormField v-slot="field" :label="t('console.node_download_speed')" :span="4">
+      <Input :id="field.id" v-model="form.downloadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
     </FormField>
-    <FormField :label="t('legacy.node_cap_action')" group>
-      <RadioField v-model="form.capAction" :options="capActions" :label="t('legacy.node_cap_action')" />
+    <FormField :label="t('console.node_cap_action')" group>
+      <RadioField v-model="form.capAction" :options="capActions" :label="t('console.node_cap_action')" />
     </FormField>
-    <FormField :label="t('legacy.node_reset_schedule')" group>
-      <RadioField v-model="form.resetMode" :options="resetModes" :label="t('legacy.node_reset_schedule')" />
+    <FormField :label="t('console.node_reset_schedule')" group>
+      <RadioField v-model="form.resetMode" :options="resetModes" :label="t('console.node_reset_schedule')" />
     </FormField>
     <template v-if="form.resetMode === 'repeat'">
-      <FormField v-slot="field" :label="t('legacy.node_reset_every')" :span="6">
+      <FormField v-slot="field" :label="t('console.node_reset_every')" :span="6">
         <NumberField :id="field.id" v-model="form.resetCount" :min="1" :max="9999" />
       </FormField>
-      <FormField :label="t('legacy.node_reset_unit')" group :span="6">
-        <SegmentedControl v-model="form.resetUnit" :options="units" :label="t('legacy.node_reset_unit')" />
+      <FormField :label="t('console.node_reset_unit')" group :span="6">
+        <SegmentedControl v-model="form.resetUnit" :options="units" :label="t('console.node_reset_unit')" />
       </FormField>
     </template>
-    <FormField v-else-if="form.resetMode === 'once'" v-slot="field" :label="t('legacy.node_reset_time_utc')">
-      <DateTimePicker :id="field.id" v-model="form.nextResetAt" mode="datetime" :label="t('legacy.node_reset_time_utc')" />
+    <FormField v-else-if="form.resetMode === 'once'" v-slot="field" :label="t('console.node_reset_time_utc')">
+      <DateTimePicker :id="field.id" v-model="form.nextResetAt" mode="datetime" :label="t('console.node_reset_time_utc')" />
     </FormField>
-    <FormField :label="t('legacy.node_validity')" group>
-      <RadioField v-model="form.expiryMode" :options="expiryModes" :label="t('legacy.node_validity')" />
+    <FormField :label="t('console.node_validity')" group>
+      <RadioField v-model="form.expiryMode" :options="expiryModes" :label="t('console.node_validity')" />
     </FormField>
     <template v-if="form.expiryMode === 'set'">
-      <FormField v-slot="field" :label="t('legacy.node_validity_length')" :span="6">
+      <FormField v-slot="field" :label="t('console.node_validity_length')" :span="6">
         <NumberField :id="field.id" v-model="form.expiryCount" :min="1" :max="9999" />
       </FormField>
-      <FormField :label="t('legacy.node_validity_unit')" group :span="6">
-        <SegmentedControl v-model="form.expiryUnit" :options="units" :label="t('legacy.node_validity_unit')" />
+      <FormField :label="t('console.node_validity_unit')" group :span="6">
+        <SegmentedControl v-model="form.expiryUnit" :options="units" :label="t('console.node_validity_unit')" />
       </FormField>
     </template>
     <template #footer>
-      <Button variant="outline" @click="open = false">{{ t('legacy.node_cancel') }}</Button>
-      <Button :disabled="busy" @click="save">{{ t('legacy.node_save_limits') }}</Button>
+      <Button variant="outline" @click="open = false">{{ t('console.node_cancel') }}</Button>
+      <Button :disabled="busy" @click="save">{{ t('console.node_save_limits') }}</Button>
     </template>
   </AppDialog>
 </template>

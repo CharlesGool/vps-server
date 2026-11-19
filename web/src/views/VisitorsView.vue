@@ -45,9 +45,9 @@ async function load() {
 onMounted(load)
 
 const filters = computed(() => [
-  { value: 'all' as const, label: t('legacy.show_all') },
-  { value: 'inbound' as const, label: t('legacy.show_inbound') },
-  { value: 'public' as const, label: t('legacy.show_external') },
+  { value: 'all' as const, label: t('console.show_all') },
+  { value: 'inbound' as const, label: t('console.show_inbound') },
+  { value: 'public' as const, label: t('console.show_external') },
 ])
 const shown = computed(() =>
   (data.value?.rows ?? []).filter((row) => filter.value === 'all' || (filter.value === 'inbound' ? row.direction === 'in' : row.scope === 'public')),
@@ -55,24 +55,24 @@ const shown = computed(() =>
 watch(filter, () => (page.value = 1))
 const pageRows = computed(() => shown.value.slice((page.value - 1) * 10, page.value * 10))
 const columns = computed(() => [
-  { key: 'ip', label: t('legacy.col_ip'), mono: true },
-  { key: 'direction', label: t('legacy.col_dir') },
-  { key: 'firstSeen', label: t('legacy.col_first'), mono: true },
-  { key: 'lastSeen', label: t('legacy.col_last'), mono: true },
-  { key: 'hits', label: t('legacy.col_hits'), align: 'end' as const, mono: true },
-  { key: 'ports', label: t('legacy.col_ports'), align: 'end' as const, mono: true },
-  { key: 'lastRequest', label: t('legacy.col_lastreq'), mono: true },
+  { key: 'ip', label: t('console.col_ip'), mono: true },
+  { key: 'direction', label: t('console.col_dir') },
+  { key: 'firstSeen', label: t('console.col_first'), mono: true },
+  { key: 'lastSeen', label: t('console.col_last'), mono: true },
+  { key: 'hits', label: t('console.col_hits'), align: 'end' as const, mono: true },
+  { key: 'ports', label: t('console.col_ports'), align: 'end' as const, mono: true },
+  { key: 'lastRequest', label: t('console.col_lastreq'), mono: true },
 ])
-const title = computed(() => t('legacy.visitors_heading', { n: data.value?.rows.length ?? 0, max: data.value?.max ?? 0 }))
+const title = computed(() => t('console.visitors_heading', { n: data.value?.rows.length ?? 0, max: data.value?.max ?? 0 }))
 
 async function clear() {
   busy.value = true
   try {
     await api('visitors/clear', { method: 'POST', body: {} })
-    showToast(t('legacy.visitors_clear_done'), 'success')
+    showToast(t('console.visitors_clear_done'), 'success')
     await load()
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('legacy.visitors_clear_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t('console.visitors_clear_failed'), 'destructive')
   } finally {
     busy.value = false
   }
@@ -81,7 +81,7 @@ async function clear() {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.visitors')" :description="t('vps.visitors.description')" />
+    <PageHeader :title="t('console.visitors')" :description="t('vps.visitors.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
@@ -91,13 +91,13 @@ async function clear() {
       <FormField :label="t('vps.visitors.filter')" group>
         <SegmentedControl v-model="filter" :options="filters" :label="t('vps.visitors.filter')" />
       </FormField>
-      <DataTable :columns="columns" :rows="pageRows" row-key="ip" :caption="title" :empty="t('legacy.no_visits')">
+      <DataTable :columns="columns" :rows="pageRows" row-key="ip" :caption="title" :empty="t('console.no_visits')">
         <template #cell-ip="{ row }">
           {{ row.ip }}
-          <StatusBadge v-if="row.scope !== 'public'">{{ t(`legacy.scope_${row.scope}`) }}</StatusBadge>
+          <StatusBadge v-if="row.scope !== 'public'">{{ t(`console.scope_${row.scope}`) }}</StatusBadge>
         </template>
         <template #cell-direction="{ row }">
-          <StatusBadge :tone="row.direction === 'in' ? 'info' : 'neutral'">{{ t(`legacy.dir_${row.direction}`) }}</StatusBadge>
+          <StatusBadge :tone="row.direction === 'in' ? 'info' : 'neutral'">{{ t(`console.dir_${row.direction}`) }}</StatusBadge>
         </template>
         <template #cell-ports="{ row }">{{ row.ports || '—' }}</template>
         <template #cell-lastRequest="{ row }">{{ row.lastRequest || '—' }}</template>
@@ -105,14 +105,14 @@ async function clear() {
       <PaginationBar v-if="shown.length > 10" v-model="page" :total="shown.length" />
       <FormActions>
         <ConfirmDialog
-          :title="t('legacy.visitors_clear')"
-          :description="t('legacy.visitors_clear_confirm')"
-          :confirm-label="t('legacy.visitors_clear')"
+          :title="t('console.visitors_clear')"
+          :description="t('console.visitors_clear_confirm')"
+          :confirm-label="t('console.visitors_clear')"
           danger
           @confirm="clear"
         >
           <template #trigger>
-            <Button variant="destructive" :disabled="busy || !data.rows.length"><Eraser aria-hidden="true" />{{ t('legacy.visitors_clear') }}</Button>
+            <Button variant="destructive" :disabled="busy || !data.rows.length"><Eraser aria-hidden="true" />{{ t('console.visitors_clear') }}</Button>
           </template>
         </ConfirmDialog>
       </FormActions>

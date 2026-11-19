@@ -1,4 +1,4 @@
-// vps-server: 随附的 qrcode-generator(/static/third_party/qrcode/, 不经打包). 第一次用时加载.
+// vps-server: 随附的 qrcode-generator(服务器在 /static/qrcode.js 和 /static/qrcode-utf8.js 提供, 不经打包). 第一次用时加载.
 interface QrCode {
   addData(text: string): void
   make(): void
@@ -9,7 +9,7 @@ declare global {
     qrcode?: ((type: number, level: string) => QrCode) & { stringToBytes?: unknown }
   }
 }
-const BASE = '/static/third_party/qrcode/'
+const BASE = '/static/'
 function script(name: string) {
   return new Promise<void>((resolve, reject) => {
     const element = document.createElement('script')

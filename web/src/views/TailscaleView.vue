@@ -111,7 +111,7 @@ async function send(path: string, body: unknown, method = 'POST') {
     showToast(t('vps.common.done'), 'success')
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('legacy.tailscale_action_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t('console.tailscale_action_failed'), 'destructive')
     return false
   } finally {
     busy.value = false
@@ -123,13 +123,13 @@ const facts = computed(() => {
   const value = data.value
   if (!value?.present) return []
   return [
-    { key: 'state', label: t('legacy.tailscale_state'), value: value.state },
-    { key: 'controlServer', label: t('legacy.tailscale_control_server') },
-    { key: 'account', label: t('legacy.tailscale_account') },
-    { key: 'ipv4', label: t('legacy.tailscale_ipv4') },
-    { key: 'ipv6', label: t('legacy.tailscale_ipv6') },
-    { key: 'version', label: t('legacy.tailscale_version'), value: value.version || '—' },
-    { key: 'tun', label: t('legacy.tailscale_tun'), value: value.tun == null ? '—' : t(value.tun ? 'legacy.tailscale_yes' : 'legacy.tailscale_no') },
+    { key: 'state', label: t('console.tailscale_state'), value: value.state },
+    { key: 'controlServer', label: t('console.tailscale_control_server') },
+    { key: 'account', label: t('console.tailscale_account') },
+    { key: 'ipv4', label: t('console.tailscale_ipv4') },
+    { key: 'ipv6', label: t('console.tailscale_ipv6') },
+    { key: 'version', label: t('console.tailscale_version'), value: value.version || '—' },
+    { key: 'tun', label: t('console.tailscale_tun'), value: value.tun == null ? '—' : t(value.tun ? 'console.tailscale_yes' : 'console.tailscale_no') },
   ]
 })
 const PRIVATE = { controlServer: 'tailscale_control_server', account: 'tailscale_account', ipv4: 'tailscale_ipv4', ipv6: 'tailscale_ipv6' } as const
@@ -148,22 +148,22 @@ async function openWeb() {
     if (parts.length !== 4 || parts[0] !== 100 || parts[1]! < 64 || parts[1]! > 127 || parts.slice(2).some((part) => part > 255)) throw new Error('address')
     window.location.assign(`http://${value}:5252/`)
   } catch {
-    showToast(t('legacy.tailscale_web_open_failed'), 'destructive')
+    showToast(t('console.tailscale_web_open_failed'), 'destructive')
   }
 }
 
 // ---- 连通性 ----
 const checkNames = computed(() => ({
-  varies: t('legacy.tailscale_varies'),
+  varies: t('console.tailscale_varies'),
   ipv4: 'IPv4',
   ipv6: 'IPv6',
   udp: 'UDP',
   upnp: 'UPnP',
   pcp: 'PCP',
   pmp: 'NAT-PMP',
-  hairpinning: t('legacy.tailscale_hairpinning'),
+  hairpinning: t('console.tailscale_hairpinning'),
 }))
-const yesNo = (value: boolean | null | undefined) => (value == null ? '—' : t(value ? 'legacy.tailscale_yes' : 'legacy.tailscale_no'))
+const yesNo = (value: boolean | null | undefined) => (value == null ? '—' : t(value ? 'console.tailscale_yes' : 'console.tailscale_no'))
 
 // ---- 设置 ----
 const routeOptions = computed(() => [{ value: '-', label: t('vps.tailscale.none') }, ...(data.value?.subnets ?? []).map((value) => ({ value, label: value }))])
@@ -197,13 +197,13 @@ const page = ref(1)
 const devices = computed(() => data.value?.devices ?? [])
 const deviceRows = computed(() => devices.value.slice((page.value - 1) * 10, page.value * 10))
 const deviceColumns = computed(() => [
-  { key: 'name', label: t('legacy.tailscale_device') },
-  { key: 'online', label: t('legacy.tailscale_state') },
-  { key: 'address', label: t('legacy.tailscale_address') },
-  { key: 'os', label: t('legacy.tailscale_os') },
-  { key: 'relay', label: t('legacy.tailscale_relay') },
-  { key: 'traffic', label: t('legacy.tailscale_rx_tx'), align: 'end' as const, mono: true },
-  { key: 'lastSeen', label: t('legacy.tailscale_last_seen'), mono: true },
+  { key: 'name', label: t('console.tailscale_device') },
+  { key: 'online', label: t('console.tailscale_state') },
+  { key: 'address', label: t('console.tailscale_address') },
+  { key: 'os', label: t('console.tailscale_os') },
+  { key: 'relay', label: t('console.tailscale_relay') },
+  { key: 'traffic', label: t('console.tailscale_rx_tx'), align: 'end' as const, mono: true },
+  { key: 'lastSeen', label: t('console.tailscale_last_seen'), mono: true },
 ])
 </script>
 
@@ -218,12 +218,12 @@ const deviceColumns = computed(() => [
     <ModuleInstall v-else-if="!data.installed" module="tailscale" name="Tailscale" @installed="load" />
 
     <PageSection v-else-if="!data.available" :cols="4" title="Tailscale">
-      <AlertBanner tone="destructive">{{ t('legacy.tailscale_unavailable') }}</AlertBanner>
+      <AlertBanner tone="destructive">{{ t('console.tailscale_unavailable') }}</AlertBanner>
       <FormActions>
         <Button as-child variant="outline">
           <RouterLink :to="{ path: '/settings/logs', query: { source: 'tailscale' } }"><ScrollText aria-hidden="true" />{{ t('vps.tailscale.logs') }}</RouterLink>
         </Button>
-        <Button variant="outline" :disabled="busy" @click="send('tailscale/restart', {})"><RotateCw aria-hidden="true" />{{ t('legacy.tailscale_restart') }}</Button>
+        <Button variant="outline" :disabled="busy" @click="send('tailscale/restart', {})"><RotateCw aria-hidden="true" />{{ t('console.tailscale_restart') }}</Button>
       </FormActions>
     </PageSection>
 
@@ -236,18 +236,18 @@ const deviceColumns = computed(() => [
               <StatusBadge :tone="running ? 'success' : 'warning'">{{ data.state }}</StatusBadge>
             </template>
             <template v-for="key in (['controlServer', 'account', 'ipv4', 'ipv6'] as const)" :key="key" #[`value-${key}`]>
-              <PrivateValue v-if="data.present?.[key]" :source="`tailscale-${PRIVATE[key]}`" field="address" :label="t(`legacy.${PRIVATE[key]}`)" />
+              <PrivateValue v-if="data.present?.[key]" :source="`tailscale-${PRIVATE[key]}`" field="address" :label="t(`console.${PRIVATE[key]}`)" />
               <template v-else>—</template>
             </template>
           </DescriptionList>
           <AlertBanner v-if="data.authUrl" tone="warning">
-            <a :href="data.authUrl" target="_blank" rel="noopener noreferrer" class="font-medium underline">{{ t('legacy.tailscale_authorize') }}</a>
+            <a :href="data.authUrl" target="_blank" rel="noopener noreferrer" class="font-medium underline">{{ t('console.tailscale_authorize') }}</a>
           </AlertBanner>
           <template v-if="!running">
-            <FormField v-slot="field" :label="t('legacy.tailscale_login_server')">
+            <FormField v-slot="field" :label="t('console.tailscale_login_server')">
               <Input :id="field.id" v-model="loginServer" type="url" maxlength="255" :placeholder="SERVER_EXAMPLE" autocomplete="off" />
             </FormField>
-            <FormField v-slot="field" :label="t('legacy.tailscale_auth_key')">
+            <FormField v-slot="field" :label="t('console.tailscale_auth_key')">
               <PasswordInput :id="field.id" v-model="authKey" autocomplete="off" maxlength="2048" />
             </FormField>
           </template>
@@ -255,39 +255,39 @@ const deviceColumns = computed(() => [
             <Button as-child variant="outline">
               <RouterLink :to="{ path: '/settings/logs', query: { source: 'tailscale' } }"><ScrollText aria-hidden="true" />{{ t('vps.tailscale.logs') }}</RouterLink>
             </Button>
-            <Button type="button" variant="outline" :disabled="busy" @click="send('tailscale/restart', {})"><RotateCw aria-hidden="true" />{{ t('legacy.tailscale_restart') }}</Button>
-            <Button v-if="running && data.settings?.bools.webclient" type="button" variant="outline" @click="openWeb"><ExternalLink aria-hidden="true" />{{ t('legacy.tailscale_open_web') }}</Button>
+            <Button type="button" variant="outline" :disabled="busy" @click="send('tailscale/restart', {})"><RotateCw aria-hidden="true" />{{ t('console.tailscale_restart') }}</Button>
+            <Button v-if="running && data.settings?.bools.webclient" type="button" variant="outline" @click="openWeb"><ExternalLink aria-hidden="true" />{{ t('console.tailscale_open_web') }}</Button>
             <ConfirmDialog
               v-if="running"
-              :title="t('legacy.tailscale_logout')"
-              :description="t('legacy.tailscale_logout_confirm')"
-              :confirm-label="t('legacy.tailscale_logout')"
+              :title="t('console.tailscale_logout')"
+              :description="t('console.tailscale_logout_confirm')"
+              :confirm-label="t('console.tailscale_logout')"
               danger
               @confirm="send('tailscale/logout', { confirm: true })"
             >
               <template #trigger>
-                <Button type="button" variant="destructive" :disabled="busy"><LogOut aria-hidden="true" />{{ t('legacy.tailscale_logout') }}</Button>
+                <Button type="button" variant="destructive" :disabled="busy"><LogOut aria-hidden="true" />{{ t('console.tailscale_logout') }}</Button>
               </template>
             </ConfirmDialog>
-            <Button v-else type="submit" :disabled="busy"><LogIn aria-hidden="true" />{{ t('legacy.tailscale_connect') }}</Button>
+            <Button v-else type="submit" :disabled="busy"><LogIn aria-hidden="true" />{{ t('console.tailscale_connect') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
       <!-- 连通性: 检查较慢, 单独读取 -->
-      <PageSection :cols="4" :title="t('legacy.tailscale_connectivity')">
+      <PageSection :cols="4" :title="t('console.tailscale_connectivity')">
         <LoadingState v-if="!net" />
         <AlertBanner v-else-if="!net.running" tone="info">{{ t('vps.tailscale.notRunning') }}</AlertBanner>
-        <AlertBanner v-else-if="net.failed" tone="warning">{{ t('legacy.tailscale_unavailable') }}</AlertBanner>
+        <AlertBanner v-else-if="net.failed" tone="warning">{{ t('console.tailscale_unavailable') }}</AlertBanner>
         <template v-else>
           <DescriptionList
             :items="[
-              { key: 'derp', label: t('legacy.tailscale_derp'), value: net.derp || '—' },
-              { key: 'endpoint', label: t('legacy.tailscale_public_endpoint') },
+              { key: 'derp', label: t('console.tailscale_derp'), value: net.derp || '—' },
+              { key: 'endpoint', label: t('console.tailscale_public_endpoint') },
             ]"
           >
             <template #value-endpoint>
-              <PrivateValue v-if="net.endpoint" source="tailscale-tailscale_public_endpoint" field="address" :label="t('legacy.tailscale_public_endpoint')" />
+              <PrivateValue v-if="net.endpoint" source="tailscale-tailscale_public_endpoint" field="address" :label="t('console.tailscale_public_endpoint')" />
               <template v-else>—</template>
             </template>
           </DescriptionList>
@@ -299,36 +299,36 @@ const deviceColumns = computed(() => [
 
       <!-- 设置: 一个表单, 一起保存 -->
       <CardForm v-if="data.settings" @submit.prevent="saveSettings">
-        <PageSection :cols="4" :title="t('legacy.tailscale_tab_settings')">
+        <PageSection :cols="4" :title="t('console.tailscale_tab_settings')">
           <CheckboxField
             v-for="name in SETTINGS"
             :key="name"
             v-model="bools[name]"
-            :label="t(`legacy.${LABELS[name]}`)"
+            :label="t(`console.${LABELS[name]}`)"
             :disabled="data.settings.bools[name] === null || (name === 'webclient' && !running)"
             :span="4"
           />
-          <CheckboxField v-model="memory" :label="t('legacy.tailscale_memory')" :disabled="data.settings.memory === null" :span="4" />
-          <FormField v-slot="field" :label="t('legacy.tailscale_routes')" :span="4">
-            <SelectMenu :id="field.id" v-model="routes" :options="routeOptions" :label="t('legacy.tailscale_routes')" />
+          <CheckboxField v-model="memory" :label="t('console.tailscale_memory')" :disabled="data.settings.memory === null" :span="4" />
+          <FormField v-slot="field" :label="t('console.tailscale_routes')" :span="4">
+            <SelectMenu :id="field.id" v-model="routes" :options="routeOptions" :label="t('console.tailscale_routes')" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.tailscale_exit_node')" :span="4">
-            <SelectMenu :id="field.id" v-model="exitNode" :options="exitOptions" :label="t('legacy.tailscale_exit_node')" />
+          <FormField v-slot="field" :label="t('console.tailscale_exit_node')" :span="4">
+            <SelectMenu :id="field.id" v-model="exitNode" :options="exitOptions" :label="t('console.tailscale_exit_node')" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.tailscale_peer_relay')" :span="4" :help="data.settings.relay ? t('vps.tailscale.relaySet') : undefined">
+          <FormField v-slot="field" :label="t('console.tailscale_peer_relay')" :span="4" :help="data.settings.relay ? t('vps.tailscale.relaySet') : undefined">
             <Input :id="field.id" v-model="relay" inputmode="numeric" maxlength="5" placeholder="••••••" autocomplete="off" />
           </FormField>
           <FormActions>
-            <Button v-if="data.settings.relay" type="button" variant="outline" :disabled="busy" @click="clearRelayPort">{{ t('legacy.tailscale_clear') }} {{ t('legacy.tailscale_peer_relay') }}</Button>
-            <Button type="submit" :disabled="busy"><Save aria-hidden="true" />{{ t('legacy.frp_save') }}</Button>
+            <Button v-if="data.settings.relay" type="button" variant="outline" :disabled="busy" @click="clearRelayPort">{{ t('console.tailscale_clear') }} {{ t('console.tailscale_peer_relay') }}</Button>
+            <Button type="submit" :disabled="busy"><Save aria-hidden="true" />{{ t('console.frp_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
 
-      <PageSection :cols="4" :title="`${t('legacy.tailscale_devices')} (${devices.length})`">
-        <DataTable :columns="deviceColumns" :rows="deviceRows" row-key="id" :caption="t('legacy.tailscale_devices')" :empty="t('legacy.tailscale_no_devices')">
+      <PageSection :cols="4" :title="`${t('console.tailscale_devices')} (${devices.length})`">
+        <DataTable :columns="deviceColumns" :rows="deviceRows" row-key="id" :caption="t('console.tailscale_devices')" :empty="t('console.tailscale_no_devices')">
           <template #cell-online="{ row }">
-            <StatusBadge :tone="row.online ? 'success' : 'neutral'">{{ t(row.online ? 'legacy.tailscale_online' : 'legacy.tailscale_offline') }}</StatusBadge>
+            <StatusBadge :tone="row.online ? 'success' : 'neutral'">{{ t(row.online ? 'console.tailscale_online' : 'console.tailscale_offline') }}</StatusBadge>
           </template>
           <template #cell-address="{ row }">
             <PrivateValue v-if="row.ipv4" :source="`tailscale-peer-${row.id}`" field="ipv4" :label="`IPv4 ${row.name}`" />
@@ -336,11 +336,11 @@ const deviceColumns = computed(() => [
           </template>
           <template #cell-relay="{ row }">{{ row.relay || '—' }}</template>
           <template #cell-traffic="{ row }">{{ formatBytes(row.rx) }} / {{ formatBytes(row.tx) }}</template>
-          <template #cell-lastSeen="{ row }">{{ row.online ? t('legacy.tailscale_online') : row.lastSeen || '—' }}</template>
+          <template #cell-lastSeen="{ row }">{{ row.online ? t('console.tailscale_online') : row.lastSeen || '—' }}</template>
         </DataTable>
         <PaginationBar v-if="devices.length > 10" v-model="page" :total="devices.length" />
         <FormActions>
-          <Button variant="outline" :disabled="busy" @click="load"><RefreshCw aria-hidden="true" />{{ t('legacy.tailscale_refresh') }}</Button>
+          <Button variant="outline" :disabled="busy" @click="load"><RefreshCw aria-hidden="true" />{{ t('console.tailscale_refresh') }}</Button>
         </FormActions>
       </PageSection>
 

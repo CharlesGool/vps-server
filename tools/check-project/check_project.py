@@ -20,7 +20,7 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 VENDORED = ("third_party/", "src/web/static/third_party/",
-            "src/web/static/licenses/", "src/web/static/icons/lucide/")
+            "src/web/static/licenses/")
 
 
 def load_json(path):

@@ -46,9 +46,9 @@ async function send(path: string, body: unknown) {
   busy.value = true
   try {
     data.value = await api<Frpc>(path, { method: 'POST', body })
-    showToast(t('legacy.frp_saved'), 'success')
+    showToast(t('console.frp_saved'), 'success')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('legacy.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
   } finally {
     busy.value = false
   }
@@ -59,21 +59,21 @@ async function test(name: string) {
     tested.value[name] = (await api<{ connected: boolean }>('frpc/test', { method: 'POST', body: { name } })).connected
   } catch (err) {
     delete tested.value[name]
-    if (!isSignedOut(err)) showToast(t(err instanceof ApiError && err.code === 'frp_busy' ? 'legacy.frp_testing' : 'legacy.frp_test_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(t(err instanceof ApiError && err.code === 'frp_busy' ? 'console.frp_testing' : 'console.frp_test_failed'), 'destructive')
   }
 }
 
 const columns = computed(() => [
-  { key: 'name', label: t('legacy.frp_instance_name') },
+  { key: 'name', label: t('console.frp_instance_name') },
   { key: 'state', label: t('vps.modules.status') },
-  { key: 'count', label: t('legacy.frp_proxy_list_heading'), align: 'end' as const, mono: true },
+  { key: 'count', label: t('console.frp_proxy_list_heading'), align: 'end' as const, mono: true },
   { key: 'action', label: t('vps.files.actions'), align: 'end' as const },
 ])
 const actions = (client: Client) => [
-  { key: 'test', label: t('legacy.frp_test_connection') },
-  { key: 'edit', label: t('legacy.frp_edit_client_button') },
-  { key: 'toggle', label: client.running ? t('legacy.frp_stop_client') : t('legacy.frp_start_client') },
-  { key: 'delete', label: t('legacy.frp_delete_client'), danger: true },
+  { key: 'test', label: t('console.frp_test_connection') },
+  { key: 'edit', label: t('console.frp_edit_client_button') },
+  { key: 'toggle', label: client.running ? t('console.frp_stop_client') : t('console.frp_start_client') },
+  { key: 'delete', label: t('console.frp_delete_client'), danger: true },
 ]
 const deleting = ref<string>()
 const deleteOpen = ref(false)
@@ -88,15 +88,15 @@ function action(key: string, client: Client) {
 }
 const connection = (client: Client) => {
   const value = tested.value[client.name]
-  if (value === 'testing') return { tone: 'info' as const, text: t('legacy.frp_testing') }
+  if (value === 'testing') return { tone: 'info' as const, text: t('console.frp_testing') }
   const connected = value ?? client.connected
-  return connected ? { tone: 'success' as const, text: t('legacy.frp_connected') } : { tone: 'warning' as const, text: t('legacy.frp_disconnected') }
+  return connected ? { tone: 'success' as const, text: t('console.frp_connected') } : { tone: 'warning' as const, text: t('console.frp_disconnected') }
 }
 </script>
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.frp_client_heading')" :description="t('vps.frpc.description')" />
+    <PageHeader :title="t('console.frp_client_heading')" :description="t('vps.frpc.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
@@ -104,15 +104,15 @@ const connection = (client: Client) => {
 
     <ModuleInstall v-else-if="!data.installed" module="frpc" name="FRPC" @installed="load" />
 
-    <PageSection v-else :cols="4" :title="t('legacy.frp_instances')" :description="t('legacy.frp_client_note')">
-      <AlertBanner v-if="data.binaryMissing" tone="warning">{{ t('legacy.frp_client_binary_missing') }}</AlertBanner>
-      <DataTable :columns="columns" :rows="data.clients" row-key="name" :caption="t('legacy.frp_instances')" :empty="t('legacy.frp_no_clients')">
+    <PageSection v-else :cols="4" :title="t('console.frp_instances')" :description="t('console.frp_client_note')">
+      <AlertBanner v-if="data.binaryMissing" tone="warning">{{ t('console.frp_client_binary_missing') }}</AlertBanner>
+      <DataTable :columns="columns" :rows="data.clients" row-key="name" :caption="t('console.frp_instances')" :empty="t('console.frp_no_clients')">
         <template #cell-name="{ row }">
           <RouterLink :to="{ path: '/frpc/edit', query: { name: row.name } }" class="font-medium text-primary underline">{{ row.name }}</RouterLink>
         </template>
         <template #cell-state="{ row }">
           <InlineGroup>
-            <StatusBadge :tone="row.running ? 'success' : 'neutral'">{{ t(row.running ? 'legacy.node_active' : 'legacy.frp_not_running') }}</StatusBadge>
+            <StatusBadge :tone="row.running ? 'success' : 'neutral'">{{ t(row.running ? 'console.node_active' : 'console.frp_not_running') }}</StatusBadge>
             <StatusBadge :tone="connection(row).tone" aria-live="polite">{{ connection(row).text }}</StatusBadge>
           </InlineGroup>
         </template>
@@ -123,16 +123,16 @@ const connection = (client: Client) => {
       </DataTable>
       <FormActions v-if="!data.binaryMissing">
         <Button as-child>
-          <RouterLink to="/frpc/edit"><Plus aria-hidden="true" />{{ t('legacy.frp_new_client') }}</RouterLink>
+          <RouterLink to="/frpc/edit"><Plus aria-hidden="true" />{{ t('console.frp_new_client') }}</RouterLink>
         </Button>
       </FormActions>
     </PageSection>
 
     <ConfirmDialog
       v-model:open="deleteOpen"
-      :title="t('legacy.frp_delete_client')"
-      :description="t('legacy.frp_delete_client_confirm', { name: deleting ?? '' })"
-      :confirm-label="t('legacy.frp_delete_client')"
+      :title="t('console.frp_delete_client')"
+      :description="t('console.frp_delete_client_confirm', { name: deleting ?? '' })"
+      :confirm-label="t('console.frp_delete_client')"
       danger
       @confirm="deleting && send('frpc/delete', { name: deleting })"
     />

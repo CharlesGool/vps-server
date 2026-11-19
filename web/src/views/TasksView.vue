@@ -60,7 +60,7 @@ const TONES = { ok: 'success', failed: 'destructive', timeout: 'warning', skippe
 
 function apply(value: Tasks) {
   data.value = value
-  if (value.message) showToast(t(`legacy.task_msg_${value.message}`), 'success')
+  if (value.message) showToast(t(`console.task_msg_${value.message}`), 'success')
 }
 async function load() {
   try {
@@ -73,8 +73,8 @@ async function load() {
 onMounted(load)
 const errorText = (err: unknown) => {
   const code = err instanceof ApiError ? err.code : 'invalid'
-  const text = t(`legacy.task_error_${code}`)
-  return text === `legacy.task_error_${code}` ? t('legacy.task_error_invalid') : text
+  const text = t(`console.task_error_${code}`)
+  return text === `console.task_error_${code}` ? t('console.task_error_invalid') : text
 }
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
@@ -94,9 +94,9 @@ async function act(path: string, body: unknown) {
 }
 
 const facts = (item: { text: string; next: string | null; last: Run | null }) => [
-  { key: 'when', label: t('legacy.task_mode'), value: item.text || '—' },
-  { key: 'next', label: t('legacy.task_next'), value: item.next ?? '—' },
-  { key: 'last', label: t('legacy.task_last'), value: item.last ? item.last.started : t('legacy.task_never') },
+  { key: 'when', label: t('console.task_mode'), value: item.text || '—' },
+  { key: 'next', label: t('console.task_next'), value: item.next ?? '—' },
+  { key: 'last', label: t('console.task_last'), value: item.last ? item.last.started : t('console.task_never') },
 ]
 
 // ---- 运行记录 ----
@@ -136,7 +136,7 @@ async function save() {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.tasks')" :description="t('vps.tasks.description')" />
+    <PageHeader :title="t('console.tasks')" :description="t('vps.tasks.description')" />
 
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
@@ -144,28 +144,28 @@ async function save() {
 
     <template v-else>
       <!-- 内置: 配置备份, 设置在备份页 -->
-      <PageSection :cols="4" :title="t('legacy.task_builtin_backup')">
+      <PageSection :cols="4" :title="t('console.task_builtin_backup')">
         <InlineGroup>
-          <StatusBadge tone="info">{{ t('legacy.task_builtin') }}</StatusBadge>
-          <StatusBadge v-if="data.backup.last" :tone="TONES[data.backup.last.status]">{{ t(`legacy.task_status_${data.backup.last.status}`) }}</StatusBadge>
-          <StatusBadge v-if="!data.backup.enabled">{{ t('legacy.task_disabled') }}</StatusBadge>
+          <StatusBadge tone="info">{{ t('console.task_builtin') }}</StatusBadge>
+          <StatusBadge v-if="data.backup.last" :tone="TONES[data.backup.last.status]">{{ t(`console.task_status_${data.backup.last.status}`) }}</StatusBadge>
+          <StatusBadge v-if="!data.backup.enabled">{{ t('console.task_disabled') }}</StatusBadge>
         </InlineGroup>
         <DescriptionList :items="facts({ ...data.backup, text: data.backup.enabled ? data.backup.text : '' })" />
         <FormActions>
-          <Button v-if="data.backup.runs.length" variant="outline" @click="historyOf = { title: t('legacy.task_builtin_backup'), runs: data.backup.runs }">
-            <History aria-hidden="true" />{{ t('legacy.task_history') }} ({{ data.backup.runs.length }})
+          <Button v-if="data.backup.runs.length" variant="outline" @click="historyOf = { title: t('console.task_builtin_backup'), runs: data.backup.runs }">
+            <History aria-hidden="true" />{{ t('console.task_history') }} ({{ data.backup.runs.length }})
           </Button>
           <Button as-child variant="outline">
-            <RouterLink to="/backup">{{ t('legacy.task_open') }}</RouterLink>
+            <RouterLink to="/backup">{{ t('console.task_open') }}</RouterLink>
           </Button>
         </FormActions>
       </PageSection>
 
       <PageSection v-for="task in data.tasks" :key="task.id" :cols="4" :title="task.name">
         <InlineGroup>
-          <StatusBadge v-if="task.last" :tone="TONES[task.last.status]">{{ t(`legacy.task_status_${task.last.status}`) }}</StatusBadge>
-          <StatusBadge v-else>{{ t('legacy.task_never') }}</StatusBadge>
-          <StatusBadge v-if="task.done === 'ran' || task.done === 'missed'" :tone="task.done === 'ran' ? 'success' : 'warning'">{{ t(`legacy.task_done_${task.done}`) }}</StatusBadge>
+          <StatusBadge v-if="task.last" :tone="TONES[task.last.status]">{{ t(`console.task_status_${task.last.status}`) }}</StatusBadge>
+          <StatusBadge v-else>{{ t('console.task_never') }}</StatusBadge>
+          <StatusBadge v-if="task.done === 'ran' || task.done === 'missed'" :tone="task.done === 'ran' ? 'success' : 'warning'">{{ t(`console.task_done_${task.done}`) }}</StatusBadge>
         </InlineGroup>
         <SwitchField
           :model-value="task.enabled"
@@ -174,60 +174,60 @@ async function save() {
           @update:model-value="(value: boolean) => act('tasks/toggle', { id: task.id, enabled: value })"
         />
         <DescriptionList :items="facts(task)" />
-        <LogOutput :text="task.command" :label="`${t('legacy.task_command')} ${task.name}`" />
+        <LogOutput :text="task.command" :label="`${t('console.task_command')} ${task.name}`" />
         <FormActions>
           <Button v-if="task.runs.length" variant="outline" @click="historyOf = { title: task.name, runs: task.runs }">
-            <History aria-hidden="true" />{{ t('legacy.task_history') }} ({{ task.runs.length }})
+            <History aria-hidden="true" />{{ t('console.task_history') }} ({{ task.runs.length }})
           </Button>
           <ConfirmDialog
-            :title="t('legacy.task_delete')"
-            :description="t('legacy.task_delete_confirm', { name: task.name })"
-            :confirm-label="t('legacy.task_delete')"
+            :title="t('console.task_delete')"
+            :description="t('console.task_delete_confirm', { name: task.name })"
+            :confirm-label="t('console.task_delete')"
             danger
             @confirm="act('tasks/delete', { id: task.id })"
           >
             <template #trigger>
-              <Button variant="destructive" :disabled="busy" :aria-label="`${t('legacy.task_delete')} ${task.name}`"><Trash2 aria-hidden="true" />{{ t('legacy.task_delete') }}</Button>
+              <Button variant="destructive" :disabled="busy" :aria-label="`${t('console.task_delete')} ${task.name}`"><Trash2 aria-hidden="true" />{{ t('console.task_delete') }}</Button>
             </template>
           </ConfirmDialog>
-          <Button variant="outline" :disabled="busy" :aria-label="`${t('legacy.task_edit')} ${task.name}`" @click="openForm(task)"><Pencil aria-hidden="true" />{{ t('legacy.task_edit') }}</Button>
-          <Button variant="outline" :disabled="busy" :aria-label="`${t('legacy.task_run')} ${task.name}`" @click="act('tasks/run', { id: task.id })"><Play aria-hidden="true" />{{ t('legacy.task_run') }}</Button>
+          <Button variant="outline" :disabled="busy" :aria-label="`${t('console.task_edit')} ${task.name}`" @click="openForm(task)"><Pencil aria-hidden="true" />{{ t('console.task_edit') }}</Button>
+          <Button variant="outline" :disabled="busy" :aria-label="`${t('console.task_run')} ${task.name}`" @click="act('tasks/run', { id: task.id })"><Play aria-hidden="true" />{{ t('console.task_run') }}</Button>
         </FormActions>
       </PageSection>
       <!-- 添加或编辑任务: 页面最后一张表单卡片; 点任务的"编辑"时载入这里 -->
       <CardForm id="task-form" @submit.prevent="save">
-        <PageSection :cols="4" :title="form.id ? t('legacy.task_edit_heading') : t('legacy.task_add')" :description="t('legacy.task_run_as_root')">
+        <PageSection :cols="4" :title="form.id ? t('console.task_edit_heading') : t('console.task_add')" :description="t('console.task_run_as_root')">
           <EmptyState v-if="!data.tasks.length && !form.id" :icon="Play" :title="t('vps.tasks.empty')" />
           <AlertBanner v-if="formError" tone="destructive">{{ formError }}</AlertBanner>
-          <FormField v-slot="field" :label="t('legacy.task_name')">
+          <FormField v-slot="field" :label="t('console.task_name')">
             <Input :id="field.id" v-model="form.name" :maxlength="data.limits.nameMax" autocomplete="off" />
           </FormField>
           <ScheduleFields :key="formKey" v-model="spec" :timezone="data.timezone" />
-          <FormField v-slot="field" :label="t('legacy.task_command')">
+          <FormField v-slot="field" :label="t('console.task_command')">
             <Textarea :id="field.id" v-model="form.command" :maxlength="data.limits.commandMax" spellcheck="false" class="font-mono" />
           </FormField>
-          <FormField v-slot="field" :label="t('legacy.task_timeout')">
+          <FormField v-slot="field" :label="t('console.task_timeout')">
             <NumberField :id="field.id" v-model="form.timeout" :min="data.limits.timeoutMin" :max="data.limits.timeoutMax" />
           </FormField>
-          <CheckboxField v-model="form.notify" :label="t('legacy.task_notify')" :span="6" />
-          <CheckboxField v-model="form.enabled" :label="t('legacy.task_enabled')" :span="6" />
+          <CheckboxField v-model="form.notify" :label="t('console.task_notify')" :span="6" />
+          <CheckboxField v-model="form.enabled" :label="t('console.task_enabled')" :span="6" />
           <FormActions>
-            <Button v-if="form.id" type="button" variant="outline" @click="reset">{{ t('legacy.task_cancel') }}</Button>
-            <Button type="submit" :disabled="busy || !form.name.trim() || !form.command.trim()"><Save aria-hidden="true" />{{ t('legacy.task_save') }}</Button>
+            <Button v-if="form.id" type="button" variant="outline" @click="reset">{{ t('console.task_cancel') }}</Button>
+            <Button type="submit" :disabled="busy || !form.name.trim() || !form.command.trim()"><Save aria-hidden="true" />{{ t('console.task_save') }}</Button>
           </FormActions>
         </PageSection>
       </CardForm>
     </template>
 
 
-    <AppDialog v-model:open="historyOpen" :title="`${t('legacy.task_history')} · ${historyOf?.title ?? ''}`">
+    <AppDialog v-model:open="historyOpen" :title="`${t('console.task_history')} · ${historyOf?.title ?? ''}`">
       <GroupBlock v-for="(run, index) in historyOf?.runs ?? []" :key="index" :title="run.started">
         <InlineGroup>
-          <StatusBadge :tone="TONES[run.status]">{{ t(`legacy.task_status_${run.status}`) }}</StatusBadge>
-          <StatusBadge>{{ t(`legacy.task_trigger_${run.trigger}`) }}</StatusBadge>
-          <StatusBadge v-if="run.exit !== null">{{ t('legacy.task_exit') }} {{ run.exit }}</StatusBadge>
+          <StatusBadge :tone="TONES[run.status]">{{ t(`console.task_status_${run.status}`) }}</StatusBadge>
+          <StatusBadge>{{ t(`console.task_trigger_${run.trigger}`) }}</StatusBadge>
+          <StatusBadge v-if="run.exit !== null">{{ t('console.task_exit') }} {{ run.exit }}</StatusBadge>
         </InlineGroup>
-        <LogOutput v-if="run.output" :text="run.output" :label="`${t('legacy.task_history')} ${run.started}`" />
+        <LogOutput v-if="run.output" :text="run.output" :label="`${t('console.task_history')} ${run.started}`" />
       </GroupBlock>
     </AppDialog>
   </CardGrid>

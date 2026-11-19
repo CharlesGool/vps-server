@@ -43,8 +43,8 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const ERRORS: Record<string, string> = {
   module_busy: 'vps.dashboard.busy',
-  module_job_failed: 'legacy.module_job_failed',
-  module_source_missing: 'legacy.module_source_missing',
+  module_job_failed: 'console.module_job_failed',
+  module_source_missing: 'console.module_source_missing',
 }
 async function toggle(enable: boolean) {
   busy.value = true
@@ -62,40 +62,40 @@ async function toggle(enable: boolean) {
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.ipcert')" :description="t('vps.ipcert.description')" />
+    <PageHeader :title="t('console.ipcert')" :description="t('vps.ipcert.description')" />
     <PageSection v-if="!data" :cols="4">
       <LoadingState />
     </PageSection>
-    <ModuleInstall v-else-if="!data.installed" module="ipcert" :name="t('legacy.ipcert')" @installed="load" />
-    <PageSection v-else :cols="4" :title="t('legacy.domains_ip_heading')" :description="t('legacy.domains_ip_help')">
+    <ModuleInstall v-else-if="!data.installed" module="ipcert" :name="t('console.ipcert')" @installed="load" />
+    <PageSection v-else :cols="4" :title="t('console.domains_ip_heading')" :description="t('console.domains_ip_help')">
       <InlineGroup>
-        <StatusBadge :tone="data.enabled ? 'success' : 'neutral'">{{ t(data.enabled ? 'legacy.domains_ip_on' : 'legacy.ipcert_off') }}</StatusBadge>
+        <StatusBadge :tone="data.enabled ? 'success' : 'neutral'">{{ t(data.enabled ? 'console.domains_ip_on' : 'console.ipcert_off') }}</StatusBadge>
       </InlineGroup>
-      <AlertBanner v-if="data.job === 'running'" tone="info">{{ t('legacy.module_job_running') }}</AlertBanner>
-      <AlertBanner v-else-if="data.job === 'failed'" tone="destructive">{{ t('legacy.ipcert_failed') }}</AlertBanner>
+      <AlertBanner v-if="data.job === 'running'" tone="info">{{ t('console.module_job_running') }}</AlertBanner>
+      <AlertBanner v-else-if="data.job === 'failed'" tone="destructive">{{ t('console.ipcert_failed') }}</AlertBanner>
       <DescriptionList
         v-if="data.facts"
         :items="[
-          { key: 'url', label: t('legacy.ipcert_address'), value: data.facts.url, mono: true, copyable: true },
-          { key: 'issuer', label: t('legacy.ipcert_issuer'), value: data.facts.issuer },
-          { key: 'expires', label: t('legacy.ipcert_expires'), value: data.facts.expires },
+          { key: 'url', label: t('console.ipcert_address'), value: data.facts.url, mono: true, copyable: true },
+          { key: 'issuer', label: t('console.ipcert_issuer'), value: data.facts.issuer },
+          { key: 'expires', label: t('console.ipcert_expires'), value: data.facts.expires },
         ]"
       />
-      <p class="text-sm text-muted-foreground">{{ t('legacy.ipcert_ports') }}</p>
+      <p class="text-sm text-muted-foreground">{{ t('console.ipcert_ports') }}</p>
       <FormActions>
         <ConfirmDialog
           v-if="data.enabled"
-          :title="t('legacy.domains_ip_disable')"
-          :description="t('legacy.domains_ip_off_confirm')"
-          :confirm-label="t('legacy.domains_ip_disable')"
+          :title="t('console.domains_ip_disable')"
+          :description="t('console.domains_ip_off_confirm')"
+          :confirm-label="t('console.domains_ip_disable')"
           danger
           @confirm="toggle(false)"
         >
           <template #trigger>
-            <Button variant="destructive" :disabled="busy || data.job === 'running'"><ShieldOff aria-hidden="true" />{{ t('legacy.domains_ip_disable') }}</Button>
+            <Button variant="destructive" :disabled="busy || data.job === 'running'"><ShieldOff aria-hidden="true" />{{ t('console.domains_ip_disable') }}</Button>
           </template>
         </ConfirmDialog>
-        <Button v-else :disabled="busy || data.job === 'running'" @click="toggle(true)"><ShieldCheck aria-hidden="true" />{{ t('legacy.domains_ip_enable') }}</Button>
+        <Button v-else :disabled="busy || data.job === 'running'" @click="toggle(true)"><ShieldCheck aria-hidden="true" />{{ t('console.domains_ip_enable') }}</Button>
       </FormActions>
     </PageSection>
   </CardGrid>

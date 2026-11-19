@@ -84,24 +84,24 @@ async function run() {
   }
 }
 
-const description = computed(() => (clientIp.value ? `${t('legacy.your_ip')}: ${clientIp.value}` : undefined))
+const description = computed(() => (clientIp.value ? `${t('console.your_ip')}: ${clientIp.value}` : undefined))
 const PHASES: Record<Phase, string> = {
-  waiting: 'legacy.waiting',
-  measuring: 'legacy.measuring',
-  done: 'legacy.done',
+  waiting: 'console.waiting',
+  measuring: 'console.measuring',
+  done: 'console.done',
   failed: 'vps.speedtest.failed',
 }
 </script>
 
 <template>
   <CardGrid>
-    <PageHeader :title="t('legacy.speedtest')" :description="description" />
+    <PageHeader :title="t('console.speedtest')" :description="description" />
 
     <PageSection :cols="4" :title="t('vps.speedtest.result')">
       <!-- 每组: 名称, 大号数值和单位, 状态; 测速中的数值变化用 aria-live 播报 -->
-      <GroupBlock v-for="metric in METRICS" :key="metric.key" :title="t(`legacy.${metric.key}`)" :span="3">
+      <GroupBlock v-for="metric in METRICS" :key="metric.key" :title="t(`console.${metric.key}`)" :span="3">
         <p class="text-3xl font-semibold tabular-nums" aria-live="polite">
-          {{ results[metric.key].value || t('legacy.idle') }}
+          {{ results[metric.key].value || t('console.idle') }}
           <span class="text-sm font-normal text-muted-foreground">{{ metric.unit }}</span>
         </p>
         <p class="text-sm" :class="results[metric.key].phase === 'failed' ? 'text-destructive' : 'text-muted-foreground'">
@@ -110,7 +110,7 @@ const PHASES: Record<Phase, string> = {
       </GroupBlock>
       <FormActions>
         <Button :disabled="running || !config" @click="run">
-          <Gauge aria-hidden="true" />{{ running ? t('legacy.running') : t('legacy.run_test') }}
+          <Gauge aria-hidden="true" />{{ running ? t('console.running') : t('console.run_test') }}
         </Button>
       </FormActions>
     </PageSection>

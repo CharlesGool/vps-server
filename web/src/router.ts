@@ -1,11 +1,8 @@
-import { createRouter, createWebHistory, START_LOCATION, type RouteComponent } from 'vue-router'
+import { createRouter, createWebHistory, type RouteComponent } from 'vue-router'
 import { FEATURES } from './app.config'
 import { FEATURE_LIST } from './features'
 import { hasIpRecord, loadSession, loginByIp, session } from './lib/session'
-import { appRoutes, LEGACY_PATHS, type View } from './routes'
-
-// 旧页面的占位组件: 导航前已整页跳转, 不会渲染
-const LegacyPage: RouteComponent = { render: () => null }
+import { appRoutes, type View } from './routes'
 
 const VIEWS: Record<View, RouteComponent | (() => Promise<RouteComponent>)> = {
   dashboard: () => import('./views/DashboardView.vue'),
@@ -71,23 +68,12 @@ export const router = createRouter({
       component: VIEWS[view],
       meta: { titleKey, icon, public: isPublic },
     })),
-    // 旧页面和其他路径交给服务器: 整页跳转
-    ...[...LEGACY_PATHS, '/:pathMatch(.*)*'].map((path) => ({
-      path,
-      component: LegacyPage,
-      meta: { legacy: true, titleKey: '', icon: 'home' as const },
-    })),
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
 // 启用登录时: 首次导航读取会话; 有 IP 访问记录且没有有效会话时自动发起 IP 访问.
-router.beforeEach(async (to, from) => {
-  if (to.meta.legacy) {
-    // 首次加载就落到这里说明服务器把这个路径交给了单页但没有对应页面(如生产构建中的组件样例): 回到主页
-    if (from === START_LOCATION) window.location.replace(import.meta.env.BASE_URL)
-    else window.location.assign(to.fullPath)
-    return false
-  }
+router.beforeEach(async (to) => {
   if (!FEATURES.login) return true
   const signedIn = () => session.value?.authenticated ?? false
   if (!session.value) {

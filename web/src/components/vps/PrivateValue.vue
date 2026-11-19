@@ -30,7 +30,7 @@ async function toggle() {
   try {
     shown.value = await fetchValue()
   } catch {
-    showToast(t('legacy.private_value_failed'), 'destructive')
+    showToast(t('console.private_value_failed'), 'destructive')
   }
 }
 async function copy() {
@@ -41,7 +41,7 @@ async function copy() {
     timer = setTimeout(() => (copied.value = false), 2000)
     showToast(t('component.copied'), 'success')
   } catch {
-    showToast(t('legacy.private_copy_failed'), 'destructive')
+    showToast(t('console.private_copy_failed'), 'destructive')
   }
 }
 </script>
@@ -55,7 +55,7 @@ async function copy() {
       variant="outline"
       size="icon-sm"
       class="w-8 shrink-0"
-      :aria-label="`${shown === undefined ? t('legacy.login_show_password') : t('legacy.login_hide_password')} ${label}`"
+      :aria-label="`${shown === undefined ? t('console.login_show_password') : t('console.login_hide_password')} ${label}`"
       :aria-pressed="shown !== undefined"
       @click="toggle"
     >

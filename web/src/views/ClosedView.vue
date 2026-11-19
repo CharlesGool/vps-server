@@ -40,12 +40,12 @@ onMounted(async () => {
 
 <template>
   <CardGrid>
-    <PageHeader :title="name || t('legacy.module_closed_title')" />
+    <PageHeader :title="name || t('console.module_closed_title')" />
     <PageSection v-if="!name && !unknown" :cols="4">
       <LoadingState />
     </PageSection>
-    <PageSection v-else :cols="4" :title="t('legacy.module_closed_title')">
-      <EmptyState :icon="CircleOff" :title="t('legacy.module_closed_title')" :description="unknown ? undefined : t('vps.closed.description', { name })" />
+    <PageSection v-else :cols="4" :title="t('console.module_closed_title')">
+      <EmptyState :icon="CircleOff" :title="t('console.module_closed_title')" :description="unknown ? undefined : t('vps.closed.description', { name })" />
     </PageSection>
   </CardGrid>
 </template>
