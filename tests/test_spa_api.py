@@ -231,6 +231,32 @@ class SpaApiTest(unittest.TestCase):
         self.assertEqual(Exchange(self.app, "POST", "/api/files/link", cookie=token,
                                   body={"file": "missing", "minutes": 60, "max": None}).json["error"], "not_found")
 
+    def test_backup_tasks_and_closed_page(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        backup = Exchange(self.app, "GET", "/api/backup", cookie=token).json
+        self.assertIn("keepMax", backup)
+        bad = Exchange(self.app, "PUT", "/api/backup/settings", cookie=token,
+                       body={"enabled": True, "spec": {"mode": "weekly", "days": [], "time": "03:00:00"}, "keep": 3})
+        self.assertEqual((bad.status, bad.json["error"]), (400, "invalid"))
+        saved = Exchange(self.app, "PUT", "/api/backup/settings", cookie=token,
+                         body={"enabled": True, "spec": {"mode": "interval", "n": 6, "unit": "hours"}, "keep": 3}).json
+        self.assertEqual((saved["settings"]["keep"], saved["settings"]["spec"]["n"]), (3, 6))
+        self.assertEqual(Exchange(self.app, "POST", "/api/backup/inspect", body={"name": "../x"},
+                                  cookie=token).status, 404)
+        task = Exchange(self.app, "PUT", "/api/tasks/save", cookie=token,
+                        body={"name": "t", "command": "true", "timeout": 60, "notify": False, "enabled": True,
+                              "spec": {"mode": "daily", "time": "04:00:00"}}).json
+        self.assertEqual([item["name"] for item in task["tasks"]], ["t"])
+        task_id = task["tasks"][0]["id"]
+        toggled = Exchange(self.app, "POST", "/api/tasks/toggle", body={"id": task_id, "enabled": False},
+                           cookie=token).json
+        self.assertFalse(toggled["tasks"][0]["enabled"])
+        self.assertEqual(Exchange(self.app, "POST", "/api/tasks/delete", body={"id": task_id},
+                                  cookie=token).json["tasks"], [])
+        self.assertEqual(Exchange(self.app, "GET", "/api/closed?module=nope", cookie=token).status, 404)
+        info = Exchange(self.app, "GET", "/api/closed?module=speedtest", cookie=token).json
+        self.assertEqual((info["destination"], info["closed"]), ("/speedtest", False))
+
     def test_closed_feature_page_and_api(self):
         token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
         original = self.app.closed_page_module
@@ -252,7 +278,8 @@ class SpaApiTest(unittest.TestCase):
         self.assertTrue(is_spa_page("/speedtest"))
         self.assertTrue(is_spa_page("/iperf"))
         self.assertTrue(is_spa_page("/portfwd"))
-        self.assertFalse(is_spa_page("/backup"))
+        self.assertTrue(is_spa_page("/backup/restore"))
+        self.assertFalse(is_spa_page("/backup/download"))
         self.assertFalse(is_spa_page("/showcasex"))
         missing = Exchange(self.app, "GET", "/assets/..%2Fapp.py")
         self.assertEqual(missing.status, 404)

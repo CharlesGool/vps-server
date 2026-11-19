@@ -37,9 +37,9 @@ for (const route of signedInRoutes) {
 test('仪表板为每个功能提供入口', async ({ page }) => {
   test.skip(!FEATURES.dashboard, '未启用仪表板')
   await open(page, '/')
-  // vps-server(项目决策 2026-11-18): 主页的入口是服务器给出的模块卡片(ModuleCard), 名称是指向功能页的链接;
+  // vps-server(项目决策 2026-11-18): 设置的子页, 恢复备份和功能已关闭不是功能页. 主页的入口是服务器给出的模块卡片(ModuleCard), 名称是指向功能页的链接;
   // 功能页还没全部迁移, 所以检查每个单页功能都有入口, 而不是入口数等于功能数.
-  const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'modules', 'logs', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
+  const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'modules', 'logs', 'restore', 'closed', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
   test.skip(features.length === 0, '功能页还没有迁移到单页')
   for (const feature of features) {
     await expect(page.locator(`main [data-layout="module-card"] a[href$="${feature.path}"]`)).toHaveCount(1)

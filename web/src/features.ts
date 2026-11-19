@@ -19,4 +19,6 @@ export const FEATURE_LIST: Feature[] = [
   { path: '/visitors', name: 'visitors', view: 'visitors', titleKey: 'legacy.visitors', descriptionKey: 'vps.visitors.description', icon: 'visitors' },
   { path: '/terminal', name: 'terminal', view: 'terminal', titleKey: 'legacy.terminal_title', descriptionKey: 'vps.terminal.description', icon: 'terminal' },
   { path: '/files', name: 'files', view: 'files', titleKey: 'legacy.files', descriptionKey: 'vps.files.description', icon: 'files' },
+  { path: '/backup', name: 'backup', view: 'backup', titleKey: 'legacy.backup', descriptionKey: 'vps.backup.description', icon: 'backup' },
+  { path: '/tasks', name: 'tasks', view: 'tasks', titleKey: 'legacy.tasks', descriptionKey: 'vps.tasks.description', icon: 'tasks' },
 ]

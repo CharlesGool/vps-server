@@ -158,6 +158,65 @@ const FILES_SAMPLE = {
   ],
 }
 
+const BACKUP_SAMPLE = {
+  settings: { enabled: true, spec: { mode: 'daily', time: '03:00:00' }, keep: 7, text: '每天 03:00' },
+  keepMax: 100,
+  last: { status: 'ok', started: '2026-01-02 03:00', exit: null, trigger: 'schedule', output: '' },
+  next: '2026-01-03 03:00',
+  backups: [
+    { name: 'vps-server-20260102T030000Z-scheduled.tar.gz.sealed', kind: 'scheduled', sealed: true, keyMatch: true, created: '2026-01-02 03:00', size: 184320 },
+    { name: 'vps-server-20260101T120000Z-pre-upgrade.tar.gz', kind: 'pre-upgrade', sealed: false, keyMatch: null, created: '2026-01-01 12:00', size: 176128 },
+    { name: 'vps-server-20251231T080000Z-manual.tar.gz.sealed', kind: 'manual', sealed: true, keyMatch: false, created: '2025-12-31 08:00', size: 172032 },
+  ],
+  encryption: { on: true, fingerprint: 'a1b2c3d4e5f6' },
+  data: { state: 'on', encrypted: 9, total: 9 },
+  result: { ok: true, time: '2026-01-01 12:05', name: 'vps-server-20260101T120000Z-pre-upgrade.tar.gz', restored: 42, error: '' },
+  timezone: 'UTC',
+  message: null,
+}
+const TASKS_SAMPLE = {
+  backup: {
+    enabled: true,
+    text: '每天 03:00',
+    next: '2026-01-03 03:00',
+    last: { status: 'ok', started: '2026-01-02 03:00', exit: null, trigger: 'schedule', output: '' },
+    runs: [{ status: 'ok', started: '2026-01-02 03:00', exit: null, trigger: 'schedule', output: '' }],
+  },
+  tasks: [
+    {
+      id: '0a1b2c3d',
+      name: '清理日志',
+      command: 'journalctl --vacuum-time=7d',
+      timeout: 600,
+      notify: true,
+      enabled: true,
+      spec: { mode: 'weekly', days: [1, 4], time: '04:30:00' },
+      text: '每周一、四 04:30',
+      next: '2026-01-05 04:30',
+      done: null,
+      last: { status: 'ok', started: '2026-01-01 04:30', exit: 0, trigger: 'schedule', output: 'Vacuuming done, freed 120.0M.' },
+      runs: [{ status: 'ok', started: '2026-01-01 04:30', exit: 0, trigger: 'schedule', output: 'Vacuuming done, freed 120.0M.' }],
+    },
+    {
+      id: '4e5f6a7b',
+      name: '检查更新',
+      command: 'apt-get update -qq',
+      timeout: 3600,
+      notify: false,
+      enabled: false,
+      spec: { mode: 'interval', n: 6, unit: 'hours' },
+      text: '每 6 小时',
+      next: null,
+      done: null,
+      last: { status: 'failed', started: '2026-01-01 06:00', exit: 100, trigger: 'manual', output: 'E: Could not get lock /var/lib/apt/lists/lock' },
+      runs: [{ status: 'failed', started: '2026-01-01 06:00', exit: 100, trigger: 'manual', output: 'E: Could not get lock /var/lib/apt/lists/lock' }],
+    },
+  ],
+  limits: { nameMax: 60, commandMax: 2000, timeoutMin: 1, timeoutMax: 86400, timeoutDefault: 3600 },
+  timezone: 'UTC',
+  message: null,
+}
+
 // 每个测试都检查控制台错误和未捕获异常
 export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>({
   consoleErrors: [
@@ -178,6 +237,7 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
   // 终端页连接真实的 root shell: 并发打开很多页面会占满终端名额(429), 输出也随环境变化, 所以用固定的提示符代替.
   // 最近访问者记录每次请求的时间: 用固定的 12 行样例(含本机, 内网, 外部, 入站, 出站, 第二页).
   // 迷你网盘显示本机磁盘剩余空间: 用固定样例(含文件, 下载链接, 进行中和失败的下载任务).
+  // 备份和定时任务显示下次运行的日期和服务器时区: 用固定样例(含几份备份, 两个任务和运行记录).
   stableServer: [
     async ({ page }, use, testInfo) => {
       if (testInfo.project.name !== 'vps') {
@@ -189,6 +249,8 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
           route.request().method() === 'GET' ? route.fulfill({ json: VISITORS_SAMPLE }) : route.fallback(),
         )
         await page.route(/\/api\/files$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: FILES_SAMPLE }) : route.fallback()))
+        await page.route(/\/api\/backup$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: BACKUP_SAMPLE }) : route.fallback()))
+        await page.route(/\/api\/tasks$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: TASKS_SAMPLE }) : route.fallback()))
       }
       await use()
     },

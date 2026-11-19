@@ -8,8 +8,8 @@ export type ShowcasePage = (typeof SHOWCASE_PAGES)[number]
 // 场景样例(/scenes): 常见整页的布局示例(登录, 仪表板, 设置, 列表, 长表单, 搜索结果等), 与组件样例并列
 export const SHOWCASE_SCENES = ['login', 'dashboard', 'settings', 'list', 'form', 'empty', 'loading', 'error', 'forbidden', 'detail', 'edit', 'wizard', 'search'] as const
 export type ShowcaseScene = (typeof SHOWCASE_SCENES)[number]
-export type View = 'dashboard' | 'files' | 'terminal' | 'visitors' | 'portfwd' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
-export type PageIcon = 'home' | 'files' | 'terminal' | 'visitors' | 'portfwd' | 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase'
+export type View = 'dashboard' | 'closed' | 'tasks' | 'restore' | 'backup' | 'files' | 'terminal' | 'visitors' | 'portfwd' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
+export type PageIcon = 'home' | 'closed' | 'tasks' | 'restore' | 'backup' | 'files' | 'terminal' | 'visitors' | 'portfwd' | 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase'
 
 export interface AppRoute {
   path: string
@@ -36,6 +36,8 @@ export function appRoutes(features: typeof FEATURES = FEATURES, showcase = SHOWC
   routes.push(
     { path: '/settings', name: 'settings', view: 'settings', titleKey: 'page.settings', icon: 'settings' },
     { path: '/settings/modules', name: 'modules', view: 'modules', titleKey: 'page.modules', icon: 'modules' },
+    { path: '/backup/restore', name: 'restore', view: 'restore', titleKey: 'legacy.backup_restore_title', icon: 'restore' },
+    { path: '/closed', name: 'closed', view: 'closed', titleKey: 'legacy.module_closed_title', icon: 'closed' },
     { path: '/settings/logs', name: 'logs', view: 'logs', titleKey: 'page.logs', icon: 'logs' },
     { path: '/changelog', name: 'changelog', view: 'changelog', titleKey: 'page.changelog', icon: 'changelog', public: true },
   )

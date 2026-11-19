@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { CloudDownload, Link, SlidersHorizontal, Trash2, Upload, X } from '@lucide/vue'
+import { CloudDownload, Link, SlidersHorizontal, Upload, X } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/app/ActionMenu.vue'
 import AlertBanner from '@/components/app/AlertBanner.vue'
 import AppDialog from '@/components/app/AppDialog.vue'
 import CardForm from '@/components/app/CardForm.vue'
@@ -217,6 +218,26 @@ async function addLink() {
   if (limit && !/^\d+$/.test(limit)) return showToast(t('legacy.files_error_link_invalid'), 'destructive')
   if (await send('files/link', { file: linksFor.value, minutes: Number(minutes.value), max: limit ? Number(limit) : null })) maxDownloads.value = ''
 }
+// 每个文件的操作在菜单里: 下载链接(对话框), 删除(先确认)
+const fileActions = (entry: FileEntry) => [
+  { key: 'links', label: t('vps.files.links', { count: entry.links.length }) },
+  { key: 'delete', label: t('legacy.files_delete'), danger: true },
+]
+// 确认对话框关闭时先于 confirm 事件改 open, 所以要删除的项单独保存
+const deleting = ref<FileEntry>()
+const deleteOpen = ref(false)
+function fileAction(key: string, entry: FileEntry) {
+  if (key === 'links') openLinks(entry)
+  else {
+    deleting.value = entry
+    deleteOpen.value = true
+  }
+}
+async function confirmDelete() {
+  const entry = deleting.value
+  deleting.value = undefined
+  if (entry) await send('files/delete', { file: entry.id })
+}
 const linkMeta = (link: FileLink) =>
   `${link.expires ? t('legacy.files_link_until', { date: date(link.expires) }) : t('legacy.files_link_forever')} · ${
     link.max ? t('legacy.files_link_count_limit', { count: link.downloads, limit: link.max }) : t('legacy.files_link_count', { count: link.downloads })
@@ -287,23 +308,21 @@ const linkMeta = (link: FileLink) =>
           <template #cell-created="{ row }">{{ date(row.created) }}</template>
           <template #cell-source="{ row }">{{ sourceText(row) }}</template>
           <template #cell-action="{ row }">
-            <Button variant="outline" size="sm" @click="openLinks(row)"><Link aria-hidden="true" />{{ t('vps.files.links', { count: row.links.length }) }}</Button>
-            <ConfirmDialog
-              :title="t('legacy.files_delete')"
-              :description="t('legacy.files_delete_confirm', { name: row.name })"
-              :confirm-label="t('legacy.files_delete')"
-              danger
-              @confirm="send('files/delete', { file: row.id })"
-            >
-              <template #trigger>
-                <Button variant="destructive" size="sm" :disabled="busy" :aria-label="`${t('legacy.files_delete')} ${row.name}`"><Trash2 aria-hidden="true" />{{ t('legacy.files_delete') }}</Button>
-              </template>
-            </ConfirmDialog>
+            <ActionMenu icon-only :label="`${t('component.moreActions')} ${row.name}`" :items="fileActions(row)" @select="(key: string) => fileAction(key, row)" />
           </template>
         </DataTable>
         <PaginationBar v-if="(data?.files.length ?? 0) > 10" v-model="page" :total="data?.files.length ?? 0" />
       </PageSection>
     </template>
+
+    <ConfirmDialog
+      v-model:open="deleteOpen"
+      :title="t('legacy.files_delete')"
+      :description="t('legacy.files_delete_confirm', { name: deleting?.name ?? '' })"
+      :confirm-label="t('legacy.files_delete')"
+      danger
+      @confirm="confirmDelete"
+    />
 
     <AppDialog v-model:open="limitsOpen" :title="t('vps.files.limits')" :description="t('legacy.files_quota_help')">
       <FormField v-slot="field" :label="t('legacy.files_quota_label')" :span="6">

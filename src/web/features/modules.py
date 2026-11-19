@@ -477,8 +477,8 @@ class ModulesMixin:
         return self.redirect(operation_url,
                              {"Cache-Control": "no-store"})
 
-    def page_module_closed(self, lang, query_lang, parsed):
-        module = self.context.parse_qs(parsed.query).get("module", [""])[0]
+    def closed_module(self, module, lang):
+        """(destination page, display name, closed now) for a module that has a "closed" page, else None."""
         destinations = {"web_public": "/public/http", "web_http": "/public/http", "web_https": "/public/https",
                         "speedtest": "/speedtest", "iperf3": "/iperf", "proxy_nodes": "/proxy",
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
@@ -486,9 +486,7 @@ class ModulesMixin:
                         "files": "/files",
                         "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
         if module not in destinations:
-            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
-        if self.context.module_states()[module]:
-            return self.redirect(destinations[module], {"Cache-Control": "no-store"})
+            return None
         t = self.context.STRINGS[lang]
         names = {"web_public": t["module_web_public"], "web_http": t["module_web_http"], "web_https": t["module_web_https"],
                  "speedtest": t["speedtest"], "iperf3": t["iperf"],
@@ -496,6 +494,17 @@ class ModulesMixin:
                  "caddy": t["domains"], "ipcert": t["ipcert"],
                  "frp": t["frp_heading"], "portfwd": t["portfwd"], "files": t["files"],
                  "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
+        return destinations[module], names[module], not self.context.module_states()[module]
+
+    def page_module_closed(self, lang, query_lang, parsed):
+        module = self.context.parse_qs(parsed.query).get("module", [""])[0]
+        info = self.closed_module(module, lang)
+        if info is None:
+            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+        if not info[2]:
+            return self.redirect(info[0], {"Cache-Control": "no-store"})
+        t = self.context.STRINGS[lang]
+        names = {module: info[1]}
         closed = self.context.html.escape(t["module_closed_title"])
         body = (f'<h1>{self.context.html.escape(names[module])}</h1>'
                 f'<div class="card access-card"><p>{closed}</p></div>')
