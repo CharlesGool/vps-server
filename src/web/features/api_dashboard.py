@@ -35,7 +35,8 @@ class DashboardApiMixin:
         return {"web_public": t["module_web_public"], "speedtest": t["speedtest"], "iperf3": t["iperf"],
                 "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
                 "caddy": t["domains"], "ipcert": t["ipcert"], "portfwd": t["portfwd"], "files": t["files"],
-                "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
+                "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"],
+                **{feature: t["feature_" + feature] for feature in self.context.SYSTEM_FEATURES}}
 
     def dashboard_modules(self):
         context = self.context

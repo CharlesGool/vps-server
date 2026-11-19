@@ -61,6 +61,17 @@ export function formatDuration(seconds: number, t: (key: string, values?: Record
   return days ? t('vps.monitor.daysHours', { days, hours }) : t('vps.monitor.hoursMinutes', { hours, minutes })
 }
 
+// CPU 型号的短名称: 去掉 (R), (TM), "@ 频率", "Processor", "64-Core"
+export function cpuName(model: string): string {
+  return model
+    .replace(/\((R|TM)\)/gi, '')
+    .replace(/\s+@.*$/, '')
+    .replace(/\s+\d+-Core(\s+Processor)?$/i, '')
+    .replace(/\s+Processor$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 // 卡片和图例里用的短名称: 去掉厂商前缀(NVIDIA GeForce RTX 5090 → RTX 5090)
 export function gpuName(name: string): string {
   return name.replace(/^NVIDIA\s+/i, '').replace(/^GeForce\s+/i, '') || name

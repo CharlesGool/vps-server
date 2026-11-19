@@ -733,7 +733,9 @@
       "liveGpu": "实时 GPU",
       "gpuChart": "GPU",
       "gpuTempThreshold": "GPU 温度",
-      "gpuMemoryThreshold": "显存使用率"
+      "gpuMemoryThreshold": "显存使用率",
+      "cpuLabel": "CPU · {model} · {cores} 核",
+      "cpuCores": "CPU · {cores} 核"
     },
     "system": {
       "title": "系统",

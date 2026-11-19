@@ -14,7 +14,7 @@ import TrendChart from '@/components/app/TrendChart.vue'
 import MonitorAlertsCards from '@/components/vps/MonitorAlertsCards.vue'
 import { api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
-import { formatDuration, formatRate, gpuCards, gpuName, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
+import { cpuName, formatDuration, formatRate, gpuCards, gpuName, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
 
 // 资源监控: 仪表板模式. 一行 4 张数据卡(CPU, 内存, 硬盘, 负载), 整行的实时图和 24 小时趋势图, 磁盘表, 主机信息, 网卡表.
 // 每 5 秒刷新一次; 最下面是资源告警的开关和阈值.
@@ -44,7 +44,7 @@ const cards = computed(() => {
   const ago = value.hourAgo
   const load = value.load
   return [
-    { key: 'cpu', label: t('vps.monitor.cpu'), value: `${value.cpu.percent.toFixed(1)}%`,
+    { key: 'cpu', label: cpuName(value.cpu.model) ? t('vps.monitor.cpuLabel', { model: cpuName(value.cpu.model), cores: value.cpu.cores }) : t('vps.monitor.cpuCores', { cores: value.cpu.cores }), value: `${value.cpu.percent.toFixed(1)}%`,
       delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(1) },
     { key: 'memory', label: t('vps.monitor.memory'), value: `${memoryPercent.value.toFixed(1)}%`,
       delta: ago ? Math.round((memoryPercent.value - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(2) },
@@ -117,8 +117,6 @@ const hostItems = computed(() => {
   const value = data.value
   if (!value) return []
   const items = [
-    { key: 'model', label: t('vps.monitor.cpuModel'), value: value.cpu.model || '-' },
-    { key: 'cores', label: t('vps.monitor.cores'), value: String(value.cpu.cores) },
     { key: 'memory', label: t('vps.monitor.memoryTotal'), value: `${formatBytes(value.memory.used)} / ${formatBytes(value.memory.total)}` },
     { key: 'swap', label: t('vps.monitor.swap'), value: value.memory.swapTotal ? `${formatBytes(value.memory.swapUsed)} / ${formatBytes(value.memory.swapTotal)}` : '-' },
     { key: 'load', label: t('vps.monitor.loadAll'), value: value.load.map((item) => item.toFixed(2)).join(' / ') },

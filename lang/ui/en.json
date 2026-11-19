@@ -733,7 +733,9 @@
       "liveGpu": "Live GPU",
       "gpuChart": "GPU",
       "gpuTempThreshold": "GPU temperature",
-      "gpuMemoryThreshold": "GPU memory use"
+      "gpuMemoryThreshold": "GPU memory use",
+      "cpuLabel": "CPU · {model} · {cores} cores",
+      "cpuCores": "CPU · {cores} cores"
     },
     "system": {
       "title": "System",
