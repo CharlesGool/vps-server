@@ -76,10 +76,21 @@ class DashboardApiMixin:
             return None
         measured, per_entry = total_meter.period_usage(state, total_meter.lifetimes(info))
         used = total_meter.calibrated_total(state, measured)
+        spec = state.get("reset_spec")
+
+        def when(stamp, with_time):
+            # A calendar reset is in the host's local time; the older reset day is midnight UTC.
+            if not stamp:
+                return None
+            if not spec:
+                return stamp[:10]
+            moment = self.context.datetime.fromisoformat(stamp).astimezone()
+            return moment.strftime("%Y-%m-%d %H:%M" if with_time else "%Y-%m-%d")
         return {
             "used": used, "measured": measured, "cap": state["cap_bytes"], "resetDay": state["reset_day"],
-            "level": total_meter.level(state, used), "since": state["period_start"][:10],
-            "nextReset": (state["next_reset_at"] or "")[:10] or None,
+            "resetSpec": spec, "timezone": self.context.time.tzname[0],
+            "level": total_meter.level(state, used), "since": when(state["period_start"], False),
+            "nextReset": when(state["next_reset_at"], True),
             "offset": total_meter.calibration(state), "calibratedAt": (state.get("calibrated_at") or "")[:10] or None,
             "sources": [{"id": identifier, "name": info[identifier]["name"], "value": value,
                          "multiplier": info[identifier]["multiplier"]}
@@ -149,13 +160,14 @@ class DashboardApiMixin:
         body = self.read_json()
         if body is None:
             return self.api_error(400, "invalid_request")
-        cap, day = body.get("capGib"), body.get("resetDay")
+        cap, day, spec = body.get("capGib"), body.get("resetDay", 0), body.get("resetSpec")
         try:
-            cap, day = total_meter.parse_settings("" if cap is None else str(cap), str(day))
+            spec = total_meter.parse_spec(spec)
+            cap, day = total_meter.parse_settings("" if cap is None else str(cap), "0" if spec else str(day))
             now = self.context.datetime.now(self.context.timezone.utc)
             state, info = self.total_state(now)
             total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
-                                    total_meter.apply_settings(state, cap, day, now, info))
+                                    total_meter.apply_settings(state, cap, day, now, info, spec))
         except (ValueError, TypeError):
             return self.api_error(400, "invalid_request")
         except OSError:

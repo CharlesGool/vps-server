@@ -84,7 +84,8 @@ from security_events import AuditLog, KnownLogins, BarkAlerts
 import secure_store
 import terminal_session
 from node_state import read_inventory, _read_json
-from node_inventory import InvalidInventory, advance_reset_interval, normalize_destinations, reset_interval
+from node_inventory import (InvalidInventory, advance_reset_interval, next_scheduled_reset, normalize_destinations,
+                            reset_interval, reset_schedule, schedule_reset_mode)
 from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
 from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path

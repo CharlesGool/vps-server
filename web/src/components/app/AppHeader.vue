@@ -16,6 +16,7 @@ const router = useRouter()
 // 登录页和未登录时只显示项目名称; 已登录或无登录时显示应用导航.
 const signedIn = computed(() => !FEATURES.login || (session.value?.authenticated ?? false))
 const bare = computed(() => route.name === 'login' || !signedIn.value)
+const serverLabel = computed(() => session.value?.serverLabel ?? '')
 
 const items = computed(() => [
   ...(FEATURES.dashboard ? [{ to: '/', label: 'nav.home', icon: House }] : []),
@@ -47,6 +48,15 @@ async function signOut() {
           {{ APP_NAME }}
         </RouterLink>
         <VersionLink v-if="!bare" />
+        <!-- vps-server: 服务器标识(设置中填写), 和版本号同样的灰底小标签; 不是链接, 文字可以选中复制 -->
+        <span
+          v-if="!bare && serverLabel"
+          data-server-label
+          class="flex min-w-6 cursor-text items-center justify-center rounded-sm bg-secondary px-2 py-1 text-sm font-semibold text-muted-foreground select-text"
+          :title="t('vps.header.serverLabel')"
+        >
+          {{ serverLabel }}
+        </span>
       </div>
       <nav v-if="!bare" :aria-label="t('nav.label')" class="hidden sm:block">
         <ul class="flex flex-wrap items-center gap-1">

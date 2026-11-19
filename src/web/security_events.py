@@ -5,6 +5,7 @@ decides whether a request is allowed; the console records what happened and
 optionally pushes a notification for logins from a new address and bans.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -152,9 +153,15 @@ def valid_bark_server(value):
 
 
 class BarkAlerts:
-    """Push notifications through a Bark server (https://bark.day.app)."""
+    """Push notifications through a Bark server (https://bark.day.app) to one or more device keys.
 
-    SETTINGS = ("server", "key", "new_ip", "ban")
+    Settings are ``{"server", "keys", "new_ip", "ban"}``; files written before several keys
+    were possible hold a single ``"key"`` and still load. Every message goes to every key.
+    """
+
+    SETTINGS = ("server", "keys", "new_ip", "ban")
+    OLD_SETTINGS = ("server", "key", "new_ip", "ban")
+    MAX_KEYS = 10
     REPEAT_SECONDS = 3600
 
     def __init__(self, path, log=None):
@@ -162,7 +169,7 @@ class BarkAlerts:
         self.lock = threading.Lock()
         self.log = log or (lambda message: None)
         self.server = DEFAULT_BARK_SERVER
-        self.key = ""
+        self.keys = []
         self.new_ip = True
         self.ban = True
         self.load_error = False
@@ -170,37 +177,80 @@ class BarkAlerts:
         if self.path.exists():
             try:
                 document = json.loads(secure_store.read_text(self.path))
+                if isinstance(document, dict) and set(document) == set(self.OLD_SETTINGS):
+                    document = {**document, "keys": [document["key"]] if document["key"] else []}
+                    del document["key"]
                 if (not isinstance(document, dict) or set(document) != set(self.SETTINGS) or
                         not valid_bark_server(document["server"]) or
-                        not (document["key"] == "" or BARK_KEY_RE.fullmatch(document["key"])) or
+                        not isinstance(document["keys"], list) or len(document["keys"]) > self.MAX_KEYS or
+                        any(not isinstance(key, str) or not BARK_KEY_RE.fullmatch(key) for key in document["keys"]) or
                         not isinstance(document["new_ip"], bool) or not isinstance(document["ban"], bool)):
                     raise ValueError("invalid alert settings")
-                self.server, self.key = document["server"], document["key"]
+                self.server, self.keys = document["server"], list(dict.fromkeys(document["keys"]))
                 self.new_ip, self.ban = document["new_ip"], document["ban"]
             except (OSError, ValueError, TypeError, KeyError):
                 self.load_error = True
 
+    @staticmethod
+    def key_id(key):
+        """A stable handle for one key that does not reveal it."""
+        return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+
+    @staticmethod
+    def masked(key):
+        """Enough of a key to tell several apart: the first and last four characters."""
+        return f"{key[:4]}****{key[-4:]}" if len(key) >= 12 else f"{key[:2]}****"
+
     def configured(self):
         with self.lock:
-            return bool(self.key)
+            return bool(self.keys)
 
     def settings(self):
         with self.lock:
-            return {"server": self.server, "configured": bool(self.key),
+            return {"server": self.server, "configured": bool(self.keys),
+                    "keys": [{"id": self.key_id(key), "masked": self.masked(key)} for key in self.keys],
                     "new_ip": self.new_ip, "ban": self.ban}
 
-    def update(self, *, server, key, new_ip, ban, clear_key=False):
-        """Save settings. An empty ``key`` keeps the stored one."""
+    def _save(self, server, keys, new_ip, ban):
+        document = {"server": server, "keys": keys, "new_ip": bool(new_ip), "ban": bool(ban)}
+        secure_store.write_text(self.path, json.dumps(document) + "\n")
+        self.server, self.keys, self.new_ip, self.ban = server, keys, bool(new_ip), bool(ban)
+        self.load_error = False
+
+    def update(self, *, server, key="", new_ip, ban, clear_key=False):
+        """Save settings. A non-empty ``key`` is added to the keys; ``clear_key`` removes them all."""
         server = server.strip().rstrip("/") or DEFAULT_BARK_SERVER
         key = key.strip()
         if not valid_bark_server(server) or (key and not BARK_KEY_RE.fullmatch(key)):
             raise ValueError("invalid alert settings")
         with self.lock:
-            stored = "" if clear_key else (key or self.key)
-            document = {"server": server, "key": stored, "new_ip": bool(new_ip), "ban": bool(ban)}
-            secure_store.write_text(self.path, json.dumps(document) + "\n")
-            self.server, self.key, self.new_ip, self.ban = server, stored, bool(new_ip), bool(ban)
-            self.load_error = False
+            keys = [] if clear_key else list(self.keys)
+            if key and key not in keys:
+                if len(keys) >= self.MAX_KEYS:
+                    raise ValueError("too many keys")
+                keys.append(key)
+            self._save(server, keys, new_ip, ban)
+
+    def add_key(self, key):
+        key = key.strip() if isinstance(key, str) else ""
+        if not BARK_KEY_RE.fullmatch(key):
+            raise ValueError("invalid key")
+        with self.lock:
+            if key in self.keys:
+                return False
+            if len(self.keys) >= self.MAX_KEYS:
+                raise ValueError("too many keys")
+            self._save(self.server, [*self.keys, key], self.new_ip, self.ban)
+            return True
+
+    def remove_key(self, identifier):
+        """Remove the key with this id; False when there is none."""
+        with self.lock:
+            keys = [key for key in self.keys if self.key_id(key) != identifier]
+            if len(keys) == len(self.keys):
+                return False
+            self._save(self.server, keys, self.new_ip, self.ban)
+            return True
 
     def _post(self, server, key, title, body):
         data = json.dumps({"title": title[:60], "body": body[:200], "group": "vps-server"},
@@ -211,30 +261,35 @@ class BarkAlerts:
         with urllib.request.urlopen(request, timeout=10) as response:
             response.read(4096)
 
+    def _post_all(self, server, keys, title, body):
+        """Send to every key; return the first error's name, or None when all were sent."""
+        error = None
+        for key in keys:
+            try:
+                self._post(server, key, title, body)
+            except (OSError, ValueError, urllib.error.URLError) as exc:
+                error = error or type(exc).__name__
+        return error
+
     def send_test(self, title, body):
-        """Send synchronously; return None or a short error description."""
+        """Send synchronously to every key; return None or a short error description."""
         with self.lock:
-            server, key = self.server, self.key
-        if not key:
+            server, keys = self.server, list(self.keys)
+        if not keys:
             return "not configured"
-        try:
-            self._post(server, key, title, body)
-            return None
-        except (OSError, ValueError, urllib.error.URLError) as exc:
-            return type(exc).__name__
+        return self._post_all(server, keys, title, body)
 
     def notify_task(self, title, body):
         """A scheduled job failed: send when a Bark key is set, whatever the other switches say."""
         with self.lock:
-            server, key = self.server, self.key
-        if not key:
+            server, keys = self.server, list(self.keys)
+        if not keys:
             return False
 
         def run():
-            try:
-                self._post(server, key, title, body)
-            except (OSError, ValueError, urllib.error.URLError) as exc:
-                self.log(type(exc).__name__)
+            error = self._post_all(server, keys, title, body)
+            if error:
+                self.log(error)
 
         threading.Thread(target=run, daemon=True).start()
         return True
@@ -242,7 +297,7 @@ class BarkAlerts:
     def notify(self, kind, title, body, dedupe=""):
         """Send in the background if ``kind`` ("new_ip" or "ban") is on."""
         with self.lock:
-            if not self.key or not getattr(self, kind, False):
+            if not self.keys or not getattr(self, kind, False):
                 return False
             now = time.time()
             marker = (kind, dedupe)
@@ -251,13 +306,12 @@ class BarkAlerts:
             self._last_sent[marker] = now
             if len(self._last_sent) > 500:
                 self._last_sent = {k: v for k, v in self._last_sent.items() if now - v < self.REPEAT_SECONDS}
-            server, key = self.server, self.key
+            server, keys = self.server, list(self.keys)
 
         def run():
-            try:
-                self._post(server, key, title, body)
-            except (OSError, ValueError, urllib.error.URLError) as exc:
-                self.log(type(exc).__name__)
+            error = self._post_all(server, keys, title, body)
+            if error:
+                self.log(error)
 
         threading.Thread(target=run, daemon=True).start()
         return True

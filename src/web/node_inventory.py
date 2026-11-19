@@ -46,7 +46,85 @@ def _valid_month_day(value: str) -> bool:
     return 1 <= month <= 12 and 1 <= day <= calendar.monthrange(2000, month)[1]
 
 
+# A reset on the calendar, in the host's local time like scheduled tasks:
+# "at:weekly:1,3@03:00:00" (Sunday is 0), "at:monthly:31@03:00:00", "at:yearly:11-30@03:00:00".
+_SCHEDULE = re.compile(r"at:(weekly|monthly|yearly):([0-9,-]{1,13})@([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])\Z")
+
+
+def reset_schedule(mode: str) -> dict[str, Any] | None:
+    """The schedule spec (schedule_time's form) of an ``at:`` reset mode, or None."""
+    if not isinstance(mode, str):
+        return None
+    match = _SCHEDULE.fullmatch(mode)
+    if match is None:
+        return None
+    kind, value = match.group(1), match.group(2)
+    spec: dict[str, Any] = {"mode": kind, "time": f"{match.group(3)}:{match.group(4)}:{match.group(5)}"}
+    try:
+        if kind == "weekly":
+            days = [int(part) for part in value.split(",")]
+            if not days or any(not 0 <= day <= 6 for day in days) or days != sorted(set(days)):
+                return None
+            spec["days"] = days
+        elif kind == "monthly":
+            spec["day"] = int(value)
+            if not 1 <= spec["day"] <= 31:
+                return None
+        else:
+            month, day = (int(part) for part in value.split("-"))
+            if not 1 <= month <= 12 or not 1 <= day <= calendar.monthrange(2000, month)[1]:
+                return None
+            spec.update(month=month, day=day)
+    except ValueError:
+        return None
+    return spec
+
+
+def schedule_reset_mode(spec: dict[str, Any]) -> str:
+    """The ``at:`` reset mode for a weekly, monthly or yearly spec; ValueError otherwise."""
+    kind = spec.get("mode") if isinstance(spec, dict) else None
+    if kind == "weekly":
+        value = ",".join(str(day) for day in sorted(set(spec["days"])))
+    elif kind == "monthly":
+        value = str(spec["day"])
+    elif kind == "yearly":
+        value = f"{spec['month']:02d}-{spec['day']:02d}"
+    else:
+        raise ValueError("reset schedule must be weekly, monthly or yearly")
+    mode = f"at:{kind}:{value}@{spec['time']}"
+    if reset_schedule(mode) is None:
+        raise ValueError("invalid reset schedule")
+    return mode
+
+
+def _schedule_time():
+    try:
+        import schedule_time
+    except ImportError:  # imported as part of a package (tests)
+        from . import schedule_time  # type: ignore[no-redef]
+    return schedule_time
+
+
+def next_scheduled_reset(after: datetime, spec: dict[str, Any]) -> datetime:
+    """The first time strictly after ``after`` (aware) that ``spec`` falls on, in host local time; UTC."""
+    local = after.astimezone().replace(tzinfo=None)
+    following = _schedule_time().next_occurrence(spec, local)
+    if following is None:
+        raise InvalidInventory("reset schedule never falls")
+    return following.astimezone(timezone.utc)
+
+
+def previous_scheduled_reset(now: datetime, spec: dict[str, Any]) -> datetime | None:
+    """The latest time at or before ``now`` (aware) that ``spec`` fell on, in UTC; None if there is none."""
+    local = now.astimezone().replace(tzinfo=None)
+    before = _schedule_time().previous_occurrence(spec, local)
+    return before.astimezone(timezone.utc) if before is not None else None
+
+
 def advance_reset_interval(due: datetime, mode: str) -> datetime:
+    schedule = reset_schedule(mode)
+    if schedule is not None:
+        return next_scheduled_reset(due, schedule)
     parsed = reset_interval(mode)
     if parsed is None:
         raise InvalidInventory("invalid reset interval")
@@ -352,7 +430,7 @@ def validate_metering(node: dict[str, Any], legacy: bool = False) -> None:
             if date.tzinfo is None or date.utcoffset() != timezone.utc.utcoffset(date):
                 raise InvalidInventory("node date must be UTC")
     if ((node["reset_mode"] not in ("none", "monthly", "once") and
-         reset_interval(node["reset_mode"]) is None) or
+         reset_interval(node["reset_mode"]) is None and reset_schedule(node["reset_mode"]) is None) or
             (node["reset_mode"] == "none") != (node["next_reset_at"] is None)):
         raise InvalidInventory("invalid reset schedule")
     if node["reset_mode"] == "monthly" and node["next_reset_at"] is not None:

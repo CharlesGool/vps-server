@@ -178,11 +178,27 @@ class ProxyMixin:
         else:
             raise ValueError("invalid expiry mode")
         mode = form["reset_mode"][0]
-        if mode not in ("none", "repeat", "once"):
+        if mode not in ("none", "repeat", "once", "schedule"):
             raise ValueError("invalid reset mode")
         if mode == "repeat":
             _, _, request["reset_mode"], request["next_reset_at"] = duration(
                 form["reset_count"][0], form["reset_unit"][0])
+        elif mode == "schedule":
+            # On the calendar like scheduled tasks (host local time): weekly, monthly, yearly or once.
+            import scheduler
+            try:
+                spec = scheduler.normalize_spec(self.context.json.loads(form.get("reset_spec", [""])[0] or "null"))
+            except (scheduler.ScheduleError, ValueError) as exc:
+                raise ValueError("invalid reset schedule") from exc
+            if spec["mode"] == "once":
+                moment = self.context.datetime.strptime(f"{spec['date']} {spec['time']}", "%Y-%m-%d %H:%M:%S")
+                due = moment.astimezone(self.context.timezone.utc)
+                if due <= now:
+                    raise ValueError("reset must be future")
+                request["reset_mode"], request["next_reset_at"] = "once", due.isoformat()
+            else:
+                request["reset_mode"] = self.context.schedule_reset_mode(spec)
+                request["next_reset_at"] = self.context.next_scheduled_reset(now, spec).isoformat()
         elif mode == "once":
             request["reset_mode"] = "once"
             request["next_reset_at"] = date_value(form["next_reset_at"][0])

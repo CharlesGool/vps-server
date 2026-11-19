@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BadgePlus, Download, KeyRound, LogOut, Plus, Send, ShieldCheck, Trash2 } from '@lucide/vue'
+import { BadgePlus, Ban, Download, KeyRound, LogOut, Plus, Send, ShieldCheck, Trash2 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -67,7 +67,7 @@ interface Security {
     idle: number
     items: { id: string; current: boolean; ip: string; method: string; device: string; created: number; seen: number }[]
   }
-  alerts: { server: string; configured: boolean; newIp: boolean; ban: boolean; loadError: boolean }
+  alerts: { server: string; configured: boolean; keys?: { id: string; masked: string }[]; newIp: boolean; ban: boolean; loadError: boolean }
   audit: { event: string; ip?: string; detail?: string; t: number }[]
   issued?: { name: string; serial: string; password: string; bundle: DownloadFile; setup: DownloadFile[] }
 }
@@ -246,10 +246,13 @@ async function saveMode() {
 const certRows = computed(() =>
   (security.value?.certificates.items ?? []).map((item) => ({ ...item, serialShort: item.serial.slice(0, 8), createdText: date(item.created) })),
 )
+const certPage = ref(1)
+const certPageRows = computed(() => certRows.value.slice((certPage.value - 1) * 10, certPage.value * 10))
 const certColumns = computed(() => [
   { key: 'name', label: t('console.client_cert_name') },
   { key: 'serialShort', label: t('vps.security.serial'), mono: true },
   { key: 'createdText', label: t('vps.security.created') },
+  { key: 'status', label: t('vps.security.certStatus') },
   { key: 'action', label: t('security.actions'), align: 'end' as const },
 ])
 async function issueCert() {
@@ -263,6 +266,13 @@ async function issueCert() {
 }
 function revokeCert(serial: string) {
   void update('certificates/revoke', 'POST', { serial })
+}
+// 已撤销的证书只是一条记录, 可以删除; 有效的证书要先撤销
+async function deleteCert(serial: string) {
+  if (await update('certificates/delete', 'POST', { serial })) {
+    const pages = Math.max(1, Math.ceil(certRows.value.length / 10))
+    if (certPage.value > pages) certPage.value = pages
+  }
 }
 
 // ---- 登录失败封禁 ----
@@ -342,13 +352,27 @@ async function saveAlerts() {
   const ok = await update(
     'alerts',
     'PUT',
-    { server: alertServer.value, key: alertKey.value, newIp: alertNewIp.value, ban: alertBan.value },
+    { server: alertServer.value, newIp: alertNewIp.value, ban: alertBan.value },
     (message) => (alertError.value = message),
   )
-  if (ok) {
+  if (ok) showToast(t('console.alerts_saved'), 'success')
+}
+const alertKeyError = ref('')
+const alertKeyRows = computed(() => security.value?.alerts.keys ?? [])
+const alertKeyColumns = computed(() => [
+  { key: 'masked', label: t('console.alerts_key'), mono: true },
+  { key: 'action', label: t('security.actions'), align: 'end' as const },
+])
+async function addAlertKey() {
+  if (!alertKey.value.trim()) return
+  alertKeyError.value = ''
+  if (await update('alerts/keys', 'POST', { key: alertKey.value.trim() }, (message) => (alertKeyError.value = message))) {
     alertKey.value = ''
-    showToast(t('console.alerts_saved'), 'success')
+    showToast(t('vps.security.barkKeyAdded'), 'success')
   }
+}
+async function deleteAlertKey(id: string) {
+  if (await update('alerts/keys/delete', 'POST', { id })) showToast(t('console.alerts_key_cleared'), 'success')
 }
 async function testAlerts() {
   if (await update('alerts/test', 'POST')) showToast(t('console.alerts_test_sent'), 'success')
@@ -473,9 +497,26 @@ const auditColumns = computed(() => [
               </Button>
             </FormActions>
           </GroupBlock>
-          <DataTable :columns="certColumns" :rows="certRows" row-key="serial" :caption="t('console.access_client_cert')" :empty="t('console.client_cert_list_empty')">
+          <DataTable :columns="certColumns" :rows="certPageRows" row-key="serial" :caption="t('console.access_client_cert')" :empty="t('console.client_cert_list_empty')">
+            <template #cell-status="{ row }">
+              <StatusBadge :tone="row.revoked ? 'neutral' : 'success'">{{ t(row.revoked ? 'console.client_cert_revoked' : 'vps.security.certActive') }}</StatusBadge>
+            </template>
             <template #cell-action="{ row }">
-              <StatusBadge v-if="row.revoked">{{ t('console.client_cert_revoked') }}</StatusBadge>
+              <ConfirmDialog
+                v-if="row.revoked"
+                :title="t('vps.security.deleteTitle', { name: String(row.name) })"
+                :description="t('vps.security.deleteDescription')"
+                :confirm-label="t('vps.security.delete')"
+                danger
+                @confirm="deleteCert(String(row.serial))"
+              >
+                <template #trigger>
+                  <Button variant="outline" size="sm" :disabled="busy">
+                    <Trash2 aria-hidden="true" />
+                    {{ t('vps.security.delete') }}
+                  </Button>
+                </template>
+              </ConfirmDialog>
               <ConfirmDialog
                 v-else
                 :title="t('vps.security.revokeTitle', { name: String(row.name) })"
@@ -486,13 +527,14 @@ const auditColumns = computed(() => [
               >
                 <template #trigger>
                   <Button variant="outline" size="sm" :disabled="busy">
-                    <Trash2 aria-hidden="true" />
+                    <Ban aria-hidden="true" />
                     {{ t('console.client_cert_revoke') }}
                   </Button>
                 </template>
               </ConfirmDialog>
             </template>
           </DataTable>
+          <PaginationBar v-if="certRows.length > 10" v-model="certPage" :total="certRows.length" />
           <SettingRow v-slot="field" :label="t('console.client_cert_name')" :description="t('vps.security.issueDescription')" :error="certError">
             <InputAction
               :id="field.id"
@@ -628,40 +670,56 @@ const auditColumns = computed(() => [
           <AlertBanner :tone="security.alerts.configured ? 'success' : 'info'">
             {{ t(security.alerts.configured ? 'console.alerts_status_on' : 'console.alerts_status_off') }}
           </AlertBanner>
-          <FormField v-slot="field" :label="t('console.alerts_server')" :span="6">
-            <Input :id="field.id" v-model="alertServer" maxlength="200" spellcheck="false" autocomplete="off" />
-          </FormField>
-          <FormField v-slot="field" :label="t('console.alerts_key')" :span="6" :error="alertError">
-            <PasswordInput
-              :id="field.id"
-              v-model="alertKey"
-              maxlength="128"
-              autocomplete="off"
-              :placeholder="security.alerts.configured ? t('console.alerts_key_keep') : ''"
-              :aria-invalid="field.invalid"
-              :aria-describedby="field.describedby"
-            />
+          <FormField v-slot="field" :label="t('console.alerts_server')" :error="alertError">
+            <Input :id="field.id" v-model="alertServer" maxlength="200" spellcheck="false" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <CheckboxField v-model="alertNewIp" :label="t('console.alerts_on_new_ip')" :span="6" />
           <CheckboxField v-model="alertBan" :label="t('console.alerts_on_ban')" :span="6" />
           <FormActions>
-            <ConfirmDialog
-              v-if="security.alerts.configured"
-              :title="t('console.alerts_clear_key')"
-              :description="t('vps.security.clearKeyDescription')"
-              :confirm-label="t('console.alerts_clear_key')"
-              danger
-              @confirm="update('alerts/clear-key', 'POST')"
-            >
-              <template #trigger>
-                <Button type="button" variant="destructive" :disabled="busy">{{ t('console.alerts_clear_key') }}</Button>
-              </template>
-            </ConfirmDialog>
             <Button v-if="security.alerts.configured" type="button" variant="outline" :disabled="busy" @click="testAlerts">
               <Send aria-hidden="true" />{{ t('console.alerts_test') }}
             </Button>
             <Button type="submit" :disabled="busy || !alertServer.trim()">{{ t('console.alerts_save') }}</Button>
           </FormActions>
+        </PageSection>
+      </CardForm>
+
+      <!-- Bark 推送密钥: 可以有多个(多台设备), 每条提醒发给全部密钥; 只显示前后各 4 位用来区分 -->
+      <CardForm @submit.prevent="addAlertKey">
+        <PageSection :cols="4" :title="t('vps.security.barkKeys')" :description="t('vps.security.barkKeysDescription')">
+          <DataTable :columns="alertKeyColumns" :rows="alertKeyRows" row-key="id" :caption="t('vps.security.barkKeys')" :empty="t('console.alerts_status_off')">
+            <template #cell-action="{ row }">
+              <ConfirmDialog
+                :title="t('vps.security.barkKeyDeleteTitle', { key: String(row.masked) })"
+                :description="t('vps.security.barkKeyDeleteDescription')"
+                :confirm-label="t('console.alerts_clear_key')"
+                danger
+                @confirm="deleteAlertKey(String(row.id))"
+              >
+                <template #trigger>
+                  <Button type="button" variant="outline" size="sm" :disabled="busy">
+                    <Trash2 aria-hidden="true" />
+                    {{ t('vps.security.delete') }}
+                  </Button>
+                </template>
+              </ConfirmDialog>
+            </template>
+          </DataTable>
+          <SettingRow v-slot="field" :label="t('vps.security.barkKeyNew')" :description="t('vps.security.barkKeyNewDescription')" :error="alertKeyError">
+            <InputAction
+              :id="field.id"
+              v-model="alertKey"
+              type="password"
+              maxlength="128"
+              autocomplete="off"
+              spellcheck="false"
+              :aria-invalid="field.invalid"
+              :aria-describedby="field.describedby"
+              :action-label="t('vps.security.barkKeySave')"
+              :action-icon="Plus"
+              :action-disabled="busy || !alertKey.trim()"
+            />
+          </SettingRow>
         </PageSection>
       </CardForm>
 

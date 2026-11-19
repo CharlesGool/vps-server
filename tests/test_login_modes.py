@@ -69,6 +69,17 @@ class LoginModeTest(unittest.TestCase):
         with self.assertRaises(cc.ClientCertError):
             revoked.set_mode("cert")
 
+    def test_only_revoked_records_can_be_deleted(self):
+        auth = make(self.tmp, certs=2, state={})
+        active, other = (item["serial"] for item in auth.certificates())
+        with self.assertRaises(cc.ClientCertError):
+            auth.delete(active)                        # an active certificate must be revoked first
+        with self.assertRaises(cc.ClientCertError):
+            auth.delete("ffffffff")
+        auth.revoke(active)
+        auth.delete(active)
+        self.assertEqual([item["serial"] for item in cc.ClientAuth(self.tmp).certificates()], [other])
+
     def test_invalid_modes_are_refused(self):
         auth = make(self.tmp, state={})
         for bad in ("", "Password", "certificate", None, 3):

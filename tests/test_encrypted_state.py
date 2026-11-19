@@ -91,6 +91,29 @@ class EncryptedStateTest(unittest.TestCase):
         alerts.update(server="https://api.day.app", key="", new_ip=False, ban=True)
         self.assertTrue(self.encrypted(path))
 
+    def test_several_bark_keys_are_kept_masked_and_removable(self):
+        ss.init_key()
+        path = self.data / "alerts.json"
+        path.write_text('{"server": "https://api.day.app", "key": "OLDKEY123456789", "new_ip": true, "ban": true}\n')
+        alerts = se.BarkAlerts(path)
+        self.assertEqual([item["masked"] for item in alerts.settings()["keys"]], ["OLDK****6789"])
+        self.assertTrue(alerts.add_key("SECOND_KEY_abcd"))
+        self.assertFalse(alerts.add_key("SECOND_KEY_abcd"))               # the same key twice is one key
+        with self.assertRaises(ValueError):
+            alerts.add_key("not a key!")
+        again = se.BarkAlerts(path)
+        self.assertEqual([item["masked"] for item in again.settings()["keys"]], ["OLDK****6789", "SECO****abcd"])
+        self.assertNotIn(b"SECOND_KEY_abcd", path.read_bytes())
+        sent = []
+        again._post = lambda server, key, title, body: sent.append(key)
+        self.assertIsNone(again.send_test("t", "b"))
+        self.assertEqual(sent, ["OLDKEY123456789", "SECOND_KEY_abcd"])
+        first = again.settings()["keys"][0]["id"]
+        self.assertTrue(again.remove_key(first))
+        self.assertFalse(again.remove_key(first))
+        self.assertEqual([item["masked"] for item in se.BarkAlerts(path).settings()["keys"]], ["SECO****abcd"])
+        self.assertEqual(se.BarkAlerts.masked("short"), "sh****")
+
     def test_an_undecryptable_alerts_file_is_reported_not_replaced(self):
         ss.init_key()
         path = self.data / "alerts.json"

@@ -32,7 +32,7 @@ const START: Span[] = [1, 5, 9]
     <PageSection v-for="(release, releaseIndex) in shown" :key="release.title" as="article" :cols="4" :title="release.title">
       <GroupBlock v-for="(group, index) in release.groups" :key="group.title" :title="group.title" :span="4" :start="START[index] ?? 1">
         <!-- 条目可能含很长的路径和命令, 允许在任意处换行, 不撑宽卡片 -->
-        <ul class="list-disc pl-6 text-sm wrap-anywhere">
+        <ul v-if="group.items.length" class="list-disc pl-6 text-sm wrap-anywhere">
           <li v-for="item in group.items" :key="item">
             <template v-for="(segment, index) in inlineSegments(item)" :key="index">
               <code v-if="segment.kind === 'code'" class="rounded-sm bg-muted px-1">{{ segment.text }}</code>
@@ -41,6 +41,17 @@ const START: Span[] = [1, 5, 9]
             </template>
           </li>
         </ul>
+        <!-- 分类下只有段落时显示段落; 什么都没有时显示 "-" -->
+        <template v-else-if="group.text.length">
+          <p v-for="paragraph in group.text" :key="paragraph" class="text-sm wrap-anywhere">
+            <template v-for="(segment, index) in inlineSegments(paragraph)" :key="index">
+              <code v-if="segment.kind === 'code'" class="rounded-sm bg-muted px-1">{{ segment.text }}</code>
+              <strong v-else-if="segment.kind === 'strong'" class="font-semibold">{{ segment.text }}</strong>
+              <template v-else>{{ segment.text }}</template>
+            </template>
+          </p>
+        </template>
+        <p v-else class="text-sm text-muted-foreground">-</p>
       </GroupBlock>
       <!-- 分页放在本页最后一个版本的卡片底部 -->
       <PaginationBar v-if="releaseIndex === shown.length - 1 && releases.length > PAGE_SIZE" v-model="page" :total="releases.length" :page-size="PAGE_SIZE" />

@@ -32,12 +32,13 @@ import FormActions from '@/components/app/FormActions.vue'
 import FormField from '@/components/app/FormField.vue'
 import LinkCard from '@/components/app/LinkCard.vue'
 import ModuleCard from '@/components/app/ModuleCard.vue'
-import NumberField from '@/components/app/NumberField.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import ProgressBar from '@/components/app/ProgressBar.vue'
+import RadioField from '@/components/app/RadioField.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
 import { showToast } from '@/lib/toast'
@@ -57,6 +58,8 @@ interface Total {
   measured: number
   cap: number | null
   resetDay: number
+  resetSpec: Spec | null
+  timezone: string
   level: 'none' | 'ok' | 'warn' | 'over'
   since: string
   nextReset: string | null
@@ -168,7 +171,11 @@ const figure = computed(() => {
 const meta = computed(() => {
   const value = total.value
   if (!value) return ''
-  const reset = value.nextReset ? t('console.total_next_reset', { date: value.nextReset }) : t('console.total_no_reset')
+  const reset = !value.nextReset
+    ? t('console.total_no_reset')
+    : value.resetSpec
+      ? t('vps.dashboard.nextResetLocal', { date: value.nextReset, zone: value.timezone })
+      : t('console.total_next_reset', { date: value.nextReset })
   return `${t('console.total_since', { date: value.since })} · ${reset}`
 })
 const sourceRows = computed(() => {
@@ -180,6 +187,7 @@ const sourceRows = computed(() => {
     name: source.name,
     usage: source.multiplier !== 1 ? `${formatBytes(source.value / source.multiplier)} × ${source.multiplier} = ${formatBytes(source.value)}` : formatBytes(source.value),
     share: `${basis ? ((source.value * 100) / basis).toFixed(1) : '0.0'}%`,
+    percent: basis ? Math.min(100, Math.max(0, (source.value * 100) / basis)) : 0,
   }))
   if (value.offset) {
     rows.push({
@@ -187,6 +195,7 @@ const sourceRows = computed(() => {
       name: t('console.total_calibration_row', { date: value.calibratedAt ?? '' }),
       usage: `${value.offset > 0 ? '+' : '−'}${formatBytes(Math.abs(value.offset))}`,
       share: `${basis ? ((Math.abs(value.offset) * 100) / basis).toFixed(1) : '0.0'}%`,
+      percent: basis ? Math.min(100, (Math.abs(value.offset) * 100) / basis) : 0,
     })
   }
   return rows
@@ -200,13 +209,24 @@ const sourceColumns = computed(() => [
 // 总流量设置和校准: 对话框里的短表单
 const settingsOpen = ref(false)
 const capGib = ref('')
-const resetDay = ref(1)
+// 重置: 不重置, 或和定时任务同一套的每周/每月/每年计划(服务器本地时间). 旧版本的"每月几号(UTC)"打开时换算成每月计划.
+const resetOn = ref<'none' | 'schedule'>('schedule')
+const resetSpec = ref<Spec>({ mode: 'monthly', day: 1, time: '00:00:00' })
+const resetKey = ref(0)
+const RESET_MODES: ('weekly' | 'monthly' | 'yearly')[] = ['weekly', 'monthly', 'yearly']
+const resetChoices = computed(() => [
+  { value: 'none' as const, label: t('console.node_reset_none') },
+  { value: 'schedule' as const, label: t('console.node_reset_repeat') },
+])
 const calibrateOpen = ref(false)
 const actualGib = ref('')
 const dialogError = ref('')
 function openSettings() {
   capGib.value = total.value?.cap != null ? String(total.value.cap / 1073741824) : ''
-  resetDay.value = total.value?.resetDay ?? 1
+  const value = total.value
+  resetOn.value = value?.resetSpec || value?.resetDay ? 'schedule' : 'none'
+  resetSpec.value = value?.resetSpec ?? { mode: 'monthly', day: value?.resetDay || 1, time: '00:00:00' }
+  resetKey.value += 1
   dialogError.value = ''
   settingsOpen.value = true
 }
@@ -234,10 +254,6 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
   <CardGrid>
     <PageHeader :title="t('page.dashboard')" root />
 
-    <PageSection v-if="data?.job" :cols="4" :title="t('vps.dashboard.job')">
-      <AlertBanner :tone="data.job.state === 'failed' ? 'destructive' : data.job.state === 'done' ? 'success' : 'info'" role="status">{{ data.job.text }}</AlertBanner>
-    </PageSection>
-
     <PageSection v-if="total" :cols="4" :title="t('console.total_title')" :description="meta">
       <p class="text-2xl font-semibold tabular-nums">{{ figure }}</p>
       <ProgressBar v-if="total.cap != null" :label="t('vps.dashboard.usedLabel')" :value="Math.round(percent)" />
@@ -251,12 +267,20 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
         row-key="id"
         :caption="t('console.total_by_source')"
         :empty="t('vps.dashboard.noTraffic')"
-      />
+      >
+        <template #cell-share="{ row }">
+          <ProgressBar variant="inline" :label="String(row.name)" :value="Number(row.percent)" :text="String(row.share)" />
+        </template>
+      </DataTable>
       <p v-if="sourceRows.length" class="text-sm text-muted-foreground">{{ t('console.total_multiplier_note') }}</p>
       <FormActions>
         <Button variant="outline" :disabled="busy" @click="openCalibrate">{{ t('console.total_calibrate') }}</Button>
         <Button variant="outline" :disabled="busy" @click="openSettings"><SlidersHorizontal aria-hidden="true" />{{ t('console.total_settings') }}</Button>
       </FormActions>
+    </PageSection>
+
+    <PageSection v-if="data?.job" :cols="4" :title="t('vps.dashboard.job')">
+      <AlertBanner :tone="data.job.state === 'failed' ? 'destructive' : data.job.state === 'done' ? 'success' : 'info'" role="status">{{ data.job.text }}</AlertBanner>
     </PageSection>
 
     <ModuleCard
@@ -281,12 +305,13 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
       <FormField v-slot="field" :label="t('console.total_cap_gib')" :span="6">
         <Input :id="field.id" v-model="capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.total_reset_day')" :span="6" :error="dialogError">
-        <NumberField :id="field.id" v-model="resetDay" :min="0" :max="28" />
+      <FormField :label="t('console.node_reset_schedule')" group :span="6" :error="dialogError">
+        <RadioField v-model="resetOn" :options="resetChoices" :label="t('console.node_reset_schedule')" />
       </FormField>
+      <ScheduleFields v-if="resetOn === 'schedule'" :key="resetKey" v-model="resetSpec" :timezone="total?.timezone ?? ''" :modes="RESET_MODES" :once="false" />
       <template #footer>
         <Button variant="outline" @click="settingsOpen = false">{{ t('console.node_cancel') }}</Button>
-        <Button :disabled="busy" @click="saveTotal('traffic/total', { capGib: capGib.trim() || null, resetDay }, () => (settingsOpen = false))">
+        <Button :disabled="busy" @click="saveTotal('traffic/total', { capGib: capGib.trim() || null, resetDay: 0, resetSpec: resetOn === 'schedule' ? resetSpec : null }, () => (settingsOpen = false))">
           {{ t('console.total_save') }}
         </Button>
       </template>

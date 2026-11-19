@@ -124,7 +124,8 @@ const facts = computed(() => {
   if (!value?.present) return []
   return [
     { key: 'state', label: t('console.tailscale_state'), value: value.state },
-    { key: 'controlServer', label: t('console.tailscale_control_server') },
+    // Tailnet 名和账户相同(个人账户)时服务器报告 controlServer 为 false, 只显示账户
+    ...(value.present.controlServer ? [{ key: 'controlServer', label: t('console.tailscale_control_server') }] : []),
     { key: 'account', label: t('console.tailscale_account') },
     { key: 'ipv4', label: t('console.tailscale_ipv4') },
     { key: 'ipv6', label: t('console.tailscale_ipv6') },

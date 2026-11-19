@@ -4,6 +4,7 @@ The same entry shape is used for sing-box nodes and FRPS, so the browser has
 one traffic card for all of them.
 """
 
+import json
 import re
 
 from frp_control import valid_client_name
@@ -30,7 +31,13 @@ def usage_json(context, node, meter_nodes):
     state = ("blocked" if expired or (capped and node["cap_action"] == "block") else
              "limited" if capped else "unknown" if suspect is None else "normal")
     interval = context.reset_interval(node["reset_mode"])
-    reset = "none" if node["reset_mode"] == "none" else "once" if node["reset_mode"] == "once" else "repeat"
+    schedule = context.reset_schedule(node["reset_mode"])
+    reset = ("none" if node["reset_mode"] == "none" else "once" if node["reset_mode"] == "once" else
+             "schedule" if schedule is not None else "repeat")
+    if reset == "once" and node["next_reset_at"]:
+        # The one-time reset as the schedule fields show it: local date and time.
+        moment = context.datetime.fromisoformat(node["next_reset_at"]).astimezone()
+        schedule = {"mode": "once", "date": moment.strftime("%Y-%m-%d"), "time": moment.strftime("%H:%M:%S")}
     return {
         "id": node["id"], "state": state,
         "upload": node["upload_bytes"], "download": node["download_bytes"],
@@ -39,7 +46,9 @@ def usage_json(context, node, meter_nodes):
         "capAction": node["cap_action"],
         "resetMode": reset, "resetCount": interval[0] if interval else 1,
         "resetUnit": interval[1] if interval else "months",
-        "nextResetAt": node["next_reset_at"],
+        "nextResetAt": node["next_reset_at"], "resetSpec": schedule,
+        "nextResetLocal": (context.datetime.fromisoformat(node["next_reset_at"]).astimezone().strftime("%Y-%m-%d %H:%M")
+                           if node["next_reset_at"] else None),
         "expiryCount": node["expiry_count"], "expiryUnit": node["expiry_unit"],
         "remainingSeconds": None if remaining is None else int(remaining),
     }
@@ -58,7 +67,13 @@ def limits_form(body):
               "cap_action": "capAction", "expiry_mode": "expiryMode", "expiry_count": "expiryCount",
               "expiry_unit": "expiryUnit", "reset_mode": "resetMode", "reset_count": "resetCount",
               "reset_unit": "resetUnit", "next_reset_at": "nextResetAt"}
-    return {name: [text(key)] for name, key in fields.items()}
+    form = {name: [text(key)] for name, key in fields.items()}
+    # A calendar reset ("schedule"): the schedule spec as scheduler.normalize_spec takes it.
+    spec = body.get("resetSpec")
+    if spec is not None and not isinstance(spec, dict):
+        raise ValueError("invalid field resetSpec")
+    form["reset_spec"] = [json.dumps(spec) if spec is not None else ""]
+    return form
 
 
 class TrafficApiMixin:
@@ -101,7 +116,7 @@ class TrafficApiMixin:
         return {"entry": usage_json(self.context, entry, ledger),
                 "help": ("tailscale" if key == "tailscale" else
                          "twice" if entry.get("billable_multiplier", 2) == 2 else "once"),
-                "sharedWith": names}
+                "sharedWith": names, "timezone": self.context.time.tzname[0]}
 
     def api_traffic(self):
         query = self.context.parse_qs(self.context.urlsplit(self.path).query)

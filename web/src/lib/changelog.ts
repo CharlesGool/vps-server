@@ -17,16 +17,19 @@ const PATHS: Record<Locale, string> = {
 
 export interface ChangelogRelease {
   title: string
-  groups: { title: string; items: string[] }[]
+  // text: 分类下不是条目的段落(如"验证"常写成一段话)
+  groups: { title: string; items: string[]; text: string[] }[]
 }
 
-// 版本为 `### `, 分类为 `#### `, 条目为 `- `.
+// 版本为 `### `, 分类为 `#### `, 条目为 `- `, 分类下的其他非空行是段落.
 function parse(markdown: string): ChangelogRelease[] {
   const releases: ChangelogRelease[] = []
   for (const line of markdown.split('\n')) {
+    const group = releases.at(-1)?.groups.at(-1)
     if (line.startsWith('### ')) releases.push({ title: line.slice(4).trim(), groups: [] })
-    else if (line.startsWith('#### ')) releases.at(-1)?.groups.push({ title: line.slice(5).trim(), items: [] })
-    else if (line.startsWith('- ')) releases.at(-1)?.groups.at(-1)?.items.push(line.slice(2).trim())
+    else if (line.startsWith('#### ')) releases.at(-1)?.groups.push({ title: line.slice(5).trim(), items: [], text: [] })
+    else if (line.startsWith('- ')) group?.items.push(line.slice(2).trim())
+    else if (line.trim() && !line.startsWith('#')) group?.text.push(line.trim())
   }
   return releases
 }

@@ -72,7 +72,7 @@ test('最近访问者记录了这次访问, 清除后为空', async ({ page }) =
 
 test('迷你网盘: 上传, 生成并打开下载链接, 删除', async ({ page }) => {
   await open(page, '/files')
-  const upload = page.locator('main section', { has: page.getByRole('heading', { name: '从这台设备上传', exact: true }) })
+  const upload = page.locator('main section', { has: page.getByRole('heading', { name: '本地上传', exact: true }) })
   await upload.locator('input[type=file]').setInputFiles({ name: 'hello.txt', mimeType: 'text/plain', buffer: Buffer.from('hello vps-server\n') })
   await upload.getByRole('button', { name: '上传' }).click()
   const table = page.locator('main section', { has: page.getByRole('heading', { name: '文件', exact: true }) })

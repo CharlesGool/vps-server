@@ -16,6 +16,7 @@ class SecurityApiMixin:
         ("PUT", "security/login-mode"): "api_security_login_mode",
         ("POST", "security/certificates"): "api_security_cert_issue",
         ("POST", "security/certificates/revoke"): "api_security_cert_revoke",
+        ("POST", "security/certificates/delete"): "api_security_cert_delete",
         ("PUT", "security/login-ban"): "api_security_login_ban",
         ("POST", "security/login-ban/clear"): "api_security_login_ban_clear",
         ("PUT", "security/console-access"): "api_security_console_access",
@@ -25,7 +26,8 @@ class SecurityApiMixin:
         ("POST", "security/sessions/revoke-others"): "api_security_sessions_revoke_others",
         ("PUT", "security/alerts"): "api_security_alerts",
         ("POST", "security/alerts/test"): "api_security_alerts_test",
-        ("POST", "security/alerts/clear-key"): "api_security_alerts_clear_key",
+        ("POST", "security/alerts/keys"): "api_security_alerts_key_add",
+        ("POST", "security/alerts/keys/delete"): "api_security_alerts_key_delete",
     }
 
     # -- state -------------------------------------------------------------------
@@ -104,6 +106,7 @@ class SecurityApiMixin:
                           for row in context.list_sessions(token)],
             },
             "alerts": {"server": alert_settings["server"], "configured": alert_settings["configured"],
+                       "keys": alert_settings["keys"],
                        "newIp": alert_settings["new_ip"], "ban": alert_settings["ban"],
                        "loadError": bool(alerts.load_error)},
             "audit": context.AUDIT.recent(50),
@@ -255,6 +258,22 @@ class SecurityApiMixin:
         self.audit("cert_revoked", serial[:8])
         return self._security_reply()
 
+    def api_security_cert_delete(self):
+        body = self._security_body()
+        if body is None:
+            return
+        serial = body.get("serial")
+        if not isinstance(serial, str):
+            return self.api_error(400, "invalid_request")
+        try:
+            self.context.CLIENT_AUTH.delete(serial)
+        except self.context.ClientCertError as exc:
+            return self.api_error(400, exc.code)
+        except OSError:
+            return self.api_error(500, "client_cert_error")
+        self.audit("cert_deleted", serial[:8])
+        return self._security_reply()
+
     def api_security_login_ban(self):
         body = self._security_body()
         if body is None:
@@ -355,14 +374,31 @@ class SecurityApiMixin:
             return self.api_error(400, "alerts_not_configured" if error == "not configured" else "alerts_test_failed")
         return self._security_reply("alerts_test_sent")
 
-    def api_security_alerts_clear_key(self):
-        if not self._security_allowed():
+    def api_security_alerts_key_add(self):
+        body = self._security_body()
+        if body is None:
             return
-        settings = self.context.ALERTS.settings()
         try:
-            self.context.ALERTS.update(server=settings["server"], key="", new_ip=settings["new_ip"],
-                                       ban=settings["ban"], clear_key=True)
-        except (ValueError, OSError):
+            self.context.ALERTS.add_key(body.get("key"))
+        except ValueError:
+            return self.api_error(400, "alerts_invalid")
+        except OSError:
             return self.api_error(500, "alerts_error")
+        self.audit("alerts_key_added")
+        return self._security_reply()
+
+    def api_security_alerts_key_delete(self):
+        body = self._security_body()
+        if body is None:
+            return
+        identifier = body.get("id")
+        if not isinstance(identifier, str):
+            return self.api_error(400, "invalid_request")
+        try:
+            removed = self.context.ALERTS.remove_key(identifier)
+        except OSError:
+            return self.api_error(500, "alerts_error")
+        if not removed:
+            return self.api_error(404, "not_found")
         self.audit("alerts_key_cleared")
         return self._security_reply()

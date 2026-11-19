@@ -3,7 +3,7 @@ import { Code, ExternalLink } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { APP_NAME, FOOTER_LINKS } from '@/app.config'
 
-// 页面最下方的底栏: 左边项目名称, 右边作者主页和项目仓库等外部链接(app.config.ts 的 FOOTER_LINKS). 与顶栏同样的宽度和边距.
+// 页面最下方的底栏: 左边项目名称, 右边作者主页和项目仓库等外部链接(app.config.ts 的 FOOTER_LINKS, 显示其 text). 与顶栏同样的宽度和边距.
 const { t } = useI18n()
 const ICONS = { profile: ExternalLink, repository: Code }
 </script>
@@ -17,12 +17,13 @@ const ICONS = { profile: ExternalLink, repository: Code }
           <li v-for="link in FOOTER_LINKS" :key="link.key">
             <a
               :href="link.href"
+              :title="t(`footer.${link.key}`)"
               target="_blank"
               rel="noopener noreferrer"
               class="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               <component :is="ICONS[link.key]" class="size-4" aria-hidden="true" />
-              {{ t(`footer.${link.key}`) }}
+              {{ link.text ?? t(`footer.${link.key}`) }}
             </a>
           </li>
         </ul>

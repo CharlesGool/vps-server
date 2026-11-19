@@ -4,7 +4,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AlertBanner from '@/components/app/AlertBanner.vue'
 import AppDialog from '@/components/app/AppDialog.vue'
-import DateTimePicker from '@/components/app/DateTimePicker.vue'
 import DescriptionList from '@/components/app/DescriptionList.vue'
 import FormActions from '@/components/app/FormActions.vue'
 import FormField from '@/components/app/FormField.vue'
@@ -16,12 +15,14 @@ import SegmentedControl from '@/components/app/SegmentedControl.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
 import { showToast } from '@/lib/toast'
 
 // vps-server 项目组件: 一个计量功能(网盘, 测速, iperf3, 端口转发, FRPC, Tailscale, 域名转发)的流量卡片.
 // 整行卡片: 状态, 上传/下载/上限/下次重置/有效期, 计量说明, "流量限制"对话框(上限, 限速, 超限动作, 重置周期, 有效期).
+// 重置周期和定时任务用同一套计划(每周, 每月, 每年或只一次, 按服务器本地时间); 旧版本的"每隔 N 天/月/年"保留到改掉为止.
 // 只由模板组件组合; 还没有计量数据时整张卡片不显示. feature 是服务器的计量键(如 'speedtest', 'frpc:<实例>').
 export interface TrafficEntry {
   id: string
@@ -34,10 +35,12 @@ export interface TrafficEntry {
   billed: number
   multiplier: number
   capAction: 'throttle' | 'block'
-  resetMode: 'none' | 'repeat' | 'once'
+  resetMode: 'none' | 'repeat' | 'once' | 'schedule'
   resetCount: number
   resetUnit: Unit
+  resetSpec: Spec | null
   nextResetAt: string | null
+  nextResetLocal: string | null
   expiryCount: number | null
   expiryUnit: Unit | null
   remainingSeconds: number | null
@@ -47,6 +50,7 @@ interface Traffic {
   entry: TrafficEntry | null
   help?: 'once' | 'twice' | 'tailscale'
   sharedWith?: string | null
+  timezone?: string
 }
 
 // inline: 放在另一张卡片里(如端口转发的每条规则), 这时是卡片内带小标题的一组, 不是单独的卡片
@@ -71,7 +75,6 @@ const STATES = {
 } as const
 
 const speed = (bps: number | null) => (bps == null ? t('console.node_unlimited') : `${bps / 1e6} Mbps`)
-const utc = (iso: string) => `${iso.slice(0, 16).replace('T', ' ')} UTC`
 function validity(seconds: number) {
   if (seconds <= 0) return t('console.node_validity_expired')
   if (seconds < 86400) return t('console.node_remaining_hours', { count: Math.max(1, Math.ceil(seconds / 3600)) })
@@ -91,7 +94,7 @@ const items = computed(() => {
           ? t('console.node_unlimited')
           : `${value.capBytes / 1073741824} GiB · ${t(value.multiplier === 2 ? 'console.node_billed_usage' : 'console.node_billed_usage_once', { value: formatBytes(value.billed) })}`,
     },
-    { key: 'reset', label: t('console.node_next_reset'), value: value.nextResetAt ? utc(value.nextResetAt) : t('console.node_no_reset') },
+    { key: 'reset', label: t('console.node_next_reset'), value: value.nextResetLocal ? `${value.nextResetLocal} (${data.value?.timezone ?? ''})` : t('console.node_no_reset') },
   ]
   if (value.remainingSeconds != null) list.push({ key: 'validity', label: t('console.node_validity'), value: validity(value.remainingSeconds) })
   return list
@@ -99,6 +102,7 @@ const items = computed(() => {
 const help = computed(() => ({ once: 'console.traffic_help_once', twice: 'console.traffic_help_twice', tailscale: 'console.traffic_help_tailscale' })[data.value?.help ?? 'once'])
 
 // ---- 流量限制对话框 ----
+const DEFAULT_SPEC: Spec = { mode: 'monthly', day: 1, time: '00:00:00' }
 const open = ref(false)
 const busy = ref(false)
 const error = ref('')
@@ -107,25 +111,28 @@ const form = ref({
   uploadMbps: '',
   downloadMbps: '',
   capAction: 'throttle' as 'throttle' | 'block',
-  resetMode: 'none' as 'none' | 'repeat' | 'once',
+  resetMode: 'none' as 'none' | 'repeat' | 'schedule',
   resetCount: 1,
   resetUnit: 'months' as Unit,
-  nextResetAt: '',
+  resetSpec: DEFAULT_SPEC as Spec,
   expiryMode: 'none' as 'none' | 'set',
   expiryCount: 1,
   expiryUnit: 'months' as Unit,
 })
+// 对话框每次打开都重新建立计划字段(ScheduleFields 只在创建时读取初始值)
+const formKey = ref(0)
 function edit() {
   const value = entry.value!
+  formKey.value += 1
   form.value = {
     capGib: value.capBytes == null ? '' : String(value.capBytes / 1073741824),
     uploadMbps: value.uploadLimitBps == null ? '' : String(value.uploadLimitBps / 1e6),
     downloadMbps: value.downloadLimitBps == null ? '' : String(value.downloadLimitBps / 1e6),
     capAction: value.capAction,
-    resetMode: value.resetMode,
+    resetMode: value.resetMode === 'once' || value.resetMode === 'schedule' ? 'schedule' : value.resetMode,
     resetCount: value.resetCount,
     resetUnit: value.resetUnit,
-    nextResetAt: value.resetMode === 'once' && value.nextResetAt ? value.nextResetAt.slice(0, 16) : '',
+    resetSpec: value.resetSpec ?? DEFAULT_SPEC,
     expiryMode: value.expiryCount ? 'set' : 'none',
     expiryCount: value.expiryCount ?? 1,
     expiryUnit: value.expiryUnit ?? 'months',
@@ -137,12 +144,13 @@ const capActions = computed(() => [
   { value: 'throttle' as const, label: t('console.node_cap_slow') },
   { value: 'block' as const, label: t('console.node_cap_block') },
 ])
-// "指定时间"只在已经设置了一次性重置时提供(与原页面相同)
+// 旧版本的"每隔 N 天/月/年"只在当前就是这种设置时提供
 const resetModes = computed(() => [
   { value: 'none' as const, label: t('console.node_reset_none') },
-  { value: 'repeat' as const, label: t('console.node_reset_repeat') },
-  ...(entry.value?.resetMode === 'once' ? [{ value: 'once' as const, label: t('console.node_reset_once') }] : []),
+  { value: 'schedule' as const, label: t('console.node_reset_repeat') },
+  ...(entry.value?.resetMode === 'repeat' ? [{ value: 'repeat' as const, label: t('vps.traffic.resetLegacy') }] : []),
 ])
+const RESET_MODES: ('weekly' | 'monthly' | 'yearly')[] = ['weekly', 'monthly', 'yearly']
 const expiryModes = computed(() => [
   { value: 'none' as const, label: t('console.node_validity_none') },
   { value: 'set' as const, label: t('console.node_validity_set') },
@@ -198,6 +206,7 @@ async function save() {
     <FormField :label="t('console.node_reset_schedule')" group>
       <RadioField v-model="form.resetMode" :options="resetModes" :label="t('console.node_reset_schedule')" />
     </FormField>
+    <ScheduleFields v-if="form.resetMode === 'schedule'" :key="formKey" v-model="form.resetSpec" :timezone="data?.timezone ?? ''" :modes="RESET_MODES" />
     <template v-if="form.resetMode === 'repeat'">
       <FormField v-slot="field" :label="t('console.node_reset_every')" :span="6">
         <NumberField :id="field.id" v-model="form.resetCount" :min="1" :max="9999" />
@@ -206,9 +215,6 @@ async function save() {
         <SegmentedControl v-model="form.resetUnit" :options="units" :label="t('console.node_reset_unit')" />
       </FormField>
     </template>
-    <FormField v-else-if="form.resetMode === 'once'" v-slot="field" :label="t('console.node_reset_time_utc')">
-      <DateTimePicker :id="field.id" v-model="form.nextResetAt" mode="datetime" :label="t('console.node_reset_time_utc')" />
-    </FormField>
     <FormField :label="t('console.node_validity')" group>
       <RadioField v-model="form.expiryMode" :options="expiryModes" :label="t('console.node_validity')" />
     </FormField>

@@ -3,7 +3,8 @@
 It adds up what every metered feature already counts (sing-box nodes, FRPS and the
 kernel/app meters in traffic_meter.py and app_meter.py), with the same billing
 multiplier each of them uses. A period runs from the chosen day of each month (UTC, like the
-other meters). Usage in a period is the growth of each entry's lifetime counter since the
+other meters), or, with ``reset_spec``, from each weekly, monthly or yearly point in the host's
+local time (the same calendar rules as scheduled tasks). Usage in a period is the growth of each entry's lifetime counter since the
 period began, plus what the entry's own current-cycle counters already show when the period is
 first recorded, so the total agrees with the per-feature pages instead of starting from zero
 at the moment the console first looked.
@@ -80,8 +81,26 @@ def backfilled_baselines(info):
             for i, v in info.items()}
 
 
-def period_boundary(now, reset_day):
-    """The latest boundary at or before now (00:00 UTC on reset_day), or None when there is no reset."""
+def _schedule(spec):
+    try:
+        import node_inventory
+    except ImportError:  # imported as part of a package (tests)
+        from . import node_inventory  # type: ignore[no-redef]
+    return node_inventory
+
+
+def valid_spec(spec):
+    """A calendar reset spec as saved: weekly, monthly or yearly in schedule_time's form."""
+    try:
+        return _schedule(spec).reset_schedule(_schedule(spec).schedule_reset_mode(spec)) == spec
+    except (ValueError, KeyError, TypeError):
+        return False
+
+
+def period_boundary(now, reset_day, spec=None):
+    """The latest boundary at or before now (00:00 UTC on reset_day, or the calendar spec), or None when there is no reset."""
+    if spec:
+        return _schedule(spec).previous_scheduled_reset(now, spec)
     if not reset_day:
         return None
     candidate = now.replace(day=reset_day, hour=0, minute=0, second=0, microsecond=0)
@@ -91,8 +110,10 @@ def period_boundary(now, reset_day):
     return candidate
 
 
-def next_reset(now, reset_day):
-    """The next boundary strictly after now: 00:00 UTC on reset_day (1-28), or None for never."""
+def next_reset(now, reset_day, spec=None):
+    """The next boundary strictly after now: 00:00 UTC on reset_day (1-28), the calendar spec, or None for never."""
+    if spec:
+        return _schedule(spec).next_scheduled_reset(now, spec)
     if not reset_day:
         return None
     if type(reset_day) is not int or not 1 <= reset_day <= 28:
@@ -107,20 +128,25 @@ def next_reset(now, reset_day):
 DEFAULT_RESET_DAY = 1
 
 
-def new_state(info, now, cap_bytes=None, reset_day=DEFAULT_RESET_DAY):
+def new_state(info, now, cap_bytes=None, reset_day=DEFAULT_RESET_DAY, spec=None):
     """A period that starts at the latest boundary and already counts each entry's current cycle."""
-    nxt = next_reset(now, reset_day)
-    start = period_boundary(now, reset_day) or now
-    return {"version": 3, "cap_bytes": cap_bytes, "reset_day": reset_day,
-            "period_start": start.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
-            "baselines": backfilled_baselines(info), "calibration_bytes": 0, "calibrated_at": None}
+    nxt = next_reset(now, reset_day, spec)
+    start = period_boundary(now, reset_day, spec) or now
+    state = {"version": 3, "cap_bytes": cap_bytes, "reset_day": 0 if spec else reset_day,
+             "period_start": start.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
+             "baselines": backfilled_baselines(info), "calibration_bytes": 0, "calibrated_at": None}
+    if spec:
+        state["reset_spec"] = spec
+    return state
 
 
 def validate(state):
     base = {"version", "cap_bytes", "reset_day", "period_start", "next_reset_at", "baselines"}
     if not isinstance(state, dict) or state.get("version") not in (1, 2, 3) or \
-            set(state) != (base | {"calibration_bytes", "calibrated_at"} if state.get("version") == 3 else base):
+            set(state) - {"reset_spec"} != (base | {"calibration_bytes", "calibrated_at"} if state.get("version") == 3 else base):
         raise ValueError("invalid total traffic state")
+    if "reset_spec" in state and (state["reset_day"] != 0 or not valid_spec(state["reset_spec"])):
+        raise ValueError("invalid reset schedule")
     if state["version"] == 3:
         offset = state["calibration_bytes"]
         if type(offset) is not int or abs(offset) > MAX_CAP_BYTES:
@@ -152,12 +178,12 @@ def advance(state, info, now):
     if state is None:
         return new_state(info, now), True
     if state["version"] == 1:
-        return new_state(info, now, state["cap_bytes"], state["reset_day"]), True
+        return new_state(info, now, state["cap_bytes"], state["reset_day"], state.get("reset_spec")), True
     if state["version"] == 2:
         # A period that was already rebuilt from the cycles; it only lacks the calibration fields.
         return {**state, "version": 3, "calibration_bytes": 0, "calibrated_at": None}, True
     if state["next_reset_at"] is not None and now >= datetime.fromisoformat(state["next_reset_at"]):
-        nxt = next_reset(now, state["reset_day"])
+        nxt = next_reset(now, state["reset_day"], state.get("reset_spec"))
         return {**state, "period_start": now.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
                 "baselines": lifetimes(info), "calibration_bytes": 0, "calibrated_at": None}, True
     return state, False
@@ -213,7 +239,7 @@ def level(state, used):
 
 
 def parse_settings(cap_gib, reset_day):
-    """(cap_bytes or None, reset_day) from the form text; ValueError on anything odd."""
+    """(cap_bytes or None, reset_day) from the form text; ValueError on anything odd. See parse_spec for calendar resets."""
     cap_text = (cap_gib or "").strip()
     cap = None
     if cap_text:
@@ -229,15 +255,40 @@ def parse_settings(cap_gib, reset_day):
     return cap, int(day_text)
 
 
-def apply_settings(state, cap_bytes, reset_day, now, info=None):
-    """New cap and reset day. A changed reset day re-bases the period on the new boundary."""
-    changed_day = state["reset_day"] != reset_day
-    if changed_day and info is not None:
-        return new_state(info, now, cap_bytes, reset_day)
-    nxt = next_reset(now, reset_day) if changed_day else (
+def parse_spec(spec):
+    """A calendar reset from the browser: None (use the reset day), or a weekly, monthly or yearly spec."""
+    if spec is None:
+        return None
+    try:
+        import scheduler
+    except ImportError:  # imported as part of a package (tests)
+        from . import scheduler  # type: ignore[no-redef]
+    try:
+        spec = scheduler.normalize_spec(spec)
+    except scheduler.ScheduleError as exc:
+        raise ValueError("invalid reset schedule") from exc
+    if spec["mode"] not in ("weekly", "monthly", "yearly"):
+        raise ValueError("reset schedule must be weekly, monthly or yearly")
+    return spec
+
+
+def apply_settings(state, cap_bytes, reset_day, now, info=None, spec=None):
+    """New cap and reset (a day of the month in UTC, or a calendar spec, which wins).
+
+    A changed reset re-bases the period on the new boundary.
+    """
+    if spec:
+        reset_day = 0
+    changed = state["reset_day"] != reset_day or state.get("reset_spec") != spec
+    if changed and info is not None:
+        return new_state(info, now, cap_bytes, reset_day, spec)
+    nxt = next_reset(now, reset_day, spec) if changed else (
         datetime.fromisoformat(state["next_reset_at"]) if state["next_reset_at"] else None)
-    return {**state, "cap_bytes": cap_bytes, "reset_day": reset_day,
-            "next_reset_at": nxt.isoformat() if nxt else None}
+    updated = {key: value for key, value in state.items() if key != "reset_spec"}
+    updated.update(cap_bytes=cap_bytes, reset_day=reset_day, next_reset_at=nxt.isoformat() if nxt else None)
+    if spec:
+        updated["reset_spec"] = spec
+    return updated
 
 
 def format_bytes(value):

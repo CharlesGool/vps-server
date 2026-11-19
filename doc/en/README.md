@@ -209,7 +209,7 @@ These settings are all under Settings > Security.
   ```
 
 - **Signed-in devices**: lists signed-in devices (browser, system, IP, sign-in and last activity) and can sign out one device or all others. A login lasts at most 12 hours and ends after `VPSSRV_SESSION_IDLE_SECONDS` without activity (2 hours by default); terminal input counts as activity.
-- **Login alerts**: with a Bark server and key, logins from a new address and bans are pushed to your phone; the same alert for the same address is sent at most once an hour. The key is stored on the server and never shown on the page.
+- **Login alerts**: with a Bark server and key, logins from a new address and bans are pushed to your phone; the same alert for the same address is sent at most once an hour. Several keys can be added (one per device) and every alert goes to all of them. Keys are stored on the server; the page shows only their first and last four characters, to tell them apart.
 - **Security log**: shows the latest 50 logins, bans, root terminal sessions and security setting changes; the server keeps the latest 500.
 
 Console responses carry a Content-Security-Policy that allows only the console's own scripts, and forbid embedding by other sites. Behind a reverse proxy (`VPSSRV_TRUST_PROXY=1`), the client address is the last `X-Forwarded-For` entry the proxy appended, and the access limit checks that address on every request.

@@ -7,6 +7,7 @@ recorded); only the newest runs are kept. The configuration backup is a
 second kind of job with its own daily time and retention.
 """
 
+import calendar
 import json
 import os
 import re
@@ -130,7 +131,7 @@ def valid_command(value):
 
 UNIT_SECONDS = {"minutes": 60, "hours": 3600, "days": 86400}
 INTERVAL_MAX_SECONDS = 366 * 86400
-RECURRING = ("interval", "daily", "weekly", "monthly", "cron")
+RECURRING = ("interval", "daily", "weekly", "monthly", "yearly", "cron")
 MODES = RECURRING + ("once",)
 TIME_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?")
 # A time-of-day schedule missed by less than this (the console was down or busy) still runs, once.
@@ -139,10 +140,11 @@ DEFAULT_BACKUP_SPEC = {"mode": "daily", "time": "03:00:00"}
 
 
 def normalize_spec(spec):
-    """A schedule choice as stored: ``interval``, ``daily``, ``weekly``, ``monthly`` or ``cron``.
+    """A schedule choice as stored: ``interval``, ``daily``, ``weekly``, ``monthly``, ``yearly`` or ``cron``.
 
     Times are ``HH:MM:SS`` (seconds default to 00). A bare string is a cron expression (the
-    oldest form). Raises ScheduleError.
+    oldest form). Monthly and yearly days run up to 31; in a shorter month they fall on its
+    last day. Raises ScheduleError.
     """
     if isinstance(spec, str):
         spec = {"mode": "cron", "expr": spec}
@@ -185,47 +187,19 @@ def normalize_spec(spec):
             raise ScheduleError("invalid days")
         return {"mode": "weekly", "days": sorted(set(days)), "time": at}
     day = spec.get("day")
-    if not isinstance(day, int) or isinstance(day, bool) or not 1 <= day <= 28:
+    if not isinstance(day, int) or isinstance(day, bool) or not 1 <= day <= 31:
         raise ScheduleError("invalid day")
+    if mode == "yearly":
+        month = spec.get("month")
+        if not isinstance(month, int) or isinstance(month, bool) or not 1 <= month <= 12 or \
+                day > calendar.monthrange(2000, month)[1]:
+            raise ScheduleError("invalid date")
+        return {"mode": "yearly", "month": month, "day": day, "time": at}
     return {"mode": "monthly", "day": day, "time": at}
 
 
-def _seconds_of_day(spec):
-    hour, minute, second = (int(part) for part in spec["time"].split(":"))
-    return hour * 3600 + minute * 60 + second
-
-
-def _day_matches_spec(spec, day):
-    """Whether a time-of-day spec runs on this date (cron weekday numbering: Sunday is 0)."""
-    if spec["mode"] == "daily":
-        return True
-    if spec["mode"] == "weekly":
-        return (day.weekday() + 1) % 7 in spec["days"]
-    return day.day == spec["day"]
-
-
-def previous_occurrence(spec, now):
-    """The latest run time at or before ``now`` (naive local time) of a daily, weekly or monthly spec."""
-    seconds = _seconds_of_day(spec)
-    for back in range(0, 63):
-        day = (now - timedelta(days=back)).date()
-        if _day_matches_spec(spec, day):
-            moment = datetime(day.year, day.month, day.day) + timedelta(seconds=seconds)
-            if moment <= now:
-                return moment
-    return None
-
-
-def next_occurrence(spec, after):
-    """The first run time strictly after ``after`` of a daily, weekly or monthly spec."""
-    seconds = _seconds_of_day(spec)
-    for ahead in range(0, 400):
-        day = (after + timedelta(days=ahead)).date()
-        if _day_matches_spec(spec, day):
-            moment = datetime(day.year, day.month, day.day) + timedelta(seconds=seconds)
-            if moment > after:
-                return moment
-    return None
+# Day-of-week/month/year rules shared with the traffic reset schedules (node_inventory).
+from schedule_time import day_matches as _day_matches_spec, next_occurrence, previous_occurrence  # noqa: E402,F401
 
 
 def once_time(spec):

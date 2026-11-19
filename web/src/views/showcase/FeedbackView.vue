@@ -32,7 +32,7 @@ const deleted = ref(false)
     </PageSection>
     <PageSection :cols="2" :title="t('showcase.feedback.progress')">
       <ProgressBar :label="t('showcase.feedback.uploading')" :value="64" />
-      <ProgressBar :label="t('showcase.feedback.loading')" :value="30" />
+      <ProgressBar variant="inline" :label="t('showcase.feedback.loading')" :value="42" text="42.4%" />
     </PageSection>
     <PageSection :cols="2" :title="t('showcase.feedback.badges')">
       <InlineGroup>

@@ -43,6 +43,7 @@ class TailscaleApiMixin:
         self_info = snapshot.get("Self") or {}
         addresses = self_info.get("TailscaleIPs") or []
         user = (snapshot.get("User") or {}).get(str(self_info.get("UserID")), {})
+        tailnet = (snapshot.get("CurrentTailnet") or {}).get("Name")
         auth = snapshot.get("AuthURL") or ""
         parsed = urlsplit(auth)
         auth_ok = parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password
@@ -59,7 +60,9 @@ class TailscaleApiMixin:
             "installed": True, "available": True, "state": str(state),
             "version": (snapshot.get("Version") or "").split("-", 1)[0],
             "tun": snapshot.get("TUN") if isinstance(snapshot.get("TUN"), bool) else None,
-            "present": {"controlServer": bool((snapshot.get("CurrentTailnet") or {}).get("Name")),
+            # A personal tailnet is named after its login, so the same name would show twice:
+            # the tailnet row is only shown when it differs from the account.
+            "present": {"controlServer": bool(tailnet) and tailnet != user.get("LoginName"),
                         "ipv4": any(":" not in ip for ip in addresses), "ipv6": any(":" in ip for ip in addresses),
                         "account": bool(user.get("LoginName"))},
             "authUrl": auth if auth_ok else None,

@@ -227,5 +227,78 @@ class TotalMeterTest(unittest.TestCase):
         self.assertEqual(tm.format_bytes(2000 * 1024 ** 4), "2000.00 TiB")
 
 
+
+class CalendarResetTest(unittest.TestCase):
+    """A weekly, monthly or yearly reset in the host's local time (the scheduled-task rules)."""
+
+    def setUp(self):
+        import os
+        import time
+        self.old = os.environ.get("TZ")
+        os.environ["TZ"] = "Asia/Shanghai"
+        time.tzset()
+
+    def tearDown(self):
+        import os
+        import time
+        if self.old is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = self.old
+        time.tzset()
+
+    def test_monthly_spec_uses_local_time_and_rolls(self):
+        spec = tm.parse_spec({"mode": "monthly", "day": 20, "time": "08:00"})
+        state = tm.new_state(full([entry("a", 100, 0)]), T0, cap_bytes=None, spec=spec)
+        self.assertEqual(state["reset_day"], 0)
+        # 08:00 in UTC+8 is midnight UTC
+        self.assertEqual(state["next_reset_at"], datetime(2026, 11, 20, tzinfo=timezone.utc).isoformat())
+        self.assertEqual(state["period_start"], datetime(2026, 10, 20, tzinfo=timezone.utc).isoformat())
+        tm.validate(state)
+        info = full([entry("a", 500, 0)])
+        state, changed = tm.advance(state, info, datetime(2026, 11, 20, 0, 0, 1, tzinfo=timezone.utc))
+        self.assertTrue(changed)
+        self.assertEqual(state["next_reset_at"], datetime(2026, 12, 20, tzinfo=timezone.utc).isoformat())
+
+    def test_weekly_and_yearly_specs_and_switching_back_to_a_day(self):
+        weekly = tm.parse_spec({"mode": "weekly", "days": [1], "time": "00:00"})        # Monday 00:00 local
+        state = tm.apply_settings(tm.new_state(full([]), T0), None, 1, T0, full([]), weekly)
+        self.assertEqual(state["reset_spec"], weekly)
+        self.assertEqual(state["next_reset_at"], datetime(2026, 11, 22, 16, tzinfo=timezone.utc).isoformat())
+        yearly = tm.parse_spec({"mode": "yearly", "month": 1, "day": 1, "time": "00:00"})
+        state = tm.apply_settings(state, None, 0, T0, full([]), yearly)
+        self.assertEqual(state["next_reset_at"], datetime(2026, 12, 31, 16, tzinfo=timezone.utc).isoformat())
+        state = tm.apply_settings(state, None, 5, T0, full([]), None)
+        self.assertNotIn("reset_spec", state)
+        self.assertEqual(state["reset_day"], 5)
+
+    def test_node_reset_modes_round_trip_and_advance_in_local_time(self):
+        import node_inventory as ni
+        for spec in ({"mode": "weekly", "days": [0, 3], "time": "03:00:00"},
+                     {"mode": "monthly", "day": 31, "time": "00:30:00"},
+                     {"mode": "yearly", "month": 2, "day": 29, "time": "12:00:00"}):
+            mode = ni.schedule_reset_mode(spec)
+            self.assertEqual(ni.reset_schedule(mode), spec, mode)
+        for bad in ("at:weekly:7@03:00:00", "at:monthly:0@03:00:00", "at:yearly:02-30@03:00:00",
+                    "at:weekly:3,1@03:00:00", "at:daily:1@03:00:00", "at:monthly:5@24:00:00"):
+            self.assertIsNone(ni.reset_schedule(bad), bad)
+        with self.assertRaises(ValueError):
+            ni.schedule_reset_mode({"mode": "daily", "time": "03:00:00"})
+        mode = ni.schedule_reset_mode({"mode": "monthly", "day": 31, "time": "08:00:00"})    # 00:00 UTC in UTC+8
+        due = datetime(2026, 1, 31, tzinfo=timezone.utc)
+        self.assertEqual(ni.advance_reset_interval(due, mode), datetime(2026, 2, 28, tzinfo=timezone.utc))
+        self.assertEqual(ni.advance_reset_interval(datetime(2026, 2, 28, tzinfo=timezone.utc), mode),
+                         datetime(2026, 3, 31, tzinfo=timezone.utc))
+
+    def test_bad_specs_are_refused(self):
+        for bad in ({"mode": "daily", "time": "01:00"}, {"mode": "once", "date": "2027-01-01", "time": "01:00"},
+                    {"mode": "monthly", "day": 40, "time": "01:00"}, "0 0 * * *"):
+            with self.assertRaises(ValueError, msg=str(bad)):
+                tm.parse_spec(bad)
+        state = tm.new_state(full([]), T0, spec=tm.parse_spec({"mode": "monthly", "day": 1, "time": "00:00"}))
+        with self.assertRaises(ValueError):
+            tm.validate({**state, "reset_day": 3})
+
+
 if __name__ == "__main__":
     unittest.main()

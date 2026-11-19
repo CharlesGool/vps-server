@@ -129,6 +129,13 @@
   [data-form-actions] > * {
     min-width: var(--button-min-width);
   }
+  /* 设置行右边的按钮行(如"管理模块"): 和卡片的按钮行一样靠右 */
+  [data-setting-row] [data-form-actions] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-label);
+  }
   [data-card-body] > [data-form-actions][data-block] {
     flex-direction: column;
     gap: var(--space-field);

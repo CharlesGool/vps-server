@@ -424,6 +424,15 @@ class ClientAuth:
                 raise ClientCertError("client_cert_error")
             self._save({**data, "certs": certs})
 
+    def delete(self, serial):
+        """Forget a revoked certificate's record; an active one must be revoked first."""
+        with self._lock:
+            data = self.state()
+            target = next((item for item in data["certs"] if item["serial"] == serial), None)
+            if target is None or not target.get("revoked"):
+                raise ClientCertError("client_cert_error")
+            self._save({**data, "certs": [item for item in data["certs"] if item["serial"] != serial]})
+
     def set_mode(self, mode):
         if mode not in LOGIN_MODES:
             raise ClientCertError("client_cert_error")

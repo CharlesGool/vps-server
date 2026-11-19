@@ -10,12 +10,16 @@ import GridOverlay from './components/app/GridOverlay.vue'
 import { mode, theme } from './lib/appearance'
 import { cssDuration } from './lib/motion'
 import { setPageIcon } from './lib/page-icon'
+import { session } from './lib/session'
 
 const route = useRoute()
 const { t } = useI18n()
 
+// vps-server: 设置了服务器标识时标签页标题以它开头, 同时开着几台服务器的控制台时容易分清
 watchEffect(() => {
-  document.title = route.meta.titleKey ? `${t(route.meta.titleKey)} · ${APP_NAME}` : APP_NAME
+  const base = route.meta.titleKey ? `${t(route.meta.titleKey)} · ${APP_NAME}` : APP_NAME
+  const label = session.value?.authenticated ? session.value.serverLabel : ''
+  document.title = label ? `${label} · ${base}` : base
 })
 
 // 路由变化时立即更新标签页图标; 外观变化时等调色板过渡结束再更新.

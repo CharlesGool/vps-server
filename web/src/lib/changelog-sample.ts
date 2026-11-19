@@ -27,9 +27,9 @@ export function sampleChangelog(locale: Locale): ChangelogRelease[] {
   return SHAPES.map(([title, added, fixed, changed]) => ({
     title: `v${title}`,
     groups: [
-      { title: text.added, items: items(added) },
-      { title: text.fixed, items: items(fixed) },
-      { title: text.changed, items: items(changed) },
+      { title: text.added, items: items(added), text: [] },
+      { title: text.fixed, items: items(fixed), text: [] },
+      { title: text.changed, items: items(changed), text: [] },
     ].filter((group) => group.items.length),
   }))
 }

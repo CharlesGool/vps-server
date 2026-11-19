@@ -14,7 +14,8 @@ export const FEATURES = {
 }
 
 // 底栏的外部链接: 作者主页和项目仓库. 复制模板后改为实际地址; 不需要时留空数组.
-export const FOOTER_LINKS: { key: 'profile' | 'repository'; href: string }[] = [
-  { key: 'profile', href: 'https://github.com/CharlesGool' },
-  { key: 'repository', href: 'https://github.com/CharlesGool/vps-server' },
+// text 是链接上显示的文字(不翻译); 省略时显示"作者主页", "项目仓库"这类通用名称. 通用名称总是作为提示显示.
+export const FOOTER_LINKS: { key: 'profile' | 'repository'; href: string; text?: string }[] = [
+  { key: 'profile', href: 'https://github.com/CharlesGool', text: 'github/CharlesGool' },
+  { key: 'repository', href: 'https://github.com/CharlesGool/vps-server', text: 'github/CharlesGool/vps-server' },
 ]

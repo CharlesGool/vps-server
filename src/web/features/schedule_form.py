@@ -41,6 +41,8 @@ def describe(t, spec):
         return t["task_describe_weekly"].format(days=days, time=clock_text(spec["time"]))
     if mode == "monthly":
         return t["task_describe_monthly"].format(day=spec["day"], time=clock_text(spec["time"]))
+    if mode == "yearly":
+        return t["task_describe_yearly"].format(month=spec["month"], day=spec["day"], time=clock_text(spec["time"]))
     return spec["expr"]
 
 

@@ -507,6 +507,11 @@
       "created": "Emitido",
       "revokeTitle": "¿Revocar el certificado de {name}?",
       "revokeDescription": "El dispositivo ya no podrá entrar con este certificado. No se puede deshacer; emite otro si hace falta.",
+      "deleteTitle": "¿Eliminar el registro del certificado de {name}?",
+      "deleteDescription": "El registro se quita de la lista y no se puede recuperar. Este certificado ya está revocado, así que eliminarlo no afecta al inicio de sesión.",
+      "delete": "Eliminar",
+      "certStatus": "Estado",
+      "certActive": "Activo",
       "issueDescription": "Emite un certificado para un dispositivo; el nombre te ayuda a reconocerlo (por ejemplo \"PC de casa\").",
       "state": "Estado",
       "attempts": "Fallos",
@@ -519,12 +524,19 @@
       "signedIn": "Inicio de sesión",
       "lastSeen": "Último uso",
       "revokeOthersDescription": "Se cierra la sesión en todos los dispositivos excepto este.",
-      "clearKeyDescription": "Después no se envían avisos; vuelve a introducir una clave cuando haga falta.",
+      "barkKeys": "Claves de envío",
+      "barkKeysDescription": "Una clave por dispositivo con Bark; cada aviso se envía a todas las claves. Solo se muestran los cuatro primeros y los cuatro últimos caracteres, para distinguirlas.",
+      "barkKeyNew": "Añadir clave",
+      "barkKeyNewDescription": "La última parte de la URL de envío en la app Bark.",
+      "barkKeyAdded": "Clave de envío añadida.",
+      "barkKeyDeleteTitle": "¿Eliminar la clave de envío {key}?",
+      "barkKeyDeleteDescription": "Ese dispositivo deja de recibir avisos. Puedes volver a añadirla más tarde.",
       "event": "Evento",
       "detail": "Detalle",
       "time": "Hora",
       "network": "Dirección o rango permitido",
-      "addNetwork": "Permitir"
+      "addNetwork": "Permitir",
+      "barkKeySave": "Añadir clave"
     },
     "dashboard": {
       "notInstalled": "Módulo no instalado. Instálalo en Ajustes → Módulos.",
@@ -539,7 +551,8 @@
       "saved": "Ajustes del tráfico total guardados.",
       "invalid": "Revisa los valores introducidos.",
       "enable": "Activar {name}",
-      "disable": "Desactivar {name}"
+      "disable": "Desactivar {name}",
+      "nextResetLocal": "Próximo reinicio {date} ({zone})"
     },
     "modules": {
       "description": "Instala o desinstala módulos opcionales. Al desinstalar se guarda una copia de la configuración y los nodos, que vuelven al reinstalar. Los interruptores están en Inicio.",
@@ -562,7 +575,8 @@
       "failed": "Error"
     },
     "traffic": {
-      "invalid": "Revisa los valores: el límite y las velocidades deben ser mayores que 0, y la hora de reinicio debe ser futura."
+      "invalid": "Revisa los valores: el límite y las velocidades deben ser mayores que 0, y la hora de reinicio debe ser futura.",
+      "resetLegacy": "Cada cierto intervalo (ajuste antiguo)"
     },
     "iperf": {
       "description": "Abre bajo demanda un servidor iperf3 con tiempo limitado, o prueba desde este servidor hacia otro servidor iperf3.",
@@ -650,6 +664,9 @@
       "enabledName": "Activar {name}",
       "invalidDestinations": "Algunos destinos no son válidos. Escribe uno por línea según la descripción.",
       "destinationsExample": "192.0.2.10:443"
+    },
+    "header": {
+      "serverLabel": "Etiqueta del servidor"
     }
   },
   "example": {
@@ -714,11 +731,13 @@
     "alerts_test_failed": "El aviso de prueba falló. Revisa la dirección del servidor, la clave y la red del host.",
     "alerts_test_sent": "Aviso de prueba enviado; revisa el móvil.",
     "audit_alerts_key_cleared": "Clave de envío borrada",
+    "audit_alerts_key_added": "Clave de envío añadida",
     "audit_alerts_saved": "Ajustes de avisos cambiados",
     "audit_ban": "Bloqueo activado",
     "audit_ban_observed": "Umbral de bloqueo alcanzado (bloqueo desactivado)",
     "audit_cert_issued": "Certificado de cliente emitido",
     "audit_cert_revoked": "Certificado de cliente revocado",
+    "audit_cert_deleted": "Registro de certificado de cliente eliminado",
     "audit_console_access_added": "Dirección de acceso a la consola añadida",
     "audit_console_access_off": "Límite de acceso a la consola desactivado",
     "audit_console_access_on": "Límite de acceso a la consola activado",
@@ -1078,7 +1097,7 @@
     "files_error_url_invalid": "Introduce una URL http o https.",
     "files_fetch": "Descargar a Mini nube",
     "files_fetch_help": "Este servidor lo descarga directamente, para orígenes que otros hosts no alcanzan (por ejemplo, GitHub Releases). Puedes cerrar el navegador; la descarga sigue en segundo plano.",
-    "files_fetch_label": "El servidor descarga desde esta URL",
+    "files_fetch_label": "Descarga remota",
     "files_fetch_started": "El servidor empezó a descargar.",
     "files_files": "Archivos",
     "files_job_cancel": "Cancelar",
@@ -1123,7 +1142,7 @@
     "files_upload": "Subir",
     "files_upload_failed": "La subida falló. Inténtalo de nuevo.",
     "files_upload_help": "Elige un archivo y súbelo; hasta {room}.",
-    "files_upload_label": "Subir desde este dispositivo",
+    "files_upload_label": "Subida local",
     "files_uploaded": "Archivo subido.",
     "files_usage": "Espacio",
     "files_usage_detail": "{used} de {quota} usados, {free} libres en el disco",
@@ -1543,9 +1562,13 @@
     "task_mode_daily": "Cada día",
     "task_mode_interval": "Cada cierto tiempo",
     "task_mode_monthly": "Cada mes",
+    "task_mode_yearly": "Cada año",
+    "task_day_number": "Día",
+    "task_month": "Mes",
+    "task_month_n": "Mes {n}",
     "task_mode_weekly": "Cada semana",
     "task_month_day": "Día del mes",
-    "task_month_day_help": "De 1 a 28, para que exista en todos los meses.",
+    "task_month_day_help": "De 1 a 31; en un mes sin ese día, su último día.",
     "task_msg_deleted": "Tarea eliminada.",
     "task_msg_saved": "Tarea guardada.",
     "task_msg_started": "Iniciada; recargue en un momento para ver el resultado.",

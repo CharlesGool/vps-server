@@ -79,7 +79,9 @@ class SpecTest(unittest.TestCase):
                {"mode": "daily", "time": "12:30:60"}, {"mode": "daily", "time": "12:30:1"}, {"mode": "daily", "time": "1:30"},
                {"mode": "weekly", "days": [], "time": "01:00"}, {"mode": "weekly", "days": [7], "time": "01:00"},
                {"mode": "weekly", "days": "1", "time": "01:00"}, {"mode": "weekly", "days": [True], "time": "01:00"},
-               {"mode": "monthly", "day": 29, "time": "01:00"}, {"mode": "monthly", "day": 0, "time": "01:00"},
+               {"mode": "monthly", "day": 32, "time": "01:00"}, {"mode": "monthly", "day": 0, "time": "01:00"},
+               {"mode": "yearly", "month": 2, "day": 30, "time": "01:00"}, {"mode": "yearly", "month": 13, "day": 1, "time": "01:00"},
+               {"mode": "yearly", "day": 1, "time": "01:00"},
                {"mode": "once", "time": "01:00"}, {"mode": "once", "date": "2026-02-30", "time": "01:00"},
                {"mode": "once", "date": "2026-1-5", "time": "01:00"}, {"mode": "once", "date": "tomorrow", "time": "01:00"},
                {"mode": "once", "date": "2026-12-01"}, {"mode": "once", "date": None, "time": "01:00"},
@@ -106,6 +108,20 @@ class SpecTest(unittest.TestCase):
         monthly = sc.normalize_spec({"mode": "monthly", "day": 15, "time": "06:07:08"})
         self.assertEqual(sc.previous_occurrence(monthly, D(2026, 11, 16, 9)), D(2026, 11, 15, 6, 7, 8))
         self.assertEqual(sc.next_occurrence(monthly, D(2026, 12, 20)), D(2027, 1, 15, 6, 7, 8))
+
+    def test_month_ends_and_yearly_dates(self):
+        # Day 31 falls on each month's last day; a yearly Feb 29 falls on Feb 28 in other years.
+        end = sc.normalize_spec({"mode": "monthly", "day": 31, "time": "03:00"})
+        self.assertEqual(sc.next_occurrence(end, D(2026, 2, 1)), D(2026, 2, 28, 3))
+        self.assertEqual(sc.next_occurrence(end, D(2026, 2, 28, 3)), D(2026, 3, 31, 3))
+        self.assertEqual(sc.previous_occurrence(end, D(2026, 5, 1)), D(2026, 4, 30, 3))
+        yearly = sc.normalize_spec({"mode": "yearly", "month": 11, "day": 1, "time": "00:00"})
+        self.assertEqual(yearly, {"mode": "yearly", "month": 11, "day": 1, "time": "00:00:00"})
+        self.assertEqual(sc.next_occurrence(yearly, D(2026, 11, 1)), D(2027, 11, 1))
+        self.assertEqual(sc.previous_occurrence(yearly, D(2026, 10, 31)), D(2025, 11, 1))
+        leap = sc.normalize_spec({"mode": "yearly", "month": 2, "day": 29, "time": "12:00"})
+        self.assertEqual(sc.next_occurrence(leap, D(2026, 1, 1)), D(2026, 2, 28, 12))
+        self.assertEqual(sc.next_occurrence(leap, D(2027, 3, 1)), D(2028, 2, 29, 12))
 
     def test_check_due_for_a_weekly_time_with_seconds(self):
         spec = sc.normalize_spec({"mode": "weekly", "days": [3], "time": "12:30:10"})

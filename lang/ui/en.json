@@ -507,6 +507,11 @@
       "created": "Issued",
       "revokeTitle": "Revoke the certificate for {name}?",
       "revokeDescription": "The device can no longer sign in with this certificate. This cannot be undone; issue a new one if needed.",
+      "deleteTitle": "Delete the certificate record for {name}?",
+      "deleteDescription": "The record is removed from the list and cannot be restored. This certificate is already revoked, so deleting it does not affect sign-in.",
+      "delete": "Delete",
+      "certStatus": "Status",
+      "certActive": "Active",
       "issueDescription": "Issue a certificate for one device; the name helps you recognise it (for example \"Home PC\").",
       "state": "State",
       "attempts": "Failures",
@@ -519,12 +524,19 @@
       "signedIn": "Signed in",
       "lastSeen": "Last used",
       "revokeOthersDescription": "Every device except this one is signed out.",
-      "clearKeyDescription": "No alerts are sent after this; enter a key again when needed.",
+      "barkKeys": "Push keys",
+      "barkKeysDescription": "One key per device with Bark; every alert goes to all keys. Only the first and last four characters are shown, to tell them apart.",
+      "barkKeyNew": "Add key",
+      "barkKeyNewDescription": "The last part of the push URL in the Bark app.",
+      "barkKeyAdded": "Push key added.",
+      "barkKeyDeleteTitle": "Delete push key {key}?",
+      "barkKeyDeleteDescription": "That device no longer receives alerts. You can add it again later.",
       "event": "Event",
       "detail": "Detail",
       "time": "Time",
       "network": "Allowed address or range",
-      "addNetwork": "Allow"
+      "addNetwork": "Allow",
+      "barkKeySave": "Add key"
     },
     "dashboard": {
       "notInstalled": "Module not installed. Install it in Settings → Modules.",
@@ -539,7 +551,8 @@
       "saved": "Total traffic settings saved.",
       "invalid": "Check the values you entered.",
       "enable": "Enable {name}",
-      "disable": "Disable {name}"
+      "disable": "Disable {name}",
+      "nextResetLocal": "Next reset {date} ({zone})"
     },
     "modules": {
       "description": "Install or uninstall optional modules. Uninstalling backs up the configuration and nodes, which come back when you reinstall. Feature switches are on Home.",
@@ -562,7 +575,8 @@
       "failed": "Failed"
     },
     "traffic": {
-      "invalid": "Check the values: caps and speed limits must be above 0, and a set reset time must be in the future."
+      "invalid": "Check the values: caps and speed limits must be above 0, and a set reset time must be in the future.",
+      "resetLegacy": "At a fixed interval (old setting)"
     },
     "iperf": {
       "description": "Open a time-limited iperf3 server on demand, or test from this server to another iperf3 server.",
@@ -650,6 +664,9 @@
       "enabledName": "Enable {name}",
       "invalidDestinations": "Some destinations are not valid. Enter one per line as described.",
       "destinationsExample": "192.0.2.10:443"
+    },
+    "header": {
+      "serverLabel": "Server label"
     }
   },
   "example": {
@@ -714,11 +731,13 @@
     "alerts_test_failed": "The test alert failed. Check the server address, the key and the host's network.",
     "alerts_test_sent": "Test alert sent; check your phone.",
     "audit_alerts_key_cleared": "Push key deleted",
+    "audit_alerts_key_added": "Push key added",
     "audit_alerts_saved": "Login alert settings changed",
     "audit_ban": "Ban triggered",
     "audit_ban_observed": "Ban threshold reached (ban off)",
     "audit_cert_issued": "Client certificate issued",
     "audit_cert_revoked": "Client certificate revoked",
+    "audit_cert_deleted": "Client certificate record deleted",
     "audit_console_access_added": "Console access address added",
     "audit_console_access_off": "Console access limit turned off",
     "audit_console_access_on": "Console access limit turned on",
@@ -1078,7 +1097,7 @@
     "files_error_url_invalid": "Enter an http or https URL.",
     "files_fetch": "Download to Mini Drive",
     "files_fetch_help": "This server downloads it directly, for sources other hosts cannot reach (GitHub Releases, for example). You can close the browser; the download continues in the background.",
-    "files_fetch_label": "Server downloads from this URL",
+    "files_fetch_label": "Remote download",
     "files_fetch_started": "The server started downloading.",
     "files_files": "Files",
     "files_job_cancel": "Cancel",
@@ -1123,7 +1142,7 @@
     "files_upload": "Upload",
     "files_upload_failed": "The upload failed. Try again.",
     "files_upload_help": "Choose a file and upload it; up to {room}.",
-    "files_upload_label": "Upload from this device",
+    "files_upload_label": "Local upload",
     "files_uploaded": "File uploaded.",
     "files_usage": "Storage",
     "files_usage_detail": "{used} of {quota} used, {free} free on disk",
@@ -1543,9 +1562,13 @@
     "task_mode_daily": "Every day",
     "task_mode_interval": "Every so often",
     "task_mode_monthly": "Every month",
+    "task_mode_yearly": "Every year",
+    "task_day_number": "Day",
+    "task_month": "Month",
+    "task_month_n": "Month {n}",
     "task_mode_weekly": "Every week",
     "task_month_day": "Day of the month",
-    "task_month_day_help": "1 to 28, so it exists in every month.",
+    "task_month_day_help": "1 to 31; in a month without that day, its last day.",
     "task_msg_deleted": "Task deleted.",
     "task_msg_saved": "Task saved.",
     "task_msg_started": "Started; reload in a moment to see the result.",

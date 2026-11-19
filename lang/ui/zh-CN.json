@@ -507,6 +507,11 @@
       "created": "签发日期",
       "revokeTitle": "撤销 {name} 的证书?",
       "revokeDescription": "撤销后这台设备不能再用证书登录, 不能恢复; 需要时重新签发一张.",
+      "deleteTitle": "删除 {name} 的证书记录?",
+      "deleteDescription": "记录从列表中移除, 不能恢复. 这张证书已撤销, 删除不影响登录.",
+      "delete": "删除",
+      "certStatus": "状态",
+      "certActive": "有效",
       "issueDescription": "为一台设备签发证书, 名称用来认出它(如 \"家里的电脑\").",
       "state": "状态",
       "attempts": "失败次数",
@@ -519,12 +524,19 @@
       "signedIn": "登录时间",
       "lastSeen": "最近使用",
       "revokeOthersDescription": "除当前这一个以外, 所有设备都会退出登录.",
-      "clearKeyDescription": "清除后不再发送任何提醒, 需要时重新填写密钥.",
+      "barkKeys": "推送密钥",
+      "barkKeysDescription": "每台装了 Bark 的设备一个密钥, 提醒会发给全部密钥. 只显示前后各 4 位, 用来区分.",
+      "barkKeyNew": "添加密钥",
+      "barkKeyNewDescription": "Bark App 中推送地址的最后一段.",
+      "barkKeyAdded": "已添加推送密钥.",
+      "barkKeyDeleteTitle": "删除推送密钥 {key}?",
+      "barkKeyDeleteDescription": "这台设备不再收到提醒. 需要时可以重新添加.",
       "event": "事件",
       "detail": "详情",
       "time": "时间",
       "network": "允许的地址或网段",
-      "addNetwork": "允许访问"
+      "addNetwork": "允许访问",
+      "barkKeySave": "新增密钥"
     },
     "dashboard": {
       "notInstalled": "模块未安装, 在设置 → 模块中安装.",
@@ -539,7 +551,8 @@
       "saved": "总流量设置已保存.",
       "invalid": "请检查填写的数值.",
       "enable": "启用{name}",
-      "disable": "停用{name}"
+      "disable": "停用{name}",
+      "nextResetLocal": "下次重置 {date}({zone})"
     },
     "modules": {
       "description": "安装或卸载可选模块. 卸载时配置和节点会备份, 重新安装后恢复. 功能开关在主页.",
@@ -562,7 +575,8 @@
       "failed": "失败"
     },
     "traffic": {
-      "invalid": "请检查填写的数值: 上限和限速要大于 0, 指定的重置时间要晚于现在."
+      "invalid": "请检查填写的数值: 上限和限速要大于 0, 指定的重置时间要晚于现在.",
+      "resetLegacy": "每隔一段时间(旧设置)"
     },
     "iperf": {
       "description": "按需开启限时的 iperf3 服务端, 或从这台服务器向其他 iperf3 服务器测试.",
@@ -650,6 +664,9 @@
       "enabledName": "启用 {name}",
       "invalidDestinations": "访问目标格式不对, 请按说明每行填写一个.",
       "destinationsExample": "192.0.2.10:443"
+    },
+    "header": {
+      "serverLabel": "服务器标识"
     }
   },
   "example": {
@@ -714,11 +731,13 @@
     "alerts_test_failed": "测试提醒发送失败，请检查服务器地址、密钥和主机网络。",
     "alerts_test_sent": "测试提醒已发送，请在手机上确认。",
     "audit_alerts_key_cleared": "删除推送密钥",
+    "audit_alerts_key_added": "添加推送密钥",
     "audit_alerts_saved": "修改登录提醒设置",
     "audit_ban": "触发封禁",
     "audit_ban_observed": "达到封禁阈值（封禁已关闭）",
     "audit_cert_issued": "生成客户端证书",
     "audit_cert_revoked": "撤销客户端证书",
+    "audit_cert_deleted": "删除客户端证书记录",
     "audit_console_access_added": "添加控制台访问地址",
     "audit_console_access_off": "关闭控制台访问限制",
     "audit_console_access_on": "开启控制台访问限制",
@@ -1078,7 +1097,7 @@
     "files_error_url_invalid": "请输入 http 或 https 链接。",
     "files_fetch": "下载到迷你网盘",
     "files_fetch_help": "由这台服务器直接下载, 适合其他服务器访问不了的来源(例如 GitHub Release)。浏览器可以关掉, 下载在后台继续。",
-    "files_fetch_label": "服务器从这个链接下载",
+    "files_fetch_label": "远程下载",
     "files_fetch_started": "服务器已开始下载。",
     "files_files": "文件",
     "files_job_cancel": "取消",
@@ -1123,7 +1142,7 @@
     "files_upload": "上传",
     "files_upload_failed": "上传失败，请重试。",
     "files_upload_help": "选择文件后上传, 最大 {room}。",
-    "files_upload_label": "从这台设备上传",
+    "files_upload_label": "本地上传",
     "files_uploaded": "文件已上传。",
     "files_usage": "容量",
     "files_usage_detail": "已用 {used} / 上限 {quota}，磁盘剩余 {free}",
@@ -1543,9 +1562,13 @@
     "task_mode_daily": "每天",
     "task_mode_interval": "每隔一段时间",
     "task_mode_monthly": "每月",
+    "task_mode_yearly": "每年",
+    "task_day_number": "几号",
+    "task_month": "月份",
+    "task_month_n": "{n} 月",
     "task_mode_weekly": "每周",
     "task_month_day": "每月几号",
-    "task_month_day_help": "1 到 28 号, 避开有的月份没有 29-31 号.",
+    "task_month_day_help": "1 到 31 号; 没有这一天的月份在月末那天.",
     "task_msg_deleted": "任务已删除.",
     "task_msg_saved": "任务已保存.",
     "task_msg_started": "已开始运行, 稍后刷新查看结果.",
