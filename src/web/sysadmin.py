@@ -90,27 +90,37 @@ def set_hostname(request):
                             check=False)
     if result.returncode:
         raise Refused("hostname_failed")
-    short = name.split(".")[0]
     hosts = Path("/etc/hosts")
     try:
         lines = hosts.read_text().splitlines()
     except OSError:
         lines = []
-    changed, found = [], False
-    old_re = re.compile(r"(?<![A-Za-z0-9.-])" + re.escape(old) + r"(?![A-Za-z0-9.-])") if old else None
-    for line in lines:
-        fields = line.split("#", 1)[0].split()
-        if fields and fields[0] == "127.0.1.1":
-            line = "127.0.1.1\t" + (name if short == name else f"{name} {short}")
-            found = True
-        elif old_re and old != "localhost" and fields and fields[0] not in ("127.0.0.1", "::1") \
-                and old_re.search(line):
-            line = old_re.sub(name, line)
-        changed.append(line)
-    if not found:
-        changed.append("127.0.1.1\t" + (name if short == name else f"{name} {short}"))
+    changed = rename_in_hosts(lines, old, name)
     _write_atomic(hosts, ("\n".join(changed) + "\n").encode(), keep=hosts)
     return {"old": old, "name": name}
+
+
+def rename_in_hosts(lines, old, name):
+    """/etc/hosts with ``old`` replaced by ``name`` wherever it is a whole entry.
+
+    Comments, localhost lines and other aliases stay as they are. Only when the
+    old name appears nowhere is a ``127.0.1.1 <name>`` line added (the Debian
+    convention), so the host can still resolve its own name.
+    """
+    old_re = re.compile(r"(?<![A-Za-z0-9.-])" + re.escape(old) + r"(?![A-Za-z0-9.-])") if old else None
+    changed, found = [], False
+    for line in lines:
+        content, hash_mark, comment = line.partition("#")
+        fields = content.split()
+        if old_re and old != "localhost" and len(fields) > 1 and old_re.search(content):
+            line = old_re.sub(name, content) + hash_mark + comment
+            found = True
+        elif len(fields) > 1 and name in fields[1:]:
+            found = True
+        changed.append(line)
+    if not found:
+        changed.append("127.0.1.1\t" + name)
+    return changed
 
 
 def _write_atomic(path, data, keep=None):

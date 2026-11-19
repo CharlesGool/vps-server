@@ -77,7 +77,8 @@ async function confirmKill() {
   pending.value = null
   if (!target) return
   const done = await guard(
-    () => api('system/processes/kill', { method: 'POST', body: { pid: target.pid, force: target.force } }),
+    // 成功时服务器不返回内容(204), 换成 true 以便和失败(undefined)区分
+    () => api('system/processes/kill', { method: 'POST', body: { pid: target.pid, force: target.force } }).then(() => true),
     (code) => (code === 'not_found' ? t('vps.processes.gone') : undefined),
   )
   if (done !== undefined) showToast(t('vps.processes.signalled', { pid: target.pid }), 'success')
