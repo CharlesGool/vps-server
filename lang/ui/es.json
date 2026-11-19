@@ -1609,7 +1609,7 @@
     "total_calibrate_title": "Calibrar el total",
     "total_calibration_row": "Calibración · {date}",
     "total_cap_gib": "Límite total (GiB)",
-    "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). El reinicio ocurre a las 00:00 UTC; las páginas de la consola, el terminal y SSH no cuentan.",
+    "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). Las horas de reinicio son la hora local del servidor; las páginas de la consola, el terminal y SSH no cuentan.",
     "total_multiplier_note": "Cada cifra es el uso facturado: los nodos, FRPS y el reenvío cuentan cada byte dos veces (entrada y salida), así que es el doble de lo que muestra la página de cada función. El periodo cuenta desde el día de reinicio e incluye lo que cada origen ya ha usado en su ciclo actual.",
     "total_next_reset": "Próximo reinicio {date} (UTC)",
     "total_no_cap": "sin límite total",

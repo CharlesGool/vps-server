@@ -179,7 +179,7 @@
   "total_settings": "Total traffic settings",
   "total_cap_gib": "Total limit (GiB)",
   "total_reset_day": "Monthly reset day (1-28, 0 = never)",
-  "total_hint": "Adds up nodes, FRPS, domain forwarding, port forwarding, FRPC, Tailscale, iperf3, Mini Drive and speed test, counted as on their own pages (forwarded traffic ×2). The reset happens at 00:00 UTC; console pages, the terminal and SSH are not counted.",
+  "total_hint": "Adds up nodes, FRPS, domain forwarding, port forwarding, FRPC, Tailscale, iperf3, Mini Drive and speed test, counted as on their own pages (forwarded traffic ×2). Reset times are the server's local time; console pages, the terminal and SSH are not counted.",
   "total_save": "Save total traffic settings",
   "traffic_help_once": "Upload is traffic coming into this host, download is traffic leaving it; each byte counts once. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
   "traffic_help_twice": "Forwarded traffic enters and leaves this host, so it counts twice, like a Singbox node. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",

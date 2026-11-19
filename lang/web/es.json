@@ -179,7 +179,7 @@
   "total_settings": "Ajustes del tráfico total",
   "total_cap_gib": "Límite total (GiB)",
   "total_reset_day": "Día de reinicio mensual (1-28, 0 = nunca)",
-  "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). El reinicio ocurre a las 00:00 UTC; las páginas de la consola, el terminal y SSH no cuentan.",
+  "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). Las horas de reinicio son la hora local del servidor; las páginas de la consola, el terminal y SSH no cuentan.",
   "total_save": "Guardar ajustes del tráfico total",
   "traffic_help_once": "La subida es el tráfico que entra en este servidor y la bajada el que sale; cada byte cuenta una vez. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
   "traffic_help_twice": "El tráfico reenviado entra y sale de este servidor, así que cuenta dos veces, como un nodo Singbox. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",

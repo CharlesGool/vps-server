@@ -179,7 +179,7 @@
   "total_settings": "总流量设置",
   "total_cap_gib": "总流量上限(GiB)",
   "total_reset_day": "每月重置日(1-28,0 为不重置)",
-  "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置日按 UTC 0 点;控制台页面、终端和 SSH 不计。",
+  "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置时间按服务器本地时间;控制台页面、终端和 SSH 不计。",
   "total_save": "保存总流量设置",
   "traffic_help_once": "上传是流入本机的流量, 下载是从本机流出的流量, 每个字节计一次。达到流量上限后按设置限速到 1 Mbps 或断开。",
   "traffic_help_twice": "转发的流量进出本机各一次, 与 Singbox 节点一样计两次。达到流量上限后按设置限速到 1 Mbps 或断开。",

@@ -1609,7 +1609,7 @@
     "total_calibrate_title": "校准总流量",
     "total_calibration_row": "校准 · {date}",
     "total_cap_gib": "总流量上限(GiB)",
-    "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置日按 UTC 0 点;控制台页面、终端和 SSH 不计。",
+    "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置时间按服务器本地时间;控制台页面、终端和 SSH 不计。",
     "total_multiplier_note": "每一项的数值是计费用量: 节点, FRPS 和转发类每个字节计两次(进出各一次), 所以是各自页面上流量的 2 倍. 本周期从重置日算起, 并包含各项当前周期里已经用掉的流量.",
     "total_next_reset": "下次重置 {date}(UTC)",
     "total_no_cap": "未设置总上限",
