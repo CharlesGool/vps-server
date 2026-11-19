@@ -80,6 +80,17 @@ class SpaApiTest(unittest.TestCase):
         self.assertFalse(reply.json["authenticated"])
         self.assertTrue(reply.json["loginMethods"]["password"])
 
+    def test_lone_surrogates_are_refused_not_crashing(self):
+        app = self.app
+        handler = object.__new__(app.ConsoleHandler)
+        payload = b'{"password": "\\udc80x"}'
+        headers = Message()
+        headers["Host"] = "127.0.0.1:28998"
+        headers["Content-Type"] = "application/json"
+        headers["Content-Length"] = str(len(payload))
+        handler.headers, handler.rfile = headers, io.BytesIO(payload)
+        self.assertIsNone(handler.read_json())
+
     def test_password_login_grants_security_and_logout_ends_it(self):
         wrong = Exchange(self.app, "POST", "/api/login", body={"password": "nope"})
         self.assertEqual((wrong.status, wrong.json["error"]), (401, "invalid_password"))

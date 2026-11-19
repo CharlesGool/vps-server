@@ -124,6 +124,9 @@ class SpaMixin:
             return None
         try:
             value = self.context.json.loads(self.rfile.read(length).decode("utf-8"))
+            # JSON escapes can carry lone surrogates ("\\udc80") that no UTF-8 text has; refuse them here
+            # rather than fail later wherever a value is encoded.
+            self.context.json.dumps(value, ensure_ascii=False).encode("utf-8")
         except (UnicodeError, ValueError):
             return None
         return value if isinstance(value, dict) else None
