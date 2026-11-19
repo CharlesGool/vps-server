@@ -86,7 +86,7 @@ async function send(path: string, body: unknown, method = 'POST') {
 
 const summary = computed(() => {
   const nodes = data.value?.nodes ?? []
-  return t('vps.proxy.summary', { total: nodes.length, active: nodes.filter((node) => node.active).length }, nodes.length)
+  return t('vps.proxy.summary', { total: nodes.length, active: nodes.filter((node) => node.active).length })
 })
 const status = (node: Node) =>
   !node.enabled ? { tone: 'neutral' as const, key: 'console.node_disabled' } : node.active ? { tone: 'success' as const, key: 'console.node_active' } : { tone: 'warning' as const, key: 'console.node_stopped' }

@@ -658,7 +658,7 @@
     },
     "proxy": {
       "description": "Gestiona los nodos proxy Singbox de este servidor: protocolo, puerto, credenciales, destinos permitidos y tráfico.",
-      "summary": "{total} nodo, {active} en ejecución. | {total} nodos, {active} en ejecución.",
+      "summary": "Nodos: {total}, en ejecución: {active}.",
       "nodes": "Nodos",
       "share": "Suscripción de Clash",
       "enabledName": "Activar {name}",

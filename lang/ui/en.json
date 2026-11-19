@@ -658,7 +658,7 @@
     },
     "proxy": {
       "description": "Manage the Singbox proxy nodes on this server: protocol, port, credentials, allowed destinations and traffic.",
-      "summary": "{total} node, {active} running. | {total} nodes, {active} running.",
+      "summary": "Nodes: {total}, running: {active}.",
       "nodes": "Nodes",
       "share": "Clash subscription",
       "enabledName": "Enable {name}",
