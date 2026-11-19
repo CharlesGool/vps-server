@@ -735,7 +735,9 @@
       "gpuTempThreshold": "GPU temperature",
       "gpuMemoryThreshold": "GPU memory use",
       "cpuLabel": "CPU · {model} · {cores} cores",
-      "cpuCores": "CPU · {cores} cores"
+      "cpuCores": "CPU · {cores} cores",
+      "usedOfTotal": "{name} · {used} / {total}",
+      "mountAt": "Mounted at {mount}"
     },
     "system": {
       "title": "System",

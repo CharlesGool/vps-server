@@ -61,6 +61,11 @@ export function formatDuration(seconds: number, t: (key: string, values?: Record
   return days ? t('vps.monitor.daysHours', { days, hours }) : t('vps.monitor.hoursMinutes', { hours, minutes })
 }
 
+// 内存和硬盘卡片的标签: 名称 · 已用 / 总量
+export function usedOfTotal(t: (key: string, values?: Record<string, unknown>) => string, key: string, used: number, total: number): string {
+  return t('vps.monitor.usedOfTotal', { name: t(key), used: formatBytes(used), total: formatBytes(total) })
+}
+
 // CPU 型号的短名称: 去掉 (R), (TM), "@ 频率", "Processor", "64-Core"
 export function cpuName(model: string): string {
   return model

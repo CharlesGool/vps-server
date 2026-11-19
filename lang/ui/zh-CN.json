@@ -735,7 +735,9 @@
       "gpuTempThreshold": "GPU 温度",
       "gpuMemoryThreshold": "显存使用率",
       "cpuLabel": "CPU · {model} · {cores} 核",
-      "cpuCores": "CPU · {cores} 核"
+      "cpuCores": "CPU · {cores} 核",
+      "usedOfTotal": "{name} · {used} / {total}",
+      "mountAt": "挂载点 {mount}"
     },
     "system": {
       "title": "系统",

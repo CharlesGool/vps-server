@@ -50,7 +50,7 @@ import { Input } from '@/components/ui/input'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
-import { gpuCards, type ResourceSummary } from '@/lib/monitor'
+import { gpuCards, usedOfTotal, type ResourceSummary } from '@/lib/monitor'
 import { showToast } from '@/lib/toast'
 
 // 主页: 主机总流量, 模块任务进度, 每个功能一张入口卡片(可启停的功能卡片右上角是开关).
@@ -151,8 +151,8 @@ const resourceCards = computed(() => {
   const ago = value.hourAgo
   return [
     { key: 'cpu', label: t('vps.monitor.cpu'), value: `${value.cpu.percent.toFixed(1)}%`, delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo') },
-    { key: 'memory', label: t('vps.monitor.memory'), value: `${memory.toFixed(1)}%`, delta: ago ? Math.round((memory - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo') },
-    { key: 'disk', label: t('vps.monitor.disk'), value: value.disk ? `${value.disk.percent.toFixed(1)}%` : '-', delta: 0, deltaLabel: value.disk ? t('vps.monitor.diskFree', { free: formatBytes(value.disk.free) }) : '-' },
+    { key: 'memory', label: usedOfTotal(t, 'vps.monitor.memory', value.memory.used, value.memory.total), value: `${memory.toFixed(1)}%`, delta: ago ? Math.round((memory - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo') },
+    { key: 'disk', label: value.disk ? usedOfTotal(t, 'vps.monitor.disk', value.disk.used, value.disk.total) : t('vps.monitor.disk'), value: value.disk ? `${value.disk.percent.toFixed(1)}%` : '-', delta: 0, deltaLabel: value.disk ? t('vps.monitor.mountAt', { mount: value.disk.mount }) : '-' },
     { key: 'load', label: t('vps.monitor.load'), value: value.load[0].toFixed(2), delta: value.load[2] ? Math.round(((value.load[0] - value.load[2]) / value.load[2]) * 100) : 0, deltaLabel: t('vps.monitor.vsLoad15') },
     ...gpuCards(value.gpus ?? [], t).map(({ trend: _trend, ...card }) => card),
   ]
