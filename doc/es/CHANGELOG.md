@@ -26,6 +26,30 @@ metadata:
 
 ## Historial de cambios
 
+### v7.3.0 — 2026-11-20
+
+Añade la monitorización de GPU en hosts con GPU NVIDIA. El comando de actualización no cambia y la configuración y los datos se conservan.
+
+#### Añadido
+
+- **Monitorización de GPU.** Con `nvidia-smi` en el host, el inicio y la página Recursos muestran una tarjeta por GPU (uso, memoria, temperatura), y Recursos añade gráficos de GPU en vivo y de 15 minutos (uso de cada tarjeta y, con hasta 2 tarjetas, también memoria). Los hosts sin GPU no muestran nada de esto.
+- **Alertas de GPU.** Las alertas de recursos añaden temperatura de GPU (85 °C por defecto) y uso de memoria de GPU (95% por defecto), visibles solo en hosts con GPU; se envían por Bark como las demás, como mucho una vez al día por tarjeta y tipo.
+
+#### Cambiado
+
+- Las tarjetas de CPU del inicio y de Recursos muestran el modelo y los núcleos, las de memoria y disco muestran usado / total y la de disco su punto de montaje; la tarjeta del host en Recursos ya no los repite.
+- El nombre de las tarjetas de datos ocupa una sola línea, con puntos suspensivos y el texto completo al pasar el ratón.
+
+#### Corregido
+
+- Con GPU, las tarjetas de módulos del inicio subían junto a las de GPU; ahora las de GPU ocupan su propia fila.
+- Al activar o desactivar una función nueva (Recursos, Sistema, Copias de seguridad, etc.) en el inicio, el aviso mostraba su nombre interno (como monitor).
+- El README situaba las alertas de recursos tras un botón de ajustes de la cabecera; están al final de la página Recursos.
+
+#### Verificación
+
+Pasan las pruebas de diseño, tipos, navegador (con capturas y comprobaciones de diseño) y las unitarias de Python. La versión de prueba se instaló en un host con una RTX 5090 y una RTX 4060; se leyeron el uso, la memoria y la temperatura de ambas y los puntos en vivo se registraron cada 5 segundos.
+
 ### v7.2.0 — 2026-11-20
 
 Añade monitorización de recursos, gestión del sistema, un gestor de archivos y gestión central. El comando de actualización no cambia y la configuración y los datos se conservan; las funciones nuevas vienen activadas y se pueden desactivar en la página de inicio.

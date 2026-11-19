@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.2.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.2.0)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.3.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.3.0)
 
 ## Documentación
 
@@ -130,10 +130,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v7.2.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v7.3.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.3.0/vps-server-v7.3.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -141,7 +141,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Caddy y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v7.2.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v7.3.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -153,17 +153,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos. Si una descarga de GitHub sigue por debajo de 200 KB/s tras 15 segundos, la instalación pasa a los espejos gh-proxy.com y ghfast.top (para servidores en China continental), y la descarga se verifica igualmente con SHA-256; defina `VPSSRV_GITHUB_MIRROR=https://su.espejo/` para probar antes su propio espejo, o `none` para no usar espejos. El comando de instalación de arriba también descarga de GitHub; en China continental puede sustituir su `https://github.com/` por `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.3.0/vps-server-v7.3.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v7.3.0/vps-server-v7.3.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.3.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.2.0-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.3.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -200,7 +200,7 @@ El argumento `status` muestra el estado del requisito y todos los certificados.
 
 ### Recursos y administración del sistema
 
-La parte superior del inicio muestra CPU, memoria, disco y carga; la página «Recursos» añade además gráficas en tiempo real (último minuto, cada 5 segundos) y de los últimos 15 minutos (cada minuto) de CPU, memoria y red, el uso de cada disco, la velocidad de las interfaces de red, la temperatura (si se puede leer) y la GPU NVIDIA (si hay `nvidia-smi`). El botón de ajustes de la cabecera abre las alertas de recursos: disco o memoria por encima de un umbral, CPU por encima de un umbral durante un tiempo, o fallo de los servicios de vps-server, FRPC o Tailscale se envían por Bark (la clave de Bark se introduce en los ajustes de seguridad); el mismo evento se envía como máximo una vez al día.
+La parte superior del inicio muestra CPU, memoria, disco y carga, más una tarjeta por cada GPU NVIDIA si hay `nvidia-smi`, actualizadas cada 5 segundos; la página «Recursos» añade gráficas en tiempo real (último minuto, cada 5 segundos) y de los últimos 15 minutos (cada minuto) de CPU, memoria, red y GPU, el uso de cada disco, la velocidad de las interfaces de red y la temperatura (si se puede leer). Las alertas de recursos están al final de la página: disco, memoria o memoria de GPU por encima de un umbral, CPU por encima de un umbral durante un tiempo, GPU demasiado caliente, o fallo de los servicios de vps-server, FRPC o Tailscale se envían por Bark (la clave de Bark se introduce en los ajustes de seguridad); el mismo evento se envía como máximo una vez al día.
 
 En el inicio, Recursos, Sistema, Actualizaciones, Procesos, Servicios, Puertos en escucha, Archivos, Gestión central, Copias de seguridad y Tareas programadas tienen cada uno una tarjeta con interruptor; al desactivarla, la página y su API dejan de estar disponibles (con Recursos desactivado ya no se envían alertas; con Copias de seguridad o Tareas programadas desactivadas se pausa su ejecución programada). Salvo Recursos, estas páginas, igual que la terminal root, piden verificar la contraseña de administrador antes de entrar:
 
@@ -315,11 +315,11 @@ v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE*
 Desde v7.0.0:
 
 - **Cifrado de datos.** El instalador crea una clave de datos en `/etc/vps-server/data.key` (modo 0600, fuera del directorio de estado) y la consola guarda después sus archivos de estado cifrados (ChaCha20-Poly1305): la contraseña de administrador, el secreto y las sesiones, la clave de alertas (Bark), los registros de auditoría, las direcciones que han iniciado sesión, la lista de acceso a la consola, las IP permitidas, el índice de Mini Drive, las tareas programadas y los ajustes de copias, y la clave privada TLS y la clave privada de la CA de clientes de la consola. Los archivos en claro de una versión anterior se leen tal cual y se convierten en cifrados al arrancar. Esto protege frente a una copia del directorio de estado, una imagen de disco o una copia sin la clave; **no protege frente a quien ya es root en el equipo**, porque el servicio necesita la clave. La configuración de nodos, FRP, reenvío de dominios y Tailscale la leen directamente sing-box, frps, Caddy y tailscaled, así que no entra aquí sino en las copias cifradas. Tampoco se cifran el contenido de Mini Drive ni la base de datos de visitantes. La tarjeta "Cifrado de datos" de la página de copias muestra el estado.
-- **Cifrado de copias.** Genere un par de claves en la página de copias: el servidor solo guarda la clave pública y cifra con ella las copias nuevas (`.sealed`), por lo que no puede abrirlas; al restaurar se pide la clave privada que guardó (se muestra una vez y no se almacena). Las copias cifradas llevan la clave de datos y se restauran en cualquier equipo; sin clave pública, las copias van en claro y **no incluyen** la clave de datos (solo se restauran en este equipo). Las copias hechas antes de fijar una clave pública (incluida la automática previa a la actualización a v7.2.0) siguen en claro: elimínelas cuando la actualización parezca correcta.
+- **Cifrado de copias.** Genere un par de claves en la página de copias: el servidor solo guarda la clave pública y cifra con ella las copias nuevas (`.sealed`), por lo que no puede abrirlas; al restaurar se pide la clave privada que guardó (se muestra una vez y no se almacena). Las copias cifradas llevan la clave de datos y se restauran en cualquier equipo; sin clave pública, las copias van en claro y **no incluyen** la clave de datos (solo se restauran en este equipo). Las copias hechas antes de fijar una clave pública (incluida la automática previa a la actualización a v7.3.0) siguen en claro: elimínelas cuando la actualización parezca correcta.
 - **Método de acceso.** Se elige en Ajustes > Acceso > Certificados de cliente: solo contraseña, solo certificado, contraseña o certificado, o contraseña + certificado. El ajuste anterior "exigir certificados de cliente" pasa a "solo certificado" y, si estaba desactivado, a "contraseña o certificado". Antes de cambiar a un método que exige certificado debe haber abierto los ajustes con un certificado activo; si no, se rechaza el cambio para que no se quede fuera. Si pierde el certificado, ejecute `python3 /root/apps/vps-server/src/web/client_cert.py disable` en el servidor para volver a solo contraseña.
 - **Volver atrás.** Las versiones anteriores a v7.0.0 no leen archivos cifrados. Antes de volver, ejecute `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all` para dejarlos en claro; `upgrade.py` rechaza una versión anterior mientras existan archivos cifrados. `secure_store.py status` muestra el estado de cada archivo y `secure_store.py export-key` imprime la clave de datos (guárdela bien: sin ella no se pueden recuperar los archivos de estado cifrados).
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v7.2.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v7.3.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

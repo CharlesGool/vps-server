@@ -26,6 +26,30 @@ metadata:
 
 ## Changelog
 
+### v7.3.0 — 2026-11-20
+
+Adds GPU monitoring for hosts with NVIDIA GPUs. The upgrade command is unchanged and configuration and data are kept.
+
+#### Added
+
+- **GPU monitoring.** With `nvidia-smi` on the host, the home and Resources pages show a card per GPU (use, memory, temperature), and the Resources page adds live and 15-minute GPU charts (use per card, plus memory for up to 2 cards). Hosts without a GPU show none of it.
+- **GPU alerts.** Resource alerts gain GPU temperature (85 °C by default) and GPU memory use (95% by default), shown only on hosts with a GPU; they push through Bark like the other resource alerts, at most once a day per card and kind.
+
+#### Changed
+
+- The CPU cards on the home and Resources pages name the model and core count, the memory and disk cards show used / total, and the disk card names its mount point; the Resources page's host card no longer repeats these.
+- A stat card's name stays on one line, ending in an ellipsis with the full text on hover.
+
+#### Fixed
+
+- With GPUs, the home page's module cards moved up beside the GPU cards; the GPU cards now fill their own row.
+- Switching a new feature (Resources, System, Backup and so on) on or off on the home page showed its internal name (such as monitor).
+- The README placed the resource alerts behind a header settings button; they are at the bottom of the Resources page.
+
+#### Verification
+
+Design, type, browser (with screenshots and layout checks) and Python unit tests pass. The test build ran on a host with an RTX 5090 and an RTX 4060; use, memory and temperature were read for both, and live points were recorded every 5 seconds.
+
 ### v7.2.0 — 2026-11-20
 
 Adds resource monitoring, system management, a file manager and central management. The upgrade command is unchanged and configuration and data are kept; the new features are on by default and can be switched off on the home page.
