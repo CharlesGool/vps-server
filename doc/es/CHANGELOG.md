@@ -26,6 +26,23 @@ metadata:
 
 ## Historial de cambios
 
+### v7.1.1 — 2026-11-19
+
+Chrome y Edge en un Mac eligen solos el certificado de cliente de cada host. El comando de actualización no cambia y la configuración y los datos se conservan. En un Mac hay que volver a emitir los certificados; consulta los pasos de migración.
+
+#### Corregido
+
+- **Con los perfiles de varios hosts instalados en un Mac, solo un host elegía su certificado solo.** macOS solo aplica el valor de un perfil para cada política del navegador, así que las reglas de cada host se sobrescribían y los demás hosts pedían elegir entre todos los certificados tras cada reinicio del navegador. Ahora la consola solo nombra su propia CA en el handshake TLS, así que el navegador solo considera los certificados de ese host; los nuevos certificados de dispositivo llevan la organización vps-server y el perfil de macOS de cada host escribe la misma regla, de modo que ya no se sobrescriben. En Windows y Linux el selector también muestra solo el certificado de ese host.
+- El perfil de macOS que solo activa la selección automática ya no reemplaza al perfil que contiene un certificado (reemplazarlo también borraba el certificado).
+
+#### Migración
+
+Primero actualiza todos los hosts a v7.1.1. Después, en el Mac, para cada host: emite un certificado nuevo e instala su perfil nuevo, luego quita el perfil antiguo de ese host y revoca el certificado antiguo. Instalar primero el nuevo mantiene accesibles los hosts que solo admiten certificado. Las claves privadas antiguas no se pueden exportar del llavero, así que la única opción es volver a emitirlas. Un host sin actualizar no nombra ninguna CA, y un Mac con el perfil nuevo puede enviarle el certificado equivocado, con lo que la conexión falla. Windows y Linux no necesitan migración.
+
+#### Verificación
+
+Probado en Chromium con los certificados de dos hosts y la regla compartida: sin la lista de CA el certificado equivocado iba al otro host y la conexión se rechazaba; con ella cada host recibía el suyo sin selector. La comprobación completa (diseño, tipos, pruebas de navegador y pruebas unitarias de Python) pasa, con 5 pruebas unitarias nuevas.
+
 ### v7.1.0 — 2026-11-19
 
 La consola pasa a un nuevo diseño de una sola página, con varias funciones surgidas del uso real. El backend, la configuración y los formatos de datos siguen siendo compatibles; el comando de actualización no cambia y la configuración y los datos se conservan.

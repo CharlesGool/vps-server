@@ -26,6 +26,23 @@ metadata:
 
 ## Changelog
 
+### v7.1.1 — 2026-11-19
+
+Chrome and Edge on a Mac pick each host's client certificate on their own. The upgrade command is unchanged and configuration and data are kept. Certificates on a Mac must be reissued; see the migration steps below.
+
+#### Fixed
+
+- **With several hosts' profiles installed on a Mac, only one host picked its certificate on its own.** macOS applies only one profile's value for a browser policy, so the per-host rules overwrote each other and every other host asked for a certificate from the full list after each browser restart. The console now names only its own CA in the TLS handshake, so the browser only weighs that host's certificates; new device certificates carry the organization vps-server, and every host's macOS profile writes the same rule, so they no longer overwrite each other. The Windows and Linux pickers also show only that host's certificate.
+- The macOS profile that only turns on auto-select no longer replaces the profile holding a certificate (replacing it removed the certificate too).
+
+#### Migration
+
+Upgrade every host to v7.1.1 first. Then, on the Mac, for each host: issue a new certificate and install its new profile, then remove that host's old profile and revoke the old certificate. Installing the new one first keeps certificate-only hosts reachable. The old private keys cannot be exported from the keychain, so reissuing is the only way. A host that is not upgraded names no CA, and a Mac with the new profile may send it the wrong certificate, so the connection fails. Windows and Linux need no migration.
+
+#### Verification
+
+Tested in Chromium with two hosts' certificates and the shared rule: without the CA list the wrong certificate went to the other host and the connection was refused; with it each host got its own certificate without a picker. The full check (design, types, browser tests and Python unit tests) passes, with 5 new unit tests.
+
 ### v7.1.0 — 2026-11-19
 
 The console moves to a new single-page design, plus several features from real use. The backend, configuration and data formats stay compatible; the upgrade command is unchanged and configuration and data are kept.
