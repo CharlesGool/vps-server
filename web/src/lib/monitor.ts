@@ -77,6 +77,12 @@ export function cpuName(model: string): string {
     .trim()
 }
 
+// CPU 卡片的标签: CPU · 型号 · 核心数(读不到型号时只写核心数)
+export function cpuLabel(t: (key: string, values?: Record<string, unknown>) => string, cpu: Monitor['cpu']): string {
+  const model = cpuName(cpu.model)
+  return model ? t('vps.monitor.cpuLabel', { model, cores: cpu.cores }) : t('vps.monitor.cpuCores', { cores: cpu.cores })
+}
+
 // 卡片和图例里用的短名称: 去掉厂商前缀(NVIDIA GeForce RTX 5090 → RTX 5090)
 export function gpuName(name: string): string {
   return name.replace(/^NVIDIA\s+/i, '').replace(/^GeForce\s+/i, '') || name

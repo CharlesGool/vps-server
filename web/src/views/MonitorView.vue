@@ -14,7 +14,7 @@ import TrendChart from '@/components/app/TrendChart.vue'
 import MonitorAlertsCards from '@/components/vps/MonitorAlertsCards.vue'
 import { api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
-import { cpuName, formatDuration, usedOfTotal, formatRate, gpuCards, gpuName, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
+import { cpuLabel, formatDuration, usedOfTotal, formatRate, gpuCards, gpuName, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
 
 // 资源监控: 仪表板模式. 一行 4 张数据卡(CPU, 内存, 硬盘, 负载), 整行的实时图和 24 小时趋势图, 磁盘表, 主机信息, 网卡表.
 // 每 5 秒刷新一次; 最下面是资源告警的开关和阈值.
@@ -44,7 +44,7 @@ const cards = computed(() => {
   const ago = value.hourAgo
   const load = value.load
   return [
-    { key: 'cpu', label: cpuName(value.cpu.model) ? t('vps.monitor.cpuLabel', { model: cpuName(value.cpu.model), cores: value.cpu.cores }) : t('vps.monitor.cpuCores', { cores: value.cpu.cores }), value: `${value.cpu.percent.toFixed(1)}%`,
+    { key: 'cpu', label: cpuLabel(t, value.cpu), value: `${value.cpu.percent.toFixed(1)}%`,
       delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(1) },
     { key: 'memory', label: usedOfTotal(t, 'vps.monitor.memory', value.memory.used, value.memory.total), value: `${memoryPercent.value.toFixed(1)}%`,
       delta: ago ? Math.round((memoryPercent.value - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(2) },
