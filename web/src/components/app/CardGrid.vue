@@ -1,29 +1,13 @@
+<script setup lang="ts">
+// 页面唯一的顶层布局: 卡片栅格. 每页恰有一个 CardGrid, 直接子元素只能是 PageHeader, PageSection, LinkCard, StatCard 或包着卡片的 CardForm.
+// 列数 1, 2, 4 和间距由样式按容器宽度决定(见 styles/main.css). 卡片占整数列(cols), 可跨几行(rows), 可指定起始列(col); 卡片高度由内容决定, 同一行等高.
+// 卡片之间不重叠, 多列布局中除最后一行外每行排满.
+</script>
+
 <template>
-  <div class="card-grid">
-    <slot />
+  <div data-card-grid data-layout="card-grid">
+    <div data-card-cells>
+      <slot />
+    </div>
   </div>
 </template>
-
-<style scoped>
-@reference "../../styles/main.css";
-
-/* 卡片集合: 窄屏最多 3 列, lg 起最多 6 列; 每行(含最后一行)均分宽度, 不留空列 */
-.card-grid {
-  --card-columns: 3;
-  --card-gap: calc(var(--spacing) * 4);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--card-gap);
-
-  @variant lg {
-    --card-columns: 6;
-  }
-}
-.card-grid > :deep(*) {
-  flex: 1 1 var(--card-min-width);
-  min-width: min(
-    100%,
-    max(var(--card-min-width), calc((100% - (var(--card-columns) - 1) * var(--card-gap)) / var(--card-columns)))
-  );
-}
-</style>

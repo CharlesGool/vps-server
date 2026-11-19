@@ -2,7 +2,7 @@
 import { Info } from '@lucide/vue'
 import { onBeforeUnmount, onMounted, ref, useId } from 'vue'
 
-// 悬浮, 键盘焦点和触摸都能打开.
+// 标题旁的说明图标: 悬浮, 键盘焦点, 点击和触摸都能打开(点击不会把刚由焦点打开的说明又关掉); Esc, 移开焦点或点别处关闭.
 defineProps<{ text: string; label: string }>()
 
 const id = useId()
@@ -33,7 +33,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
       :aria-expanded="open"
       @focus="open = true"
       @blur="open = false"
-      @click="open = !open"
+      @click="open = true"
     >
       <Info class="size-4" aria-hidden="true" />
     </button>

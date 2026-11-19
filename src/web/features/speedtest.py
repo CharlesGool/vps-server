@@ -1,4 +1,4 @@
-"""Speedtest pages and actions for the operator console.
+"""The LibreSpeed test endpoints (the page is the single-page UI).
 
 Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
@@ -6,76 +6,6 @@ can be reused with another application context.
 
 
 class SpeedtestMixin:
-    def page_speedtest(self, lang, query_lang):
-        t = self.context.STRINGS[lang]
-        ip = self.context.html.escape(self.client_ip())
-        config = {
-            # Maps onto LibreSpeed's own Settings keys — see vps-webserver
-            # DECISIONS.md (2026-08-25, "Vendor LibreSpeed's official test engine").
-            "urlDl": "/speedtest/garbage",
-            "urlUl": "/speedtest/empty",
-            "urlPing": "/speedtest/empty",
-            "urlGetIp": "/speedtest/getip",
-            # "P_D_U": ping+jitter, download, upload. No "I" (IP lookup) —
-            # the IP is already server-rendered above, so skip the extra
-            # round trip.
-            "testOrder": "P_D_U",
-            "timeDlMax": self.context.TEST_SECONDS,
-            "timeUlMax": self.context.TEST_SECONDS,
-            "warmup": self.context.WARMUP_SECONDS,
-            "pingSamples": self.context.PING_SAMPLES,
-            "downloadStreams": self.context.DOWNLOAD_STREAMS,
-            "uploadStreams": self.context.UPLOAD_STREAMS,
-            "overhead": self.context.OVERHEAD_FACTOR,
-            "chunkSizeMiB": min(100, self.context.MAX_TEST_MB),
-        }
-        i18n = {k: t[k] for k in ("run_test", "running", "download", "upload",
-                                  "latency", "jitter", "waiting", "warmup",
-                                  "measuring", "done", "idle")}
-        body = f"""
-        <div class="card">
-          <h1>{self.context.html.escape(t['speedtest'])}</h1>
-          <p class="muted">{self.context.html.escape(t['your_ip'])}: <strong>{ip}</strong></p>
-          <div class="gauges latency-row">
-            <div class="gauge small-gauge">
-              <div class="gauge-label">⏱ {self.context.html.escape(t['latency'])}</div>
-              <div class="gauge-value" id="latency-value">{self.context.html.escape(t['idle'])}</div>
-              <div class="gauge-unit">ms</div>
-              <div class="gauge-state muted" id="latency-state">{self.context.html.escape(t['waiting'])}</div>
-            </div>
-            <div class="gauge small-gauge">
-              <div class="gauge-label">〜 {self.context.html.escape(t['jitter'])}</div>
-              <div class="gauge-value" id="jitter-value">{self.context.html.escape(t['idle'])}</div>
-              <div class="gauge-unit">ms</div>
-              <div class="gauge-state muted" id="jitter-state">&nbsp;</div>
-            </div>
-          </div>
-          <div class="gauges">
-            <div class="gauge">
-              <div class="gauge-label">⬇ {self.context.html.escape(t['download'])}</div>
-              <div class="gauge-value" id="download-value">{self.context.html.escape(t['idle'])}</div>
-              <div class="gauge-unit">Mbps</div>
-              <div class="bar"><span id="download-bar"></span></div>
-              <div class="gauge-state muted" id="download-state">{self.context.html.escape(t['waiting'])}</div>
-            </div>
-            <div class="gauge">
-              <div class="gauge-label">⬆ {self.context.html.escape(t['upload'])}</div>
-              <div class="gauge-value" id="upload-value">{self.context.html.escape(t['idle'])}</div>
-              <div class="gauge-unit">Mbps</div>
-              <div class="bar"><span id="upload-bar"></span></div>
-              <div class="gauge-state muted" id="upload-state">{self.context.html.escape(t['waiting'])}</div>
-            </div>
-          </div>
-          <button id="run">{self.context.html.escape(t['run_test'])}</button>
-        </div>
-        {self.traffic_card(t, 'speedtest', 'speedtest')}
-        <script id="speedtest-config" type="application/json">{self.context.json.dumps(config)}</script>
-        <script id="speedtest-i18n" type="application/json">{self.context.json.dumps(i18n)}</script>
-        <script src="/static/speedtest.js"></script>
-        <script src="/static/speedtest-ui.js"></script>
-        """
-        self.send_html(200, self.render_page(t['speedtest'], body, lang, active="speedtest"),
-                       self.maybe_lang_cookie(query_lang))
 
     # These handlers implement LibreSpeed's own client/server contract exactly
     # (garbage.php / empty.php / getIP.php equivalents) rather than a
@@ -167,18 +97,3 @@ class SpeedtestMixin:
         # third party, which conflicts with the zero-dependency design (see
         # vps-webserver DECISIONS.md, "Zero third-party runtime dependencies").
         self.send_json(200, {"processedString": self.client_ip(), "rawIspInfo": ""})
-
-    def route_speedtest(self, method, path, parsed, lang, query_lang):
-        if path == "/speedtest" and method == "GET":
-            self.page_speedtest(lang, query_lang)
-        elif path == "/speedtest/garbage" and method == "GET":
-            self.handle_speedtest_garbage(parsed)
-        elif path == "/speedtest/empty" and method == "GET":
-            self.handle_speedtest_ping()
-        elif path == "/speedtest/empty" and method == "POST":
-            self.handle_speedtest_upload()
-        elif path == "/speedtest/getip" and method == "GET":
-            self.handle_speedtest_getip()
-        else:
-            return False
-        return True

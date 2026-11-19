@@ -5,8 +5,8 @@ export const MODES = ['light', 'dark', 'system'] as const
 export type Theme = (typeof THEMES)[number]
 export type Mode = (typeof MODES)[number]
 
-const MODE_KEY = 'vps-server-mode'
-const THEME_KEY = 'vps-server-theme'
+const MODE_KEY = 'ui.mode'
+const THEME_KEY = 'ui.theme'
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -25,8 +25,9 @@ function write(key: string, value: string) {
   }
 }
 
-export const mode = ref<Mode>(read(MODE_KEY, MODES, 'light'))
-export const theme = ref<Theme>(read(THEME_KEY, THEMES, 'slate-blue'))
+// v7 及更早的控制台把外观存在 vps-server-mode 和 vps-server-theme 中, 没有新记录时沿用.
+export const mode = ref<Mode>(read(MODE_KEY, MODES, read('vps-server-mode', MODES, 'system')))
+export const theme = ref<Theme>(read(THEME_KEY, THEMES, read('vps-server-theme', THEMES, 'slate-blue')))
 
 const systemDark = matchMedia('(prefers-color-scheme: dark)')
 

@@ -16,6 +16,4 @@
 # Preserve pinned upstream bytes and original license texts.
 third_party/** -text
 src/web/static/third_party/** -text
-src/web/static/fonts/** -text
-src/web/static/icons/lucide/** -text
 src/web/static/licenses/** -text

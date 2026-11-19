@@ -99,7 +99,8 @@ onBeforeUnmount(() => cancelAnimationFrame(frame))
 <template>
   <div
     ref="track"
-    class="relative flex h-6 w-full cursor-pointer touch-none select-none items-center"
+    data-control
+    class="relative flex h-6 cursor-pointer touch-none select-none items-center"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
@@ -116,7 +117,7 @@ onBeforeUnmount(() => cancelAnimationFrame(frame))
       :aria-valuemin="min"
       :aria-valuemax="max"
       :aria-valuenow="model"
-      class="absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-card shadow-sm"
+      class="absolute top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-card shadow-sm"
       :style="{ left: `${percent}%` }"
       @keydown="onKeydown"
     />

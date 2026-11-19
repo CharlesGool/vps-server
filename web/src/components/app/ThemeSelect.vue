@@ -21,9 +21,10 @@ const { t } = useI18n()
 
 <template>
   <SelectRoot v-model="theme">
-    <SelectTrigger data-ui-control
+    <SelectTrigger
+      data-control="field"
       :aria-label="label"
-      class="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 text-sm sm:w-64"
+      class="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 text-sm"
     >
       <span class="flex items-center gap-2">
         <span class="theme-swatch size-4 rounded-full" :data-theme="theme" aria-hidden="true" />
@@ -42,7 +43,7 @@ const { t } = useI18n()
             v-for="item in THEMES"
             :key="item"
             :value="item satisfies Theme"
-            class="relative flex h-9 cursor-pointer select-none items-center gap-2 rounded-sm pr-8 pl-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+            class="relative flex h-10 cursor-pointer select-none items-center gap-2 rounded-sm pr-8 pl-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
           >
             <span class="theme-swatch size-4 rounded-full" :data-theme="item" aria-hidden="true" />
             <SelectItemText>{{ t(`theme.${item}`) }}</SelectItemText>

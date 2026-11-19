@@ -91,8 +91,8 @@ def build(nft_asset, nft_sources, output, version, variant="offline"):
         fetched = _online_only_paths()
         _tracked_source(staged, fetched)
         bundle = ROOT / "web/dist"
-        if not all((bundle / name).is_file() for name in ("ui.js", "ui.css")):
-            raise ValueError("frontend bundle missing; run npm ci and npm run check in web/")
+        if not (bundle / "index.html").is_file():
+            raise ValueError("frontend bundle missing; run npm ci, then APP_VERSION=<version> npm run build in web/")
         shutil.copytree(bundle, staged / "web/dist")
         if offline:
             # ensure() above verified every file; copy them with their modes.

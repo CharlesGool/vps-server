@@ -1,4 +1,4 @@
-"""Iperf pages and actions for the operator console.
+"""iperf3: the time-boxed server window and port changes (the page is the single-page UI).
 
 Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
@@ -6,253 +6,29 @@ can be reused with another application context.
 
 
 class IperfMixin:
-    def iperf_client_result_key(self):
-        return self.get_cookie('session') or ('peer', self.client_address[0])
 
-    def page_iperf(self, lang, query_lang, client_result=None, client_values=None):
-        t = self.context.STRINGS[lang]
-        if self.context.STATE_FILE.is_file() and "iperf3" not in self.context.installed_modules(self.context.BASE_DIR):
-            return self.page_module_not_installed(lang, query_lang, "iperf3", "iperf3", active="iperf", module="iperf3")
-        if client_result is None and self.context.parse_qs(
-                self.context.urlsplit(self.path).query).get('client') == ['done']:
-            client_result, client_values = self.context.IPERF_CLIENT.take_result(
-                self.iperf_client_result_key())
-        port = self.context.IPERF_WINDOW.port
-        is_open, remaining = self.context.IPERF_WINDOW.state()
 
-        notice = ""
-        key = self.context.parse_qs(self.context.urlsplit(self.path).query).get("msg", [""])[0]
-        if key in self.context.IPERF_MESSAGE_KEYS:
-            cls = "notice" if key in ("iperf_opened", "iperf_extended", "iperf_shut", "iperf_port_saved") else "error"
-            notice = f'<p class="{cls}" role="status">{self.context.html.escape(t[key].format(port="••••••"))}</p>'
-
-        countdown_script = ""
-        if is_open:
-            # The countdown used to be a static string baked in at render
-            # time — an operator reported it never moving, only a manual
-            # reload showed a new value. deadline is an absolute Unix
-            # timestamp so /static/iperf-countdown.js can tick the visible
-            # minutes/seconds down every second without another request,
-            # and reload once it reaches zero (the window has actually
-            # closed itself server-side by then). None of the interpolated
-            # values are attacker-controlled — port is server config, mins/
-            # secs are ints — so building this without html.escape is safe;
-            # escaping it would also escape the <span> tags the script needs.
-            deadline = int(self.context.time.time()) + remaining
-            state = t["iperf_state_open"].format(
-                port='••••••',
-                mins=f'<span id="iperf-mins">{remaining // 60}</span>',
-                secs=f'<span id="iperf-secs">{remaining % 60}</span>',
-            )
-            state_attr = f' data-iperf-deadline="{deadline}"'
-            countdown_script = '<script src="/static/iperf-countdown.js"></script>'
-            # While a window is open, submitting the same form pushes the
-            # deadline out rather than starting a second server. Labelling it
-            # "open" then leaves two buttons that look like they compete; the
-            # pair only reads correctly as extend / close.
-            open_label = t["iperf_extend"]
-            close_form = f"""
-            <form method="post" action="/iperf/close">
-              <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
-              <button type="submit" class="danger">{self.context.html.escape(t['iperf_close'])}</button>
-            </form>
-            """
-        else:
-            state = self.context.html.escape(t["iperf_state_closed"].format(port='••••••'))
-            state_attr = ""
-            open_label = t["iperf_open"]
-            close_form = ""
-
-        commands = ''.join(
-            f'<div class="copyrow"><div class="copyhead">{self.context.html.escape(t[label])}</div>'
-            f'{self.private_value_control("iperf", field, t, copy=True)}</div>'
-            for label, field in (("iperf_cmd_speed", "cmd-speed"),
-                                 ("iperf_cmd_single", "cmd-single"),
-                                 ("iperf_cmd_multi", "cmd-multi")))
-
-        client_values = client_values or {}
-        client_host = self.context.html.escape(client_values.get('host', ''), quote=True)
-        client_port = self.context.html.escape(client_values.get('port', '5201'), quote=True)
-        client_seconds = self.context.html.escape(client_values.get('seconds', '10'), quote=True)
-        client_mbps = self.context.html.escape(client_values.get('mbps', '100'), quote=True)
-
-        def options(name, choices):
-            selected = client_values.get(name, choices[0][0])
-            return ''.join(
-                f'<option value="{value}" {"selected" if value == selected else ""}>'
-                f'{self.context.html.escape(t[key])}</option>'
-                for value, key in choices)
-
-        client_notice = ''
-        if client_result:
-            status = client_result['status']
-            if status == 'done':
-                metrics = [f"{self.context.html.escape(t['iperf_client_speed'])}: "
-                           f"{client_result['mbps']:.2f} Mbit/s"]
-                for field, key, unit in (('jitter_ms', 'iperf_client_jitter', 'ms'),
-                                         ('loss_percent', 'iperf_client_loss', '%'),
-                                         ('retransmits', 'iperf_client_retransmits', '')):
-                    if field in client_result:
-                        metrics.append(f"{self.context.html.escape(t[key])}: "
-                                       f"{client_result[field]}{unit}")
-                client_notice = (f'<div class="notice" role="status"><strong>'
-                                 f'{self.context.html.escape(t["iperf_client_done"])}</strong>'
-                                 f'<p>{" · ".join(metrics)}</p></div>')
-            else:
-                detail = client_result.get('detail', '')
-                message = self.context.html.escape(t['iperf_client_' + status])
-                if detail:
-                    message += f' {self.context.html.escape(detail)}'
-                client_notice = f'<p class="error" role="alert">{message}</p>'
-
-        csrf = self.context.access_csrf_token(self.get_cookie('session'), 'iperf-client')
-        client_form = f"""
-        <div class="card">
-          <h2>{self.context.html.escape(t['iperf_client_heading'])}</h2>
-          {client_notice}
-          <form method="post" action="/iperf/client" class="iperf-client-form">
-            <input type="hidden" name="csrf" value="{csrf}">
-            <label>{self.context.html.escape(t['iperf_client_host'])}<input name="host" inputmode="decimal" value="{client_host}" required></label>
-            <label>{self.context.html.escape(t['iperf_client_port'])}<input type="number" name="port" min="1" max="65535" value="{client_port}" required></label>
-            <label>{self.context.html.escape(t['iperf_client_seconds'])}<input type="number" name="seconds" min="1" max="30" value="{client_seconds}" required></label>
-            <label>{self.context.html.escape(t['iperf_client_mbps'])}<input type="number" name="mbps" min="1" max="1000" value="{client_mbps}" required></label>
-            <label>{self.context.html.escape(t['iperf_client_protocol'])}<select name="protocol">{options('protocol', [('tcp', 'iperf_client_tcp'), ('udp', 'iperf_client_udp')])}</select></label>
-            <label>{self.context.html.escape(t['iperf_client_direction'])}<select name="direction">{options('direction', [('upload', 'iperf_client_upload'), ('download', 'iperf_client_download')])}</select></label>
-            <button type="submit">{self.context.html.escape(t['iperf_client_start'])}</button>
-          </form>
-        </div>
-        """
-
-        body = f"""
-        <h1>{self.context.html.escape(t['iperf_heading'])}</h1>
-        <div class="iperf-panels">
-        <div class="card">
-          <h2>{self.context.html.escape(t['iperf_server_heading'])}</h2>
-          {notice}
-          <div class="iperf-facts">
-            <div class="iperf-fact"><span>{self.context.html.escape(t['iperf_status'])}</span><strong class="iperf-state {'is-open' if is_open else 'is-closed'}"{state_attr}>{state}</strong></div>
-            <div class="iperf-fact"><span>{self.context.html.escape(t['iperf_port'])}</span><strong>{self.private_value_control('iperf', 'port', t)}</strong></div>
-          </div>
-          <form method="post" action="/iperf/port" class="iperf-port-form">
-            <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
-            <label>{self.context.html.escape(t['iperf_change_port'])}<input type="number" name="port" min="1024" max="65535" placeholder="••••••" required {'disabled' if is_open else ''}></label>
-            <button type="submit" {'disabled' if is_open else ''}>{self.context.html.escape(t['iperf_save_port'])}</button>
-          </form>
-          <div class="iperf-actions">
-            <form method="post" action="/iperf/open" class="inline-form">
-              <input type="hidden" name="csrf" value="{self.iperf_csrf()}">
-              <label>{self.context.html.escape(t['iperf_minutes'])}
-                <input type="number" name="minutes" min="1" max="{self.context.IPERF_MAX_MINUTES}"
-                       value="{self.context.IPERF_DEFAULT_MINUTES}" required>
-              </label>
-              <button type="submit">{self.context.html.escape(open_label)}</button>
-            </form>
-            {close_form}
-          </div>
-          {commands}
-          {self.traffic_card(t, 'iperf3', 'iperf', card=False)}
-        </div>
-        {client_form}
-        </div>
-        <script src="/static/copy.js"></script>
-        <script src="/static/private-values.js"></script>
-        {countdown_script}
-        """
-        self.send_html(200, self.render_page(t['iperf_heading'], body, lang, active="iperf"),
-                       {**self.maybe_lang_cookie(query_lang), 'Cache-Control': 'no-store'})
-
-    def handle_iperf_client(self, lang, query_lang):
-        try:
-            length = int(self.headers.get('Content-Length', '0'))
-            if not 0 < length <= 1024 or self.headers.get('Content-Type', '').split(';', 1)[0] != 'application/x-www-form-urlencoded':
-                raise ValueError('invalid form')
-            form = self.context.parse_qs(self.read_body(1024).decode('utf-8'),
-                                         strict_parsing=True, keep_blank_values=True)
-            expected = {'csrf', 'host', 'port', 'seconds', 'mbps', 'protocol', 'direction'}
-            if set(form) != expected or any(len(values) != 1 for values in form.values()):
-                raise ValueError('invalid form')
-        except (ValueError, UnicodeError):
-            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
-        values = {key: value[0] for key, value in form.items()}
-        csrf = self.context.access_csrf_token(self.get_cookie('session'), 'iperf-client')
-        if not self.context.hmac.compare_digest(values.pop('csrf'), csrf):
-            return self.send_html(403, 'Forbidden', {'Cache-Control': 'no-store'})
-        result = ({'status': 'disabled'} if not self.context.IPERF_ENABLED else
-                  self.context.IPERF_CLIENT.run(values['host'], values['port'],
-                                                values['protocol'], values['direction'],
-                                                values['seconds'], values['mbps']))
-        self.context.IPERF_CLIENT.remember_result(self.iperf_client_result_key(), result, values)
-        self.redirect('/iperf?client=done', {'Cache-Control': 'no-store'})
-
-    def iperf_csrf(self):
-        return self.context.access_csrf_token(self.get_cookie("session"), "iperf")
-
-    def iperf_csrf_valid(self, form):
-        values = form.get("csrf", [])
-        return len(values) == 1 and self.context.hmac.compare_digest(values[0], self.iperf_csrf())
-
-    def handle_iperf_open(self):
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        form = self.context.parse_qs(raw.decode("utf-8", errors="replace"))
-        if not self.iperf_csrf_valid(form):
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        minutes = form.get("minutes", [str(self.context.IPERF_DEFAULT_MINUTES)])[0]
-        _, key = self.context.IPERF_WINDOW.open(minutes)
-        self.redirect(f"/iperf?msg={key}")
-
-    def handle_iperf_close(self):
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        if not self.iperf_csrf_valid(self.context.parse_qs(raw.decode("utf-8", errors="replace"))):
-            return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-        self.context.IPERF_WINDOW.close()
-        self.redirect("/iperf?msg=iperf_shut")
-
-    def handle_iperf_port(self):
-        raw = self.read_body(self.context.LOGIN_BODY_LIMIT)
-        try:
-            form = self.context.parse_qs(raw.decode("utf-8"), strict_parsing=True)
-            if not self.iperf_csrf_valid(form):
-                return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
-            if set(form) != {"port", "csrf"} or len(form["port"]) != 1:
-                raise ValueError("invalid form")
-            port = int(form["port"][0])
-            if not 1024 <= port <= 65535:
-                raise ValueError("invalid port")
-            if port != self.context.IPERF_WINDOW.port:
-                if port in self.context.PORTFWD.reserved_ports():
-                    raise ValueError("reserved port")
-                for family, address in ((self.context.socket.AF_INET, "0.0.0.0"), (self.context.socket.AF_INET6, "::")):
-                    try:
-                        with self.context.socket.socket(family, self.context.socket.SOCK_STREAM) as probe:
-                            # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
-                            probe.setsockopt(self.context.socket.SOL_SOCKET, self.context.socket.SO_REUSEADDR, 1)
-                            probe.bind((address, port))
-                    except OSError as exc:
-                        if family == self.context.socket.AF_INET6 and exc.errno in (97, 93):
-                            continue
-                        raise ValueError("busy port") from exc
-            if not self.context.IPERF_WINDOW.set_port(
-                    port, commit=lambda old: self.context.node_control_apply(
-                        {"action": "iperf-port", "old_port": old, "port": port})):
-                raise ValueError("active window or persistence failure")
-        except (UnicodeError, ValueError):
-            return self.redirect("/iperf?msg=iperf_port_invalid")
-        return self.redirect("/iperf?msg=iperf_port_saved")
-
-    def route_iperf(self, method, path, parsed, lang, query_lang):
-        if method == "GET" and path == "/iperf":
-            self.page_iperf(lang, query_lang)
-        elif method == "POST" and path == "/iperf/open":
-            self.handle_iperf_open()
-        elif method == "POST" and path == "/iperf/close":
-            self.handle_iperf_close()
-        elif method == "POST" and path == "/iperf/port":
-            self.handle_iperf_port()
-        elif method == "POST" and path == "/iperf/client":
-            self.handle_iperf_client(lang, query_lang)
-        else:
-            return False
-        return True
+    def iperf_set_port(self, port):
+        """Move the iperf3 window to another port; raises ValueError when it cannot."""
+        if not 1024 <= port <= 65535:
+            raise ValueError("invalid port")
+        if port != self.context.IPERF_WINDOW.port:
+            if port in self.context.PORTFWD.reserved_ports():
+                raise ValueError("reserved port")
+            for family, address in ((self.context.socket.AF_INET, "0.0.0.0"), (self.context.socket.AF_INET6, "::")):
+                try:
+                    with self.context.socket.socket(family, self.context.socket.SOCK_STREAM) as probe:
+                        # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                        probe.setsockopt(self.context.socket.SOL_SOCKET, self.context.socket.SO_REUSEADDR, 1)
+                        probe.bind((address, port))
+                except OSError as exc:
+                    if family == self.context.socket.AF_INET6 and exc.errno in (97, 93):
+                        continue
+                    raise ValueError("busy port") from exc
+        if not self.context.IPERF_WINDOW.set_port(
+                port, commit=lambda old: self.context.node_control_apply(
+                    {"action": "iperf-port", "old_port": old, "port": port})):
+            raise ValueError("active window or persistence failure")
 
 
 class IperfWindow:

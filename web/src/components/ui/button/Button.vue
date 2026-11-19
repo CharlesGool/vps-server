@@ -16,9 +16,11 @@ const props = withDefaults(defineProps<Props>(), { as: 'button' })
 <template>
   <Primitive
     data-slot="button"
-    data-ui-control
+    data-control
+    :data-variant="variant ?? 'default'"
     :as="as"
     :as-child="asChild"
+    :type="as === 'button' ? 'button' : undefined"
     :class="cn(buttonVariants({ variant, size }), props.class)"
   >
     <slot />

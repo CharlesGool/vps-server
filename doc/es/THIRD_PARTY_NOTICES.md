@@ -38,16 +38,13 @@ Este inventario registra componentes y obligaciones, conserva textos originales 
 | sing-box | 1.13.21 / `628cb31ffa79cffffd34c2f9cde6cae044e4fc12` | [sing-box](https://github.com/SagerNet/sing-box) | GPL-3.0-or-later | Núcleo proxy independiente. | nekohasekai (2022) | Conservar acceso al código y condiciones de nombre/asociación. | 2026-11-06 |
 | LibreSpeed | 6.2.1 | [LibreSpeed](https://github.com/librespeed/speedtest) | LGPL-3.0 | Motor de pruebas del navegador. | LibreSpeed contributors | Conservar LGPL/GPL, ofrecer código correspondiente y archivos de cliente reemplazables. | 2026-09-27 |
 | qrcode-generator | js2.0.4 / `83b7e8fe3fddd3b0368dbafd6ce56995bd25e3c8` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | MIT | Biblioteca QR del cliente. | Kazuhiko Arase (2009) | Conservar atribución y licencia íntegra. | 2026-09-27 |
-| Inter | Fontsource 5.3.0 | [Inter](https://github.com/fontsource/font-files/tree/main/fonts/google/inter) | OFL-1.1 | Fuente incluida, 400/600/700. | The Inter Project Authors (2016) | Conservar OFL/atribución y condiciones de nombres reservados. | 2026-09-27 |
-| Noto Sans SC | Fontsource 5.3.0 | [Noto Sans SC](https://github.com/fontsource/font-files/tree/main/fonts/google/noto-sans-sc) | OFL-1.1 | Fuente incluida, 400/700. | Google Inc. | Conservar OFL y atribución. | 2026-09-27 |
-| Lucide | main, 2026-09-27; iconos adicionales de lucide 1.52.0 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Iconos SVG incluidos. | Lucide Icons and Contributors; Cole Bemis | Conservar atribución y licencia íntegra. | 2026-10-07 |
 | xterm.js / Fit Addon | 6.0.0 / 0.11.0 | [xterm.js / Fit Addon](https://github.com/xtermjs/xterm.js) | MIT | Renderizado y tamaño del terminal. | The xterm.js authors; SourceLair; Christopher Jeffrey | Conservar ambos textos originales de licencia/atribución. | 2026-10-05 |
 | iperf3 | 3.22 | [iperf3](https://github.com/esnet/iperf) | BSD-3-Clause | Compilación estática sin cambios para TCP/UDP. | The Regents of the University of California / Lawrence Berkeley National Laboratory | Conservar atribución y licencia íntegra. | 2026-10-04 |
 | OpenSSL | 3.5.9 (LTS) | [OpenSSL](https://github.com/openssl/openssl) | Apache-2.0 | Herramienta de línea de comandos compilada estáticamente sin cambios; solo firma certificados de cliente de la consola. | The OpenSSL Project Authors | Conservar licencia íntegra. | 2026-11-08 |
 | Tailscale | 1.104.5 | [Tailscale](https://pkgs.tailscale.com/stable/tailscale_1.104.5_amd64.tgz) | BSD-3-Clause | Archivo oficial de cliente/daemon estático. | Tailscale Inc & contributors (2020) | Conservar LICENSE, PATENTS y avisos/licencias originales de dependencias. | 2026-11-06 |
 | nftables, iptables, iproute2 + 29 libraries | Debian 13 amd64, nftables 1.1.3-1, iptables 1.8.11-2, iproute2 6.15.0-1, glibc 2.41-12+deb13u4, pcre2 10.46-1~deb13u3 (trixie-security) | [nftables, iptables, iproute2 + 29 libraries](https://snapshot.debian.org/archive/debian/20261020T000000Z/) | copyright de cada paquete: GPL/LGPL/BSD y otras. | Entorno privado con cargador y glibc propios, solo en paquetes completos. | Autores de cada paquete; consulte avisos del archivo. | Distribuir fuentes completas correspondientes, parches y avisos juntos. | 2026-11-06 |
 
-Las fechas corresponden a verificaciones originales; el 2026-10-05 se repitieron sumas, no toda la procedencia. Los artefactos frp, Caddy, Singbox, LibreSpeed y QR no se modificaron. Inter/Noto indican versiones Fontsource, no internas. No se incluyen paquetes Python de terceros, conjuntos de imágenes ni pesos. Python, systemd, la biblioteca OpenSSL del equipo (usada por TLS de Python), iptables y similares dependen del sistema (el instalador comprueba versiones mínimas); sus licencias/actualizaciones corresponden a la distribución.
+Las fechas corresponden a verificaciones originales; el 2026-10-05 se repitieron sumas, no toda la procedencia. Los artefactos frp, Caddy, Singbox, LibreSpeed y QR no se modificaron. No se incluyen paquetes Python de terceros, conjuntos de imágenes ni pesos. Python, systemd, la biblioteca OpenSSL del equipo (usada por TLS de Python), iptables y similares dependen del sistema (el instalador comprueba versiones mínimas); sus licencias/actualizaciones corresponden a la distribución.
 
 El frontend Vue añade Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CSS 4.3.3, clsx 2.1.1 y tailwind-merge 3.7.0 (MIT), @lucide/vue 1.52.0 (ISC) y class-variance-authority 0.7.1 (Apache-2.0). Las identidades y fuentes exactas están en el [archivo de bloqueo npm](../../web/package-lock.json). Proporcionan componentes compartidos y recursos compilados; la titularidad corresponde a los textos originales. Verificado el 2026-10-06. La distribución conserva derechos y licencias originales. La compilación los copia con un manifiesto de versiones y descargas de fuentes a `web/dist/licenses/`; la instalación y el paquete sin conexión lo conservan. También se incluyen avisos de herramientas de compilación, sin indicar que se ejecuten en el VPS.
 
@@ -59,9 +56,6 @@ El frontend Vue añade Vue 3.5.43, vue-i18n 11.4.18, Reka UI 2.11.0, Tailwind CS
 - [GPL-3.0](../../LICENSE)
 - [LibreSpeed LGPL-3.0](../../src/web/static/licenses/LGPL-3.0.txt)
 - [qrcode-generator MIT](../../src/web/static/licenses/MIT.txt)
-- [Inter OFL](../../src/web/static/licenses/OFL-Inter.txt)
-- [Noto Sans SC OFL](../../src/web/static/licenses/OFL-Noto-Sans-SC.txt)
-- [Lucide ISC](../../src/web/static/licenses/Lucide-ISC.txt)
 - [xterm.js MIT](../../src/web/static/third_party/xterm/LICENSE-xterm)
 - [Fit Addon MIT](../../src/web/static/third_party/xterm/LICENSE-addon-fit)
 - [iperf3](../../third_party/iperf3/LICENSE)
@@ -92,7 +86,7 @@ OpenSSL se compiló sin cambios en Ubuntu 22.04 x86-64 con `./Configure linux-x8
 Revisión de publicación del 2026-10-05: se verificaron 15 artefactos y 84 avisos/licencias Tailscale, fuentes nft acompañaron el entorno y licencias originales no se reescribieron. La [decisión de licencia](LOG.md#decisiones) registra GPL-3.0-only. Análisis:
 
 - sing-box se distribuye como ejecutable/proceso separado, no enlazado estáticamente a Python; separarlo no elimina obligaciones GPL. Se conservan condiciones de nombre sin asociación ni respaldo.
-- JavaScript LibreSpeed es reemplazable con textos LGPL/GPL. `speedtest-ui.js` es integración propia; Python implementa el protocolo sin copiar PHP.
+- JavaScript LibreSpeed es reemplazable con textos LGPL/GPL. La integración de la página (`web/src/views/SpeedtestView.vue`, `web/src/lib/librespeed.ts`) es código propio; Python implementa el protocolo sin copiar PHP.
 - nft reempaqueta artefactos Debian sin cambios con avisos y fuentes completas; rutas separadas no eliminan obligaciones.
 - Tailscale conserva declaraciones, patente y textos complementarios; verificar licencias no prueba compatibilidad entre entornos.
 

@@ -137,7 +137,6 @@ import features.proxy_service as _feature_proxy
 import features.tailscale as _feature_tailscale
 import features.frp as _feature_frp
 import features.visitors as _feature_visitors
-import features.ui as _feature_ui
 from features.identity import read_server_label, save_server_label as write_server_label
 
 
@@ -154,6 +153,9 @@ def _read_version():
     committed release copy when Git metadata is absent. A build that cannot
     establish what it is says so rather than guessing.
     """
+    # Test runs pin the version the frontend was built with.
+    if os.environ.get("VPSSRV_VERSION"):
+        return os.environ["VPSSRV_VERSION"]
     installed_stamp = BASE_DIR / "VERSION"
     if installed_stamp.is_file():
         try:
@@ -179,7 +181,7 @@ def _read_version():
 
 
 def display_version(version):
-    return version if version.startswith(("dev-", "test-")) else f"v{version}"
+    return f"v{version}" if version[:1].isdigit() else version
 
 
 VERSION = _read_version()
@@ -212,7 +214,6 @@ STRINGS = _load_strings()
 DEFAULT_LANG = os.environ.get("VPSSRV_DEFAULT_LANG", "en")
 if DEFAULT_LANG not in STRINGS:
     DEFAULT_LANG = "en"
-
 
 
 def _log_text(key, **values):
@@ -589,20 +590,12 @@ def _cert_common_name(*args, **kwargs):
     return _feature_proxy._cert_common_name(sys.modules[__name__], *args, **kwargs)
 
 
-def anytls_installed(*args, **kwargs):
-    return _feature_proxy.anytls_installed(sys.modules[__name__], *args, **kwargs)
-
-
 def anytls_node(*args, **kwargs):
     return _feature_proxy.anytls_node(sys.modules[__name__], *args, **kwargs)
 
 
 def anytls_clash_line(*args, **kwargs):
     return _feature_proxy.anytls_clash_line(sys.modules[__name__], *args, **kwargs)
-
-
-def anytls_share_link(*args, **kwargs):
-    return _feature_proxy.anytls_share_link(sys.modules[__name__], *args, **kwargs)
 
 
 # Mirrors setup-anytls.sh's get_lan_ips filter. Keeping a second copy of the
@@ -647,20 +640,12 @@ NODE_APPLY_TIMEOUT = 120
 NODE_PROTOCOLS = frozenset(("anytls", "vmess", "vless", "trojan", "shadowsocks"))
 
 
-def node_csrf_token(*args, **kwargs):
-    return _feature_proxy.node_csrf_token(sys.modules[__name__], *args, **kwargs)
-
-
 def node_control_apply(*args, **kwargs):
     return _feature_proxy.node_control_apply(sys.modules[__name__], *args, **kwargs)
 # Display order only — config.json's own inbounds order already matches this
 # (setup-proxy.sh writes them in ALL_PROTOCOLS order), but a config hand-
 # edited or produced some other way should not scramble the console page.
 PROXY_PROTOCOL_ORDER = ("vmess", "vless", "trojan", "shadowsocks")
-
-
-def proxy_installed(*args, **kwargs):
-    return _feature_proxy.proxy_installed(sys.modules[__name__], *args, **kwargs)
 
 
 def proxy_nodes(*args, **kwargs):
@@ -698,10 +683,6 @@ def frpc_test_connection(*args, **kwargs):
     return _feature_frp.frpc_test_connection(sys.modules[__name__], *args, **kwargs)
 
 
-def masked_frpc_ip(*args, **kwargs):
-    return _feature_frp.masked_frpc_ip(sys.modules[__name__], *args, **kwargs)
-
-
 def proxy_running(*args, **kwargs):
     return _feature_proxy.proxy_running(sys.modules[__name__], *args, **kwargs)
 
@@ -725,13 +706,6 @@ def is_lan_address(*args, **kwargs):
 def clash_profile(*args, **kwargs):
     return _feature_proxy.clash_profile(sys.modules[__name__], *args, **kwargs)
 
-
-def proxy_share_link(*args, **kwargs):
-    return _feature_proxy.proxy_share_link(sys.modules[__name__], *args, **kwargs)
-
-
-def render_copyable(*args, **kwargs):
-    return _feature_ui.render_copyable(sys.modules[__name__], *args, **kwargs)
 
 # Result keys the console may echo back after a redirect. Whitelisted because
 # the key indexes STRINGS: without this, a crafted ?msg= would be a way to
@@ -958,44 +932,8 @@ init_db()
 # ---------------------------------------------------------------------------
 
 
-def render_lang_switcher(*args, **kwargs):
-    return _feature_ui.render_lang_switcher(sys.modules[__name__], *args, **kwargs)
-
-
-def render_password_field(*args, **kwargs):
-    return _feature_ui.render_password_field(sys.modules[__name__], *args, **kwargs)
-
-
-def _inline_md(*args, **kwargs):
-    return _feature_ui._inline_md(sys.modules[__name__], *args, **kwargs)
-
-
-def changelog_section(*args, **kwargs):
-    return _feature_ui.changelog_section(sys.modules[__name__], *args, **kwargs)
-
-
-def development_updates_section(*args, **kwargs):
-    return _feature_ui.development_updates_section(sys.modules[__name__], *args, **kwargs)
-
-
-def render_changelog(*args, **kwargs):
-    return _feature_ui.render_changelog(sys.modules[__name__], *args, **kwargs)
-
-
 _UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download", "shield-check", "archive"})
 _UI_ICON_CACHE = {}
-
-
-def ui_icon(*args, **kwargs):
-    return _feature_ui.ui_icon(sys.modules[__name__], *args, **kwargs)
-
-
-def render_theme_menu(*args, **kwargs):
-    return _feature_ui.render_theme_menu(sys.modules[__name__], *args, **kwargs)
-
-
-def render_page(*args, **kwargs):
-    return _feature_ui.render_page(sys.modules[__name__], *args, **kwargs)
 
 
 def server_label():
@@ -1013,45 +951,14 @@ CHANGELOG_PATHS = {
 CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
-    "/static/boot.js": ("application/javascript", STATIC_DIR / "boot.js"),
-    "/static/ui.js": ("application/javascript", STATIC_DIR / "ui.js" if (STATIC_DIR / "ui.js").exists() else BASE_DIR / "web/dist/ui.js"),
-    "/static/style.css": ("text/css", STATIC_DIR / "ui.css" if (STATIC_DIR / "ui.css").exists() else BASE_DIR / "web/dist/ui.css"),
-    "/static/password-fields.js": ("application/javascript", STATIC_DIR / "password-fields.js"),
-    "/static/access-settings.js": ("application/javascript", STATIC_DIR / "access-settings.js"),
-    "/static/module-status.js": ("application/javascript", STATIC_DIR / "module-status.js"),
-    "/static/module-controls.js": ("application/javascript", STATIC_DIR / "module-controls.js"),
-    "/static/confirm-dialog.js": ("application/javascript", STATIC_DIR / "confirm-dialog.js"),
-    "/static/terminal.js": ("application/javascript", STATIC_DIR / "terminal.js"),
-    "/static/log-controls.js": ("application/javascript", STATIC_DIR / "log-controls.js"),
+    # The single-page UI loads these vendored engines itself; everything else it needs is in web/dist.
     "/static/third_party/xterm/xterm.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "xterm.js"),
     "/static/third_party/xterm/addon-fit.js": ("application/javascript", STATIC_DIR / "third_party" / "xterm" / "addon-fit.js"),
     "/static/third_party/xterm/xterm.css": ("text/css", STATIC_DIR / "third_party" / "xterm" / "xterm.css"),
-    "/static/tailscale.js": ("application/javascript", STATIC_DIR / "tailscale.js"),
-    "/static/reference-select.js": ("application/javascript", STATIC_DIR / "reference-select.js"),
-    "/static/reference-datetime.js": ("application/javascript", STATIC_DIR / "reference-datetime.js"),
-    "/static/frp-editor.js": ("application/javascript", STATIC_DIR / "frp-editor.js"),
-    "/static/auth-history.js": ("application/javascript", STATIC_DIR / "auth-history.js"),
-    "/static/files.js": ("application/javascript", STATIC_DIR / "files.js"),
-    "/static/backup.js": ("application/javascript", STATIC_DIR / "backup.js"),
     "/favicon.ico": ("image/svg+xml", STATIC_DIR / "favicon.svg"),
-    **{f"/static/favicon-{page}.svg": ("image/svg+xml", STATIC_DIR / f"favicon-{page}.svg")
-       for page in ("home", "speedtest", "iperf", "proxy", "portfwd", "visitors",
-                    "changelog", "settings", "security", "modules", "logs", "frp", "frpc", "tailscale", "terminal", "login", "domains", "files", "ipcert")},
-    "/static/fonts/inter-latin-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-400.woff2"),
-    "/static/fonts/inter-latin-600.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-600.woff2"),
-    "/static/fonts/inter-latin-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "inter-latin-700.woff2"),
-    "/static/fonts/noto-sans-sc-400.woff2": ("font/woff2", STATIC_DIR / "fonts" / "noto-sans-sc-400.woff2"),
-    "/static/fonts/noto-sans-sc-700.woff2": ("font/woff2", STATIC_DIR / "fonts" / "noto-sans-sc-700.woff2"),
     "/static/speedtest.js": ("application/javascript", STATIC_DIR / "third_party" / "librespeed" / "speedtest.js"),
-    "/static/speedtest-ui.js": ("application/javascript", STATIC_DIR / "speedtest-ui.js"),
-    "/static/visitors.js": ("application/javascript", STATIC_DIR / "visitors.js"),
-    "/static/copy.js": ("application/javascript", STATIC_DIR / "copy.js"),
-    "/static/private-values.js": ("application/javascript", STATIC_DIR / "private-values.js"),
-    "/static/node-controls.js": ("application/javascript", STATIC_DIR / "node-controls.js"),
     "/static/qrcode.js": ("application/javascript", STATIC_DIR / "third_party" / "qrcode" / "qrcode.js"),
     "/static/qrcode-utf8.js": ("application/javascript", STATIC_DIR / "third_party" / "qrcode" / "qrcode-utf8.js"),
-    "/static/qrcode-render.js": ("application/javascript", STATIC_DIR / "qrcode-render.js"),
-    "/static/iperf-countdown.js": ("application/javascript", STATIC_DIR / "iperf-countdown.js"),
     # speedtest.js spawns `new Worker("speedtest_worker.js?r=...")`. That call
     # runs in the *page's* context, so the browser resolves it relative to the
     # page URL (/speedtest), not relative to /static/speedtest.js — it lands
@@ -1070,19 +977,31 @@ from features.settings import SettingsMixin
 from features.modules import ModulesMixin
 from features.speedtest import SpeedtestMixin
 from features.iperf import IperfMixin
-from features.portfwd import PortfwdMixin
 from features.domains import DomainsMixin
 from features.files import FilesMixin
 from features.traffic import TrafficMixin
-from features.terminal import TerminalMixin
 from features.tailscale import TailscaleMixin
-from features.frp import FrpMixin
 from features.proxy import ProxyMixin
-from features.changelog import ChangelogMixin
-from features.visitors import VisitorsMixin
 from features.backup import BackupMixin
-from features.tasks import TasksMixin
 from features.public import PublicMixin
+from features.spa import SpaMixin, is_spa_page
+from features.api_settings import SettingsApiMixin
+from features.api_security import SecurityApiMixin
+from features.api_dashboard import DashboardApiMixin
+from features.api_modules import ModulesApiMixin
+from features.api_traffic import TrafficApiMixin
+from features.api_speedtest import SpeedtestApiMixin
+from features.api_iperf import IperfApiMixin
+from features.api_proxy import ProxyApiMixin
+from features.api_frp import FrpApiMixin
+from features.api_domains import DomainsApiMixin
+from features.api_tailscale import TailscaleApiMixin
+from features.api_closed import ClosedApiMixin
+from features.api_schedule import ScheduleApiMixin
+from features.api_files import FilesApiMixin
+from features.api_terminal import TerminalApiMixin
+from features.api_visitors import VisitorsApiMixin
+from features.api_portfwd import PortfwdApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1103,9 +1022,39 @@ SECURITY_HEADERS = (
 )
 
 
+PAGE_MODULES = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
+                "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
+                "/changelog": "changelog", "/files": "files"}
+
+
+def closed_page_module(path):
+    """The module behind this page when the operator has closed it, else None."""
+    module = PAGE_MODULES.get(path)
+    if module is None:
+        return None
+    installed = installed_modules(BASE_DIR)
+    managed_present = (module == "iperf3" and "iperf3" in installed or
+                       module == "proxy_nodes" and "proxy" in installed)
+    if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
+        return module
+    return None
+
+
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
-                     PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
-                     ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, BaseHTTPRequestHandler):
+                     DomainsMixin, FilesMixin, TrafficMixin, TailscaleMixin, ProxyMixin,
+                     BackupMixin, SpaMixin, SettingsApiMixin, SecurityApiMixin,
+                     DashboardApiMixin, ModulesApiMixin,
+                     TrafficApiMixin, SpeedtestApiMixin, IperfApiMixin, PortfwdApiMixin,
+                     VisitorsApiMixin,
+                     TerminalApiMixin,
+                     FilesApiMixin,
+                     ScheduleApiMixin,
+                     ClosedApiMixin,
+                     TailscaleApiMixin,
+                     DomainsApiMixin,
+                     FrpApiMixin,
+                     ProxyApiMixin,
+                     BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,
@@ -1212,16 +1161,6 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
             return CLIENT_AUTH.by_serial(self.headers.get(CADDY_SERIAL_HEADER))
         return CLIENT_AUTH.peer(self.connection)
 
-    def is_password_authenticated(self):
-        return AUTH_ENABLED and session_valid(self.get_cookie("session"))
-
-    def render_page(self, title, body, lang, active=None, show_nav=True, bare=False, back_href=None,
-                    icon=None):
-        return render_page(title, body, lang, active, show_nav,
-                           password_authenticated=self.is_password_authenticated(),
-                           ip_authenticated=ip_session_valid(self.get_cookie("session"),
-                                                             self.peer_ip()), bare=bare,
-                           back_href=back_href, icon=icon)
 
     def client_ip(self):
         if self.caddy_proxied():
@@ -1262,19 +1201,6 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def read_body(self, limit):
-        try:
-            length = int(self.headers.get("Content-Length", "0") or "0")
-        except ValueError:
-            length = 0
-        length = max(0, min(length, limit))
-        return self.rfile.read(length) if length else b""
-
-    def maybe_lang_cookie(self, query_lang):
-        # Persist an explicit ?lang= choice so it sticks across pages.
-        if query_lang in STRINGS:
-            return {"Set-Cookie": f"lang={query_lang}; Path=/; Max-Age={365 * 24 * 3600}; SameSite=Lax"}
-        return {}
 
     # -- dispatch ----------------------------------------------------------
 
@@ -1283,6 +1209,12 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
     def do_POST(self):
         self._dispatch("POST")
+
+    def do_PUT(self):
+        self._dispatch("PUT")
+
+    def do_DELETE(self):
+        self._dispatch("DELETE")
 
     def do_HEAD(self):
         # Only download links answer HEAD (curl -I, download managers);
@@ -1301,7 +1233,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         self._body_started = False
         # A rejected form can leave its POST body unread. Never parse those
         # bytes as the next HTTP/1.1 request on the same connection.
-        self._close_after_response = method == "POST" and path != "/speedtest/empty"
+        self._close_after_response = method in ("POST", "PUT", "DELETE") and path != "/speedtest/empty"
         if self._close_after_response:
             self.close_connection = True
         if ((TRUST_PROXY or is_loopback(self.client_address[0]))
@@ -1347,71 +1279,75 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
     def _route(self, method, path, parsed):
         if path.startswith("/static/") or path in ("/speedtest_worker.js", "/favicon.ico"):
             return self.serve_static(path)
+        if method == "GET" and self.serve_spa_file(path):
+            return
 
         if self.route_proxy_public(method, path):
             return
         if self.route_files_public(method, path):
             return
 
-        lang, query_lang = self.resolve_lang(parsed)
+        lang, _query_lang = self.resolve_lang(parsed)
 
         # With client certificates required, a device without an active one
         # reaches nothing but static files, Clash subscriptions and download links above.
         if AUTH_ENABLED and CLIENT_AUTH.required() and self.client_certificate() is None:
             return self.page_client_cert_required(lang)
 
-        # With auth off there is nothing to log in or out of: a login form
-        # that accepts nothing and a logout link that ends no session are
-        # both dead ends, so send those paths back to the dashboard.
-        if path in ("/login", "/login/ip", "/login/cert", "/logout") and not AUTH_ENABLED:
-            return self.redirect("/")
-        if path.startswith("/settings") and not AUTH_ENABLED:
-            return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
-
-        if self.route_login(method, path, parsed, lang, query_lang):
+        if self.route_api(method, path):
             return
+        if method == "GET" and is_spa_page(path) and not (path == "/login" and not AUTH_ENABLED):
+            # A closed feature's page goes to /closed once signed in.
+            module = closed_page_module(path) if self.is_authenticated() else None
+            if module:
+                return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
+            # The page itself asks /api/session and goes to /login when needed.
+            return self.serve_spa_page()
+        if path == "/login" and not AUTH_ENABLED:
+            return self.redirect("/")
 
         if not self.is_authenticated():
-            destination = ("/login?next=changelog" if path == "/changelog" else
-                           "/login?next=preferences" if path == "/settings" else
-                           "/login?next=terminal" if path == "/terminal" else
-                           "/login?next=settings" if path.startswith("/settings") else "/login")
+            # The single-page login returns to ?redirect= after signing in.
+            destination = ("/login" if path == "/" or method != "GET" else
+                           "/login?redirect=" + quote(path + (f"?{parsed.query}" if parsed.query else ""), safe="/"))
             return self.redirect(destination)
-
-        page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
-                        "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
-                        "/changelog": "changelog"}
-        if method == "GET" and path in page_modules:
-            module = page_modules[path]
-            installed = installed_modules(BASE_DIR)
-            managed_present = (module == "iperf3" and "iperf3" in installed or
-                               module == "proxy_nodes" and "proxy" in installed or
-                               module == "frp" and (bool({"frps", "frpc"} & installed) or bool(frpc_names())))
-            if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
-                return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
-        if method == "GET" and path == "/closed":
-            return self.page_module_closed(lang, query_lang, parsed)
-        for feature, prefix in (("speedtest", "/speedtest"), ("visitors", "/visitors"),
-                                ("portfwd", "/portfwd")):
-            enabled = portfwd_enabled() if feature == "portfwd" else module_feature_enabled(BASE_DIR, feature)
-            if path.startswith(prefix + "/") and not enabled:
-                return self.send_html(404, "Not found", {"Cache-Control": "no-store"})
-
-        if self.route_settings(method, path, parsed, lang, query_lang):
+        if self.route_endpoints(method, path, parsed):
             return
-        if self.route_module_admin(method, path, lang, query_lang):
-            return
+        self.notice_page(404, STRINGS[lang]["not_found"], STRINGS[lang]["not_found"], lang)
 
-        for route in (self.route_modules, self.route_terminal, self.route_speedtest, self.route_proxy,
-                      self.route_domains, self.route_files, self.route_traffic, self.route_tailscale, self.route_frp, self.route_iperf,
-                      self.route_portfwd, self.route_visitors, self.route_changelog,
-                      self.route_backup, self.route_tasks):
-            if route(method, path, parsed, lang, query_lang):
-                return
-
-        self.send_html(404, self.render_page(STRINGS[lang]["not_found"],
-                                        f'<div class="card"><p>{STRINGS[lang]["not_found"]}</p></div>',
-                                        lang, show_nav=self.is_authenticated()))
+    def route_endpoints(self, method, path, parsed):
+        """What the console still serves besides the single-page UI and its API:
+        the speed test engine, the terminal socket, downloads and a few redirects."""
+        if path.startswith("/speedtest/"):
+            if not module_feature_enabled(BASE_DIR, "speedtest"):
+                self.send_html(404, "Not found", {"Cache-Control": "no-store"})
+            elif path == "/speedtest/garbage" and method == "GET":
+                self.handle_speedtest_garbage(parsed)
+            elif path == "/speedtest/empty" and method == "GET":
+                self.handle_speedtest_ping()
+            elif path == "/speedtest/empty" and method == "POST":
+                self.handle_speedtest_upload()
+            elif path == "/speedtest/getip" and method == "GET":
+                self.handle_speedtest_getip()
+            else:
+                return False
+            return True
+        if method != "GET":
+            return False
+        if path == "/terminal/ws":
+            terminal_session.serve(self, sys.modules[__name__], parsed)
+        elif path == "/backup/download":
+            self.handle_backup_download(parsed)
+        elif path in ("/public/http", "/public/https"):
+            self.public_page_redirect(path)
+        elif path == "/anytls":
+            self.redirect("/proxy", {"Cache-Control": "no-store"})
+        elif path == "/frp/client/edit":
+            # The editor moved to /frpc/edit; keep old links working.
+            self.redirect("/frpc/edit" + (f"?{parsed.query}" if parsed.query else ""), {"Cache-Control": "no-store"})
+        else:
+            return False
+        return True
 
     # -- static --------------------------------------------------------
 
@@ -1464,6 +1400,11 @@ class TLSThreadingHTTPServer(ThreadingHTTPServer):
     answering. Here a slow or silent client only holds its own thread, and
     gives up after TLS_HANDSHAKE_SECONDS.
     """
+
+    # socketserver listens with a backlog of 5. The single-page console loads
+    # a dozen script and style files at once; with several tabs open the
+    # kernel then drops connections and the browser gives up on them.
+    request_queue_size = 128
 
     def __init__(self, address, handler, ssl_context):
         super().__init__(address, handler)

@@ -1,10 +1,34 @@
-import { ChevronsLeftRight, House, type IconNode, ScrollText, Settings } from 'lucide'
+import { Network, Cable, Radio, Earth, Waypoints, CircleOff, Timer, ArchiveRestore, Archive, HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
 import type { RouteMeta } from 'vue-router'
 
 const ICONS: Record<RouteMeta['icon'], IconNode> = {
   home: House,
+  dashboard: LayoutGrid,
   settings: Settings,
+  security: ShieldCheck,
+  modules: Package,
+  logs: Activity,
+  speedtest: Gauge,
+  iperf: ArrowUpDown,
+  'portfwd': Route,
+  'visitors': UsersRound,
+  'terminal': SquareTerminal,
+  'files': HardDriveDownload,
+  'backup': Archive,
+  'restore': ArchiveRestore,
+  'tasks': Timer,
+  'closed': CircleOff,
+  'tailscale': Waypoints,
+  'domains': Earth,
+  'domainslog': ScrollText,
+  'ipcert': ShieldCheck,
+  'frps': Radio,
+  'frpc': Cable,
+  'frpcedit': Cable,
+  'proxy': Network,
   changelog: ScrollText,
+  login: LogIn,
+  showcase: Blocks,
 }
 
 function readColor(name: string) {

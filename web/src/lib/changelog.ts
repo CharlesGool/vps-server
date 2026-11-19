@@ -1,4 +1,6 @@
+import { SHOWCASE } from '@/app.config'
 import type { Locale } from './i18n'
+import { sampleChangelog } from './changelog-sample'
 
 // 应用内变更日志取自项目的 doc/CHANGELOG.md 和 doc/<lang>/CHANGELOG.md.
 const files = import.meta.glob<string>('../../../doc/**/CHANGELOG.md', {
@@ -35,5 +37,25 @@ export function loadChangelog(locale: Locale): ChangelogRelease[] {
     const releases = parse(files[PATHS[candidate]] ?? '')
     if (releases.length) return releases
   }
-  return []
+  // 开发和测试构建中没有真实版本时显示模拟内容, 便于预览
+  return SHOWCASE ? sampleChangelog(locale) : []
+}
+
+// 条目里的行内标记: `代码` 和 **粗体**, 其余是普通文字(不解析 HTML).
+export interface InlineSegment {
+  kind: 'text' | 'code' | 'strong'
+  text: string
+}
+
+export function inlineSegments(item: string): InlineSegment[] {
+  const segments: InlineSegment[] = []
+  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*/g
+  let last = 0
+  for (const match of item.matchAll(pattern)) {
+    if (match.index > last) segments.push({ kind: 'text', text: item.slice(last, match.index) })
+    segments.push(match[1] !== undefined ? { kind: 'code', text: match[1] } : { kind: 'strong', text: match[2]! })
+    last = match.index + match[0].length
+  }
+  if (last < item.length) segments.push({ kind: 'text', text: item.slice(last) })
+  return segments
 }

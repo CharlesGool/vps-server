@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // 设计检查: 拒绝绕过设计标记的写法. 只有 src/styles/tokens.css 可以写具体数值.
+// 页面(src/components/ 以外的 .vue)另检查结构: 禁止原生控件, 自己排列, 外边距, 自写栅格和卡片表面, 内边距只用固定几档.
 // 允许值从 tokens.css 读取, 新增标记后无需修改本脚本.
 // 用法: node scripts/check-design.mjs; 发现问题时退出码为 1.
 import { readdirSync, readFileSync } from 'node:fs'
@@ -41,6 +42,12 @@ const OUTLINE_KEYWORDS = set('none hidden solid dashed dotted double')
 const DECORATION_KEYWORDS = set('solid double dotted dashed wavy auto from-font clone slice')
 const RADIUS_SIDES = /^(?:(t|r|b|l|s|e|tl|tr|br|bl|ss|se|es|ee)-)?(.+)$/
 
+// 全局刻度(单位 4 px): 所有文件中的间距和尺寸数字只能取这些值; 新增档位先改本脚本之外的规范文档再改这里
+const SPACING_SCALE = new Set(['0', '1', '2', '3', '4', '5', '6', '8', '10', '12'])
+const SIZE_SCALE = new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '16', '18', '24', '40', '64'])
+const SPACING_PREFIX = new Set(['p', 'px', 'py', 'pt', 'pr', 'pb', 'pl', 'ps', 'pe', 'm', 'mx', 'my', 'mt', 'mr', 'mb', 'ml', 'ms', 'me', 'gap', 'space', 'inset', 'top', 'right', 'bottom', 'left', 'start', 'end'])
+const SIZE_PREFIX = new Set(['size', 'w', 'h'])
+
 const isNumber = (value) => /^\d+$/.test(value)
 const colorOk = (value) => colors.has(value)
 
@@ -71,6 +78,15 @@ function checkUtility(raw) {
     return null
   }
   const [, prefix, value] = parts
+
+  // 只校验纯数字档位; full, auto, 分数和 CSS 变量简写不受影响
+  const numeric = (text) => text.replace(/^[xy]-/, '').replace(/^[wh]-/, '')
+  if (SPACING_PREFIX.has(prefix) && isNumber(numeric(value)) && !SPACING_SCALE.has(numeric(value))) {
+    return `间距 ${prefix}-${value} 不在刻度 ${[...SPACING_SCALE].join(', ')} (单位 4 px) 内`
+  }
+  if ((SIZE_PREFIX.has(prefix) || prefix === 'min' || (prefix === 'max' && /^h-/.test(value))) && isNumber(numeric(value)) && !SIZE_SCALE.has(numeric(value))) {
+    return `尺寸 ${prefix}-${value} 不在刻度 ${[...SIZE_SCALE].join(', ')} (单位 4 px) 内`
+  }
 
   switch (prefix) {
     case 'text':
@@ -131,7 +147,7 @@ function checkUtility(raw) {
 }
 
 const CHECKED_PREFIX =
-  /^(text|bg|border|ring|outline|divide|shadow|fill|stroke|from|via|to|decoration|accent|caret|placeholder|rounded|font|leading|ease|max-w|duration|delay|tracking|[a-z-]+-\[|\[|[a-z-]+-\d+\.\d+)/
+  /^(text|bg|border|ring|outline|divide|shadow|fill|stroke|from|via|to|decoration|accent|caret|placeholder|rounded|font|leading|ease|max-w|duration|delay|tracking|(?:p[xytrblse]?|m[xytrblse]?|gap|space|size|w|h|min|max|top|right|bottom|left|inset|start|end)-\d|(?:gap|space|inset)-[xy]-\d|(?:min|max)-[wh]-\d|[a-z-]+-\[|\[|[a-z-]+-\d+\.\d+)/
 
 // ---- CSS 声明规则 ----
 const COLOR_PROPS =
@@ -155,6 +171,83 @@ function checkDeclaration(prop, value) {
   }
   return null
 }
+
+// ---- 页面结构规则 ----
+// 适用于 src/components/ 以外的 .vue 文件(页面), App.vue 除外. 页面只组合共享组件, 不自己画控件, 表面和栅格.
+const NATIVE_ELEMENTS = {
+  input: 'Input, PasswordInput, DateTimePicker, CheckboxField, SwitchField, RangeSlider',
+  select: 'SelectMenu(超过 5 项)或 SegmentedControl(不超过 5 项)',
+  textarea: 'Textarea',
+  button: 'Button',
+  table: 'DataTable',
+  dialog: 'AppDialog',
+  label: 'FormField',
+  form: 'CardForm(把几张卡片连成一个表单)',
+  h1: 'PageHeader',
+  h2: 'PageSection 的 title',
+  h3: 'PageSection 的 title(一张卡片只放一件事)',
+}
+// 页面中的间距只用这几档(单位 4 px); 比全局刻度更少
+const PAGE_SPACING = new Set(['0', 'px', '1', '2', '3', '4', '6', '8', '12'])
+const SPACING_UTILITY = /^(p[xytrblse]?|m[xytrblse]?|gap(-[xy])?|space-[xy])-(.+)$/
+
+function checkPageUtility(token) {
+  if (/(^|:)\*:|\[/.test(token)) return `${token}: 页面禁止任意变体和选择器`
+  if (/(^|:)-/.test(token)) return `${token}: 页面禁止负外边距`
+  const u = token.replace(/^(?:[\w-]+:|\[[^\]]+\]:)+/, '').replace(/^!/, '')
+  if (/^(grid-cols|col-span|grid-rows|row-span|col-start|col-end|grid-flow|auto-cols|auto-rows)-/.test(u)) {
+    return `${token}: 页面禁止自写栅格; 用 CardGrid 的卡片, 卡片内的 FormField span 和 FormActions`
+  }
+  if (/^(flex|inline-flex|grid|inline-grid|contents|flex-(row|col|wrap|nowrap)(-reverse)?|items-.+|justify-.+|self-.+|content-.+|gap(-[xy])?-.+|space-[xy]-.+)$/.test(u)) {
+    return `${token}: 页面禁止自己排列元素; 排列由卡片栅格决定, 一张卡片放一件事`
+  }
+  if (/^-?m[xytrblse]?-/.test(u)) {
+    return `${token}: 页面禁止外边距; 块和控件的缩进由卡片栅格提供`
+  }
+  if (/^(bg-card|bg-popover|shadow-)/.test(u)) {
+    return `${token}: 页面禁止自写卡片或浮层表面; 用 PageHeader, PageSection, LinkCard, AppDialog`
+  }
+  if (/^(absolute|fixed|sticky|relative|static)$/.test(u) || /^(top|right|bottom|left|inset(-[xy])?|start|end|z|order|float|columns|aspect|basis|size|h|max-w|max-h|min-h)-/.test(u)) {
+    return `${token}: 页面禁止设置尺寸和定位; 卡片大小由 CardGrid 决定, 控件宽度由栏决定`
+  }
+  if (/^(w|min-w)-/.test(u) && !['w-full', 'min-w-0'].includes(u)) {
+    return `${token}: 页面禁止设置宽度; 宽度由栏决定`
+  }
+  const spacing = u.match(SPACING_UTILITY)
+  if (spacing && !['auto', 'full'].includes(spacing[3]) && !PAGE_SPACING.has(spacing[3])) {
+    return `${token}: 页面内边距只用 ${[...PAGE_SPACING].join(', ')} 档; 组件内部除外`
+  }
+  return null
+}
+
+function checkPage(file, text) {
+  const template = text.match(/<template>([\s\S]*)<\/template>/)
+  if (!template) return
+  const offset = template.index + '<template>'.length
+  const body = template[1]
+  for (const match of body.matchAll(/<(input|select|textarea|button|table|dialog|label|form|h1|h2|h3)\b/g)) {
+    report(file, text, offset + match.index, `页面禁止原生 <${match[1]}>; 用 ${NATIVE_ELEMENTS[match[1]]}`)
+  }
+  // 危险操作(红色按钮)必须经过 ConfirmDialog 确认
+  if (/variant="destructive"/.test(body) && !/<ConfirmDialog\b/.test(body)) {
+    report(file, text, offset + body.indexOf('variant="destructive"'), '危险按钮(variant="destructive")必须作为 ConfirmDialog 的触发按钮, 不能直接执行')
+  }
+  for (const match of body.matchAll(/\sclass="([^"]*)"/g)) {
+    for (const token of match[1].matchAll(/\S+/g)) {
+      const error = checkPageUtility(token[0])
+      if (error) report(file, text, offset + match.index + match[0].indexOf(match[1]) + token.index, error)
+    }
+  }
+  for (const match of body.matchAll(/\s:class="([^"]*)"/g)) {
+    for (const token of match[1].matchAll(/[\w:-]+(?:-[\w-]+)+/g)) {
+      const error = checkPageUtility(token[0])
+      if (error) report(file, text, offset + match.index + match[0].indexOf(match[1]) + token.index, error)
+    }
+  }
+}
+
+const componentsDir = join(src, 'components')
+const isPage = (file) => file.endsWith('.vue') && !file.startsWith(componentsDir) && file !== join(src, 'App.vue')
 
 // ---- 扫描 ----
 function walk(dir) {
@@ -211,6 +304,8 @@ for (const file of walk(src)) {
     continue
   }
 
+  if (isPage(file)) checkPage(file, text)
+
   if (file.endsWith('.vue')) {
     for (const match of text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
       checkCss(file, text, match[1], match.index + match[0].indexOf(match[1]))
@@ -227,7 +322,7 @@ for (const file of walk(src)) {
 }
 
 if (problems.length) {
-  console.error(`设计检查失败: ${problems.length} 处问题. 只能使用 src/styles/tokens.css 中的标记.\n`)
+  console.error(`设计检查失败: ${problems.length} 处问题. 只能使用 src/styles/tokens.css 中的标记, 页面只能组合 src/components/ 中的组件.\n`)
   console.error(problems.join('\n'))
   process.exit(1)
 }

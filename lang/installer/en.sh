@@ -66,7 +66,7 @@ case "$key" in
   modules_are) fmt='Modules: %s\n' ;;
   port_busy) fmt='Port %s is already held by another process.\nFree it, or pick different ports with VPSSRV_PUBLIC_HTTP_PORT / VPSSRV_PUBLIC_HTTPS_PORT,\nor set VPSSRV_PUBLIC_ENABLE=0 to skip the public page. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
   port_busy_public_warn) fmt='Warning: port %s is held by another process, so the public page cannot listen on it for now; the console and other modules are unaffected.\nFree the port and turn the public page on again from the home page, or set VPSSRV_PUBLIC_ENABLE=0 to turn it off. Check with:\n  ss -lntp "( sport = :%s )"\n' ;;
-  ui_bundle_missing) fmt='The frontend build output web/dist/ui.js and ui.css is missing; the installation stopped before changing anything.\nUse the complete package, or first run npm ci && npm run check in web/ (Node.js 24 required).\n' ;;
+  ui_bundle_missing) fmt='The frontend build output web/dist/index.html is missing; the installation stopped before changing anything.\nUse the complete package, or first run npm ci && npm run build in web/ (Node.js 24 required).\n' ;;
   iperf_installing) fmt='Installing iperf3 from the distro ...\n' ;;
   iperf_failed) fmt='Could not install iperf3 (apt output above). Installation stopped; fix the package source and rerun the script.\n' ;;
   openssl_bundle_failed) fmt='The bundled openssl is missing or fails its checksum. Installation stopped; download the full package again.\n' ;;

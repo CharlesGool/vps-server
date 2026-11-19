@@ -610,7 +610,7 @@ PYENV
 fi
 MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
 if has_module web; then
-  { test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"; } || die "$(msg ui_bundle_missing)"
+  test -s "$SRC_DIR/web/dist/index.html" || die "$(msg ui_bundle_missing)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -1158,9 +1158,8 @@ copy_selected_files() {
       cp -r "$SRC_DIR/src/web/features" "$PREFIX/src/web/features"
       cp -r "$SRC_DIR/src/web/static" "$PREFIX/src/web/static"
     fi
-    # The production bundle is built on the maintainer host, not the VPS.
-    test -s "$SRC_DIR/web/dist/ui.js" && test -s "$SRC_DIR/web/dist/ui.css"
-    cp "$SRC_DIR/web/dist/ui.js" "$SRC_DIR/web/dist/ui.css" "$PREFIX/src/web/static/"
+    # The single-page console is built on the maintainer host, not the VPS.
+    test -s "$SRC_DIR/web/dist/index.html"
     mkdir -p "$PREFIX/web"
     rm -rf "$PREFIX/web/dist"
     cp -a "$SRC_DIR/web/dist" "$PREFIX/web/dist"
