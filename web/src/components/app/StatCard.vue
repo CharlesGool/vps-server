@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge.vue'
 import Sparkline from './Sparkline.vue'
 import { type CardLayout, cardAttrs } from './cardLayout'
 
-// 数据卡: 仪表板上的一个指标: 名称(灰), 大号数值, 变化(涨跌标签和说明), 可选趋势线. 一行 4 张(默认 1 列宽), 同一行的数据卡内容结构一致.
+// 数据卡: 仪表板上的一个指标: 名称(灰, 只占一行, 放不下时以省略号结尾, 悬停显示全文), 大号数值, 变化(涨跌标签和说明), 可选趋势线. 一行 4 张(默认 1 列宽), 同一行的数据卡内容结构一致.
 // trend 为正数显示绿色上箭头, 负数显示红色下箭头(涨跌的好坏由页面用 good 指定: 默认涨是好事).
 const props = withDefaults(defineProps<{ label: string; value: string; delta: number; deltaLabel: string; trend?: number[]; good?: 'up' | 'down' } & CardLayout>(), { good: 'up' })
 const positive = props.delta >= 0
@@ -13,7 +13,7 @@ const tone = (positive ? 'up' : 'down') === props.good ? 'success' : 'destructiv
 
 <template>
   <section data-reflow data-card data-card-body data-layout="stat-card" v-bind="cardAttrs(props)" class="rounded-lg border border-border bg-card text-card-foreground shadow-sm">
-    <p class="text-sm text-muted-foreground">{{ label }}</p>
+    <p class="truncate text-sm text-muted-foreground" :title="label">{{ label }}</p>
     <p class="text-3xl font-semibold tabular-nums">{{ value }}</p>
     <div class="flex flex-wrap items-center gap-2 text-sm">
       <StatusBadge :tone="tone">

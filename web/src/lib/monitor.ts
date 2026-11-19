@@ -77,9 +77,10 @@ export function cpuName(model: string): string {
     .trim()
 }
 
-// CPU 卡片的标签: CPU · 型号 · 核心数(读不到型号时只写核心数)
+// CPU 卡片的标签: 型号 · 核心数(读不到型号时写 CPU · 核心数)
 export function cpuLabel(t: (key: string, values?: Record<string, unknown>) => string, cpu: Monitor['cpu']): string {
-  const model = cpuName(cpu.model)
+  // 卡片只有一行标签: 型号去掉厂商名(Intel, AMD), 型号本身已经说明这是 CPU
+  const model = cpuName(cpu.model).replace(/^(Intel|AMD)\s+/i, '')
   return model ? t('vps.monitor.cpuLabel', { model, cores: cpu.cores }) : t('vps.monitor.cpuCores', { cores: cpu.cores })
 }
 
