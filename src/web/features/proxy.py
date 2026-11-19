@@ -177,12 +177,16 @@ class ProxyMixin:
         </div>'''
 
     PRIVATE_FIELDS = ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi',
-                      'public-port', 'target-port', 'account', 'address')
+                      'public-port', 'target-port', 'account', 'address', 'value', 'ipv4', 'ipv6')
 
     def private_value(self, identifier, field):
         """One value the page shows masked until asked; raises ValueError when there is none."""
         if field not in self.PRIVATE_FIELDS:
             raise ValueError('unsupported field')
+        if identifier.startswith('tailscale-'):
+            return self.tailscale_private_value(identifier, field)
+        if identifier.startswith('domain-'):
+            return self.domains_private_value(identifier, field)
         try:
             if identifier.startswith('interface-') and field == 'address':
                 index = identifier[10:]

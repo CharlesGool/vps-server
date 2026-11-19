@@ -257,6 +257,18 @@ class SpaApiTest(unittest.TestCase):
         info = Exchange(self.app, "GET", "/api/closed?module=speedtest", cookie=token).json
         self.assertEqual((info["destination"], info["closed"]), ("/speedtest", False))
 
+    def test_tailscale_domains_ipcert_without_modules(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        for name in ("tailscale", "domains", "ipcert"):
+            reply = Exchange(self.app, "GET", "/api/" + name, cookie=token)
+            self.assertEqual((reply.status, reply.json), (200, {"installed": False}))
+        self.assertEqual(Exchange(self.app, "POST", "/api/domains/add", body={"host": "a.example.com"},
+                                  cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=domain-ipv4&field=address",
+                                  cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=tailscale-tailscale_ipv4&field=address",
+                                  cookie=token).status, 404)
+
     def test_closed_feature_page_and_api(self):
         token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
         original = self.app.closed_page_module

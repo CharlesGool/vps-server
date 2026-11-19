@@ -21,4 +21,7 @@ export const FEATURE_LIST: Feature[] = [
   { path: '/files', name: 'files', view: 'files', titleKey: 'legacy.files', descriptionKey: 'vps.files.description', icon: 'files' },
   { path: '/backup', name: 'backup', view: 'backup', titleKey: 'legacy.backup', descriptionKey: 'vps.backup.description', icon: 'backup' },
   { path: '/tasks', name: 'tasks', view: 'tasks', titleKey: 'legacy.tasks', descriptionKey: 'vps.tasks.description', icon: 'tasks' },
+  { path: '/tailscale', name: 'tailscale', view: 'tailscale', titleKey: 'Tailscale', descriptionKey: 'vps.tailscale.description', icon: 'tailscale' },
+  { path: '/domains', name: 'domains', view: 'domains', titleKey: 'legacy.domains', descriptionKey: 'vps.domains.description', icon: 'domains' },
+  { path: '/ipcert', name: 'ipcert', view: 'ipcert', titleKey: 'legacy.ipcert', descriptionKey: 'vps.ipcert.description', icon: 'ipcert' },
 ]

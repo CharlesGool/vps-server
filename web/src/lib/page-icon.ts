@@ -1,4 +1,4 @@
-import { CircleOff, Timer, ArchiveRestore, Archive, HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
+import { Earth, Waypoints, CircleOff, Timer, ArchiveRestore, Archive, HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
 import type { RouteMeta } from 'vue-router'
 
 const ICONS: Record<RouteMeta['icon'], IconNode> = {
@@ -18,6 +18,10 @@ const ICONS: Record<RouteMeta['icon'], IconNode> = {
   'restore': ArchiveRestore,
   'tasks': Timer,
   'closed': CircleOff,
+  'tailscale': Waypoints,
+  'domains': Earth,
+  'domainslog': ScrollText,
+  'ipcert': ShieldCheck,
   changelog: ScrollText,
   login: LogIn,
   showcase: Blocks,

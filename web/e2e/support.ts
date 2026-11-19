@@ -217,6 +217,124 @@ const TASKS_SAMPLE = {
   message: null,
 }
 
+const TAILSCALE_SAMPLE = {
+  installed: true,
+  available: true,
+  state: 'Running',
+  version: '1.104.5',
+  tun: true,
+  present: { controlServer: true, ipv4: true, ipv6: true, account: true },
+  authUrl: null,
+  settings: {
+    bools: { 'accept-dns': true, 'accept-routes': false, 'advertise-exit-node': true, 'exit-node-allow-lan-access': false, 'shields-up': false, 'snat-subnet-routes': true, ssh: false, webclient: false },
+    routes: '',
+    exit: '',
+    relay: false,
+    memory: false,
+  },
+  subnets: ['10.0.0.0/24'],
+  exitNodes: [{ value: 'home-router.tail1234.ts.net', label: 'home-router' }],
+  devices: [
+    { id: 'n1', name: 'laptop', online: true, os: 'macOS', relay: 'tok', rx: 52428800, tx: 10485760, lastSeen: '', ipv4: true, ipv6: true },
+    { id: 'n2', name: 'home-router', online: false, os: 'linux', relay: '', rx: 0, tx: 0, lastSeen: '2026-01-01T08:00:00Z', ipv4: true, ipv6: false },
+  ],
+}
+const NETCHECK_SAMPLE = {
+  running: true,
+  derp: '7',
+  endpoint: true,
+  checks: { varies: false, ipv4: true, ipv6: true, udp: true, upnp: false, pcp: false, pmp: false, hairpinning: null },
+}
+
+const site = (host: string, extra: Record<string, unknown> = {}) => ({
+  host,
+  zone: 'example.com',
+  enabled: true,
+  console: false,
+  hasPort: true,
+  scheme: 'http',
+  backendTls: false,
+  upstreamHost: false,
+  options: '',
+  aliases: [],
+  allowIps: [],
+  authUser: '',
+  addedAt: '2026-01-01',
+  badges: [
+    { tone: 'success', text: '证书有效' },
+    { tone: 'success', text: 'DNS 已同步' },
+  ],
+  certText: "Let's Encrypt, 有效至 2026-03-01(剩 59 天), 到期前自动续期",
+  dnsText: 'A 记录指向本机, 仅 DNS; 最近同步 2026-01-02 08:00',
+  aliasesText: '',
+  accessText: '不限制',
+  ...extra,
+})
+const DOMAINS_SAMPLE = {
+  installed: true,
+  running: true,
+  dns: { ipv4: true, ipv6: false, checked: '2026-01-02 08:00', error: null },
+  history: [{ time: '01-02 08:00', text: '已添加 nas.example.com' }],
+  zones: ['example.com'],
+  consoleTarget: true,
+  groups: [
+    {
+      zone: 'example.com',
+      sites: [
+        site('nas.example.com', { backendTls: true, scheme: 'https', options: '后端 HTTPS' }),
+        site('panel.example.com', { console: true, hasPort: false }),
+        site('old.example.com', { enabled: false, badges: [{ tone: 'neutral', text: '已停用' }, { tone: 'neutral', text: '证书申请中' }] }),
+      ],
+    },
+  ],
+  tokens: [{ id: 't1', name: '主账号', state: 'ok', checked: '2026-01-02 08:00', zones: [{ zone: 'example.com', sites: 3 }] }],
+  message: null,
+  warning: null,
+}
+const IPCERT_SAMPLE = {
+  installed: true,
+  enabled: true,
+  facts: { url: 'https://203.0.113.10:28211/', issuer: "Let's Encrypt", expires: '2026-01-08 08:00 (剩 6 天, 自动续期)' },
+  job: null,
+}
+
+const JAN_2 = 1767340800
+function securitySample() {
+  return {
+    securityUntil: new Date(Date.now() + 600_000).toISOString(),
+    ipAccess: { enabled: true, allowlist: ['192.168.1.20'], loadError: false },
+    certificates: { mode: 'either', modes: ['password', 'cert', 'either', 'both'], current: null, currentSetup: [], items: [] },
+    loginBan: {
+      enabled: true,
+      loadError: false,
+      window: 60,
+      maxAttempts: 5,
+      lockout: 30,
+      lockoutMax: 86400,
+      globalMaxAttempts: 20,
+      globalLockout: 300,
+      globalState: 'normal',
+      globalRemaining: 0,
+      sources: [],
+    },
+    consoleAccess: { enabled: false, loadError: false, networks: [], current: '127.0.0.1', currentListed: true, recovery: 'python3 /opt/vps-server/web/console_access.py disable' },
+    sessions: {
+      ttl: 43200,
+      idle: 7200,
+      items: [
+        { id: 's1', current: true, ip: '127.0.0.1', agent: '', method: 'password', created: JAN_2, seen: JAN_2 + 60, device: '' },
+        { id: 's2', current: false, ip: '192.168.1.20', agent: '', method: 'ip', created: JAN_2 - 3600, seen: JAN_2 - 600, device: '' },
+      ],
+    },
+    alerts: { server: 'https://api.day.app', configured: false, newIp: true, ban: true, loadError: false },
+    audit: [
+      { t: JAN_2 + 60, event: 'login_new_ip', ip: '127.0.0.1', detail: 'password' },
+      { t: JAN_2, event: 'login_ok', ip: '127.0.0.1', detail: 'password' },
+      { t: JAN_2 - 3600, event: 'login_fail', ip: '203.0.113.9', detail: 'password' },
+    ],
+  }
+}
+
 // 每个测试都检查控制台错误和未捕获异常
 export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>({
   consoleErrors: [
@@ -238,8 +356,15 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
   // 最近访问者记录每次请求的时间: 用固定的 12 行样例(含本机, 内网, 外部, 入站, 出站, 第二页).
   // 迷你网盘显示本机磁盘剩余空间: 用固定样例(含文件, 下载链接, 进行中和失败的下载任务).
   // 备份和定时任务显示下次运行的日期和服务器时区: 用固定样例(含几份备份, 两个任务和运行记录).
+  // Tailscale 和域名转发(Caddy)在测试服务器上没有安装: 用已在使用的样例, 检查真正的管理界面.
   stableServer: [
     async ({ page }, use, testInfo) => {
+      // 截图对比里安全设置的登录设备数和安全记录取决于之前有多少测试登录过: 只在截图测试里用固定样例(其他测试要真实的安全设置)
+      if (testInfo.project.name !== 'vps' && testInfo.file.endsWith('visual.spec.ts')) {
+        await page.route(/\/api\/security$/, (route) =>
+          route.request().method() === 'GET' ? route.fulfill({ json: securitySample() }) : route.fallback(),
+        )
+      }
       if (testInfo.project.name !== 'vps') {
         await page.routeWebSocket(/\/terminal\/ws/, (socket) => {
           socket.send(Buffer.from('root@vps-server:~# '))
@@ -251,6 +376,10 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
         await page.route(/\/api\/files$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: FILES_SAMPLE }) : route.fallback()))
         await page.route(/\/api\/backup$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: BACKUP_SAMPLE }) : route.fallback()))
         await page.route(/\/api\/tasks$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: TASKS_SAMPLE }) : route.fallback()))
+        await page.route(/\/api\/tailscale$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: TAILSCALE_SAMPLE }) : route.fallback()))
+        await page.route(/\/api\/tailscale\/netcheck$/, (route) => route.fulfill({ json: NETCHECK_SAMPLE }))
+        await page.route(/\/api\/domains$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: DOMAINS_SAMPLE }) : route.fallback()))
+        await page.route(/\/api\/ipcert$/, (route) => route.fulfill({ json: IPCERT_SAMPLE }))
       }
       await use()
     },

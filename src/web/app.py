@@ -1094,6 +1094,8 @@ from features.api_modules import ModulesApiMixin
 from features.api_traffic import TrafficApiMixin
 from features.api_speedtest import SpeedtestApiMixin
 from features.api_iperf import IperfApiMixin
+from features.api_domains import DomainsApiMixin
+from features.api_tailscale import TailscaleApiMixin
 from features.api_closed import ClosedApiMixin
 from features.api_schedule import ScheduleApiMixin
 from features.api_files import FilesApiMixin
@@ -1148,6 +1150,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                      FilesApiMixin,
                      ScheduleApiMixin,
                      ClosedApiMixin,
+                     TailscaleApiMixin,
+                     DomainsApiMixin,
                      BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 

@@ -401,6 +401,41 @@ class TailscaleMixin:
             return self.send_html(400, self.render_page("Tailscale", f'<div class="card"><p class="error">{html.escape(t["tailscale_action_failed"])}</p></div>', lang, back_href="/tailscale"))
         self.redirect("/tailscale?tab=" + ("settings" if action in ("batch", "set", "routes", "exit", "routes-clear", "exit-clear", "relay", "relay-clear", "memory") else "overview"), {"Cache-Control": "no-store"})
 
+    def tailscale_private_value(self, identifier, field):
+        """A masked Tailscale value (addresses, account, current settings); ValueError when there is none."""
+        settings_value = identifier in ("tailscale-setting-routes", "tailscale-setting-exit",
+                                        "tailscale-setting-relay") and field == "value"
+        address_value = (field == "address" and identifier in (
+            "tailscale-tailscale_control_server", "tailscale-tailscale_ipv4", "tailscale-tailscale_ipv6",
+            "tailscale-tailscale_account", "tailscale-tailscale_public_endpoint")) or (
+            field in ("ipv4", "ipv6") and identifier.startswith("tailscale-peer-"))
+        if not (settings_value or address_value):
+            raise ValueError("unsupported value")
+        try:
+            snapshot = control.status()
+            if settings_value:
+                preferences = control.prefs()
+                value = preferences["advertise-routes" if identifier.endswith("routes") else
+                                    "relay-server-port" if identifier.endswith("relay") else "exit-node"]
+            elif identifier == "tailscale-tailscale_control_server":
+                value = (snapshot.get("CurrentTailnet") or {})["Name"]
+            elif identifier == "tailscale-tailscale_account":
+                self_info = snapshot.get("Self") or {}
+                value = (snapshot.get("User") or {})[str(self_info.get("UserID"))]["LoginName"]
+            elif identifier == "tailscale-tailscale_public_endpoint":
+                value = control.netcheck()["GlobalV4"]
+            elif identifier.startswith("tailscale-peer-"):
+                peer = next(p for p in control.peers(snapshot) if p["id"] == identifier[len("tailscale-peer-"):])
+                value = next(address for address in peer["addresses"] if (":" in address) == (field == "ipv6"))
+            else:
+                ips = (snapshot.get("Self") or {}).get("TailscaleIPs") or []
+                value = next(ip for ip in ips if (":" in ip) == identifier.endswith("ipv6"))
+        except (OSError, ValueError, RuntimeError, StopIteration, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
+            raise ValueError("no such value") from exc
+        if value in (None, ""):
+            raise ValueError("no such value")
+        return str(value)
+
     def route_tailscale(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/tailscale":
             self.page_tailscale(lang, query_lang, parsed)
@@ -408,33 +443,11 @@ class TailscaleMixin:
             self.tailscale_action(lang)
         elif method == "GET" and path == "/tailscale/private-value":
             query = parse_qs(parsed.query)
-            identifier = query.get("id", [""])[0]
-            settings_value = identifier in ("tailscale-setting-routes", "tailscale-setting-exit", "tailscale-setting-relay") and query.get("field") == ["value"]
-            address_value = (query.get("field") == ["address"] and identifier in
-                             ("tailscale-tailscale_control_server", "tailscale-tailscale_ipv4", "tailscale-tailscale_ipv6", "tailscale-tailscale_account", "tailscale-tailscale_public_endpoint")) or (
-                             query.get("field") in (["ipv4"], ["ipv6"]) and identifier.startswith("tailscale-peer-"))
-            if not (settings_value or address_value):
+            if len(query.get("id", [])) != 1 or len(query.get("field", [])) != 1:
                 return self.send_html(400, "Invalid request") or True
             try:
-                snapshot = control.status()
-                if settings_value:
-                    preferences = control.prefs()
-                    value = preferences["advertise-routes" if identifier.endswith("routes") else
-                                        "relay-server-port" if identifier.endswith("relay") else "exit-node"]
-                elif identifier == "tailscale-tailscale_control_server":
-                    value = (snapshot.get("CurrentTailnet") or {})["Name"]
-                elif identifier == "tailscale-tailscale_account":
-                    self_info = snapshot.get("Self") or {}
-                    value = (snapshot.get("User") or {})[str(self_info.get("UserID"))]["LoginName"]
-                elif identifier == "tailscale-tailscale_public_endpoint":
-                    value = control.netcheck()["GlobalV4"]
-                elif identifier.startswith("tailscale-peer-"):
-                    peer = next(p for p in control.peers(snapshot) if p["id"] == identifier[len("tailscale-peer-"):])
-                    value = next(address for address in peer["addresses"] if (":" in address) == (query.get("field") == ["ipv6"]))
-                else:
-                    ips = (snapshot.get("Self") or {}).get("TailscaleIPs") or []
-                    value = next(ip for ip in ips if (":" in ip) == identifier.endswith("ipv6"))
-            except (OSError, ValueError, RuntimeError, StopIteration, KeyError, TypeError, subprocess.TimeoutExpired):
+                value = self.tailscale_private_value(query["id"][0], query["field"][0])
+            except ValueError:
                 return self.send_html(404, "Not found") or True
             data = json.dumps({"value": value}).encode()
             self.send_response(200)

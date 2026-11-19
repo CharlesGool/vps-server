@@ -47,8 +47,8 @@ async function copy() {
 </script>
 
 <template>
-  <span class="flex min-w-0 items-center justify-end gap-2">
-    <code class="min-w-0 font-mono text-sm wrap-anywhere">{{ shown ?? '••••••' }}</code>
+  <span class="inline-flex min-w-0 items-center gap-2 align-middle">
+    <code class="min-w-0 font-mono text-sm wrap-anywhere" :class="shown === undefined && 'whitespace-nowrap'">{{ shown ?? '••••••' }}</code>
     <Button
       v-if="reveal"
       type="button"
