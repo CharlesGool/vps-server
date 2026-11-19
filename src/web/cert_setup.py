@@ -47,7 +47,7 @@ $issuer = {issuer}
 $patterns = @({patterns})
 $bundle = {bundle}
 try {
-  $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=$subject" -and $_.HasPrivateKey } | Select-Object -First 1
+  $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false) -eq $subject -and $_.HasPrivateKey } | Select-Object -First 1
   if ($cert) {
     Write-Host {msg_found}
   } elseif ($bundle) {
@@ -129,21 +129,34 @@ def _rules(subject, issuer, patterns):
                        separators=(",", ":")) for pattern in patterns]
 
 
+# macOS keeps one value per managed preference: when several installed
+# profiles set Chrome's AutoSelectCertificateForUrls, one of them wins and the
+# rules of every other host are gone. Every host therefore writes this same
+# rule. It names no address: the console names its own CA in the TLS request
+# (client_cert.advertise_client_ca), so Chrome only weighs that host's
+# certificate, and the subject organization keeps the rule to vps-server ones.
+MACOS_RULE = json.dumps({"pattern": "*", "filter": {"SUBJECT": {"O": "vps-server"}}}, separators=(",", ":"))
+MACOS_RULES_ID = "vps-server.autoselect"
+
+
 def macos_profile(t, subject, issuer, patterns, bundle=None):
     """A configuration profile (.mobileconfig), installed from System Settings.
 
     User scope: the identity goes into the login keychain, where Chrome looks.
     No password is stored; macOS asks for the import password while installing.
-    One profile per host and certificate: a later download for the same
-    certificate replaces it.
+    With a certificate, one profile per certificate (a later download for it
+    replaces it); without one, the shared profile that only holds the rule, so
+    it never replaces, and so removes, a profile carrying a certificate.
+    ``issuer`` and ``patterns`` are not used: the rule is the same everywhere.
     """
     serial = subject.rsplit(" ", 1)[-1]
-    base = "vps-server.client-cert." + serial
-    rules = _rules(subject, issuer, patterns)
+    base = "vps-server.client-cert." + serial if bundle else MACOS_RULES_ID
+    rules = [MACOS_RULE]
 
     def payload(kind, name, **extra):
         return {"PayloadType": kind, "PayloadVersion": 1, "PayloadIdentifier": f"{base}.{name}",
-                "PayloadUUID": str(uuid.uuid4()).upper(), "PayloadDisplayName": subject, **extra}
+                "PayloadUUID": str(uuid.uuid4()).upper(), "PayloadDisplayName": subject if bundle else "vps-server",
+                **extra}
 
     content = []
     if bundle:
@@ -153,7 +166,8 @@ def macos_profile(t, subject, issuer, patterns, bundle=None):
                 payload("com.microsoft.Edge", "edge", AutoSelectCertificateForUrls=rules)]
     profile = {"PayloadType": "Configuration", "PayloadVersion": 1, "PayloadIdentifier": base,
                "PayloadUUID": str(uuid.uuid4()).upper(), "PayloadScope": "User",
-               "PayloadDisplayName": f"vps-server {subject}", "PayloadDescription": t["client_cert_autoselect"],
+               "PayloadDisplayName": f"vps-server {subject}" if bundle else "vps-server",
+               "PayloadDescription": t["client_cert_autoselect"],
                "PayloadContent": content}
     return plistlib.dumps(profile)
 

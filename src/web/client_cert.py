@@ -39,6 +39,9 @@ from pathlib import Path
 
 
 LEGACY_CA_CN = "vps-server console client CA"
+# Every device certificate carries this organization, so one browser rule
+# (match any site, subject O=vps-server) fits the certificates of every host.
+CLIENT_ORG = "vps-server"
 
 # How a person may log in to the console:
 #   password  only the password; certificates are ignored
@@ -106,6 +109,63 @@ def openssl_binary():
     if system and (_system_openssl_version(system) or (0,)) >= OPENSSL_MIN:
         return system
     return None
+
+
+_LIBSSL = []
+
+
+def _libssl():
+    """The libssl CPython's _ssl module runs on, loaded once; None when unusable."""
+    if not _LIBSSL:
+        lib = None
+        try:
+            import ctypes
+            import _ssl
+            if sys.implementation.name == "cpython":
+                lib = ctypes.CDLL(_ssl.__file__)
+                lib.SSL_CTX_get_options.restype = ctypes.c_uint64
+                lib.SSL_CTX_get_options.argtypes = [ctypes.c_void_p]
+                lib.SSL_CTX_get_verify_mode.restype = ctypes.c_int
+                lib.SSL_CTX_get_verify_mode.argtypes = [ctypes.c_void_p]
+                lib.SSL_load_client_CA_file.restype = ctypes.c_void_p
+                lib.SSL_load_client_CA_file.argtypes = [ctypes.c_char_p]
+                lib.SSL_CTX_set_client_CA_list.restype = None
+                lib.SSL_CTX_set_client_CA_list.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        except (ImportError, OSError, AttributeError):
+            lib = None
+        _LIBSSL.append(lib)
+    return _LIBSSL[0]
+
+
+def advertise_client_ca(context, cafile):
+    """Name ``cafile``'s CA in the TLS certificate request; True when it worked.
+
+    Python's ssl module has no call for SSL_CTX_set_client_CA_list, so without
+    this the request names no CA and a browser offers every client certificate
+    it holds, from every host. Chrome only narrows its picker (and its
+    AutoSelectCertificateForUrls choice) to this host's certificate when the
+    CA is named. The SSL_CTX pointer is the first field after the object
+    header of CPython's PySSLContext; it is only used after the options and
+    verify mode read through it match the Python object's own, and any
+    failure leaves the context as it was.
+    """
+    lib = _libssl()
+    if lib is None:
+        return False
+    try:
+        import ctypes
+        pointer = ctypes.c_void_p.from_address(id(context) + object.__basicsize__).value
+        if not pointer or lib.SSL_CTX_get_options(pointer) != context.options:
+            return False
+        if lib.SSL_CTX_get_verify_mode(pointer) & 1 != (1 if context.verify_mode != ssl.CERT_NONE else 0):
+            return False
+        names = lib.SSL_load_client_CA_file(os.fsencode(cafile))
+        if not names:
+            return False
+        lib.SSL_CTX_set_client_CA_list(pointer, names)  # takes ownership of ``names``
+        return True
+    except (OSError, ValueError, AttributeError, TypeError):
+        return False
 
 
 def _fingerprint(path):
@@ -210,6 +270,7 @@ class ClientAuth:
         if self.ca_cert.is_file():
             context.verify_mode = ssl.CERT_OPTIONAL
             context.load_verify_locations(cafile=str(self.ca_cert))
+            advertise_client_ca(context, self.ca_cert)
         return context
 
     def ca_stamp(self):
@@ -301,7 +362,7 @@ class ClientAuth:
         common_name = f"vps-server client {host_label()} {serial[:8]}"
         self._openssl(work, "req", "-new", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
                       "-nodes", "-keyout", str(work / "client.key"), "-out", str(work / "client.csr"),
-                      "-subj", f"/CN={common_name}")
+                      "-subj", f"/O={CLIENT_ORG}/CN={common_name}")
         # openssl needs a path: a decrypted copy lives in ``work`` only until signing is done.
         signing_key = secure_store.decrypted_copy(self.ca_key, work)
         try:
