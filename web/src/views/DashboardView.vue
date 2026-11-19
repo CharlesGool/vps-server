@@ -313,6 +313,7 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
     <StatCard
       v-for="card in resourceCards"
       :key="card.key"
+      :cols="'cols' in card ? card.cols : 1"
       :label="card.label"
       :value="card.value"
       :delta="card.delta"

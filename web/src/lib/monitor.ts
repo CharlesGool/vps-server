@@ -66,10 +66,20 @@ export function gpuName(name: string): string {
   return name.replace(/^NVIDIA\s+/i, '').replace(/^GeForce\s+/i, '') || name
 }
 
-// 每张卡一张数据卡: 值是使用率, 说明是显存和温度
+// 每张卡一张数据卡: 值是使用率, 说明是显存和温度. 显卡卡片自己排满一行(4 列栅格: 1 张占整行, 2 张各占半行,
+// 3 张按 1, 1, 2 格), 后面的卡片总是从新的一行开始, 不会被挤到显卡旁边.
+type Cols = 1 | 2 | 3 | 4
+const ROW_WIDTHS: Record<number, Cols[]> = { 1: [4], 2: [2, 2], 3: [1, 1, 2] }
+function gpuCols(count: number, index: number): Cols {
+  const rest = count % 4
+  const firstOfLastRow = count - rest
+  return rest && index >= firstOfLastRow ? ROW_WIDTHS[rest]![index - firstOfLastRow]! : 1
+}
+
 export function gpuCards(gpus: Gpu[], t: (key: string, values?: Record<string, unknown>) => string, trends: number[][] = []) {
   return gpus.map((gpu, index) => ({
     key: `gpu${index}`,
+    cols: gpuCols(gpus.length, index),
     label: gpuName(gpu.name),
     value: gpu.utilization == null ? '-' : `${gpu.utilization.toFixed(0)}%`,
     delta: 0,

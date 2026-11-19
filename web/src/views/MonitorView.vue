@@ -145,6 +145,7 @@ const hostItems = computed(() => {
       <StatCard
         v-for="card in cards"
         :key="card.key"
+        :cols="'cols' in card ? card.cols : 1"
         :label="card.label"
         :value="card.value"
         :delta="card.delta"
