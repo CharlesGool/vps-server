@@ -21,6 +21,8 @@ except ImportError:  # Installed helpers are copied into one flat directory.
     import secure_store
 
 HISTORY_POINTS = 1440
+# The live chart: the last minute, one point per sample.
+LIVE_POINTS = 12
 SAMPLE_SECONDS = 5
 HISTORY_SECONDS = 60
 # File systems that hold data; pseudo and in-memory ones are left out.
@@ -215,6 +217,7 @@ class Monitor:
         self.stop_event = threading.Event()
         self.current = {"cpu": 0.0, "rx": 0, "tx": 0, "interfaces": {}}
         self.history = []
+        self.live = []
         self.cpu_high_since = None
         self._last_cpu = cpu_times()
         self._last_net = (time.monotonic(), net_counters())
@@ -281,6 +284,11 @@ class Monitor:
                 self.current["rx"] = int(sum(rx for rx, _ in rates.values()))
                 self.current["tx"] = int(sum(tx for _, tx in rates.values()))
             self._last_net = (now, counters)
+            mem = memory()
+            self.live.append([int(time.time()), self.current["cpu"],
+                              round(mem["used"] * 100 / mem["total"], 1) if mem["total"] else 0,
+                              self.current["rx"], self.current["tx"]])
+            self.live = self.live[-LIVE_POINTS:]
 
     def snapshot(self):
         """Everything the page shows."""
@@ -306,6 +314,11 @@ class Monitor:
             self.history.append(point)
             self.history = self.history[-HISTORY_POINTS:]
         return point
+
+    def live_points(self):
+        """The last minute: [time, cpu %, memory %, rx B/s, tx B/s] every SAMPLE_SECONDS."""
+        with self.lock:
+            return list(self.live)
 
     def points(self):
         with self.lock:

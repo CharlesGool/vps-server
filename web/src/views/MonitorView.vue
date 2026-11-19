@@ -14,9 +14,9 @@ import TrendChart from '@/components/app/TrendChart.vue'
 import MonitorAlertsCards from '@/components/vps/MonitorAlertsCards.vue'
 import { api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
-import { formatDuration, formatRate, hourLabel, type Monitor } from '@/lib/monitor'
+import { formatDuration, formatRate, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
 
-// 资源监控: 仪表板模式. 一行 4 张数据卡(CPU, 内存, 硬盘, 负载), 整行的 24 小时趋势图, 磁盘表, 网卡表, 主机信息.
+// 资源监控: 仪表板模式. 一行 4 张数据卡(CPU, 内存, 硬盘, 负载), 整行的实时图和 24 小时趋势图, 磁盘表, 主机信息, 网卡表.
 // 每 5 秒刷新一次; 最下面是资源告警的开关和阈值.
 const { t, locale } = useI18n()
 const data = ref<Monitor>()
@@ -55,15 +55,20 @@ const cards = computed(() => {
   ]
 })
 
-const chartLabels = computed(() => (data.value?.chart ?? []).map((row) => hourLabel(row[0], locale.value)))
-const chartSeries = computed(() => [
-  { name: t('vps.monitor.cpu'), values: (data.value?.chart ?? []).map((row) => row[1] ?? 0) },
-  { name: t('vps.monitor.memory'), values: (data.value?.chart ?? []).map((row) => row[2] ?? 0) },
-])
-const trafficSeries = computed(() => [
-  { name: t('vps.monitor.download'), values: (data.value?.chart ?? []).map((row) => row[3] ?? 0) },
-  { name: t('vps.monitor.upload'), values: (data.value?.chart ?? []).map((row) => row[4] ?? 0) },
-])
+// 两组图: 实时(最近 1 分钟, 每 5 秒一个点)和 24 小时(每 2 小时的平均值). 24 小时图只画有数据的时段, 刚安装时只有最近几段.
+const live = computed(() => data.value?.live ?? [])
+const day = computed(() => (data.value?.chart ?? []).filter((row) => row[1] != null))
+const usage = (rows: HistoryRow[]) => [
+  { name: t('vps.monitor.cpu'), values: rows.map((row) => row[1] ?? 0) },
+  { name: t('vps.monitor.memory'), values: rows.map((row) => row[2] ?? 0) },
+]
+const traffic = (rows: HistoryRow[]) => [
+  { name: t('vps.monitor.download'), values: rows.map((row) => row[3] ?? 0) },
+  { name: t('vps.monitor.upload'), values: rows.map((row) => row[4] ?? 0) },
+]
+const liveLabels = computed(() => live.value.map((row) => secondLabel(row[0], locale.value)))
+const dayLabels = computed(() => day.value.map((row) => hourLabel(row[0], locale.value)))
+const percentText = (value: number) => `${value.toFixed(1)}%`
 
 const diskColumns = computed(() => [
   { key: 'mount', label: t('vps.monitor.mount'), mono: true },
@@ -136,12 +141,20 @@ const hostItems = computed(() => {
         good="down"
       />
 
-      <PageSection :cols="4" :title="t('vps.monitor.usageChart')" :description="t('vps.monitor.chartNote')">
-        <TrendChart :label="t('vps.monitor.usageChart')" :labels="chartLabels" :series="chartSeries" :format="(value: number) => `${value.toFixed(1)}%`" />
+      <PageSection v-if="live.length > 1" :cols="4" :title="t('vps.monitor.liveUsage')" :description="t('vps.monitor.liveNote')">
+        <TrendChart :label="t('vps.monitor.liveUsage')" :labels="liveLabels" :series="usage(live)" :format="percentText" />
       </PageSection>
 
-      <PageSection :cols="4" :title="t('vps.monitor.trafficChart')" :description="t('vps.monitor.chartNote')">
-        <TrendChart :label="t('vps.monitor.trafficChart')" :labels="chartLabels" :series="trafficSeries" :format="formatRate" />
+      <PageSection v-if="live.length > 1" :cols="4" :title="t('vps.monitor.liveTraffic')" :description="t('vps.monitor.liveNote')">
+        <TrendChart :label="t('vps.monitor.liveTraffic')" :labels="liveLabels" :series="traffic(live)" :format="formatRate" />
+      </PageSection>
+
+      <PageSection v-if="day.length > 1" :cols="4" :title="t('vps.monitor.usageChart')" :description="t('vps.monitor.chartNote')">
+        <TrendChart :label="t('vps.monitor.usageChart')" :labels="dayLabels" :series="usage(day)" :format="percentText" />
+      </PageSection>
+
+      <PageSection v-if="day.length > 1" :cols="4" :title="t('vps.monitor.trafficChart')" :description="t('vps.monitor.chartNote')">
+        <TrendChart :label="t('vps.monitor.trafficChart')" :labels="dayLabels" :series="traffic(day)" :format="formatRate" />
       </PageSection>
 
       <PageSection :cols="4" :title="t('vps.monitor.disks')">

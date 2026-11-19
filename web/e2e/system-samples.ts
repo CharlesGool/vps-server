@@ -4,6 +4,7 @@ const NOW = Date.UTC(2026, 10, 19, 12, 0, 0) / 1000
 const hours = (count: number, step: number) => Array.from({ length: count }, (_, index) => NOW - (count - index) * step)
 
 const chart = hours(12, 7200).map((time, index) => [time, 8 + ((index * 7) % 23), 41 + ((index * 3) % 9), 120_000 + index * 9_000, 30_000 + index * 2_500])
+const live = Array.from({ length: 12 }, (_, index) => [NOW - (12 - index) * 5, 10 + ((index * 7) % 9), 44 + (index % 3), 150_000 + ((index * 13_000) % 60_000), 35_000 + ((index * 4_000) % 12_000)])
 const trend = hours(24, 3600).map((time, index) => [time, 6 + ((index * 5) % 19), 40 + ((index * 2) % 11), 100_000, 25_000])
 
 const DISKS = [
@@ -23,6 +24,7 @@ export const MONITOR_SAMPLE = {
   gpus: [],
   chart,
   trend,
+  live,
   hourAgo: { cpu: 10.1, memory: 44.2 },
   time: NOW,
 }
@@ -177,6 +179,7 @@ export const FLEET_SAMPLE = {
 export const SYSTEM_ROUTES: [RegExp, unknown][] = [
   [/\/api\/monitor$/, MONITOR_SAMPLE],
   [/\/api\/monitor\/alerts$/, MONITOR_ALERTS_SAMPLE],
+  [/\/api\/monitor\/summary$/, RESOURCES_SAMPLE],
   [/\/api\/system$/, SYSTEM_SAMPLE],
   [/\/api\/system\/updates$/, UPDATES_SAMPLE],
   [/\/api\/system\/ssh$/, SSH_SAMPLE],

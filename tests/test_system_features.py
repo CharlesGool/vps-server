@@ -33,6 +33,14 @@ class MonitorTest(unittest.TestCase):
         self.assertEqual(len(snapshot["load"]), 3)
         self.assertTrue(all(0 <= row["percent"] <= 100 for row in snapshot["disks"]))
 
+    def test_live_points_keep_the_last_minute(self):
+        monitor = sysmon.Monitor(self.tmp)
+        for _ in range(sysmon.LIVE_POINTS + 3):
+            monitor.sample()
+        live = monitor.live_points()
+        self.assertEqual(len(live), sysmon.LIVE_POINTS)
+        self.assertTrue(all(len(point) == 5 for point in live))
+
     def test_history_is_bucketed(self):
         now = 1_000_000
         points = [[now - 3600 * hour, 10.0 * (hour % 3), 50.0, 100, 200] for hour in range(30)]

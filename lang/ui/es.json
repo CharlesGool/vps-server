@@ -723,7 +723,10 @@
       "cpuMinutes": "Duración de CPU",
       "minutesUnit": "min",
       "alertsSaved": "Ajustes de alertas guardados",
-      "barkMissing": "No hay clave de Bark, así que las alertas no se pueden enviar. Añádala en Seguridad."
+      "barkMissing": "No hay clave de Bark, así que las alertas no se pueden enviar. Añádala en Seguridad.",
+      "liveUsage": "CPU y memoria en vivo",
+      "liveTraffic": "Red en vivo",
+      "liveNote": "El último minuto, un punto cada 5 segundos."
     },
     "system": {
       "title": "Sistema",

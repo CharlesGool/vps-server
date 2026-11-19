@@ -26,6 +26,7 @@ export interface Monitor {
   gpus: { name: string; utilization: number | null; memoryUsed: number | null; memoryTotal: number | null; celsius: number | null }[]
   chart: HistoryRow[]
   trend: HistoryRow[]
+  live: HistoryRow[]
   hourAgo: { cpu: number; memory: number } | null
 }
 
@@ -33,6 +34,11 @@ export type ResourceSummary = Pick<Monitor, 'cpu' | 'memory' | 'disk' | 'load' |
 
 export function formatRate(value: number): string {
   return `${formatBytes(value)}/s`
+}
+
+// 实时图横轴: 时:分:秒
+export function secondLabel(seconds: number, locale: string): string {
+  return new Date(seconds * 1000).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 // 图表横轴: 每个时段开始的时刻(时:分, 按当前语言)

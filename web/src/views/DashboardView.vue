@@ -149,7 +149,6 @@ const resourceCards = computed(() => {
 function detail(item: ModuleItem) {
   if (item.occupiedPort != null) return t('console.module_port_occupied', { port: item.occupiedPort })
   if (item.needsIpcert) return t('console.module_public_needs_ipcert')
-  if (item.switchable && !item.available) return t('vps.dashboard.notInstalled')
   return undefined
 }
 
@@ -167,6 +166,21 @@ async function load() {
 }
 onMounted(load)
 onBeforeUnmount(() => clearTimeout(timer))
+
+// 顶部的资源卡片每 5 秒刷新, 只取这 4 个数(不重新读模块和总流量)
+let resourceTimer: ReturnType<typeof setTimeout> | undefined
+async function refreshResources() {
+  clearTimeout(resourceTimer)
+  try {
+    const resources = await api<ResourceSummary>('monitor/summary')
+    if (data.value) data.value = { ...data.value, resources }
+  } catch (err) {
+    if (isSignedOut(err)) return
+  }
+  resourceTimer = setTimeout(refreshResources, 5000)
+}
+onMounted(() => (resourceTimer = setTimeout(refreshResources, 5000)))
+onBeforeUnmount(() => clearTimeout(resourceTimer))
 
 const ERRORS: Record<string, string> = {
   module_busy: 'vps.dashboard.busy',
