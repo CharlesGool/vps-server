@@ -644,7 +644,7 @@
     },
     "proxy": {
       "description": "Manage the Singbox proxy nodes on this server: protocol, port, credentials, allowed destinations and traffic.",
-      "summary": "{total} nodes, {active} running.",
+      "summary": "{total} node, {active} running. | {total} nodes, {active} running.",
       "nodes": "Nodes",
       "share": "Clash subscription",
       "enabledName": "Enable {name}",
@@ -1601,7 +1601,7 @@
     "traffic_frpc_shared": "These instances connect to the same server, so their traffic is counted and limited together: {names}",
     "traffic_help_once": "Upload is traffic coming into this host, download is traffic leaving it; each byte counts once. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
     "traffic_help_tailscale": "Counts traffic on the tailscale0 interface; traffic this host forwards (exit node, subnet routes) enters and leaves it, so it counts twice. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
-    "traffic_help_twice": "Forwarded traffic enters and leaves this host, so it counts twice, like a Singbox node. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
+    "traffic_help_twice": "Proxied and forwarded traffic enters and leaves this host, so each byte counts twice. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
     "traffic_limit_manage": "Traffic limits",
     "upload": "Upload",
     "visitors": "Recent visitors",

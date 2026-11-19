@@ -331,8 +331,8 @@ const deviceColumns = computed(() => [
             <StatusBadge :tone="row.online ? 'success' : 'neutral'">{{ t(row.online ? 'console.tailscale_online' : 'console.tailscale_offline') }}</StatusBadge>
           </template>
           <template #cell-address="{ row }">
-            <PrivateValue v-if="row.ipv4" :source="`tailscale-peer-${row.id}`" field="ipv4" :label="`IPv4 ${row.name}`" />
-            <PrivateValue v-if="row.ipv6" :source="`tailscale-peer-${row.id}`" field="ipv6" :label="`IPv6 ${row.name}`" />
+            <div v-if="row.ipv4"><PrivateValue :source="`tailscale-peer-${row.id}`" field="ipv4" :label="`IPv4 ${row.name}`" /></div>
+            <div v-if="row.ipv6"><PrivateValue :source="`tailscale-peer-${row.id}`" field="ipv6" :label="`IPv6 ${row.name}`" /></div>
           </template>
           <template #cell-relay="{ row }">{{ row.relay || '—' }}</template>
           <template #cell-traffic="{ row }">{{ formatBytes(row.rx) }} / {{ formatBytes(row.tx) }}</template>

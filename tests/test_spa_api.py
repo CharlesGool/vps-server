@@ -181,6 +181,10 @@ class SpaApiTest(unittest.TestCase):
         traffic = Exchange(self.app, "GET", "/api/traffic?key=speedtest", cookie=token).json
         self.assertEqual((traffic["entry"]["capBytes"], traffic["help"]), (None, "once"))
         self.assertEqual(Exchange(self.app, "GET", "/api/traffic?key=../x", cookie=token).status, 404)
+        # FRPC instance names may be Chinese; an unmetered one has no entry yet, not an error.
+        chinese = Exchange(self.app, "GET", "/api/traffic?key=frpc:%E5%B9%BF%E5%B7%9E-Aliyun", cookie=token)
+        self.assertEqual((chinese.status, chinese.json), (200, {"entry": None}))
+        self.assertEqual(Exchange(self.app, "GET", "/api/traffic?key=frpc:a%20b", cookie=token).status, 404)
         limits = {"key": "speedtest", "capGib": "1.5", "uploadMbps": "", "downloadMbps": "20",
                   "capAction": "block", "resetMode": "repeat", "resetCount": 1, "resetUnit": "months",
                   "nextResetAt": "", "expiryMode": "none", "expiryCount": 1, "expiryUnit": "months"}

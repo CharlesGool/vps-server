@@ -6,9 +6,11 @@ one traffic card for all of them.
 
 import re
 
+from frp_control import valid_client_name
+
 # Metered features with a traffic card; FRPC instances and forwarding rules carry their own name.
 TRAFFIC_KEYS = ("files", "speedtest", "iperf3", "caddy", "tailscale", "frps")
-INSTANCE_KEY = re.compile(r"(frpc|portfwd|node):[A-Za-z0-9_.-]{1,64}")
+INSTANCE_KEY = re.compile(r"(portfwd|node):[A-Za-z0-9_.-]{1,64}")
 
 
 def usage_json(context, node, meter_nodes):
@@ -68,6 +70,9 @@ class TrafficApiMixin:
     def _traffic_key(self, key):
         if not isinstance(key, str):
             return None
+        # FRPC instance names may hold any letters (Chinese ones too), as frp_control allows.
+        if key.startswith("frpc:"):
+            return key if valid_client_name(key[5:]) else None
         return key if key in TRAFFIC_KEYS or INSTANCE_KEY.fullmatch(key) else None
 
     def traffic_found(self, key):

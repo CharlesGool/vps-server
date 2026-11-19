@@ -644,7 +644,7 @@
     },
     "proxy": {
       "description": "Gestiona los nodos proxy Singbox de este servidor: protocolo, puerto, credenciales, destinos permitidos y tráfico.",
-      "summary": "{total} nodos, {active} en ejecución.",
+      "summary": "{total} nodo, {active} en ejecución. | {total} nodos, {active} en ejecución.",
       "nodes": "Nodos",
       "share": "Suscripción de Clash",
       "enabledName": "Activar {name}",
@@ -1601,7 +1601,7 @@
     "traffic_frpc_shared": "Estas instancias se conectan al mismo servidor, así que su tráfico se cuenta y limita en conjunto: {names}",
     "traffic_help_once": "La subida es el tráfico que entra en este servidor y la bajada el que sale; cada byte cuenta una vez. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
     "traffic_help_tailscale": "Cuenta el tráfico de la interfaz tailscale0; el que este servidor reenvía (nodo de salida, rutas de subred) entra y sale, así que cuenta dos veces. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
-    "traffic_help_twice": "El tráfico reenviado entra y sale de este servidor, así que cuenta dos veces, como un nodo Singbox. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
+    "traffic_help_twice": "El tráfico de proxy y reenviado entra y sale de este servidor, así que cada byte cuenta dos veces. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
     "traffic_limit_manage": "Límites de tráfico",
     "upload": "Subida",
     "visitors": "Visitantes recientes",
