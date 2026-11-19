@@ -95,7 +95,7 @@ metadata:
 - [x] 三语言 CHANGELOG 已写入 v7.1.0. 澳门测试版的 12 条反馈(服务器标识, 按日历重置流量, Bark 多密钥, 删除已撤销证书等)也已随 v7.1.0 发布.
 - [ ] 已知小问题: 沿用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号; 随附的 LibreSpeed Worker 在很短的测速里偶尔有延迟启动的连接在结束后才启动并报错(只在浏览器控制台显示, 不影响结果); `lang/web/` 仍有只有旧页面用过的键(服务器生成的文本还在用这个文件, 键名大多是运行时拼出来的, 没有清理); 定时任务和定时备份的时间在新界面里精确到分钟(服务器仍支持到秒); 模板自带的 `auth.spec.ts` 里安全设置的截图依赖之前的测试登录过几次(登录设备和安全记录的行数), 只单独跑这个文件时会对不上, 完整运行 `npm run check` 时稳定.
 
-当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.1.2(附注标签 `v7.1.2`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
+当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.2.0(附注标签 `v7.2.0`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.
 
@@ -136,6 +136,7 @@ v7.0.5(2026-11-17): FRPS 页流量区改用统一的流量卡排版, 修正"访�
 v7.1.0(2026-11-19): 控制台全部换成新模板的单页界面; 流量重置按日历(每周/每月/每年, 本地时间), Bark 多密钥, 删除已撤销证书, 顶栏服务器标识(见 `doc/CHANGELOG.md`).
 v7.1.1(2026-11-19): 控制台在 TLS 握手里列出自己的客户端 CA(`client_cert.advertise_client_ca`, 经 ctypes 调用 `SSL_CTX_set_client_CA_list`), 设备证书带 O=vps-server, macOS 描述文件各主机写同一条自动选择规则, 修复 Mac 上多台主机的规则互相覆盖(见 `doc/CHANGELOG.md`).
 v7.1.2(2026-11-19): CA 名为旧的共用名(不带主机名)的主机, 下次签发证书时生成带主机名的新 CA, `client-ca.pem` 变成新 CA 在前, 旧 CA 在后的证书包, 旧证书照常可用(`ClientAuth._replace_legacy_ca`, 见 `doc/CHANGELOG.md`).
+v7.2.0(2026-11-20): 资源监控和告警, 系统, 系统更新, 进程, 服务, 监听端口, 文件管理, 集中管理(API 令牌和 `/api/v1`), 最近访问里的 SSH 登录记录, 新功能和备份, 定时任务的主页开关(见 `doc/CHANGELOG.md`).
 
 v7.0.1(2026-11-17): 备份恢复先预览再确认, 私钥只在恢复时要, 恢复结果可见, 备份密钥复制按钮(见 `doc/CHANGELOG.md`).
 

@@ -4,7 +4,7 @@
 
 Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.1.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.1.2)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.2.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.2.0)
 
 ## Documentación
 
@@ -29,6 +29,7 @@ Administre pruebas de velocidad, proxies, FRP y Tailscale desde una consola Web.
 - Módulos opcionales, reenvío de puertos, Mini nube con enlaces de descarga sin contraseña, registros detallados, terminal root con contraseña, tres idiomas y temas.
 - Copia de configuración: un clic o una programación diaria guarda toda la configuración (certificados, nodos, FRP, la sesión de Tailscale; no el código ni los archivos de Mini Drive), con descarga, subida, restauración y retención rotativa; el instalador copia la configuración antes de actualizar. Las tareas programadas ejecutan comandos como root cada cierto tiempo, a diario, cada semana o cada mes (al segundo, o con un cron), o solo una vez, con tiempo límite, protección contra solapamiento, historial y avisos de fallo por Bark.
 - Bloqueos crecientes tras fallos de inicio de sesión, límite de acceso a la consola, gestión de dispositivos conectados, registro de seguridad y avisos de Bark.
+- Recursos (CPU, memoria, disco, carga, velocidad de red, temperatura, GPU NVIDIA, con gráficas en tiempo real y de los últimos 15 minutos) y alertas de recursos por Bark; información del sistema y nombre del equipo, actualizaciones del sistema (apt), procesos, servicios de systemd y sus registros, puertos en escucha (una página cada uno), los registros de inicio de sesión SSH en la página de visitas recientes; un gestor de archivos para explorar y administrar como root los archivos del servidor; tokens de API y la [API de tokens](API.md), y una página de gestión central para ver otros equipos desde una sola consola y actualizarlos en lote.
 - Las instalaciones nuevas incluyen solo Web; las páginas públicas están desactivadas. La tarjeta «Página pública» del inicio activa o desactiva juntas las páginas HTTP y HTTPS con un solo interruptor. Consulte [LOG](LOG.md#errores) para problemas y límites de verificación.
 
 ### Capturas de pantalla
@@ -129,10 +130,10 @@ Ejecute como root.
 
 ### Instalación rápida
 
-Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v7.1.2-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
+Instale solo la consola Web con un comando. Añada otros módulos según necesite desde Configuración/Módulos. Este es el paquete sin conexión; para el paquete en línea use `vps-server-v7.2.0-linux-amd64-online.tar.gz` como nombre de archivo o ejecute este comando:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Instalación normal
@@ -140,7 +141,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 La instalación desde código requiere compilar antes el frontend en `web/` (Node.js 24). El repositorio no contiene programas de terceros como sing-box, frp, Caddy y Tailscale; como en el paquete en línea, el instalador los descarga y verifica su SHA-256. El entorno privado nftables solo se incluye en el paquete completo. Copiar `.env` es opcional; edítelo antes de instalar si necesita personalización.
 
 ```bash
-git clone --depth 1 --branch v7.1.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v7.2.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +153,17 @@ bash deploy/install.sh
 El destino solo necesita acceso a la red. El paquete pesa unos 4 MB; los demás programas se descargan durante la instalación según los módulos elegidos. Si una descarga de GitHub sigue por debajo de 200 KB/s tras 15 segundos, la instalación pasa a los espejos gh-proxy.com y ghfast.top (para servidores en China continental), y la descarga se verifica igualmente con SHA-256; defina `VPSSRV_GITHUB_MIRROR=https://su.espejo/` para probar antes su propio espejo, o `none` para no usar espejos. El comando de instalación de arriba también descarga de GitHub; en China continental puede sustituir su `https://github.com/` por `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Instalación sin conexión
 
-Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
+Descargue el [paquete completo](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz) y [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/SHA256SUMS) en una máquina con red y transfiéralos a `/root/vps-server-download/` del destino. Ejecute lo siguiente; el destino solo necesita Python 3.9+; sin red, curl, Git, tar ni gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.1.2-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.2.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -196,6 +197,20 @@ El argumento `status` muestra el estado del requisito y todos los certificados.
 ### Mini nube
 
 "Mini nube", en la página de inicio, está desactivado por defecto. Al activarlo, guarda archivos temporalmente en este servidor y crea enlaces de descarga sin contraseña, por ejemplo para que un servidor que no llega a GitHub descargue desde aquí. Los archivos llegan de dos formas: subidos desde un navegador, o indicando una URL http/https para que el servidor la descargue por sí mismo (en segundo plano; se puede cerrar el navegador). El límite es de 5 GiB por defecto y se cambia en la página; sea cual sea, siempre quedan al menos 500 MiB libres en el disco. Cada archivo puede tener varios enlaces de descarga, cada uno con caducidad (5, 10 o 30 minutos; 1, 2 o 5 horas; 1, 7 o 30 días; o nunca) y un límite de descargas opcional, y cualquiera se puede revocar en todo momento. Los enlaces tienen la forma `https://<dirección de la consola>/f/<token>/<nombre del archivo>`; quien tenga uno no necesita contraseña ni certificado de cliente, y `curl -O`, `wget` y las descargas reanudadas funcionan. Solo las solicitudes que empiezan desde el principio cuentan como descargas. Desactivar Mini nube invalida todos los enlaces y conserva los archivos.
+
+### Recursos y administración del sistema
+
+La parte superior del inicio muestra CPU, memoria, disco y carga; la página «Recursos» añade además gráficas en tiempo real (último minuto, cada 5 segundos) y de los últimos 15 minutos (cada minuto) de CPU, memoria y red, el uso de cada disco, la velocidad de las interfaces de red, la temperatura (si se puede leer) y la GPU NVIDIA (si hay `nvidia-smi`). El botón de ajustes de la cabecera abre las alertas de recursos: disco o memoria por encima de un umbral, CPU por encima de un umbral durante un tiempo, o fallo de los servicios de vps-server, FRPC o Tailscale se envían por Bark (la clave de Bark se introduce en los ajustes de seguridad); el mismo evento se envía como máximo una vez al día.
+
+En el inicio, Recursos, Sistema, Actualizaciones, Procesos, Servicios, Puertos en escucha, Archivos, Gestión central, Copias de seguridad y Tareas programadas tienen cada uno una tarjeta con interruptor; al desactivarla, la página y su API dejan de estar disponibles (con Recursos desactivado ya no se envían alertas; con Copias de seguridad o Tareas programadas desactivadas se pausa su ejecución programada). Salvo Recursos, estas páginas, igual que la terminal root, piden verificar la contraseña de administrador antes de entrar:
+
+- **Sistema**: información del sistema y cambio del nombre del equipo (también cambia `/etc/hosts` donde aparezca el nombre anterior; los certificados ya emitidos y el nombre de la CA no cambian).
+- **Actualizaciones**: ver y actualizar los paquetes con actualización disponible (`apt-get upgrade` en segundo plano).
+- **Procesos, Servicios, Puertos en escucha**: los procesos se pueden terminar; los servicios de systemd se pueden iniciar, detener, reiniciar, activar o desactivar en el arranque y consultar sus últimas 200 líneas de registro (el servicio de la propia consola no se puede detener); los puertos en escucha muestran el uso registrado en el registro de puertos.
+- **Archivos**: explorar todo el sistema de archivos como root, subir, descargar (las carpetas se empaquetan en tar.gz), crear, renombrar, copiar, mover, eliminar, cambiar permisos y propietario, comprimir y descomprimir (zip, tar.gz) y editar en línea archivos de texto de hasta 1 MiB. Los propios directorios del sistema (`/etc`, `/usr`, etc.) no se pueden eliminar, mover ni renombrar, pero sí los archivos que contienen; en `/proc`, `/sys` y `/dev` no se escribe. Todos los cambios se anotan en el registro de seguridad.
+- **Gestión central**: administrar a otros y ser administrado por otros se hace en esta misma página. Genere un token de API en la página de gestión central del otro equipo y aquí introduzca la dirección de su consola y el token. La lista muestra de cada equipo si está en línea, la versión, CPU, memoria, disco y tráfico del ciclo actual, y se actualiza cada 30 segundos; tras seleccionar varios se pueden actualizar en lote (descargando la última versión estable de GitHub) o hacer una copia de seguridad, lo que requiere un token de lectura y escritura. Si el otro equipo usa un certificado autofirmado, compruebe su huella antes de añadirlo; a partir de entonces solo se acepta ese certificado.
+
+Los tokens de API también se pueden usar directamente desde scripts; la interfaz está descrita en [API](API.md).
 
 ### Seguridad del inicio de sesión
 
@@ -300,11 +315,11 @@ v5.1.0 y anteriores usan el esquema antiguo, sin migración automática. **DEBE*
 Desde v7.0.0:
 
 - **Cifrado de datos.** El instalador crea una clave de datos en `/etc/vps-server/data.key` (modo 0600, fuera del directorio de estado) y la consola guarda después sus archivos de estado cifrados (ChaCha20-Poly1305): la contraseña de administrador, el secreto y las sesiones, la clave de alertas (Bark), los registros de auditoría, las direcciones que han iniciado sesión, la lista de acceso a la consola, las IP permitidas, el índice de Mini Drive, las tareas programadas y los ajustes de copias, y la clave privada TLS y la clave privada de la CA de clientes de la consola. Los archivos en claro de una versión anterior se leen tal cual y se convierten en cifrados al arrancar. Esto protege frente a una copia del directorio de estado, una imagen de disco o una copia sin la clave; **no protege frente a quien ya es root en el equipo**, porque el servicio necesita la clave. La configuración de nodos, FRP, reenvío de dominios y Tailscale la leen directamente sing-box, frps, Caddy y tailscaled, así que no entra aquí sino en las copias cifradas. Tampoco se cifran el contenido de Mini Drive ni la base de datos de visitantes. La tarjeta "Cifrado de datos" de la página de copias muestra el estado.
-- **Cifrado de copias.** Genere un par de claves en la página de copias: el servidor solo guarda la clave pública y cifra con ella las copias nuevas (`.sealed`), por lo que no puede abrirlas; al restaurar se pide la clave privada que guardó (se muestra una vez y no se almacena). Las copias cifradas llevan la clave de datos y se restauran en cualquier equipo; sin clave pública, las copias van en claro y **no incluyen** la clave de datos (solo se restauran en este equipo). Las copias hechas antes de fijar una clave pública (incluida la automática previa a la actualización a v7.1.2) siguen en claro: elimínelas cuando la actualización parezca correcta.
+- **Cifrado de copias.** Genere un par de claves en la página de copias: el servidor solo guarda la clave pública y cifra con ella las copias nuevas (`.sealed`), por lo que no puede abrirlas; al restaurar se pide la clave privada que guardó (se muestra una vez y no se almacena). Las copias cifradas llevan la clave de datos y se restauran en cualquier equipo; sin clave pública, las copias van en claro y **no incluyen** la clave de datos (solo se restauran en este equipo). Las copias hechas antes de fijar una clave pública (incluida la automática previa a la actualización a v7.2.0) siguen en claro: elimínelas cuando la actualización parezca correcta.
 - **Método de acceso.** Se elige en Ajustes > Acceso > Certificados de cliente: solo contraseña, solo certificado, contraseña o certificado, o contraseña + certificado. El ajuste anterior "exigir certificados de cliente" pasa a "solo certificado" y, si estaba desactivado, a "contraseña o certificado". Antes de cambiar a un método que exige certificado debe haber abierto los ajustes con un certificado activo; si no, se rechaza el cambio para que no se quede fuera. Si pierde el certificado, ejecute `python3 /root/apps/vps-server/src/web/client_cert.py disable` en el servidor para volver a solo contraseña.
 - **Volver atrás.** Las versiones anteriores a v7.0.0 no leen archivos cifrados. Antes de volver, ejecute `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all` para dejarlos en claro; `upgrade.py` rechaza una versión anterior mientras existan archivos cifrados. `secure_store.py status` muestra el estado de cada archivo y `secure_store.py export-key` imprime la clave de datos (guárdela bien: sin ella no se pueden recuperar los archivos de estado cifrados).
 
-Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v7.1.2, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
+Compruebe el código de salida `0`, que `systemctl is-active vps-server-web` indique `active`, la versión v7.2.0, la contraseña original, las configuraciones de nodos/FRPC y los módulos y puertos. Ajuste el nombre del servicio si lo personalizó. Conserve registros y copias ante un fallo; una ejecución parcial no es éxito.
 
 ## Desinstalación
 

@@ -26,6 +26,34 @@ metadata:
 
 ## Changelog
 
+### v7.2.0 — 2026-11-20
+
+Adds resource monitoring, system management, a file manager and central management. The upgrade command is unchanged and configuration and data are kept; the new features are on by default and can be switched off on the home page.
+
+#### Added
+
+- **Resources.** The home page shows CPU, memory, disk and load, refreshed every 5 seconds. The Resources page has live charts (the last minute, a point every 5 seconds) and 15-minute charts (a point a minute), usage per disk, interface rates, temperatures and NVIDIA GPUs (when readable). Resource alerts at the bottom push through Bark when disk or memory passes a threshold, CPU stays high, or a vps-server, FRPC or Tailscale service fails, at most once a day per event.
+- **System.** System information and changing the host name (also where the old name appears in `/etc/hosts`).
+- **System updates.** Upgradable packages and a one-click `apt-get upgrade` in the background, with its output.
+- **Processes, services and listening ports** each have a page: processes can be ended; systemd services can be started, stopped, restarted, set to start at boot and their last 200 log lines read (the console's own service cannot be stopped); listening ports show their purpose from the port registry. Long lists show 50 rows a page.
+- **File manager.** Browse and manage the server's files as root: upload, download (folders as archives), create, rename, copy, move, delete, change permissions and owner, compress and extract (zip, tar.gz), and edit text files up to 1 MiB. System folders themselves cannot be deleted, moved or renamed.
+- **Central management.** See whether other hosts are online, their version, resources and traffic, and upgrade or back them up together; on the same page create API tokens so other hosts or scripts can manage this one. Tokens are read-only or read-write; see [API](API.md).
+- System, system updates, processes, services, listening ports, the file manager and central management ask for the admin password first, like the root terminal; every change goes into the security log.
+- Resources, the system pages, the file manager, central management, backup and scheduled tasks have home switches. Switched off, backup and scheduled tasks pause their schedules, and central management also stops the token API.
+
+#### Changed
+
+- "Recent visitors" is renamed "Recent visits" and adds SSH logins of the last 7 days (successful, failed and the addresses with the most failures).
+- Home module cards no longer say a module is not installed; the switch shows it. The changelog card has no switch.
+
+#### Fixed
+
+- Long chart axis labels (such as 195.31 KiB/s) ran past the card.
+
+#### Verification
+
+All automated tests pass (design, types, browser tests with screenshots and layout checks, Python unit tests). Test builds ran on two home test hosts, exercised as real root: changing the host name and back, every file operation, restarting a service, ending a process, refreshing package lists, the token API, adding one host to another's central management and reading its status, and a batch backup. `apt-get upgrade` and the batch upgrade were not run on a host.
+
 ### v7.1.2 — 2026-11-19
 
 Hosts installed early switch to a client CA named after the host, so Mac auto-select can tell them apart too. The upgrade command is unchanged, configuration and data are kept, and issued certificates stay valid.

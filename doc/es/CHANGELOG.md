@@ -26,6 +26,34 @@ metadata:
 
 ## Historial de cambios
 
+### v7.2.0 — 2026-11-20
+
+Añade monitorización de recursos, gestión del sistema, un gestor de archivos y gestión central. El comando de actualización no cambia y la configuración y los datos se conservan; las funciones nuevas vienen activadas y se pueden desactivar en la página de inicio.
+
+#### Añadido
+
+- **Recursos.** La página de inicio muestra CPU, memoria, disco y carga, actualizados cada 5 segundos. La página Recursos tiene gráficos en vivo (el último minuto, un punto cada 5 segundos) y de 15 minutos (un punto por minuto), uso por disco, velocidad de las interfaces, temperaturas y GPU NVIDIA (si se pueden leer). Las alertas de recursos al final envían por Bark cuando el disco o la memoria superan un umbral, la CPU sigue alta o falla un servicio de vps-server, FRPC o Tailscale, como mucho una vez al día por evento.
+- **Sistema.** Información del sistema y cambio del nombre de host (también donde aparece el nombre antiguo en `/etc/hosts`).
+- **Actualizaciones.** Paquetes actualizables y `apt-get upgrade` con un clic en segundo plano, con su salida.
+- **Procesos, servicios y puertos en escucha** tienen su propia página: los procesos se pueden finalizar; los servicios de systemd se pueden iniciar, detener, reiniciar, activar al arrancar y ver sus últimas 200 líneas de registro (el servicio de la propia consola no se puede detener); los puertos muestran su uso según el registro de puertos. Las listas largas muestran 50 filas por página.
+- **Archivos.** Explore y gestione los archivos del servidor como root: subir, descargar (carpetas como archivo comprimido), crear, renombrar, copiar, mover, eliminar, cambiar permisos y propietario, comprimir y extraer (zip, tar.gz) y editar archivos de texto de hasta 1 MiB. Las carpetas del sistema no se pueden eliminar, mover ni renombrar.
+- **Gestión central.** Vea si otros hosts están en línea, su versión, recursos y tráfico, y actualícelos o haga copias a la vez; en la misma página cree tokens de API para que otros hosts o scripts gestionen este. Los tokens son de solo lectura o de lectura y escritura; vea [API](API.md).
+- Sistema, actualizaciones, procesos, servicios, puertos, archivos y gestión central piden primero la contraseña de administrador, como el terminal root; cada cambio queda en el registro de seguridad.
+- Recursos, las páginas del sistema, archivos, gestión central, copias de seguridad y tareas programadas tienen interruptores en el inicio. Desactivadas, las copias y las tareas pausan sus programaciones, y la gestión central también detiene la API de tokens.
+
+#### Cambiado
+
+- "Visitantes recientes" pasa a llamarse "Visitas recientes" y añade los accesos SSH de los últimos 7 días (correctos, fallidos y las direcciones con más fallos).
+- Las tarjetas de módulos del inicio ya no dicen que un módulo no está instalado; lo muestra el interruptor. La tarjeta del registro de cambios no tiene interruptor.
+
+#### Corregido
+
+- Las etiquetas largas del eje de los gráficos (como 195.31 KiB/s) se salían de la tarjeta.
+
+#### Verificación
+
+Todas las pruebas automáticas pasan (diseño, tipos, pruebas de navegador con capturas y comprobaciones de diseño, pruebas unitarias de Python). Las versiones de prueba se instalaron en dos hosts de prueba de casa y se probaron como root real: cambiar el nombre de host y volver, todas las operaciones de archivos, reiniciar un servicio, finalizar un proceso, actualizar las listas de paquetes, la API de tokens, añadir un host a la gestión central de otro y leer su estado, y una copia en lote. `apt-get upgrade` y la actualización en lote no se ejecutaron en un host.
+
 ### v7.1.2 — 2026-11-19
 
 Los hosts instalados al principio pasan a una CA de cliente con el nombre del host, para que la selección automática en un Mac también los distinga. El comando de actualización no cambia, la configuración y los datos se conservan y los certificados emitidos siguen siendo válidos.

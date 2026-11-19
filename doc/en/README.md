@@ -4,7 +4,7 @@
 
 Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 
-[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.1.2-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.1.2)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue)](../../LICENSE) [![Release](https://img.shields.io/badge/release-v7.2.0-blue)](https://github.com/CharlesGool/vps-server/releases/tag/v7.2.0)
 
 ## Documentation
 
@@ -29,6 +29,7 @@ Manage VPS speed tests, proxies, FRP and Tailscale from one Web console.
 - Optional modules, port forwarding, Mini Drive with password-free download links, detailed logs, a password-protected browser root terminal, three languages and themes.
 - Configuration backup: one click or a daily schedule saves all configuration (certificates, nodes, FRP, the Tailscale login; not program code or Mini Drive files), with download, upload, restore and rolling retention; the installer backs up the configuration before an upgrade. Scheduled tasks run commands as root every so often, daily, weekly or monthly (to the second, or on a cron schedule), or only once with a timeout, overlap protection, run history and Bark failure alerts.
 - Escalating bans after failed logins, a console access limit, signed-in device management, a security log and Bark login alerts.
+- Resource monitoring (CPU, memory, disk, load, network rates, temperatures, NVIDIA GPU, live and last-15-minute trends) and Bark resource alerts; system information and host name, System updates (apt), Processes, systemd Services and logs, Listening ports (one page each), and SSH sign-in records in Recent visits; a File manager to browse and manage server files as root; API tokens and the [token API](API.md), and a Central management page to view and bulk-upgrade other hosts from one console.
 - Fresh installs include only Web; public reachability pages are disabled. The home "Public page" tile turns the HTTP and HTTPS pages on or off together with one switch. See [LOG](LOG.md#bugs) for issues and verification boundaries.
 
 ### Interface screenshots
@@ -129,10 +130,10 @@ Run as root.
 
 ### Quick Install
 
-Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v7.1.2-linux-amd64-online.tar.gz` as the file name, or run this command:
+Install only the Web console with one command. Add other modules as needed from Settings/Modules. This is the offline package; for the online package use `vps-server-v7.2.0-linux-amd64-online.tar.gz` as the file name, or run this command:
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 ### Normal Install
@@ -140,7 +141,7 @@ python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib
 Source installs require building the frontend first in `web/` (Node.js 24). The repository does not contain upstream programs such as sing-box, frp, Caddy and Tailscale; like the online package, the installer downloads them and verifies their SHA-256. The private nftables runtime is supplied only in the complete offline package. Copying `.env` is optional; edit it before installing when customization is needed.
 
 ```bash
-git clone --depth 1 --branch v7.1.2 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
+git clone --depth 1 --branch v7.2.0 https://github.com/CharlesGool/vps-server.git /root/vps-server-source
 cd /root/vps-server-source
 (cd web && npm ci && npm run check)
 cp .env.example .env
@@ -152,17 +153,17 @@ bash deploy/install.sh
 The target only needs network access. The package is about 4 MB; the other programs are downloaded at install time for the selected modules. When a GitHub download is still below 200 KB/s after 15 seconds, the install switches to the mirrors gh-proxy.com and ghfast.top (for servers in mainland China), and the download is verified by SHA-256 just the same; set `VPSSRV_GITHUB_MIRROR=https://your.mirror/` to try your own mirror first, or `none` to use no mirror. The install command above also downloads from GitHub; in mainland China you can replace its `https://github.com/` with `https://gh-proxy.com/https://github.com/`.
 
 ```bash
-python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
+python3 -c 'import sys, tarfile, urllib.request; t = tarfile.open(fileobj=urllib.request.urlopen(sys.argv[1]), mode="r|gz"); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64-online.tar.gz && VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
 #### Offline Install
 
-Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/vps-server-v7.1.2-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.1.2/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
+Download the [complete package](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/vps-server-v7.2.0-linux-amd64.tar.gz) and [SHA256SUMS](https://github.com/CharlesGool/vps-server/releases/download/v7.2.0/SHA256SUMS) on a networked machine, transfer them to `/root/vps-server-download/` on the target and run the commands below. The target needs only Python 3.9+; no network, curl, Git, tar or gzip.
 
 ```bash
 cd /root/vps-server-download
 sha256sum -c --ignore-missing SHA256SUMS
-python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.1.2-linux-amd64.tar.gz
+python3 -c 'import sys, tarfile; t = tarfile.open(sys.argv[1]); t.extraction_filter = getattr(tarfile, "tar_filter", None); t.extractall("/root")' vps-server-v7.2.0-linux-amd64.tar.gz
 VPSSRV_MODULES=web bash /root/vps-server/deploy/install.sh
 ```
 
@@ -197,7 +198,20 @@ The `status` argument lists the requirement state and all certificates.
 
 "Mini Drive" on the home page is off by default. Once on, it keeps files on this server for a while and creates password-free download links, for example so a server that cannot reach GitHub can download from here. Files arrive in two ways: upload from a browser, or enter an http/https URL for the server to download itself (in the background; the browser can be closed). The limit defaults to 5 GiB and can be changed on the page; whatever the limit, at least 500 MiB stays free on disk. Each file can have several download links, each with an expiry (5, 10 or 30 minutes; 1, 2 or 5 hours; 1, 7 or 30 days; or never) and an optional download limit, and each can be revoked at any time. Links look like `https://<console address>/f/<token>/<file name>`; whoever has one needs no password or client certificate, and `curl -O`, `wget` and resumed downloads all work. Only requests that start from the beginning count as downloads. Turning Mini Drive off disables every link and keeps the files.
 
-### Login security
+### Resources and system management
+
+The top of the home page shows CPU, memory, disk and load; the Resources page adds live (last 1 minute, every 5 seconds) and last-15-minute (every minute) CPU, memory and network trends, per-disk usage, network rates, temperatures (when readable) and NVIDIA GPU (when `nvidia-smi` is present). The settings button in the page header opens resource alerts: Bark pushes when disk or memory exceeds a threshold, CPU stays above a threshold for a while, or the vps-server, FRPC or Tailscale services fail (the push key is entered in the security settings); the same event alerts at most once a day.
+
+The home page has a tile with a switch for each of Resources, System, System updates, Processes, Services, Listening ports, File manager, Central management, Backup and Scheduled tasks; when off, the page and its API are unavailable (with Resources off, alerts stop; with Backup or Scheduled tasks off, their schedules pause). Except for Resources, these pages require the administrator password before entry, like the root terminal:
+
+- **System**: system information and host name changes (which also update every place in `/etc/hosts` that has the old name; issued certificates and the CA name do not change).
+- **System updates**: view and upgrade upgradable packages (`apt-get upgrade` runs in the background).
+- **Processes, Services, Listening ports**: processes can be killed; systemd services can be started, stopped, restarted, enabled or disabled at boot, and their last 200 log lines viewed (the console's own service cannot be stopped); listening ports show the purpose from the port registry.
+- **File manager**: browse the whole file system as root; upload, download (folders are packed as tar.gz), create, rename, copy, move, delete, change permissions and owner, compress and extract (zip, tar.gz), and edit text files up to 1 MiB online. System directories themselves (`/etc`, `/usr` and so on) cannot be deleted, moved or renamed, but the files inside them can; `/proc`, `/sys` and `/dev` are never written. All changes are recorded in the security log.
+- **Central management**: managing others and being managed both happen on this page. Generate an API token on the other host's Central management page, then enter that console's address and the token here. The list shows whether each host is online, its version, CPU, memory, disk and this cycle's traffic, refreshed every 30 seconds; after selecting some hosts you can upgrade them in bulk (downloading the latest stable release from GitHub) or back them up, which needs a read-write token. When the other side uses a self-signed certificate, check the certificate fingerprint before adding it; afterwards only that one certificate is accepted.
+
+API tokens can also be used directly by scripts; see [API](API.md) for the endpoints.
+
 
 These settings are all under Settings > Security.
 
@@ -300,11 +314,11 @@ v5.1.0 and earlier use the old layout and have no automatic migration. You **MUS
 From v7.0.0:
 
 - **Data encryption.** The installer creates a data key at `/etc/vps-server/data.key` (mode 0600, outside the state directory), and the console then stores its own state files encrypted (ChaCha20-Poly1305): the admin password, the session secret and sessions, the alert (Bark) key, audit records, addresses that have logged in, the console access list, allowed IPs, the Mini Drive index, scheduled tasks and backup settings, and the console's TLS private key and client CA private key. Plain files written by an older version are read as they are and turned into encrypted ones at startup. This protects against a copy of the state directory, a disk image, or a backup without the key; **it does not protect against someone who is already root on the host**, because the service needs the key to run. Node, FRP, domain forwarding and Tailscale configuration must be read directly by sing-box, frps, Caddy and tailscaled, so it is not covered here but by encrypted backups. Mini Drive file contents and the visitor database are not encrypted either. The "Data encryption" card on the Backup page shows the current state.
-- **Backup encryption.** Generate a key pair on the Backup page: the server keeps only the public key and encrypts new backups to it (`.sealed`), so it cannot open them itself; restoring asks for the private key you saved (shown once, never stored). Encrypted backups carry the data key and restore on any host; without a public key, backups are plain and **leave out** the data key (so they restore only on this host). Backups made before a public key is set (including the one taken automatically before the upgrade to v7.1.2) stay plain, so delete them once the upgrade looks fine.
+- **Backup encryption.** Generate a key pair on the Backup page: the server keeps only the public key and encrypts new backups to it (`.sealed`), so it cannot open them itself; restoring asks for the private key you saved (shown once, never stored). Encrypted backups carry the data key and restore on any host; without a public key, backups are plain and **leave out** the data key (so they restore only on this host). Backups made before a public key is set (including the one taken automatically before the upgrade to v7.2.0) stay plain, so delete them once the upgrade looks fine.
 - **Login method.** Choose under Settings > Access > Client certificates: password only, certificate only, password or certificate, or password + certificate. The older "require client certificates" setting becomes "certificate only" automatically, and when it was off it becomes "password or certificate". Before switching to a method that needs a certificate you must have opened the settings with an active certificate, or the change is refused, so you cannot lock yourself out. If you lose the certificate, run `python3 /root/apps/vps-server/src/web/client_cert.py disable` on the server to go back to password only.
 - **Downgrading.** Versions before v7.0.0 cannot read encrypted files. Before going back, run `python3 /root/apps/vps-server/src/web/secure_store.py decrypt-all` to turn them into plain files; `upgrade.py` refuses an older version while encrypted files exist. `secure_store.py status` shows each file's state and `secure_store.py export-key` prints the data key (keep it safe: without it the encrypted state files cannot be recovered).
 
-Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v7.1.2, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
+Check background exit code `0`, `systemctl is-active vps-server-web` returning `active`, console version v7.2.0, login with the original password, retained node/FRPC configuration, and required modules and ports. Adjust the service name if customized. Preserve logs and backups on failure; partial completion is not success.
 
 ## Uninstall
 
