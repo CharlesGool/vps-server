@@ -963,8 +963,8 @@
       }
     },
     "fleet": {
-      "title": "多主机",
-      "description": "在这里查看其他 vps-server 主机的状态, 并批量升级或备份.",
+      "title": "集中管理",
+      "description": "管理其他 vps-server 主机, 也可以让其他主机或脚本用令牌管理这台主机.",
       "heading": "共 {n} 台主机",
       "refreshNote": "每 30 秒自动刷新.",
       "host": "主机",
@@ -1004,7 +1004,7 @@
       },
       "batchFailed": "这些主机没有成功: {names}",
       "emptyTitle": "还没有添加主机",
-      "emptyHelp": "在另一台主机的安全设置里生成 API 令牌, 再到这里添加它的控制台地址和令牌.",
+      "emptyHelp": "在另一台主机的集中管理页生成 API 令牌, 再到这里添加它的控制台地址和令牌.",
       "add": "添加主机",
       "addHelp": "先读出对方控制台的证书核对, 再填名称和令牌.",
       "next": "下一步",
@@ -1032,7 +1032,7 @@
     },
     "tokens": {
       "title": "API 令牌",
-      "description": "给脚本和其他控制台(多主机)使用, 请求头 Authorization: Bearer <令牌>. 用法见文档 doc/API.md.",
+      "description": "其他主机的集中管理或脚本用它管理这台主机, 请求头 Authorization: Bearer <令牌>. 用法见文档 doc/API.md.",
       "name": "名称",
       "scope": "权限",
       "read": "只读",
@@ -2044,8 +2044,8 @@
     "audit_api_token_fail": "API 令牌无效",
     "audit_upgrade_started": "经 API 开始升级",
     "audit_backup_created": "经 API 创建备份",
-    "audit_fleet_host_added": "添加多主机",
-    "audit_fleet_host_removed": "移除多主机",
+    "audit_fleet_host_added": "集中管理添加主机",
+    "audit_fleet_host_removed": "集中管理移除主机",
     "audit_fleet_upgrade": "批量升级主机",
     "audit_fleet_backup": "批量备份主机"
   }

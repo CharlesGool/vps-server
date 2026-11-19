@@ -78,8 +78,8 @@ metadata:
 - 客户端证书**必须**用随附的 openssl 和项目自带的最小配置签发; 证书包**必须**用 SHA1/3DES 加密和 SHA1 MAC 导出(OpenSSL 3 默认的 AES/PBKDF2 在 macOS 上报密码错误);新的证书颁发机构**必须**先在主机 TLS 库上通过双向 TLS 自检.
 - 新签发的 CA 和设备证书的 CN 带主机名(只保留 ASCII 字母数字, 点和横线);已有 CA 不改名, 改名会使已发证书失效. 设置文件由 `cert_setup.py` 生成, 带证书的版本只在签发页提供: Windows 是 .cmd 加内嵌 PowerShell, 只写当前用户的证书库和 HKCU 策略, 不需要管理员权限, 私钥导入为不可导出; macOS 是用户范围的描述文件(PKCS#12 载荷不含密码, 安装时由系统询问, 加 Chrome 和 Edge 的策略载荷); Linux 是 bash 脚本, 用 pk12util 导入到 `~/.pki/nssdb`, 并用 sudo 合并各浏览器策略目录下的 `vps-server.json`, 保留其他条目.
 - 资源监控(`src/web/sysmon.py`)只读 `/proc`, `/sys` 和 statvfs, GPU 只在有 `nvidia-smi` 时读; 控制台进程里的采样线程每 5 秒更新 CPU 和网卡速率, 每分钟记一个历史点(保留 24 小时, `data/monitor-history.json`)并检查告警阈值(`data/monitor.json`), 告警经 Bark, 同一事件一天最多一次. 采样线程同时保留最近 1 分钟的 5 秒点(实时图). 页面画最近 15 分钟的每分钟平均值; 令牌接口另给 24 小时的 12 段和 24 段平均值.
-- 系统页, 文件管理和多主机的所有接口要求安全设置权限(和终端一样, 最近验证过管理员密码). 控制台在 `ProtectSystem=strict` 下只能读, 要写系统文件的操作(主机名和 `/etc/hosts`, `apt-get update`, 文件的新建, 改名, 复制, 移动, 删除, 改权限和所有者, 压缩解压, 写入)经 `systemd-run` 交给 root 辅助程序 `src/web/sysadmin.py`, 它只接受白名单动作的 JSON 请求; 上传和编辑先写进 `data/fm-staging/`(0700), 再由辅助程序放到目标位置(覆盖时保留原权限和所有者). 系统目录本身(`/`, `/etc`, `/usr` 等)**禁止**删除, 移动或重命名; `/proc`, `/sys`, `/dev` **禁止**写入; 解压**必须**拒绝落到目标目录外的条目和设备文件. `apt-get upgrade` 作为单独的临时单元 `vps-server-apt-upgrade` 运行, 输出写到 `data/apt-upgrade.log`. 服务的启停和开机自启直接经 systemctl(D-Bus), 控制台自己的服务**禁止**停止或取消自启.
-- 令牌接口(`/api/v1/*`, `src/web/api_tokens.py`, `features/api_v1.py`, 说明见 [API](API.md)): 令牌只存 SHA-256(`data/api-tokens.json`, 有数据密钥时加密), 分只读和读写; 请求在会话, 同源和客户端证书检查之前处理, 错误的令牌按登录失败计数. 多主机(`src/web/fleet.py`, `data/fleet.json`)保存其他控制台的地址, 令牌和证书校验方式: 添加时证书能按公共 CA 验证的用正常 HTTPS 校验(可以续期), 否则固定当时证书的 SHA-256 指纹; 发送令牌前先完成校验, 指纹变了就不再连接.
+- 系统页, 文件管理和集中管理的所有接口要求安全设置权限(和终端一样, 最近验证过管理员密码). 控制台在 `ProtectSystem=strict` 下只能读, 要写系统文件的操作(主机名和 `/etc/hosts`, `apt-get update`, 文件的新建, 改名, 复制, 移动, 删除, 改权限和所有者, 压缩解压, 写入)经 `systemd-run` 交给 root 辅助程序 `src/web/sysadmin.py`, 它只接受白名单动作的 JSON 请求; 上传和编辑先写进 `data/fm-staging/`(0700), 再由辅助程序放到目标位置(覆盖时保留原权限和所有者). 系统目录本身(`/`, `/etc`, `/usr` 等)**禁止**删除, 移动或重命名; `/proc`, `/sys`, `/dev` **禁止**写入; 解压**必须**拒绝落到目标目录外的条目和设备文件. `apt-get upgrade` 作为单独的临时单元 `vps-server-apt-upgrade` 运行, 输出写到 `data/apt-upgrade.log`. 服务的启停和开机自启直接经 systemctl(D-Bus), 控制台自己的服务**禁止**停止或取消自启.
+- 令牌接口(`/api/v1/*`, `src/web/api_tokens.py`, `features/api_v1.py`, 说明见 [API](API.md)): 令牌只存 SHA-256(`data/api-tokens.json`, 有数据密钥时加密), 分只读和读写; 请求在会话, 同源和客户端证书检查之前处理, 错误的令牌按登录失败计数. 集中管理(`src/web/fleet.py`, `data/fleet.json`)保存其他控制台的地址, 令牌和证书校验方式: 添加时证书能按公共 CA 验证的用正常 HTTPS 校验(可以续期), 否则固定当时证书的 SHA-256 指纹; 发送令牌前先完成校验, 指纹变了就不再连接.
 - iperf3 服务端**必须**限时运行, Web 停止时关闭临时进程与本项目转发规则. **禁止**重置整个主机的 `ip_forward` 或删除其他程序的防火墙规则.
 - TLS 握手**必须**在各连接的工作线程中完成并设置超时;在接受连接的线程中握手会让空闲连接阻塞整个监听器.
 - 重启 Web 期间**禁止**持有 `.ports.lock`;新 Web 进程启动时通过同一锁释放残留登记.
@@ -111,7 +111,7 @@ metadata:
 | `/etc/vps-server-traffic/traffic.json`, `meter.json` | 域名转发, iperf3, 端口转发, FRPC 和 Tailscale 的流量条目与计量账本. |
 | `data/app-traffic.json` | 迷你网盘和测速的流量条目, 由控制台写入. |
 | `data/monitor-history.json`, `monitor.json` | 资源监控 24 小时历史; 告警设置和已发送记录. |
-| `data/api-tokens.json`, `fleet.json` | API 令牌(只存哈希); 多主机的地址, 令牌和证书指纹. |
+| `data/api-tokens.json`, `fleet.json` | API 令牌(只存哈希); 集中管理的主机地址, 令牌和证书指纹. |
 | `data/fm-staging/`, `apt-upgrade.log`, `upgrade-api.log` | 文件管理的上传和编辑暂存; 系统更新和经接口升级的输出. |
 | `/etc/frp/frpc-<name>.toml` | FRPC 实例配置;非 ASCII 名称映射到稳定的 unit 别名. |
 | `/etc/vps-server-caddy` | 域名转发: 站点清单 `sites.json`, Cloudflare 令牌清单 `cloudflare-tokens.json`(每个令牌带名称和它能管理的主域名; 均为 `0600`; 旧版的单个 `cloudflare-token` 和 `zones.json` 在第一次改动令牌时转换并删除), DNS 同步结果 `dns.json`, 生成的 Caddy 配置 `caddy.json`. |

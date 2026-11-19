@@ -28,7 +28,7 @@ API_BODY_LIMIT = 16 * 1024
 # API names of the switchable system features: (prefix, feature). The first match wins.
 FEATURE_APIS = (("monitor/alerts", "monitor"), ("monitor", "monitor"), ("system/updates", "updates"),
                 ("system/processes", "processes"), ("system/services", "services"), ("system/ports", "ports"),
-                ("system", "system"), ("fm/", "filemanager"), ("fleet", "fleet"), ("backup", "backup"),
+                ("system", "system"), ("fm/", "filemanager"), ("fleet", "fleet"), ("security/tokens", "fleet"), ("backup", "backup"),
                 ("tasks", "tasks"))
 
 

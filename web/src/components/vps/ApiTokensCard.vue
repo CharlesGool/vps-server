@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
 import { showToast } from '@/lib/toast'
 
-// vps-server 项目组件: 安全设置里的 API 令牌卡片(整行, 表单样式). 上面是已有令牌的表格(名称, 权限, 前后几位, 最近使用), 每行可删除;
+// vps-server 项目组件: 集中管理页的 API 令牌卡片(整行, 表单样式). 上面是已有令牌的表格(名称, 权限, 前后几位, 最近使用), 每行可删除;
 // 下面填名称, 选只读或读写后生成. 令牌只在生成后显示这一次(CopyField), 服务器只保存它的哈希. 用法见 doc/API.md.
 interface Token { id: string; name: string; scope: 'read' | 'write'; hint: string; created: number; lastUsed: number | null; lastIp: string | null }
 const emit = defineEmits<{ expired: [] }>()

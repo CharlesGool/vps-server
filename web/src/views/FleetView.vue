@@ -22,13 +22,15 @@ import StatusBadge from '@/components/app/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
+import ApiTokensCard from '@/components/vps/ApiTokensCard.vue'
 import { api } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
 import type { Monitor } from '@/lib/monitor'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// 多主机: 列表模式, 一张整行卡片. 每台主机一行: 状态, 版本, CPU, 内存, 硬盘, 本周期流量; 可多选后批量升级或备份.
+// 集中管理: 两件事放在一页. 上面是这台主机管理的其他主机(列表, 一张整行卡片), 下面是让别人管理这台主机的 API 令牌(ApiTokensCard).
+// 主机列表: 每台主机一行: 状态, 版本, CPU, 内存, 硬盘, 本周期流量; 可多选后批量升级或备份.
 // 添加主机分两步(对话框): 先填地址读出证书指纹核对, 再填对方安全设置里生成的 API 令牌. 每 30 秒刷新一次.
 interface Host {
   id: string
@@ -239,6 +241,8 @@ async function save() {
         <Button :disabled="busy" @click="openAdd"><Plus aria-hidden="true" />{{ t('vps.fleet.add') }}</Button>
       </FormActions>
     </PageSection>
+
+    <ApiTokensCard v-if="state === 'ready'" @expired="state = 'verify'" />
 
     <ConfirmDialog
       :open="batch !== null"

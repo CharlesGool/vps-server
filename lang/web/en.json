@@ -1229,8 +1229,8 @@
   "audit_api_token_fail": "Invalid API token",
   "audit_upgrade_started": "Upgrade started via API",
   "audit_backup_created": "Backup created via API",
-  "audit_fleet_host_added": "Fleet host added",
-  "audit_fleet_host_removed": "Fleet host removed",
+  "audit_fleet_host_added": "Managed host added",
+  "audit_fleet_host_removed": "Managed host removed",
   "audit_fleet_upgrade": "Fleet upgrade",
   "audit_fleet_backup": "Fleet backup",
   "feature_monitor": "Resources",
@@ -1240,7 +1240,7 @@
   "feature_services": "Services",
   "feature_ports": "Listening ports",
   "feature_filemanager": "File manager",
-  "feature_fleet": "Fleet",
+  "feature_fleet": "Central management",
   "feature_backup": "Backup",
   "feature_tasks": "Scheduled tasks"
 }

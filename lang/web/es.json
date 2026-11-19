@@ -1229,8 +1229,8 @@
   "audit_api_token_fail": "Token de API no válido",
   "audit_upgrade_started": "Actualización iniciada por API",
   "audit_backup_created": "Copia creada por API",
-  "audit_fleet_host_added": "Host añadido a la flota",
-  "audit_fleet_host_removed": "Host quitado de la flota",
+  "audit_fleet_host_added": "Host gestionado añadido",
+  "audit_fleet_host_removed": "Host gestionado quitado",
   "audit_fleet_upgrade": "Actualización de la flota",
   "audit_fleet_backup": "Copia de la flota",
   "feature_monitor": "Recursos",
@@ -1240,7 +1240,7 @@
   "feature_services": "Servicios",
   "feature_ports": "Puertos en escucha",
   "feature_filemanager": "Archivos",
-  "feature_fleet": "Flota",
+  "feature_fleet": "Gestión central",
   "feature_backup": "Copias de seguridad",
   "feature_tasks": "Tareas programadas"
 }

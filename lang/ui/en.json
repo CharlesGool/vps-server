@@ -963,8 +963,8 @@
       }
     },
     "fleet": {
-      "title": "Fleet",
-      "description": "See other vps-server hosts here, and upgrade or back them up together.",
+      "title": "Central management",
+      "description": "Manage other vps-server hosts, and let other hosts or scripts manage this one with a token.",
       "heading": "{n} hosts",
       "refreshNote": "Refreshes every 30 seconds.",
       "host": "Host",
@@ -1004,7 +1004,7 @@
       },
       "batchFailed": "These hosts did not succeed: {names}",
       "emptyTitle": "No hosts yet",
-      "emptyHelp": "Create an API token in another host's security settings, then add its console address and the token here.",
+      "emptyHelp": "Create an API token on another host's Central management page, then add its console address and the token here.",
       "add": "Add host",
       "addHelp": "First read the other console's certificate and check it, then enter a name and the token.",
       "next": "Next",
@@ -1032,7 +1032,7 @@
     },
     "tokens": {
       "title": "API tokens",
-      "description": "For scripts and other consoles (Fleet), sent as Authorization: Bearer <token>. See doc/API.md.",
+      "description": "Other hosts' Central management or scripts use it to manage this host, sent as Authorization: Bearer <token>. See doc/API.md.",
       "name": "Name",
       "scope": "Access",
       "read": "Read-only",
@@ -2044,8 +2044,8 @@
     "audit_api_token_fail": "Invalid API token",
     "audit_upgrade_started": "Upgrade started via API",
     "audit_backup_created": "Backup created via API",
-    "audit_fleet_host_added": "Fleet host added",
-    "audit_fleet_host_removed": "Fleet host removed",
+    "audit_fleet_host_added": "Managed host added",
+    "audit_fleet_host_removed": "Managed host removed",
     "audit_fleet_upgrade": "Fleet upgrade",
     "audit_fleet_backup": "Fleet backup"
   }

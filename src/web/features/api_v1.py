@@ -73,6 +73,10 @@ class TokenApiMixin:
         if not path.startswith("/api/v1/"):
             return False
         context = self.context
+        # Being managed is half of the central management page; its home switch closes both halves.
+        if not context.module_feature_enabled(context.BASE_DIR, "fleet"):
+            self.api_error(403, "feature_closed")
+            return True
         ip = self.client_ip()
         allowed, retry_after = context.LOGIN_LIMITER.check(ip)
         if not allowed:

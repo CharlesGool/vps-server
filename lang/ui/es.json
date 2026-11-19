@@ -963,8 +963,8 @@
       }
     },
     "fleet": {
-      "title": "Flota",
-      "description": "Vea aquí otros hosts de vps-server y actualícelos o haga copias a la vez.",
+      "title": "Gestión central",
+      "description": "Gestione otros hosts de vps-server y deje que otros hosts o scripts gestionen este con un token.",
       "heading": "{n} hosts",
       "refreshNote": "Se actualiza cada 30 segundos.",
       "host": "Host",
@@ -1004,7 +1004,7 @@
       },
       "batchFailed": "Estos hosts no lo lograron: {names}",
       "emptyTitle": "Aún no hay hosts",
-      "emptyHelp": "Cree un token de API en la seguridad de otro host y añada aquí la dirección de su consola y el token.",
+      "emptyHelp": "Cree un token de API en la página de gestión central de otro host y añada aquí la dirección de su consola y el token.",
       "add": "Añadir host",
       "addHelp": "Primero lea y compruebe el certificado de la otra consola; después escriba un nombre y el token.",
       "next": "Siguiente",
@@ -1032,7 +1032,7 @@
     },
     "tokens": {
       "title": "Tokens de API",
-      "description": "Para scripts y otras consolas (Flota), enviado como Authorization: Bearer <token>. Vea doc/API.md.",
+      "description": "La gestión central de otros hosts o los scripts lo usan para gestionar este host, enviado como Authorization: Bearer <token>. Vea doc/API.md.",
       "name": "Nombre",
       "scope": "Acceso",
       "read": "Solo lectura",
@@ -2044,8 +2044,8 @@
     "audit_api_token_fail": "Token de API no válido",
     "audit_upgrade_started": "Actualización iniciada por API",
     "audit_backup_created": "Copia creada por API",
-    "audit_fleet_host_added": "Host añadido a la flota",
-    "audit_fleet_host_removed": "Host quitado de la flota",
+    "audit_fleet_host_added": "Host gestionado añadido",
+    "audit_fleet_host_removed": "Host gestionado quitado",
     "audit_fleet_upgrade": "Actualización de la flota",
     "audit_fleet_backup": "Copia de la flota"
   }

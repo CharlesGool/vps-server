@@ -1229,8 +1229,8 @@
   "audit_api_token_fail": "API 令牌无效",
   "audit_upgrade_started": "经 API 开始升级",
   "audit_backup_created": "经 API 创建备份",
-  "audit_fleet_host_added": "添加多主机",
-  "audit_fleet_host_removed": "移除多主机",
+  "audit_fleet_host_added": "集中管理添加主机",
+  "audit_fleet_host_removed": "集中管理移除主机",
   "audit_fleet_upgrade": "批量升级主机",
   "audit_fleet_backup": "批量备份主机",
   "feature_monitor": "资源监控",
@@ -1240,7 +1240,7 @@
   "feature_services": "服务",
   "feature_ports": "监听端口",
   "feature_filemanager": "文件管理",
-  "feature_fleet": "多主机",
+  "feature_fleet": "集中管理",
   "feature_backup": "备份",
   "feature_tasks": "定时任务"
 }

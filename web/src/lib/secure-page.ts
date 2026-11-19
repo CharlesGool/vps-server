@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ApiError, isSignedOut } from './api'
 import { showToast } from './toast'
 
-// 需要管理员验证的页面(系统, 文件管理, 多主机): 和终端一样, 最近几分钟内验证过管理员密码才能读写.
+// 需要管理员验证的页面(系统, 系统更新, 进程, 服务, 监听端口, 文件管理, 集中管理): 和终端一样, 最近几分钟内验证过管理员密码才能读写.
 // state: loading → ready, 或 verify(要输入密码) / ip(IP 免密会话, 只能说明需要用密码登录).
 // guard(fn) 执行一次请求: 验证过期时切回 verify, 其他错误按 errorKey 提示; 返回请求结果或 undefined.
 export type Guard = <T>(fn: () => Promise<T>, errorKey?: (code: string) => string | undefined) => Promise<T | undefined>
