@@ -126,8 +126,8 @@ const detailItems = computed(() => {
     { key: 'hostname', label: t('vps.fleet.hostname'), value: host.status?.hostname, mono: true },
     { key: 'check', label: t('vps.fleet.certCheck'), value: t(`vps.fleet.mode.${host.mode}`) },
     { key: 'fingerprint', label: t('vps.fleet.fingerprint'), value: host.fingerprint, mono: true },
-    { key: 'failed', label: t('vps.fleet.failedUnits'), value: host.status?.failed.join(', ') || undefined, mono: true },
-    { key: 'error', label: t('vps.fleet.error.title'), value: host.ok ? undefined : errorText(host.error ?? '') ?? host.error },
+    { key: 'failed', label: t('vps.fleet.failedUnits'), value: host.status?.failed.join(', ') || '-', mono: true },
+    ...(host.ok ? [] : [{ key: 'error', label: t('vps.fleet.error.title'), value: errorText(host.error ?? '') ?? host.error }]),
   ]
 })
 
