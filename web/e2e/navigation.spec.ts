@@ -38,7 +38,8 @@ test('仪表板为每个功能提供入口', async ({ page }) => {
   test.skip(!FEATURES.dashboard, '未启用仪表板')
   await open(page, '/')
   const cards = page.locator('main [data-layout="link-card"]:not([href$="/showcase"]):not([href$="/scenes"])')
-  const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
+  // vps-server: 模块管理和详细日志是设置的子页(和安全设置一样), 不是功能页
+  const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'modules', 'logs', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
   // vps-server 迁移期间(项目决策 2026-11-18): 功能页还由服务器生成, 主页的模块卡片(ModuleCard)不算单页功能入口
   test.skip(features.length === 0, '功能页还没有迁移到单页')
   await expect(cards).toHaveCount(features.length)

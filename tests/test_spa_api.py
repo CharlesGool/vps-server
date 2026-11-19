@@ -139,9 +139,34 @@ class SpaApiTest(unittest.TestCase):
         headers.replace_header("Origin", "https://127.0.0.1:28998")
         self.assertTrue(handler.same_origin())
 
+    def test_modules_and_logs(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        modules = Exchange(self.app, "GET", "/api/modules", cookie=token)
+        self.assertEqual(modules.status, 200)
+        self.assertEqual([item["key"] for item in modules.json["modules"]],
+                         ["iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy"])
+        bad = Exchange(self.app, "POST", "/api/modules/manage", body={"module": "speedtest", "action": "install"},
+                       cookie=token)
+        self.assertEqual((bad.status, bad.json["error"]), (400, "invalid_request"))
+        history = self.app.module_history_path(self.app.BASE_DIR)
+        history.parent.mkdir(parents=True, exist_ok=True)
+        history.write_text("installed iperf3\n")
+        logs = Exchange(self.app, "GET", "/api/logs?source=modules", cookie=token)
+        self.assertEqual(logs.json["sections"], [{"source": "modules", "text": "installed iperf3\n"}])
+        every = Exchange(self.app, "GET", "/api/logs?source=all&level=err", cookie=token).json["sections"]
+        self.assertEqual([item["source"] for item in every],
+                         ["modules", "web", "proxy", "frps", "frpc", "tailscale", "caddy"])
+        self.assertEqual(Exchange(self.app, "GET", "/api/logs?source=meter", cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "GET", "/api/logs?level=loud", cookie=token).status, 400)
+        cleared = Exchange(self.app, "POST", "/api/logs/clear", body={"source": "modules"}, cookie=token)
+        self.assertEqual(cleared.status, 204)
+        self.assertEqual(history.read_text(), "")
+        self.assertEqual(Exchange(self.app, "POST", "/api/logs/clear", body={"source": "x"}, cookie=token).status, 400)
+
     def test_spa_pages_and_assets_paths(self):
         from features.spa import is_spa_page
         self.assertTrue(is_spa_page("/settings/security"))
+        self.assertTrue(is_spa_page("/settings/logs"))
         self.assertTrue(is_spa_page("/showcase/buttons"))
         self.assertFalse(is_spa_page("/speedtest"))
         self.assertFalse(is_spa_page("/showcasex"))

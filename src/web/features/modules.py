@@ -45,6 +45,43 @@ def service_log_text(context, units, level, limit, since=None):
         return None
 
 
+def clear_log_source(context, source):
+    """Hide the history shown for one log source (or "all"); journald keeps it."""
+    if source in ("modules", "all"):
+        path = context.module_history_path(context.BASE_DIR)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8"):
+            pass
+        os.chmod(path, 0o600)
+    if source != "modules":
+        cutoffs = log_cutoffs(context)
+        for key in (LOG_SOURCES[1:] if source == "all" else (source,)):
+            cutoffs[key] = time.time()
+        context._atomic_private_text(context.DATA_DIR / "log-clear.json",
+                                     json.dumps(cutoffs, sort_keys=True) + "\n")
+
+
+def log_service_units(context):
+    """Each service log source and its systemd units, in display order."""
+    return (
+        ("web", ("vps-server-web.service",)),
+        ("proxy", ("vps-server-proxy.service", "vps-server-node-meter.service")),
+        ("frps", ("vps-server-frps.service",)),
+        ("frpc", tuple(context.frpc_unit(name) for name in context.frpc_names())),
+        ("tailscale", ("vps-server-tailscale.service",)),
+        ("caddy", ("vps-server-caddy.service", "vps-server-caddy-dns.service")),
+    )
+
+
+def module_history_text(context):
+    for path in (context.module_history_path(context.BASE_DIR), context.module_log_path(context.BASE_DIR)):
+        try:
+            return path.read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
+    return ""
+
+
 def log_level_form(t, action, hidden, level):
     from html import escape
     options = "".join(f'<option value="{value}" {"selected" if level == value else ""}>{escape(t[key])}</option>'
@@ -138,18 +175,7 @@ class ModulesMixin:
         if not self.context.hmac.compare_digest(form["csrf"][0], expected):
             return self.send_html(403, "Forbidden")
         try:
-            if source in ("modules", "all"):
-                path = self.context.module_history_path(self.context.BASE_DIR)
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with path.open("w", encoding="utf-8"):
-                    pass
-                os.chmod(path, 0o600)
-            if source != "modules":
-                cutoffs = log_cutoffs(self.context)
-                for key in (LOG_SOURCES[1:] if source == "all" else (source,)):
-                    cutoffs[key] = time.time()
-                self.context._atomic_private_text(self.context.DATA_DIR / "log-clear.json",
-                                                  json.dumps(cutoffs, sort_keys=True) + "\n")
+            clear_log_source(self.context, source)
         except OSError:
             return self.send_html(500, "Could not clear logs")
         destination = ("/tailscale?tab=logs" if form["return"][0] == "tailscale" else

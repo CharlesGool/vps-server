@@ -1,4 +1,4 @@
-import { Blocks, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, ScrollText, Settings, ShieldCheck } from 'lucide'
+import { Activity, Blocks, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
 import type { RouteMeta } from 'vue-router'
 
 const ICONS: Record<RouteMeta['icon'], IconNode> = {
@@ -6,6 +6,8 @@ const ICONS: Record<RouteMeta['icon'], IconNode> = {
   dashboard: LayoutGrid,
   settings: Settings,
   security: ShieldCheck,
+  modules: Package,
+  logs: Activity,
   changelog: ScrollText,
   login: LogIn,
   showcase: Blocks,

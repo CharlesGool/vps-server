@@ -1090,6 +1090,7 @@ from features.spa import SpaMixin, is_spa_page
 from features.api_settings import SettingsApiMixin
 from features.api_security import SecurityApiMixin
 from features.api_dashboard import DashboardApiMixin
+from features.api_modules import ModulesApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1113,7 +1114,7 @@ SECURITY_HEADERS = (
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
                      PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, SpaMixin, SettingsApiMixin, SecurityApiMixin,
-                     DashboardApiMixin, BaseHTTPRequestHandler):
+                     DashboardApiMixin, ModulesApiMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,

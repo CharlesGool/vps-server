@@ -43,7 +43,9 @@
     "showcaseScenesEdit": "Edit page",
     "showcaseScenesWizard": "Wizard",
     "showcaseCharts": "Charts",
-    "showcaseScenesSearch": "Search results"
+    "showcaseScenesSearch": "Search results",
+    "modules": "Modules",
+    "logs": "Detailed logs"
   },
   "dashboard": {
     "description": "Choose a feature to use."
@@ -448,7 +450,12 @@
     "digest": "Weekly digest",
     "digestDescription": "Sent every Monday with last week's usage.",
     "notifyTitle": "Notifications",
-    "dateTimeInputs": "Date and time inputs"
+    "dateTimeInputs": "Date and time inputs",
+    "log": {
+      "title": "Log output",
+      "emptyTitle": "Empty log",
+      "empty": "No log entries yet."
+    }
   },
   "footer": {
     "profile": "Author",
@@ -533,6 +540,21 @@
       "invalid": "Check the values you entered.",
       "enable": "Enable {name}",
       "disable": "Disable {name}"
+    },
+    "modules": {
+      "description": "Install or uninstall optional modules. Uninstalling backs up the configuration and nodes, which come back when you reinstall. Feature switches are on Home.",
+      "install": "Install {name}",
+      "uninstall": "Uninstall {name}",
+      "uninstallTitle": "Uninstall {name}?",
+      "status": "Status"
+    },
+    "logs": {
+      "description": "Logs from the console and each module. Clearing only hides the history here; the system log keeps it.",
+      "filter": "Filter",
+      "source": "Log source",
+      "web": "Console",
+      "clearTitle": "Clear the shown history?",
+      "refresh": "Refresh"
     }
   },
   "legacy": {
@@ -691,6 +713,11 @@
     "domains": "Domain forwarding",
     "files": "Mini Drive",
     "home": "Home",
+    "host_check_nft_auto": "This host has no usable nftables. Installing the module installs it with apt automatically.",
+    "host_check_nft_missing": "This host has no usable nftables. Run apt install nftables first.",
+    "host_check_nft_unusable": "nftables on this host cannot read the firewall rules. Run apt install nftables first.",
+    "host_check_tailscale_conflict": "A system tailscaled.service is already running. Stop it first.",
+    "host_check_tun_missing": "This host has no /dev/net/tun. Enable TUN/TAP in the VPS control panel.",
     "ipcert": "IP certificate",
     "iperf": "iPerf 3",
     "login_ban_clear": "Clear records",
@@ -724,6 +751,22 @@
     "login_mode_save": "Save login method",
     "login_mode_saved": "Login method saved.",
     "login_mode_title": "Login method",
+    "logs_clear": "Clear displayed history",
+    "logs_clear_confirm": "Clear the currently displayed history? System logs will be retained.",
+    "logs_clear_done": "Historical logs shown here have been cleared.",
+    "logs_empty": "No logs available.",
+    "logs_filter": "Filter",
+    "logs_level": "Log level",
+    "logs_level_all": "All",
+    "logs_level_debug": "Debug and above",
+    "logs_level_error": "Error and above",
+    "logs_level_info": "Info and above",
+    "logs_level_warning": "Warning and above",
+    "logs_source_all": "All logs",
+    "logs_source_meter": "Node metering",
+    "logs_source_modules": "Module actions",
+    "logs_source_proxy": "Singbox traffic and access management",
+    "logs_unavailable": "Could not read service logs.",
     "module_action_disable_done": "disabled {name}",
     "module_action_disable_failed": "disable failed {name}",
     "module_action_disable_queued": "Disabling {name}",
@@ -769,6 +812,9 @@
     "module_web_http": "HTTP page",
     "module_web_https": "HTTPS page",
     "module_web_public": "Public page",
+    "modules_heading": "Modules",
+    "modules_manage": "Manage modules",
+    "modules_note": "Install or uninstall optional modules here. Short-lived progress appears below; detailed logs have a separate page. Use the switches on Home to enable or disable features.",
     "node_cancel": "Cancel",
     "node_unlimited": "No limit",
     "portfwd": "Port forward",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Blocks, ScrollText, ShieldCheck } from '@lucide/vue'
+import { Activity, Package, ShieldCheck } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AlertBanner from '@/components/app/AlertBanner.vue'
@@ -144,14 +144,14 @@ async function changePort() {
       <SettingRow :label="t('vps.settings.modules')" :description="t('vps.settings.modulesDescription')" group>
         <FormActions>
           <Button as-child variant="outline">
-            <a href="/settings/modules"><Blocks aria-hidden="true" />{{ t('vps.settings.openModules') }}</a>
+            <RouterLink to="/settings/modules"><Package aria-hidden="true" />{{ t('vps.settings.openModules') }}</RouterLink>
           </Button>
         </FormActions>
       </SettingRow>
       <SettingRow :label="t('vps.settings.logs')" :description="t('vps.settings.logsDescription')" group>
         <FormActions>
           <Button as-child variant="outline">
-            <a href="/settings/logs"><ScrollText aria-hidden="true" />{{ t('vps.settings.openLogs') }}</a>
+            <RouterLink to="/settings/logs"><Activity aria-hidden="true" />{{ t('vps.settings.openLogs') }}</RouterLink>
           </Button>
         </FormActions>
       </SettingRow>

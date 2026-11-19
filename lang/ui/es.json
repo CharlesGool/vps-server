@@ -43,7 +43,9 @@
     "showcaseScenesEdit": "Página de edición",
     "showcaseScenesWizard": "Asistente",
     "showcaseCharts": "Gráficos",
-    "showcaseScenesSearch": "Resultados de búsqueda"
+    "showcaseScenesSearch": "Resultados de búsqueda",
+    "modules": "Módulos",
+    "logs": "Registros detallados"
   },
   "dashboard": {
     "description": "Elige una función."
@@ -448,7 +450,12 @@
     "digest": "Resumen semanal",
     "digestDescription": "Se envía cada lunes con el uso de la semana anterior.",
     "notifyTitle": "Notificaciones",
-    "dateTimeInputs": "Entradas de fecha y hora"
+    "dateTimeInputs": "Entradas de fecha y hora",
+    "log": {
+      "title": "Salida de registro",
+      "emptyTitle": "Registro vacío",
+      "empty": "Aún no hay registros."
+    }
   },
   "footer": {
     "profile": "Autor",
@@ -533,6 +540,21 @@
       "invalid": "Revisa los valores introducidos.",
       "enable": "Activar {name}",
       "disable": "Desactivar {name}"
+    },
+    "modules": {
+      "description": "Instala o desinstala módulos opcionales. Al desinstalar se guarda una copia de la configuración y los nodos, que vuelven al reinstalar. Los interruptores están en Inicio.",
+      "install": "Instalar {name}",
+      "uninstall": "Desinstalar {name}",
+      "uninstallTitle": "¿Desinstalar {name}?",
+      "status": "Estado"
+    },
+    "logs": {
+      "description": "Registros de la consola y de cada módulo. Vaciar solo oculta el historial aquí; el registro del sistema lo conserva.",
+      "filter": "Filtrar",
+      "source": "Origen del registro",
+      "web": "Consola",
+      "clearTitle": "¿Vaciar el historial mostrado?",
+      "refresh": "Actualizar"
     }
   },
   "legacy": {
@@ -691,6 +713,11 @@
     "domains": "Reenvío de dominios",
     "files": "Mini nube",
     "home": "Inicio",
+    "host_check_nft_auto": "Este equipo no tiene nftables utilizable. Al instalar el módulo se instalará automáticamente con apt.",
+    "host_check_nft_missing": "Este equipo no tiene nftables utilizable. Ejecuta primero apt install nftables.",
+    "host_check_nft_unusable": "nftables en este equipo no puede leer las reglas del cortafuegos. Ejecuta primero apt install nftables.",
+    "host_check_tailscale_conflict": "Ya hay un tailscaled.service del sistema en ejecución. Detenlo primero.",
+    "host_check_tun_missing": "Este equipo no tiene /dev/net/tun. Activa TUN/TAP en el panel de control del VPS.",
     "ipcert": "Certificado IP",
     "iperf": "iPerf 3",
     "login_ban_clear": "Borrar registros",
@@ -724,6 +751,22 @@
     "login_mode_save": "Guardar método de acceso",
     "login_mode_saved": "Método de acceso guardado.",
     "login_mode_title": "Método de acceso",
+    "logs_clear": "Borrar el historial mostrado",
+    "logs_clear_confirm": "¿Confirmas que quieres borrar el historial que se muestra ahora? Los registros del sistema se conservarán.",
+    "logs_clear_done": "Se ha borrado el historial de registros de aquí.",
+    "logs_empty": "No hay registros disponibles.",
+    "logs_filter": "Filtrar",
+    "logs_level": "Nivel de registro",
+    "logs_level_all": "Todos",
+    "logs_level_debug": "Depuración y superiores",
+    "logs_level_error": "Errores y superiores",
+    "logs_level_info": "Información y superiores",
+    "logs_level_warning": "Advertencias y superiores",
+    "logs_source_all": "Todos los registros",
+    "logs_source_meter": "Medición de nodos",
+    "logs_source_modules": "Acciones de módulos",
+    "logs_source_proxy": "Tráfico y gestión de acceso de Singbox",
+    "logs_unavailable": "No se pudieron leer los registros del servicio.",
     "module_action_disable_done": "Desactivado {name}",
     "module_action_disable_failed": "Error al desactivar {name}",
     "module_action_disable_queued": "Desactivando {name}",
@@ -769,6 +812,9 @@
     "module_web_http": "Página HTTP",
     "module_web_https": "Página HTTPS",
     "module_web_public": "Página pública",
+    "modules_heading": "Módulos",
+    "modules_manage": "Gestionar módulos",
+    "modules_note": "Instala o desinstala módulos opcionales aquí. El progreso aparece brevemente abajo; los registros detallados tienen una página aparte. Los interruptores están en Inicio.",
     "node_cancel": "Cancelar",
     "node_unlimited": "Sin límite",
     "portfwd": "Redirección de puertos",

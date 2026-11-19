@@ -11,6 +11,8 @@ const VIEWS: Record<View, RouteComponent | (() => Promise<RouteComponent>)> = {
   dashboard: () => import('./views/DashboardView.vue'),
   settings: () => import('./views/SettingsView.vue'),
   security: () => import('./views/SecurityView.vue'),
+  modules: () => import('./views/ModulesView.vue'),
+  logs: () => import('./views/LogsView.vue'),
   changelog: () => import('./views/ChangelogView.vue'),
   login: () => import('./views/LoginView.vue'),
   showcase: () => import('./views/ShowcaseView.vue'),

@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n'
 import CardGrid from '@/components/app/CardGrid.vue'
 import DataTable from '@/components/app/DataTable.vue'
 import EmptyState from '@/components/app/EmptyState.vue'
+import LogOutput from '@/components/app/LogOutput.vue'
 import InfoTip from '@/components/app/InfoTip.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
@@ -18,6 +19,10 @@ import UserAvatar from '@/components/app/UserAvatar.vue'
 
 // 组件样例: 数据展示. 数据表放进整行卡片, 超过一页时分页; 树形列表和成员表并排各占 2 列.
 const { t } = useI18n()
+// 日志样例: 足够多的行, 演示框内滚动和长行折行
+const logSample = Array.from({ length: 24 }, (_, index) =>
+  `2026-01-0${(index % 9) + 1}T08:${String(index).padStart(2, '0')}:00+00:00 host service[${1200 + index}]: ${index % 6 === 0 ? 'warning: retrying connection to https://example.com/a/very/long/path/that/keeps/going/without/any/spaces/at/all' : 'request handled'}`,
+).join('\n')
 const trail = computed(() => [{ to: '/showcase', label: t('page.showcase') }])
 const tab = ref('one')
 const columns = computed(() => [
@@ -108,6 +113,11 @@ const pageRows = computed(() => all.slice((page.value - 1) * PAGE_SIZE, page.val
     </PageSection>
     <PageSection :cols="2" :title="t('showcase.empty')">
       <EmptyState :icon="Inbox" :title="t('showcase.empty')" :description="t('showcase.emptyDescription')" />
+    </PageSection>
+    <!-- 日志输出(LogOutput): 等宽, 超出高度在框内滚动 -->
+    <PageSection :cols="4" :title="t('showcase.log.title')">
+      <LogOutput :text="logSample" :label="t('showcase.log.title')" :empty="t('showcase.log.empty')" />
+      <LogOutput text="" :label="t('showcase.log.emptyTitle')" :empty="t('showcase.log.empty')" />
     </PageSection>
   </CardGrid>
 </template>

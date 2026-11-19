@@ -83,10 +83,10 @@ metadata:
 
 ## 交接
 
-**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`); 已迁移主页, 登录, 设置, 安全设置, 变更日志; `npm run check` 全部通过(1007 项, 另 39 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
+**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`, `api_modules.py`); 已迁移主页, 登录, 设置, 安全设置, 变更日志, 模块管理, 详细日志; 新增共享组件 `ModuleCard`(带开关的入口卡片)和 `LogOutput`(日志框); `npm run check` 全部通过(1069 项, 另 41 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
 
-剩余步骤(每页: 在 `features/api_<页>.py` 写接口, 在 `SPA_PAGES` 和 `features.ts` 登记, 用模板组件写 `views/<页>View.vue`, 需要的旧译文用 `legacy` 命名空间复制到 `lang/ui/`, 跑 `npm run check` 并看图审查, 提交):
-- [ ] `/settings/modules`(模块安装卸载和进度), `/settings/logs`
+剩余步骤(每页: 在 `features/api_<页>.py` 写接口, 在 `SPA_PAGES` 和 `features.ts`(设置子页在 `routes.ts`)登记, 用模板组件写 `views/<页>View.vue`, 需要的旧译文用 `legacy` 命名空间复制到 `lang/ui/`, 跑 `npm run check` 并看图审查, 提交):
+- [x] `/settings/modules`(模块安装卸载和进度), `/settings/logs`
 - [ ] `/speedtest`, `/iperf`, `/portfwd`, `/visitors`, `/terminal`(xterm), `/files`(迷你网盘)
 - [ ] `/proxy`(+`/anytls`), `/frps`, `/frpc`, `/frp/*` 编辑页, `/tailscale`, `/domains`, `/ipcert`
 - [ ] `/backup`, `/tasks`, `/closed`; 各页的流量限制对话框

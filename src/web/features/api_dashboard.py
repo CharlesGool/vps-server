@@ -89,43 +89,43 @@ class DashboardApiMixin:
     def api_dashboard(self):
         return self.api_ok({**self.dashboard_modules(), "total": self.dashboard_total()})
 
-    def api_module_action(self):
+    def start_module_job(self, module, action):
+        """Start a module job; returns None once started or when there is nothing
+        to do, otherwise (status, error code)."""
         context = self.context
-        body = self.read_json()
-        module, action = (body or {}).get("module"), (body or {}).get("action")
         allowed = (("iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy") + (
             ("ipcert",) if action == "install" else ()) if action in ("install", "uninstall") else (
             "web_public", "iperf3", "proxy_nodes", "frps", "frpc", "tailscale", "caddy", "ipcert")
             + tuple(context.MANAGED_FEATURES))
         if module not in allowed or action not in ("install", "uninstall", "enable", "disable"):
-            return self.api_error(400, "invalid_request")
+            return 400, "invalid_request"
         installed = context.installed_modules(context.BASE_DIR)
         present = ("proxy" in installed if module == "proxy_nodes" else
                    "caddy" in installed if module == "ipcert" else module in installed)
         if action in ("install", "uninstall") and (action == "install") == present:
-            return self.api_dashboard()
+            return None
         install_source = (context.BASE_DIR / "installer-source" / "deploy" / "systemd" / "frpc@.service"
                           if module == "frpc" else context.BASE_DIR / "installer-source" / "deploy" / "install.sh")
         if action == "install" and module != "iperf3" and not install_source.is_file():
-            return self.api_error(503, "module_source_missing")
+            return 503, "module_source_missing"
         if action == "install" and module == "tailscale" and not (
                 (context.BASE_DIR / "installer-source" / "third_party" / "tailscale" /
                  "tailscale_1.104.5_amd64.tgz").is_file() or
                 (context.BASE_DIR / "installer-source" / "config" / "online-assets.json").is_file()):
-            return self.api_error(503, "module_tailscale_asset_missing")
+            return 503, "module_tailscale_asset_missing"
         helper = context.WEB_CODE_DIR / "module_manager.py"
         if not helper.is_file() or not context.shutil.which("systemd-run"):
-            return self.api_error(503, "module_source_missing")
+            return 503, "module_source_missing"
         command = ["systemd-run", "--collect", "--unit=vps-server-module-job",
                    "/usr/bin/python3", str(helper), action, module, str(context.BASE_DIR)]
         with (context.DATA_DIR / "module-request.lock").open("a+b") as request_lock:
             context.fcntl.flock(request_lock, context.fcntl.LOCK_EX)
             job = self._module_job()
             if job.get("state") in ("queued", "running") and context.time.time() - job.get("at", 0) < 900:
-                return self.api_error(409, "module_busy")
+                return 409, "module_busy"
             if module in context.MANAGED_FEATURES and action in ("enable", "disable"):
                 if context.module_feature_enabled(context.BASE_DIR, module) == (action == "enable"):
-                    return self.api_dashboard()
+                    return None
             context.save_module_status(context.BASE_DIR, module, "queued", action=action)
             try:
                 result = context.subprocess.run(command, stdout=context.subprocess.DEVNULL,
@@ -134,7 +134,14 @@ class DashboardApiMixin:
                 result = None
             if result is None or result.returncode:
                 context.save_module_status(context.BASE_DIR, module, "failed", action=action)
-                return self.api_error(503, "module_job_failed")
+                return 503, "module_job_failed"
+        return None
+
+    def api_module_action(self):
+        body = self.read_json() or {}
+        failure = self.start_module_job(body.get("module"), body.get("action"))
+        if failure:
+            return self.api_error(*failure)
         return self.api_dashboard()
 
     def api_total_settings(self):
