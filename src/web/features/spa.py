@@ -9,7 +9,7 @@ import re
 
 # Page paths the single-page console handles. Grows as pages are migrated.
 SPA_PAGES = {"/", "/login", "/changelog", "/settings", "/settings/security", "/settings/modules", "/settings/logs",
-             "/speedtest", "/iperf"}
+             "/speedtest", "/iperf", "/portfwd", "/visitors", "/terminal", "/files"}
 # Component and scene samples; only development and test builds have these
 # routes, a production build sends them back to the home page.
 SPA_PREFIXES = ("/showcase", "/scenes")

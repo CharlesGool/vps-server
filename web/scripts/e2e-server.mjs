@@ -15,6 +15,9 @@ const state = join(tmpdir(), `vps-server-e2e-${port}`)
 rmSync(state, { recursive: true, force: true })
 mkdirSync(join(state, 'certs'), { recursive: true })
 writeFileSync(join(state, 'admin_password.txt'), `${E2E_PASSWORD}\n`, { mode: 0o600 })
+// 迷你网盘默认关闭; 测试里打开, 让它的页面也被检查
+mkdirSync(join(state, 'data'), { recursive: true })
+writeFileSync(join(state, 'data', 'files-enabled'), '1\n')
 execFileSync('openssl', [
   'req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes', '-subj', '/CN=localhost',
   '-days', '30', '-keyout', join(state, 'certs', 'key.pem'), '-out', join(state, 'certs', 'cert.pem'),

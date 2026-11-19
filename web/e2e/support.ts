@@ -117,8 +117,49 @@ export async function open(page: Page, path: string, { signedIn = !PUBLIC.has(pa
   await expect(page.locator('#app')).not.toBeEmpty()
 }
 
+const VISITORS_SAMPLE = {
+  max: 1000,
+  rows: Array.from({ length: 12 }, (_, index) => ({
+    ip: index === 0 ? '127.0.0.1' : index < 4 ? `192.168.1.${10 + index}` : `203.0.113.${20 + index}`,
+    scope: index === 0 ? 'loopback' : index < 4 ? 'private' : 'public',
+    direction: index % 5 === 4 ? 'out' : 'in',
+    firstSeen: `2026-01-0${(index % 9) + 1}T08:00:00+00:00`,
+    lastSeen: `2026-01-1${index % 10}T09:30:00+00:00`,
+    hits: index % 5 === 4 ? 0 : 3 * index + 1,
+    ports: index % 3 === 0 ? '22, 443' : '443',
+    lastRequest: index % 5 === 4 ? '' : 'GET /api/session → 200',
+  })),
+}
+
+const GIB = 1024 ** 3
+const FILES_SAMPLE = {
+  used: 1.5 * GIB,
+  quota: 5 * GIB,
+  room: 3.5 * GIB,
+  diskFree: 40 * GIB,
+  rate: 0,
+  linkMinutes: [5, 10, 30, 60, 120, 300, 1440, 10080, 43200, 0],
+  defaultLinkMinutes: 10080,
+  message: null,
+  files: [
+    { id: 'f1', name: 'backup-2026-01-01.tar.gz', size: 1.2 * GIB, created: 1767254400, source: 'upload', links: [] },
+    {
+      id: 'f2',
+      name: 'sing-box-1.13.21-linux-amd64.tar.gz',
+      size: 0.3 * GIB,
+      created: 1767168000,
+      source: 'https://github.com/SagerNet/sing-box/releases/download/v1.13.21/sing-box-1.13.21-linux-amd64.tar.gz',
+      links: [{ token: 'sample-token', url: 'https://127.0.0.1/f/sample-token/sing-box.tar.gz', expires: 1767772800, downloads: 2, max: 5 }],
+    },
+  ],
+  jobs: [
+    { id: 'j1', name: 'debian-13.iso', url: 'https://example.com/debian-13.iso', state: 'failed', bytes: 0, total: null, error: 'network' },
+    { id: 'j2', name: 'release.zip', url: 'https://example.com/release.zip', state: 'done', bytes: 52428800, total: 52428800, error: '' },
+  ],
+}
+
 // 每个测试都检查控制台错误和未捕获异常
-export const test = base.extend<{ consoleErrors: string[] }>({
+export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>({
   consoleErrors: [
     async ({ page }, use) => {
       const errors: string[] = []
@@ -130,6 +171,26 @@ export const test = base.extend<{ consoleErrors: string[] }>({
       page.on('pageerror', (error) => errors.push(error.message))
       await use(errors)
       expect(errors, '控制台错误').toEqual([])
+    },
+    { auto: true },
+  ],
+  // vps-server(项目决策 2026-11-18): 有两处服务器内容会随运行变化, 截图和布局检查里换成固定内容; 项目自己的测试(vps 项目)用真实服务器.
+  // 终端页连接真实的 root shell: 并发打开很多页面会占满终端名额(429), 输出也随环境变化, 所以用固定的提示符代替.
+  // 最近访问者记录每次请求的时间: 用固定的 12 行样例(含本机, 内网, 外部, 入站, 出站, 第二页).
+  // 迷你网盘显示本机磁盘剩余空间: 用固定样例(含文件, 下载链接, 进行中和失败的下载任务).
+  stableServer: [
+    async ({ page }, use, testInfo) => {
+      if (testInfo.project.name !== 'vps') {
+        await page.routeWebSocket(/\/terminal\/ws/, (socket) => {
+          socket.send(Buffer.from('root@vps-server:~# '))
+          socket.onMessage(() => {})
+        })
+        await page.route(/\/api\/visitors$/, (route) =>
+          route.request().method() === 'GET' ? route.fulfill({ json: VISITORS_SAMPLE }) : route.fallback(),
+        )
+        await page.route(/\/api\/files$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: FILES_SAMPLE }) : route.fallback()))
+      }
+      await use()
     },
     { auto: true },
   ],

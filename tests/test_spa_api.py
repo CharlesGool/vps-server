@@ -201,6 +201,36 @@ class SpaApiTest(unittest.TestCase):
         self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=iperf&field=secret", cookie=token).status, 404)
         self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=iperf&field=port").status, 401)
 
+    def test_portfwd_visitors_terminal_files(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        rules = Exchange(self.app, "GET", "/api/portfwd", cookie=token).json
+        self.assertEqual(rules["rules"], [])
+        bad = Exchange(self.app, "POST", "/api/portfwd/add", cookie=token,
+                       body={"protocol": "tcp", "publicPort": 0, "targetHost": "x", "targetPort": 80}).json
+        self.assertEqual(bad["message"], "portfwd_invalid")
+        self.assertEqual(Exchange(self.app, "POST", "/api/portfwd/add", cookie=token,
+                                  body={"protocol": "icmp"}).status, 400)
+        self.assertEqual(Exchange(self.app, "POST", "/api/portfwd/delete", cookie=token,
+                                  body={"id": "nope"}).json["message"], "portfwd_not_found")
+        visitors = Exchange(self.app, "GET", "/api/visitors", cookie=token)
+        self.assertEqual(visitors.json["max"], self.app.MAX_VISITOR_ROWS)
+        self.assertEqual(Exchange(self.app, "POST", "/api/visitors/clear", body={}, cookie=token).status, 204)
+        # Signing in with the password grants the security permission, so the terminal opens.
+        terminal = Exchange(self.app, "GET", "/api/terminal", cookie=token)
+        self.assertEqual(terminal.status, 200)
+        self.assertEqual(len(terminal.json["token"]), 64)
+        files = Exchange(self.app, "GET", "/api/files", cookie=token)
+        if files.status == 403:
+            self.assertEqual(files.json["error"], "feature_closed")
+            return
+        self.assertIn(10080, files.json["linkMinutes"])
+        limits = Exchange(self.app, "PUT", "/api/files/limits", body={"quotaGib": 2, "rateMib": 1.5}, cookie=token)
+        self.assertEqual((limits.json["quota"], limits.json["rate"]), (2 * 1024 ** 3, int(1.5 * 1024 ** 2)))
+        self.assertEqual(Exchange(self.app, "PUT", "/api/files/limits", body={"quotaGib": 0},
+                                  cookie=token).json["error"], "quota_invalid")
+        self.assertEqual(Exchange(self.app, "POST", "/api/files/link", cookie=token,
+                                  body={"file": "missing", "minutes": 60, "max": None}).json["error"], "not_found")
+
     def test_closed_feature_page_and_api(self):
         token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
         original = self.app.closed_page_module
@@ -221,7 +251,8 @@ class SpaApiTest(unittest.TestCase):
         self.assertTrue(is_spa_page("/showcase/buttons"))
         self.assertTrue(is_spa_page("/speedtest"))
         self.assertTrue(is_spa_page("/iperf"))
-        self.assertFalse(is_spa_page("/portfwd"))
+        self.assertTrue(is_spa_page("/portfwd"))
+        self.assertFalse(is_spa_page("/backup"))
         self.assertFalse(is_spa_page("/showcasex"))
         missing = Exchange(self.app, "GET", "/assets/..%2Fapp.py")
         self.assertEqual(missing.status, 404)

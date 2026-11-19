@@ -1094,6 +1094,10 @@ from features.api_modules import ModulesApiMixin
 from features.api_traffic import TrafficApiMixin
 from features.api_speedtest import SpeedtestApiMixin
 from features.api_iperf import IperfApiMixin
+from features.api_files import FilesApiMixin
+from features.api_terminal import TerminalApiMixin
+from features.api_visitors import VisitorsApiMixin
+from features.api_portfwd import PortfwdApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1116,7 +1120,7 @@ SECURITY_HEADERS = (
 
 PAGE_MODULES = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
                 "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
-                "/changelog": "changelog"}
+                "/changelog": "changelog", "/files": "files"}
 
 
 def closed_page_module(path):
@@ -1136,7 +1140,11 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                      PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, SpaMixin, SettingsApiMixin, SecurityApiMixin,
                      DashboardApiMixin, ModulesApiMixin,
-                     TrafficApiMixin, SpeedtestApiMixin, IperfApiMixin, BaseHTTPRequestHandler):
+                     TrafficApiMixin, SpeedtestApiMixin, IperfApiMixin, PortfwdApiMixin,
+                     VisitorsApiMixin,
+                     TerminalApiMixin,
+                     FilesApiMixin,
+                     BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,

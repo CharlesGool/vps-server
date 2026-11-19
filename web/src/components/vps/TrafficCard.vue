@@ -8,6 +8,7 @@ import DateTimePicker from '@/components/app/DateTimePicker.vue'
 import DescriptionList from '@/components/app/DescriptionList.vue'
 import FormActions from '@/components/app/FormActions.vue'
 import FormField from '@/components/app/FormField.vue'
+import GroupBlock from '@/components/app/GroupBlock.vue'
 import NumberField from '@/components/app/NumberField.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import RadioField from '@/components/app/RadioField.vue'
@@ -48,7 +49,8 @@ interface Traffic {
   sharedWith?: string | null
 }
 
-const props = defineProps<{ feature: string }>()
+// inline: 放在另一张卡片里(如端口转发的每条规则), 这时是卡片内带小标题的一组, 不是单独的卡片
+const props = defineProps<{ feature: string; inline?: boolean }>()
 const { t } = useI18n()
 const data = ref<Traffic>()
 
@@ -163,7 +165,12 @@ async function save() {
 </script>
 
 <template>
-  <PageSection v-if="entry" :cols="4" :title="t('legacy.node_traffic')" :description="t(help)">
+  <component
+    :is="inline ? GroupBlock : PageSection"
+    v-if="entry"
+    v-bind="inline ? { title: t('legacy.node_traffic') } : { cols: 4, title: t('legacy.node_traffic'), description: t(help) }"
+  >
+    <p v-if="inline" class="text-sm text-muted-foreground">{{ t(help) }}</p>
     <div>
       <StatusBadge :tone="STATES[entry.state].tone">{{ t(STATES[entry.state].key) }}</StatusBadge>
     </div>
@@ -172,7 +179,7 @@ async function save() {
     <FormActions>
       <Button variant="outline" @click="edit"><SlidersHorizontal aria-hidden="true" />{{ t('legacy.traffic_limit_manage') }}</Button>
     </FormActions>
-  </PageSection>
+  </component>
 
   <AppDialog v-model:open="open" :title="t('legacy.traffic_limit_manage')">
     <AlertBanner v-if="error" tone="destructive">{{ error }}</AlertBanner>

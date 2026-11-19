@@ -15,4 +15,8 @@ export interface Feature {
 export const FEATURE_LIST: Feature[] = [
   { path: '/speedtest', name: 'speedtest', view: 'speedtest', titleKey: 'legacy.speedtest', descriptionKey: 'vps.speedtest.description', icon: 'speedtest' },
   { path: '/iperf', name: 'iperf', view: 'iperf', titleKey: 'legacy.iperf_heading', descriptionKey: 'vps.iperf.description', icon: 'iperf' },
+  { path: '/portfwd', name: 'portfwd', view: 'portfwd', titleKey: 'legacy.portfwd_heading', descriptionKey: 'vps.portfwd.description', icon: 'portfwd' },
+  { path: '/visitors', name: 'visitors', view: 'visitors', titleKey: 'legacy.visitors', descriptionKey: 'vps.visitors.description', icon: 'visitors' },
+  { path: '/terminal', name: 'terminal', view: 'terminal', titleKey: 'legacy.terminal_title', descriptionKey: 'vps.terminal.description', icon: 'terminal' },
+  { path: '/files', name: 'files', view: 'files', titleKey: 'legacy.files', descriptionKey: 'vps.files.description', icon: 'files' },
 ]

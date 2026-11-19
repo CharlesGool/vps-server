@@ -47,6 +47,8 @@ export default defineConfig({
   use: {
     browserName: 'chromium',
     locale: 'zh-CN',
+    // vps-server: 部分页面按浏览器时区显示时间(如迷你网盘的添加时间), 固定时区让截图和主机无关
+    timezoneId: 'UTC',
     reducedMotion: 'reduce',
     deviceScaleFactor: 1,
     ignoreHTTPSErrors: true,

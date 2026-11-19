@@ -1,4 +1,4 @@
-import { Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
+import { HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
 import type { RouteMeta } from 'vue-router'
 
 const ICONS: Record<RouteMeta['icon'], IconNode> = {
@@ -10,6 +10,10 @@ const ICONS: Record<RouteMeta['icon'], IconNode> = {
   logs: Activity,
   speedtest: Gauge,
   iperf: ArrowUpDown,
+  'portfwd': Route,
+  'visitors': UsersRound,
+  'terminal': SquareTerminal,
+  'files': HardDriveDownload,
   changelog: ScrollText,
   login: LogIn,
   showcase: Blocks,
