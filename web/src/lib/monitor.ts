@@ -14,6 +14,11 @@ export interface Disk {
   percent: number
 }
 
+export interface Gpu { name: string; utilization: number | null; memoryUsed: number | null; memoryTotal: number | null; celsius: number | null }
+// GPU 点: [时间(秒), [[使用率 %, 显存 %, °C] 每张卡]], 15 分钟图里没有数据的分钟为 null
+export type GpuRow = [number, number[][]]
+export type GpuSlot = [number, number[][] | null]
+
 export interface Monitor {
   cpu: { percent: number; cores: number; model: string }
   memory: { total: number; used: number; available: number; swapTotal: number; swapUsed: number }
@@ -23,7 +28,9 @@ export interface Monitor {
   uptime: number
   network: { rx: number; tx: number; interfaces: { name: string; rx: number; tx: number }[] }
   temperatures: { name: string; celsius: number }[]
-  gpus: { name: string; utilization: number | null; memoryUsed: number | null; memoryTotal: number | null; celsius: number | null }[]
+  gpus: Gpu[]
+  gpuLive: GpuRow[]
+  gpuRecent: GpuSlot[]
   chart: HistoryRow[]
   trend: HistoryRow[]
   live: HistoryRow[]
@@ -31,7 +38,7 @@ export interface Monitor {
   hourAgo: { cpu: number; memory: number } | null
 }
 
-export type ResourceSummary = Pick<Monitor, 'cpu' | 'memory' | 'disk' | 'load' | 'trend' | 'hourAgo'>
+export type ResourceSummary = Pick<Monitor, 'cpu' | 'memory' | 'disk' | 'load' | 'trend' | 'hourAgo' | 'gpus'>
 
 export function formatRate(value: number): string {
   return `${formatBytes(value)}/s`
@@ -52,4 +59,25 @@ export function formatDuration(seconds: number, t: (key: string, values?: Record
   const hours = Math.floor((seconds % 86400) / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   return days ? t('vps.monitor.daysHours', { days, hours }) : t('vps.monitor.hoursMinutes', { hours, minutes })
+}
+
+// 卡片和图例里用的短名称: 去掉厂商前缀(NVIDIA GeForce RTX 5090 → RTX 5090)
+export function gpuName(name: string): string {
+  return name.replace(/^NVIDIA\s+/i, '').replace(/^GeForce\s+/i, '') || name
+}
+
+// 每张卡一张数据卡: 值是使用率, 说明是显存和温度
+export function gpuCards(gpus: Gpu[], t: (key: string, values?: Record<string, unknown>) => string, trends: number[][] = []) {
+  return gpus.map((gpu, index) => ({
+    key: `gpu${index}`,
+    label: gpuName(gpu.name),
+    value: gpu.utilization == null ? '-' : `${gpu.utilization.toFixed(0)}%`,
+    delta: 0,
+    deltaLabel: t('vps.monitor.gpuDetail', {
+      used: gpu.memoryUsed == null ? '-' : formatBytes(gpu.memoryUsed),
+      total: gpu.memoryTotal == null ? '-' : formatBytes(gpu.memoryTotal),
+      celsius: gpu.celsius ?? '-',
+    }),
+    trend: trends[index] ?? [],
+  }))
 }

@@ -28,8 +28,10 @@ HISTORY_SECONDS = 60
 # File systems that hold data; pseudo and in-memory ones are left out.
 DISK_TYPES = {"ext2", "ext3", "ext4", "xfs", "btrfs", "zfs", "f2fs", "vfat", "exfat", "ntfs", "ntfs3",
               "jfs", "reiserfs", "nfs", "nfs4", "cifs", "smb3", "fuseblk", "fuse.sshfs"}
-DEFAULT_ALERTS = {"enabled": True, "disk": 90, "memory": 95, "cpu": 95, "cpu_minutes": 10, "services": True}
-LIMITS = {"disk": (50, 99), "memory": (50, 99), "cpu": (50, 100), "cpu_minutes": (1, 120)}
+DEFAULT_ALERTS = {"enabled": True, "disk": 90, "memory": 95, "cpu": 95, "cpu_minutes": 10, "services": True,
+                  "gpu_temp": 85, "gpu_memory": 95}
+LIMITS = {"disk": (50, 99), "memory": (50, 99), "cpu": (50, 100), "cpu_minutes": (1, 120),
+          "gpu_temp": (50, 110), "gpu_memory": (50, 99)}
 
 
 def _read(path):
@@ -217,9 +219,12 @@ class Monitor:
         self.texts = texts or (lambda key, **values: key)
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
-        self.current = {"cpu": 0.0, "rx": 0, "tx": 0, "interfaces": {}}
+        self.current = {"cpu": 0.0, "rx": 0, "tx": 0, "interfaces": {}, "gpus": []}
         self.history = []
         self.live = []
+        # GPUs (only with nvidia-smi): [time, [[utilization %, memory %, °C] per GPU]], same cadence as above
+        self.gpu_live = []
+        self.gpu_history = []
         self.cpu_high_since = None
         self._last_cpu = cpu_times()
         self._last_net = (time.monotonic(), net_counters())
@@ -237,10 +242,16 @@ class Monitor:
             cutoff = time.time() - HISTORY_POINTS * HISTORY_SECONDS
             self.history = [point for point in points if isinstance(point, list) and len(point) == 5
                             and point[0] >= cutoff][-HISTORY_POINTS:]
+        gpu = data.get("gpu") if isinstance(data, dict) else None
+        if isinstance(gpu, list):
+            cutoff = time.time() - HISTORY_POINTS * HISTORY_SECONDS
+            self.gpu_history = [point for point in gpu if isinstance(point, list) and len(point) == 2
+                                and isinstance(point[1], list) and point[0] >= cutoff][-HISTORY_POINTS:]
 
     def _save_history(self):
         try:
-            secure_store.write_text(self.history_path, json.dumps({"points": self.history}, separators=(",", ":")))
+            secure_store.write_text(self.history_path, json.dumps({"points": self.history, "gpu": self.gpu_history},
+                                                                    separators=(",", ":")))
         except (OSError, ValueError):
             pass
 
@@ -263,8 +274,16 @@ class Monitor:
 
     # -- sampling ------------------------------------------------------------
 
+    @staticmethod
+    def gpu_point(rows):
+        """[[utilization %, memory %, °C] per GPU] from gpus() rows; unknown values are 0."""
+        return [[row["utilization"] or 0,
+                 round(row["memoryUsed"] * 100 / row["memoryTotal"], 1) if row["memoryTotal"] and row["memoryUsed"] is not None else 0,
+                 row["celsius"] or 0] for row in rows]
+
     def sample(self):
-        """Update the current CPU and network rates."""
+        """Update the current CPU, network and GPU figures."""
+        cards = gpus()
         busy_total = cpu_times()
         now = time.monotonic()
         counters = net_counters()
@@ -291,6 +310,10 @@ class Monitor:
                               round(mem["used"] * 100 / mem["total"], 1) if mem["total"] else 0,
                               self.current["rx"], self.current["tx"]])
             self.live = self.live[-LIVE_POINTS:]
+            self.current["gpus"] = cards
+            if cards:
+                self.gpu_live.append([int(time.time()), self.gpu_point(cards)])
+                self.gpu_live = self.gpu_live[-LIVE_POINTS:]
 
     def snapshot(self):
         """Everything the page shows."""
@@ -304,7 +327,7 @@ class Monitor:
                 "network": {"rx": current["rx"], "tx": current["tx"],
                             "interfaces": [{"name": name, **rates}
                                            for name, rates in sorted(current["interfaces"].items())]},
-                "temperatures": temperatures(), "gpus": gpus(), "time": int(time.time())}
+                "temperatures": temperatures(), "gpus": current["gpus"], "time": int(time.time())}
 
     def record(self):
         """Append one history point: [time, cpu %, memory %, rx B/s, tx B/s]."""
@@ -315,6 +338,9 @@ class Monitor:
                      self.current["rx"], self.current["tx"]]
             self.history.append(point)
             self.history = self.history[-HISTORY_POINTS:]
+            if self.current["gpus"]:
+                self.gpu_history.append([point[0], self.gpu_point(self.current["gpus"])])
+                self.gpu_history = self.gpu_history[-HISTORY_POINTS:]
         return point
 
     def live_points(self):
@@ -325,6 +351,11 @@ class Monitor:
     def points(self):
         with self.lock:
             return list(self.history)
+
+    def gpu_points(self):
+        """(live points, per-minute points) for the GPUs."""
+        with self.lock:
+            return list(self.gpu_live), list(self.gpu_history)
 
     # -- alerts ---------------------------------------------------------------
 
@@ -369,6 +400,18 @@ class Monitor:
                 fired.append("cpu")
         else:
             self.cpu_high_since = None
+        for index, card in enumerate(snapshot.get("gpus") or []):
+            name = card.get("name") or f"GPU {index}"
+            if card.get("celsius") is not None and card["celsius"] >= alerts["gpu_temp"] and self._alert(
+                    data, f"gpu-temp:{index}", t("monitor_alert_gpu_temp_title"),
+                    t("monitor_alert_gpu_temp_body", name=name, celsius=card["celsius"]), now):
+                fired.append(f"gpu-temp:{index}")
+            if card.get("memoryTotal") and card.get("memoryUsed") is not None:
+                used = round(card["memoryUsed"] * 100 / card["memoryTotal"], 1)
+                if used >= alerts["gpu_memory"] and self._alert(
+                        data, f"gpu-memory:{index}", t("monitor_alert_gpu_memory_title"),
+                        t("monitor_alert_gpu_memory_body", name=name, percent=used), now):
+                    fired.append(f"gpu-memory:{index}")
         if alerts["services"] and self.failed_units:
             for unit in self.failed_units():
                 if self._alert(data, "unit:" + unit, t("monitor_alert_service_title"),

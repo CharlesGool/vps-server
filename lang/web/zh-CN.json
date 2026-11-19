@@ -1242,5 +1242,9 @@
   "feature_filemanager": "文件管理",
   "feature_fleet": "集中管理",
   "feature_backup": "备份",
-  "feature_tasks": "定时任务"
+  "feature_tasks": "定时任务",
+  "monitor_alert_gpu_temp_title": "GPU 温度告警",
+  "monitor_alert_gpu_temp_body": "{name} 温度 {celsius} °C",
+  "monitor_alert_gpu_memory_title": "显存告警",
+  "monitor_alert_gpu_memory_body": "{name} 显存已用 {percent}%"
 }

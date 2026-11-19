@@ -726,7 +726,14 @@
       "barkMissing": "No Bark push key is set, so alerts cannot be sent. Add one in Security.",
       "liveUsage": "Live CPU and memory",
       "liveTraffic": "Live network rate",
-      "liveNote": "The last minute, one point every 5 seconds."
+      "liveNote": "The last minute, one point every 5 seconds.",
+      "gpuDetail": "Memory {used} / {total} · {celsius} °C",
+      "gpuUtil": "{name} use",
+      "gpuMem": "{name} memory",
+      "liveGpu": "Live GPU",
+      "gpuChart": "GPU",
+      "gpuTempThreshold": "GPU temperature",
+      "gpuMemoryThreshold": "GPU memory use"
     },
     "system": {
       "title": "System",

@@ -21,17 +21,21 @@ interface Alerts {
   memory: number
   cpu: number
   cpu_minutes: number
+  gpu_temp: number
+  gpu_memory: number
 }
 const { t } = useI18n()
 const alerts = ref<Alerts>()
 const barkReady = ref(true)
-const form = ref({ disk: 90, memory: 95, cpu: 95, cpu_minutes: 10 })
+const hasGpu = ref(false)
+const form = ref({ disk: 90, memory: 95, cpu: 95, cpu_minutes: 10, gpu_temp: 85, gpu_memory: 95 })
 const busy = ref(false)
 
-function apply(value: { alerts: Alerts; barkReady: boolean }) {
+function apply(value: { alerts: Alerts; barkReady: boolean; hasGpu?: boolean }) {
   alerts.value = value.alerts
   barkReady.value = value.barkReady
-  form.value = { disk: value.alerts.disk, memory: value.alerts.memory, cpu: value.alerts.cpu, cpu_minutes: value.alerts.cpu_minutes }
+  hasGpu.value = !!value.hasGpu
+  form.value = { disk: value.alerts.disk, memory: value.alerts.memory, cpu: value.alerts.cpu, cpu_minutes: value.alerts.cpu_minutes, gpu_temp: value.alerts.gpu_temp, gpu_memory: value.alerts.gpu_memory }
 }
 
 async function load() {
@@ -91,6 +95,14 @@ async function save(change: Partial<Alerts>, toast = true) {
         <FormField v-slot="field" :label="t('vps.monitor.cpuMinutes')" :span="6">
           <NumberField :id="field.id" v-model="form.cpu_minutes" :min="1" :max="120" :unit="t('vps.monitor.minutesUnit')" :disabled="!alerts.enabled" />
         </FormField>
+        <template v-if="hasGpu">
+          <FormField v-slot="field" :label="t('vps.monitor.gpuTempThreshold')" :span="6">
+            <NumberField :id="field.id" v-model="form.gpu_temp" :min="50" :max="110" unit="°C" :disabled="!alerts.enabled" />
+          </FormField>
+          <FormField v-slot="field" :label="t('vps.monitor.gpuMemoryThreshold')" :span="6">
+            <NumberField :id="field.id" v-model="form.gpu_memory" :min="50" :max="99" unit="%" :disabled="!alerts.enabled" />
+          </FormField>
+        </template>
         <FormActions>
           <Button type="submit" :disabled="busy || !alerts.enabled"><Save aria-hidden="true" />{{ t('vps.common.save') }}</Button>
         </FormActions>

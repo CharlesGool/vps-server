@@ -22,7 +22,9 @@ export const MONITOR_SAMPLE = {
   uptime: 1_234_567,
   network: { rx: 182_400, tx: 41_200, interfaces: [{ name: 'eth0', rx: 182_400, tx: 41_200 }, { name: 'tailscale0', rx: 0, tx: 0 }] },
   temperatures: [{ name: 'k10temp Tctl', celsius: 48.5 }],
-  gpus: [],
+  gpus: [{ name: 'NVIDIA GeForce RTX 4090', utilization: 37, memoryUsed: 9_663_676_416, memoryTotal: 25_769_803_776, celsius: 58 }],
+  gpuLive: live.map((row, index) => [row[0], [[30 + ((index * 7) % 20), 37 + (index % 3), 58]]]),
+  gpuRecent: recent.map((row, index) => [row[0], [[25 + ((index * 9) % 30), 36 + (index % 4), 57]]]),
   chart,
   trend,
   live,
@@ -36,11 +38,12 @@ export const RESOURCES_SAMPLE = {
   memory: MONITOR_SAMPLE.memory,
   disk: MONITOR_SAMPLE.disk,
   load: MONITOR_SAMPLE.load,
+  gpus: MONITOR_SAMPLE.gpus,
   trend,
   hourAgo: MONITOR_SAMPLE.hourAgo,
 }
 
-export const MONITOR_ALERTS_SAMPLE = { alerts: { enabled: true, disk: 90, memory: 95, cpu: 95, cpu_minutes: 10, services: true }, barkReady: true }
+export const MONITOR_ALERTS_SAMPLE = { alerts: { enabled: true, disk: 90, memory: 95, cpu: 95, cpu_minutes: 10, services: true, gpu_temp: 85, gpu_memory: 95 }, barkReady: true, hasGpu: true }
 
 export const SYSTEM_SAMPLE = { hostname: 'vps-demo', os: 'Debian GNU/Linux 13 (trixie)', kernel: '6.12.48+deb13-amd64', arch: 'x86_64' }
 

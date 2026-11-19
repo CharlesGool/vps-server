@@ -65,6 +65,19 @@ class MonitorTest(unittest.TestCase):
         self.assertEqual(monitor.check_alerts(snapshot), [])
         self.assertEqual(len(sent), 2)
 
+    def test_gpu_alerts_and_buckets(self):
+        sent = []
+        monitor = sysmon.Monitor(self.tmp, notify=lambda title, body: sent.append(body))
+        snapshot = {"disks": [], "memory": {"used": 1, "total": 100}, "cpu": {"percent": 1.0},
+                    "gpus": [{"name": "RTX 5090", "utilization": 99, "memoryUsed": 98, "memoryTotal": 100, "celsius": 90}]}
+        self.assertEqual(sorted(monitor.check_alerts(snapshot)), ["gpu-memory:0", "gpu-temp:0"])
+        now = 1_000_000
+        points = [[now - 30, [[10, 20, 50], [30, 40, 60]]], [now - 20, [[20, 30, 50], [50, 60, 60]]]]
+        rows = api_monitor.gpu_buckets(points, 15, 900, now=now)
+        self.assertEqual(rows[-1][1], [[15.0, 25.0, 50.0], [40.0, 50.0, 60.0]])
+        self.assertIsNone(rows[0][1])
+        self.assertEqual(sysmon.Monitor.gpu_point([{"utilization": None, "memoryUsed": None, "memoryTotal": None, "celsius": None}]), [[0, 0, 0]])
+
     def test_history_survives_a_restart(self):
         monitor = sysmon.Monitor(self.tmp)
         monitor.record()

@@ -11,6 +11,28 @@ CHART_BUCKETS = 12
 TREND_BUCKETS = 24
 
 
+def gpu_buckets(points, count, span, now=None):
+    """Average [time, [[util, mem %, °C] per GPU]] points into ``count`` slots ending now.
+
+    Each slot is [start time, [[util, mem %, °C] per GPU] or None when no point fell in it].
+    """
+    now = int(now if now is not None else time.time())
+    width = span // count
+    start = now - width * count
+    slots = [[] for _ in range(count)]
+    for point in points:
+        index = (point[0] - start) // width
+        if 0 <= index < count:
+            slots[index].append(point[1])
+    rows = []
+    for index, samples in enumerate(slots):
+        cards = min((len(sample) for sample in samples), default=0)
+        average = [[round(sum(sample[card][column] for sample in samples) / len(samples), 1) for column in range(3)]
+                   for card in range(cards)] if samples else None
+        rows.append([start + index * width, average])
+    return rows
+
+
 def buckets(points, count, span=86400, now=None):
     """Average [time, cpu, memory, rx, tx] points into ``count`` equal slots ending now.
 
@@ -52,6 +74,9 @@ class MonitorApiMixin:
         snapshot["trend"] = buckets(points, TREND_BUCKETS)
         snapshot["recent"] = buckets(points, RECENT_BUCKETS, span=RECENT_BUCKETS * 60)
         snapshot["live"] = monitor.live_points()
+        gpu_live, gpu_history = monitor.gpu_points()
+        snapshot["gpuLive"] = gpu_live
+        snapshot["gpuRecent"] = gpu_buckets(gpu_history, RECENT_BUCKETS, RECENT_BUCKETS * 60)
         hour_ago = next((point for point in reversed(points) if point[0] <= time.time() - 3600), None)
         snapshot["hourAgo"] = {"cpu": hour_ago[1], "memory": hour_ago[2]} if hour_ago else None
         return snapshot
@@ -65,7 +90,8 @@ class MonitorApiMixin:
 
     def api_monitor_alerts(self):
         settings = self.context.MONITOR.settings()
-        return self.api_ok({"alerts": settings["alerts"], "barkReady": bool(self.context.ALERTS.keys)})
+        return self.api_ok({"alerts": settings["alerts"], "barkReady": bool(self.context.ALERTS.keys),
+                            "hasGpu": bool(self.context.MONITOR.current.get("gpus"))})
 
     def api_monitor_alerts_save(self):
         body = self.read_json()

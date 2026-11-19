@@ -1242,5 +1242,9 @@
   "feature_filemanager": "File manager",
   "feature_fleet": "Central management",
   "feature_backup": "Backup",
-  "feature_tasks": "Scheduled tasks"
+  "feature_tasks": "Scheduled tasks",
+  "monitor_alert_gpu_temp_title": "GPU temperature alert",
+  "monitor_alert_gpu_temp_body": "{name} is at {celsius} °C",
+  "monitor_alert_gpu_memory_title": "GPU memory alert",
+  "monitor_alert_gpu_memory_body": "{name} memory is {percent}% used"
 }

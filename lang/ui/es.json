@@ -726,7 +726,14 @@
       "barkMissing": "No hay clave de Bark, así que las alertas no se pueden enviar. Añádala en Seguridad.",
       "liveUsage": "CPU y memoria en vivo",
       "liveTraffic": "Red en vivo",
-      "liveNote": "El último minuto, un punto cada 5 segundos."
+      "liveNote": "El último minuto, un punto cada 5 segundos.",
+      "gpuDetail": "Memoria {used} / {total} · {celsius} °C",
+      "gpuUtil": "Uso de {name}",
+      "gpuMem": "Memoria de {name}",
+      "liveGpu": "GPU en vivo",
+      "gpuChart": "GPU",
+      "gpuTempThreshold": "Temperatura de GPU",
+      "gpuMemoryThreshold": "Uso de memoria de GPU"
     },
     "system": {
       "title": "Sistema",

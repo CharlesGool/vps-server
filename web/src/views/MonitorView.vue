@@ -14,7 +14,7 @@ import TrendChart from '@/components/app/TrendChart.vue'
 import MonitorAlertsCards from '@/components/vps/MonitorAlertsCards.vue'
 import { api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
-import { formatDuration, formatRate, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
+import { formatDuration, formatRate, gpuCards, gpuName, hourLabel, secondLabel, type HistoryRow, type Monitor } from '@/lib/monitor'
 
 // 资源监控: 仪表板模式. 一行 4 张数据卡(CPU, 内存, 硬盘, 负载), 整行的实时图和 24 小时趋势图, 磁盘表, 主机信息, 网卡表.
 // 每 5 秒刷新一次; 最下面是资源告警的开关和阈值.
@@ -52,6 +52,7 @@ const cards = computed(() => {
       delta: 0, deltaLabel: value.disk ? t('vps.monitor.diskFree', { free: formatBytes(value.disk.free) }) : '-', trend: undefined },
     { key: 'load', label: t('vps.monitor.load'), value: load[0].toFixed(2),
       delta: load[2] ? Math.round(((load[0] - load[2]) / load[2]) * 100) : 0, deltaLabel: t('vps.monitor.vsLoad15'), trend: undefined },
+    ...gpuCards(value.gpus, t, value.gpus.map((_, index) => recentGpu.value.map((row) => row[1]![index]?.[0] ?? 0))),
   ]
 })
 
@@ -70,6 +71,20 @@ const traffic = (rows: HistoryRow[]) => [
 const liveLabels = computed(() => live.value.map((row) => secondLabel(row[0], locale.value)))
 const dayLabels = computed(() => day.value.map((row) => hourLabel(row[0], locale.value)))
 const percentText = (value: number) => `${value.toFixed(1)}%`
+
+// GPU 图: 每张卡一条使用率线; 不超过 2 张卡时再加显存线(图表最多 4 条)
+const liveGpu = computed(() => data.value?.gpuLive ?? [])
+const recentGpu = computed(() => (data.value?.gpuRecent ?? []).filter((row): row is [number, number[][]] => row[1] != null))
+function gpuSeries(rows: [number, number[][]][]) {
+  const gpus = data.value?.gpus ?? []
+  const series = gpus.slice(0, 4).map((gpu, index) => ({ name: t('vps.monitor.gpuUtil', { name: gpuName(gpu.name) }), values: rows.map((row) => row[1][index]?.[0] ?? 0) }))
+  if (gpus.length <= 2) {
+    series.push(...gpus.map((gpu, index) => ({ name: t('vps.monitor.gpuMem', { name: gpuName(gpu.name) }), values: rows.map((row) => row[1][index]?.[1] ?? 0) })))
+  }
+  return series
+}
+const liveGpuLabels = computed(() => liveGpu.value.map((row) => secondLabel(row[0], locale.value)))
+const recentGpuLabels = computed(() => recentGpu.value.map((row) => hourLabel(row[0], locale.value)))
 
 const diskColumns = computed(() => [
   { key: 'mount', label: t('vps.monitor.mount'), mono: true },
@@ -113,11 +128,7 @@ const hostItems = computed(() => {
   for (const [index, sensor] of value.temperatures.slice(0, 6).entries()) {
     items.push({ key: `temp${index}`, label: sensor.name || t('vps.monitor.temperature'), value: `${sensor.celsius.toFixed(1)} °C` })
   }
-  for (const [index, gpu] of value.gpus.entries()) {
-    const memory = gpu.memoryTotal ? ` · ${formatBytes(gpu.memoryUsed ?? 0)} / ${formatBytes(gpu.memoryTotal)}` : ''
-    const heat = gpu.celsius != null ? ` · ${gpu.celsius} °C` : ''
-    items.push({ key: `gpu${index}`, label: gpu.name, value: `${gpu.utilization ?? '-'}%${memory}${heat}` })
-  }
+  for (const [index, gpu] of value.gpus.entries()) items.push({ key: `gpu${index}`, label: `GPU ${index}`, value: gpu.name })
   return items
 })
 </script>
@@ -150,12 +161,20 @@ const hostItems = computed(() => {
         <TrendChart :label="t('vps.monitor.liveTraffic')" :labels="liveLabels" :series="traffic(live)" :format="formatRate" />
       </PageSection>
 
+      <PageSection v-if="liveGpu.length > 1" :cols="4" :title="t('vps.monitor.liveGpu')" :description="t('vps.monitor.liveNote')">
+        <TrendChart :label="t('vps.monitor.liveGpu')" :labels="liveGpuLabels" :series="gpuSeries(liveGpu)" :format="percentText" />
+      </PageSection>
+
       <PageSection v-if="day.length > 1" :cols="4" :title="t('vps.monitor.usageChart')" :description="t('vps.monitor.chartNote')">
         <TrendChart :label="t('vps.monitor.usageChart')" :labels="dayLabels" :series="usage(day)" :format="percentText" />
       </PageSection>
 
       <PageSection v-if="day.length > 1" :cols="4" :title="t('vps.monitor.trafficChart')" :description="t('vps.monitor.chartNote')">
         <TrendChart :label="t('vps.monitor.trafficChart')" :labels="dayLabels" :series="traffic(day)" :format="formatRate" />
+      </PageSection>
+
+      <PageSection v-if="recentGpu.length > 1" :cols="4" :title="t('vps.monitor.gpuChart')" :description="t('vps.monitor.chartNote')">
+        <TrendChart :label="t('vps.monitor.gpuChart')" :labels="recentGpuLabels" :series="gpuSeries(recentGpu)" :format="percentText" />
       </PageSection>
 
       <PageSection :cols="4" :title="t('vps.monitor.disks')">

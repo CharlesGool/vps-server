@@ -726,7 +726,14 @@
       "barkMissing": "还没有设置 Bark 推送密钥, 告警发不出去. 在安全设置里添加.",
       "liveUsage": "实时 CPU 和内存",
       "liveTraffic": "实时网速",
-      "liveNote": "最近 1 分钟, 每 5 秒一个点."
+      "liveNote": "最近 1 分钟, 每 5 秒一个点.",
+      "gpuDetail": "显存 {used} / {total} · {celsius} °C",
+      "gpuUtil": "{name} 使用率",
+      "gpuMem": "{name} 显存",
+      "liveGpu": "实时 GPU",
+      "gpuChart": "GPU",
+      "gpuTempThreshold": "GPU 温度",
+      "gpuMemoryThreshold": "显存使用率"
     },
     "system": {
       "title": "系统",

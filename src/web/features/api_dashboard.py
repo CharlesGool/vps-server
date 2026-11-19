@@ -108,7 +108,7 @@ class DashboardApiMixin:
     def dashboard_resources(self):
         """The four figures the home page shows above the modules, with hourly trend lines."""
         summary = self.monitor_summary()
-        return {key: summary[key] for key in ("cpu", "memory", "disk", "load", "trend", "hourAgo")}
+        return {key: summary[key] for key in ("cpu", "memory", "disk", "load", "trend", "hourAgo", "gpus")}
 
     def start_module_job(self, module, action):
         """Start a module job; returns None once started or when there is nothing

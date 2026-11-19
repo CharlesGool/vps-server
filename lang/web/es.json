@@ -1242,5 +1242,9 @@
   "feature_filemanager": "Archivos",
   "feature_fleet": "Gestión central",
   "feature_backup": "Copias de seguridad",
-  "feature_tasks": "Tareas programadas"
+  "feature_tasks": "Tareas programadas",
+  "monitor_alert_gpu_temp_title": "Alerta de temperatura de GPU",
+  "monitor_alert_gpu_temp_body": "{name} está a {celsius} °C",
+  "monitor_alert_gpu_memory_title": "Alerta de memoria de GPU",
+  "monitor_alert_gpu_memory_body": "Memoria de {name} usada al {percent}%"
 }
