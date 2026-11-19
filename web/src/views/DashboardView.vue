@@ -131,18 +131,17 @@ const ICONS: Record<string, typeof Gauge> = {
 }
 const title = (key: string) => NAMES[key] ?? t(TITLES[key] ?? key)
 
-// 资源概览: 主页顶部一行 4 张数据卡, 详情在资源监控页
+// 资源概览: 主页顶部一行 4 张数据卡, 只有数字没有折线; 走势在资源监控页
 const resourceCards = computed(() => {
   const value = data.value?.resources
   if (!value) return []
   const memory = value.memory.total ? Math.round((value.memory.used * 1000) / value.memory.total) / 10 : 0
-  const trend = (column: 1 | 2) => value.trend.map((row) => row[column]).filter((item): item is number => item != null)
   const ago = value.hourAgo
   return [
-    { key: 'cpu', label: t('vps.monitor.cpu'), value: `${value.cpu.percent.toFixed(1)}%`, delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(1) },
-    { key: 'memory', label: t('vps.monitor.memory'), value: `${memory.toFixed(1)}%`, delta: ago ? Math.round((memory - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(2) },
-    { key: 'disk', label: t('vps.monitor.disk'), value: value.disk ? `${value.disk.percent.toFixed(1)}%` : '-', delta: 0, deltaLabel: value.disk ? t('vps.monitor.diskFree', { free: formatBytes(value.disk.free) }) : '-', trend: [] },
-    { key: 'load', label: t('vps.monitor.load'), value: value.load[0].toFixed(2), delta: value.load[2] ? Math.round(((value.load[0] - value.load[2]) / value.load[2]) * 100) : 0, deltaLabel: t('vps.monitor.vsLoad15'), trend: [] },
+    { key: 'cpu', label: t('vps.monitor.cpu'), value: `${value.cpu.percent.toFixed(1)}%`, delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo') },
+    { key: 'memory', label: t('vps.monitor.memory'), value: `${memory.toFixed(1)}%`, delta: ago ? Math.round((memory - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo') },
+    { key: 'disk', label: t('vps.monitor.disk'), value: value.disk ? `${value.disk.percent.toFixed(1)}%` : '-', delta: 0, deltaLabel: value.disk ? t('vps.monitor.diskFree', { free: formatBytes(value.disk.free) }) : '-' },
+    { key: 'load', label: t('vps.monitor.load'), value: value.load[0].toFixed(2), delta: value.load[2] ? Math.round(((value.load[0] - value.load[2]) / value.load[2]) * 100) : 0, deltaLabel: t('vps.monitor.vsLoad15') },
   ]
 })
 
@@ -305,7 +304,6 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
       :value="card.value"
       :delta="card.delta"
       :delta-label="card.deltaLabel"
-      :trend="card.trend.length > 1 ? card.trend : undefined"
       good="down"
     />
 
