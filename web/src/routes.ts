@@ -8,8 +8,8 @@ export type ShowcasePage = (typeof SHOWCASE_PAGES)[number]
 // 场景样例(/scenes): 常见整页的布局示例(登录, 仪表板, 设置, 列表, 长表单, 搜索结果等), 与组件样例并列
 export const SHOWCASE_SCENES = ['login', 'dashboard', 'settings', 'list', 'form', 'empty', 'loading', 'error', 'forbidden', 'detail', 'edit', 'wizard', 'search'] as const
 export type ShowcaseScene = (typeof SHOWCASE_SCENES)[number]
-export type View = 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
-export type PageIcon = 'home' | 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'changelog' | 'login' | 'showcase'
+export type View = 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
+export type PageIcon = 'home' | 'dashboard' | 'settings' | 'security' | 'modules' | 'logs' | 'speedtest' | 'iperf' | 'changelog' | 'login' | 'showcase'
 
 export interface AppRoute {
   path: string

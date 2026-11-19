@@ -215,29 +215,32 @@ class IperfMixin:
                 return self.send_html(403, "Forbidden", {"Cache-Control": "no-store"})
             if set(form) != {"port", "csrf"} or len(form["port"]) != 1:
                 raise ValueError("invalid form")
-            port = int(form["port"][0])
-            if not 1024 <= port <= 65535:
-                raise ValueError("invalid port")
-            if port != self.context.IPERF_WINDOW.port:
-                if port in self.context.PORTFWD.reserved_ports():
-                    raise ValueError("reserved port")
-                for family, address in ((self.context.socket.AF_INET, "0.0.0.0"), (self.context.socket.AF_INET6, "::")):
-                    try:
-                        with self.context.socket.socket(family, self.context.socket.SOCK_STREAM) as probe:
-                            # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
-                            probe.setsockopt(self.context.socket.SOL_SOCKET, self.context.socket.SO_REUSEADDR, 1)
-                            probe.bind((address, port))
-                    except OSError as exc:
-                        if family == self.context.socket.AF_INET6 and exc.errno in (97, 93):
-                            continue
-                        raise ValueError("busy port") from exc
-            if not self.context.IPERF_WINDOW.set_port(
-                    port, commit=lambda old: self.context.node_control_apply(
-                        {"action": "iperf-port", "old_port": old, "port": port})):
-                raise ValueError("active window or persistence failure")
+            self.iperf_set_port(int(form["port"][0]))
         except (UnicodeError, ValueError):
             return self.redirect("/iperf?msg=iperf_port_invalid")
         return self.redirect("/iperf?msg=iperf_port_saved")
+
+    def iperf_set_port(self, port):
+        """Move the iperf3 window to another port; raises ValueError when it cannot."""
+        if not 1024 <= port <= 65535:
+            raise ValueError("invalid port")
+        if port != self.context.IPERF_WINDOW.port:
+            if port in self.context.PORTFWD.reserved_ports():
+                raise ValueError("reserved port")
+            for family, address in ((self.context.socket.AF_INET, "0.0.0.0"), (self.context.socket.AF_INET6, "::")):
+                try:
+                    with self.context.socket.socket(family, self.context.socket.SOCK_STREAM) as probe:
+                        # Closed connections linger in TIME_WAIT; like the servers, probe with SO_REUSEADDR.
+                        probe.setsockopt(self.context.socket.SOL_SOCKET, self.context.socket.SO_REUSEADDR, 1)
+                        probe.bind((address, port))
+                except OSError as exc:
+                    if family == self.context.socket.AF_INET6 and exc.errno in (97, 93):
+                        continue
+                    raise ValueError("busy port") from exc
+        if not self.context.IPERF_WINDOW.set_port(
+                port, commit=lambda old: self.context.node_control_apply(
+                    {"action": "iperf-port", "old_port": old, "port": port})):
+            raise ValueError("active window or persistence failure")
 
     def route_iperf(self, method, path, parsed, lang, query_lang):
         if method == "GET" and path == "/iperf":

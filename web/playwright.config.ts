@@ -1,17 +1,22 @@
 import { defineConfig } from '@playwright/test'
 
 // 视觉测试: 构建生产资源后在环回地址运行 Python 控制台(项目决策 2026-11-18, 见 doc/LOG.md).
-// 桌面和手机各用一个控制台实例和临时状态目录, 互不影响. 控制台只提供 HTTPS(自签名证书). 端口被占用时设置 E2E_PORT.
+// 桌面, 手机和项目功能测试各用一个控制台实例和临时状态目录, 互不影响. 控制台只提供 HTTPS(自签名证书). 端口被占用时设置 E2E_PORT.
 const port = Number(process.env.E2E_PORT || 4317)
 const base = (process.env.APP_BASE_PATH || '/').replace(/\/?$/, '/')
 
+// vps-project: vps-server 自己的功能测试(e2e/vps-*.spec.ts)会改变控制台状态(测速产生流量, 修改流量限制),
+// 所以用第三个实例, 不影响桌面和手机的截图和布局检查; 其他两个项目不运行这些文件.
+const VPS_TESTS = /[\\/]e2e[\\/]vps-[^\\/]*\.spec\.ts$/
 const PROJECTS = [
-  { name: 'desktop', port, use: { viewport: { width: 1280, height: 800 } } },
+  { name: 'desktop', port, testIgnore: VPS_TESTS, use: { viewport: { width: 1280, height: 800 } } },
   {
     name: 'mobile',
     port: port + 1,
+    testIgnore: VPS_TESTS,
     use: { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true },
   },
+  { name: 'vps', port: port + 2, testMatch: VPS_TESTS, use: { viewport: { width: 1280, height: 800 } } },
 ]
 const url = (p: number) => `https://127.0.0.1:${p}${base}`
 
@@ -49,6 +54,11 @@ export default defineConfig({
     // 并发时有请求因此重试到放弃(ERR_TOO_MANY_RETRIES); 在网络层直接接受证书.
     launchOptions: { args: ['--ignore-certificate-errors'] },
   },
-  projects: PROJECTS.map((project) => ({ name: project.name, use: { ...project.use, baseURL: url(project.port) } })),
+  projects: PROJECTS.map(({ name, use, testIgnore, testMatch, port: p }) => ({
+    name,
+    testIgnore,
+    testMatch,
+    use: { ...use, baseURL: url(p) },
+  })),
   webServer: servers,
 })

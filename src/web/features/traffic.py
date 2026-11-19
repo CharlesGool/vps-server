@@ -230,28 +230,33 @@ class TrafficMixin:
     def traffic_csrf(self):
         return self.context.access_csrf_token(self.get_cookie("session"), "traffic:limits")
 
-    def traffic_card(self, t, key, back, *, card=True):
-        """Usage and the limits dialog for one metered feature; "" until it is metered."""
-        esc = self.context.html.escape
+    def traffic_entry(self, key):
+        """(entry, meter ledger nodes) for one metered feature, or None until it is metered."""
         if key in APP_KEYS:
             try:
                 entry = self.context.APP_METER.entry(key)
             except Exception:
-                return ""
+                return None
             # Counted by this process: nothing is ever unobserved.
-            ledger = {entry["id"]: {"samples": {}, "suspect": False}}
-        else:
-            entries, ledger = kernel_entries()
-            if key.startswith("frpc:"):
-                # FRPC instances are counted per server (see traffic_meter.py).
-                try:
-                    from traffic_meter import frpc_server_key
-                    key = frpc_server_key(key[5:]) or key
-                except Exception:
-                    return ""
-            entry = entries.get(key)
-            if entry is None:
-                return ""
+            return entry, {entry["id"]: {"samples": {}, "suspect": False}}
+        entries, ledger = kernel_entries()
+        if key.startswith("frpc:"):
+            # FRPC instances are counted per server (see traffic_meter.py).
+            try:
+                from traffic_meter import frpc_server_key
+                key = frpc_server_key(key[5:]) or key
+            except Exception:
+                return None
+        entry = entries.get(key)
+        return None if entry is None else (entry, ledger)
+
+    def traffic_card(self, t, key, back, *, card=True):
+        """Usage and the limits dialog for one metered feature; "" until it is metered."""
+        esc = self.context.html.escape
+        found = self.traffic_entry(key)
+        if found is None:
+            return ""
+        entry, ledger = found
         identifier = entry["id"]
         t = {**t, "node_limit_manage": t["traffic_limit_manage"]}  # Not access, only traffic, here.
         query = self.context.parse_qs(self.context.urlsplit(self.path).query)
@@ -265,7 +270,7 @@ class TrafficMixin:
             self._traffic_script_added = True
             script = '<script src="/static/node-controls.js"></script>'
         shared = ""
-        if key.startswith("frpcsrv:") and ", " in entry["name"]:
+        if str(entry.get("key", "")).startswith("frpcsrv:") and ", " in entry["name"]:
             shared = f'<p class="muted traffic-help">{esc(t["traffic_frpc_shared"].format(names=entry["name"]))}</p>'
         help_key = ("traffic_help_tailscale" if key == "tailscale" else
                     "traffic_help_twice" if entry.get("billable_multiplier", 2) == 2 else "traffic_help_once")

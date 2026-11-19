@@ -37,13 +37,14 @@ for (const route of signedInRoutes) {
 test('仪表板为每个功能提供入口', async ({ page }) => {
   test.skip(!FEATURES.dashboard, '未启用仪表板')
   await open(page, '/')
-  const cards = page.locator('main [data-layout="link-card"]:not([href$="/showcase"]):not([href$="/scenes"])')
-  // vps-server: 模块管理和详细日志是设置的子页(和安全设置一样), 不是功能页
+  // vps-server(项目决策 2026-11-18): 主页的入口是服务器给出的模块卡片(ModuleCard), 名称是指向功能页的链接;
+  // 功能页还没全部迁移, 所以检查每个单页功能都有入口, 而不是入口数等于功能数.
   const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'modules', 'logs', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
-  // vps-server 迁移期间(项目决策 2026-11-18): 功能页还由服务器生成, 主页的模块卡片(ModuleCard)不算单页功能入口
   test.skip(features.length === 0, '功能页还没有迁移到单页')
-  await expect(cards).toHaveCount(features.length)
-  await cards.first().click()
+  for (const feature of features) {
+    await expect(page.locator(`main [data-layout="module-card"] a[href$="${feature.path}"]`)).toHaveCount(1)
+  }
+  await page.locator(`main [data-layout="module-card"] a[href$="${features[0]!.path}"]`).click()
   await expect(page).toHaveURL(new RegExp(`${features[0]!.path}$`))
   await page.getByRole('navigation', { name: '路径' }).getByRole('link', { name: '仪表板' }).click()
   await expect(page).toHaveURL(/\/$/)

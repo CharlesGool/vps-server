@@ -13,6 +13,8 @@ const VIEWS: Record<View, RouteComponent | (() => Promise<RouteComponent>)> = {
   security: () => import('./views/SecurityView.vue'),
   modules: () => import('./views/ModulesView.vue'),
   logs: () => import('./views/LogsView.vue'),
+  speedtest: () => import('./views/SpeedtestView.vue'),
+  iperf: () => import('./views/IperfView.vue'),
   changelog: () => import('./views/ChangelogView.vue'),
   login: () => import('./views/LoginView.vue'),
   showcase: () => import('./views/ShowcaseView.vue'),

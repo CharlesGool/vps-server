@@ -12,4 +12,7 @@ export interface Feature {
   icon: PageIcon
 }
 
-export const FEATURE_LIST: Feature[] = []
+export const FEATURE_LIST: Feature[] = [
+  { path: '/speedtest', name: 'speedtest', view: 'speedtest', titleKey: 'legacy.speedtest', descriptionKey: 'vps.speedtest.description', icon: 'speedtest' },
+  { path: '/iperf', name: 'iperf', view: 'iperf', titleKey: 'legacy.iperf_heading', descriptionKey: 'vps.iperf.description', icon: 'iperf' },
+]

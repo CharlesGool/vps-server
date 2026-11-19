@@ -28,12 +28,14 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   if (!response.ok) {
     const code = typeof data.error === 'string' ? data.error : 'request_failed'
     if (response.status === 401 && code === 'unauthenticated') onUnauthorized?.()
+    // vps-server: 功能已被关闭时服务器给出说明页的地址(由服务器生成, 迁移期间整页跳转)
+    if (code === 'feature_closed' && typeof data.url === 'string' && data.url.startsWith('/')) window.location.replace(data.url)
     throw new ApiError(response.status, code, data)
   }
   return data as T
 }
 
-// 会话失效(401 unauthenticated)时 session.ts 已经转到登录页, 页面的加载请求不必再报错
+// 会话失效(401 unauthenticated)时 session.ts 已经转到登录页, 功能已关闭(feature_closed)时已经转到说明页: 页面的请求不必再报错
 export function isSignedOut(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 401 && error.code === 'unauthenticated'
+  return error instanceof ApiError && ((error.status === 401 && error.code === 'unauthenticated') || error.code === 'feature_closed')
 }

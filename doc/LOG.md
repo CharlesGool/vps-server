@@ -83,15 +83,15 @@ metadata:
 
 ## 交接
 
-**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`, `api_modules.py`); 已迁移主页, 登录, 设置, 安全设置, 变更日志, 模块管理, 详细日志; 新增共享组件 `ModuleCard`(带开关的入口卡片)和 `LogOutput`(日志框); `npm run check` 全部通过(1069 项, 另 41 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
+**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`, `api_modules.py`, `api_traffic.py`, `api_speedtest.py`, `api_iperf.py`); 已迁移主页, 登录, 设置, 安全设置, 变更日志, 模块管理, 详细日志, 测速, iPerf 3; 新增共享组件 `ModuleCard`(带开关的入口卡片)和 `LogOutput`(日志框); 项目组件在 `web/src/components/vps/`(只组合模板组件): `TrafficCard`(各计量功能的流量卡片和限制对话框), `PrivateValue`(默认遮住的端口/凭据/命令, 经 `/api/private-value` 取值), `ModuleInstall`(功能页上模块未安装时的安装卡片); 功能被关闭时页面和接口转到 `/closed`(`closed_page_module`, 接口返回 `feature_closed`); 项目自己的端到端测试 `web/e2e/vps-*.spec.ts` 在第三个控制台实例(Playwright 项目 `vps`)上运行, 不影响截图; `npm run check` 全部通过(1136 项, 另 41 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
 
 剩余步骤(每页: 在 `features/api_<页>.py` 写接口, 在 `SPA_PAGES` 和 `features.ts`(设置子页在 `routes.ts`)登记, 用模板组件写 `views/<页>View.vue`, 需要的旧译文用 `legacy` 命名空间复制到 `lang/ui/`, 跑 `npm run check` 并看图审查, 提交):
 - [x] `/settings/modules`(模块安装卸载和进度), `/settings/logs`
-- [ ] `/speedtest`, `/iperf`, `/portfwd`, `/visitors`, `/terminal`(xterm), `/files`(迷你网盘)
+- [ ] ~~`/speedtest`, `/iperf`~~(已完成), `/portfwd`, `/visitors`, `/terminal`(xterm), `/files`(迷你网盘)
 - [ ] `/proxy`(+`/anytls`), `/frps`, `/frpc`, `/frp/*` 编辑页, `/tailscale`, `/domains`, `/ipcert`
 - [ ] `/backup`, `/tasks`, `/closed`; 各页的流量限制对话框
 - [ ] 全部迁移后: 删除 `web-legacy/`, Python 的 HTML 渲染和 `src/web/static/*.js`, `lang/web/` 中不再使用的键, `LEGACY_PATHS` 和 `navigation.spec.ts` 的临时跳过; 安装器(`deploy/install.sh` 检查和复制 `web/dist`)和 `build_offline.py` 改为复制整个 `web/dist` 并用 `APP_VERSION` 构建; 三语言 README/DESIGN/CHANGELOG; 测试主机实测; `--no-ff` 合并回 `main`
-- [ ] 已知小问题: 复用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号
+- [ ] 已知小问题: 复用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号; `lang/ui` 的 `legacy` 命名空间按前缀复制了不少用不到的键, 收尾时删掉页面没有引用的键; 随附的 LibreSpeed Worker 在很短的测速里偶尔有延迟启动的连接在结束后才启动并报错(只在控制台显示, 不影响结果; 测试服务器每方向只用一个连接避开)
 
 当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.0.5(标签 `v7.0.5`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 

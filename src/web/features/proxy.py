@@ -176,12 +176,13 @@ class ProxyMixin:
           </dialog>
         </div>'''
 
-    def handle_proxy_private_value(self, parsed):
-        query = self.context.parse_qs(parsed.query)
-        identifier = query.get('id', [''])[0]
-        field = query.get('field', [''])[0]
-        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or field not in ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi', 'public-port', 'target-port', 'account', 'address'):
-            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+    PRIVATE_FIELDS = ('port', 'credential', 'share', 'cmd-speed', 'cmd-single', 'cmd-multi',
+                      'public-port', 'target-port', 'account', 'address')
+
+    def private_value(self, identifier, field):
+        """One value the page shows masked until asked; raises ValueError when there is none."""
+        if field not in self.PRIVATE_FIELDS:
+            raise ValueError('unsupported field')
         try:
             if identifier.startswith('interface-') and field == 'address':
                 index = identifier[10:]
@@ -191,31 +192,40 @@ class ProxyMixin:
                 position = int(index)
                 if position >= len(entries):
                     raise ValueError('unknown interface')
-                value = entries[position][1]
-            elif identifier == 'iperf' and field in ('port', 'cmd-speed', 'cmd-single', 'cmd-multi'):
+                return entries[position][1]
+            if identifier == 'iperf' and field in ('port', 'cmd-speed', 'cmd-single', 'cmd-multi'):
                 host = (self.headers.get('Host') or '').split(':')[0] or '<server-ip>'
                 suffix = {'cmd-speed': '', 'cmd-single': ' -P 1', 'cmd-multi': ' -P 4'}
-                value = (str(self.context.IPERF_WINDOW.port) if field == 'port' else
-                         f'iperf3 -c {host} -p {self.context.IPERF_WINDOW.port}{suffix[field]}')
-            elif identifier.startswith('forward-') and field in ('public-port', 'target-port'):
+                return (str(self.context.IPERF_WINDOW.port) if field == 'port' else
+                        f'iperf3 -c {host} -p {self.context.IPERF_WINDOW.port}{suffix[field]}')
+            if identifier.startswith('forward-') and field in ('public-port', 'target-port'):
                 rule = next(item for item in self.context.PORTFWD.list_rules() if item['id'] == identifier[8:])
-                value = str(rule['public_port' if field == 'public-port' else 'target_port'])
-            elif identifier == 'frps' and field in ('port', 'credential'):
+                return str(rule['public_port' if field == 'public-port' else 'target_port'])
+            if identifier == 'frps' and field in ('port', 'credential'):
                 node = self.context.frps_node()
                 if node is None:
                     raise ValueError('no frps node')
-                value = str(node['port'] if field == 'port' else node['token'])
-            elif identifier.startswith('legacy-') and field in ('port', 'credential'):
+                return str(node['port'] if field == 'port' else node['token'])
+            if identifier.startswith('legacy-') and field in ('port', 'credential'):
                 protocol = identifier.removeprefix('legacy-')
                 node = (self.context.anytls_node() if protocol == 'anytls' else
                         next(item for item in self.context.proxy_nodes() if item['type'] == protocol))
                 if node is None:
                     raise ValueError('no legacy node')
-                value = str(node['port'] if field == 'port' else
-                            node['password'] if protocol == 'anytls' else node['secret'])
-            else:
-                value = self.managed_private_value(identifier, field)
-        except (OSError, ValueError, TypeError, KeyError, StopIteration):
+                return str(node['port'] if field == 'port' else
+                           node['password'] if protocol == 'anytls' else node['secret'])
+            return self.managed_private_value(identifier, field)
+        except (OSError, TypeError, KeyError, StopIteration) as exc:
+            raise ValueError('no such value') from exc
+
+    def handle_proxy_private_value(self, parsed):
+        query = self.context.parse_qs(parsed.query)
+        if len(query.get('id', [])) != 1 or len(query.get('field', [])) != 1 or \
+                query['field'][0] not in self.PRIVATE_FIELDS:
+            return self.send_html(400, 'Invalid request', {'Cache-Control': 'no-store'})
+        try:
+            value = self.private_value(query['id'][0], query['field'][0])
+        except ValueError:
             return self.send_html(404, 'Not found', {'Cache-Control': 'no-store'})
         data = self.context.json.dumps({'value': value}).encode('utf-8')
         self.send_response(200)

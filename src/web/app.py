@@ -1091,6 +1091,9 @@ from features.api_settings import SettingsApiMixin
 from features.api_security import SecurityApiMixin
 from features.api_dashboard import DashboardApiMixin
 from features.api_modules import ModulesApiMixin
+from features.api_traffic import TrafficApiMixin
+from features.api_speedtest import SpeedtestApiMixin
+from features.api_iperf import IperfApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1111,10 +1114,29 @@ SECURITY_HEADERS = (
 )
 
 
+PAGE_MODULES = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
+                "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
+                "/changelog": "changelog"}
+
+
+def closed_page_module(path):
+    """The module behind this page when the operator has closed it, else None."""
+    module = PAGE_MODULES.get(path)
+    if module is None:
+        return None
+    installed = installed_modules(BASE_DIR)
+    managed_present = (module == "iperf3" and "iperf3" in installed or
+                       module == "proxy_nodes" and "proxy" in installed)
+    if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
+        return module
+    return None
+
+
 class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, IperfMixin,
                      PortfwdMixin, DomainsMixin, FilesMixin, TrafficMixin, TerminalMixin, TailscaleMixin, FrpMixin, ProxyMixin,
                      ChangelogMixin, VisitorsMixin, BackupMixin, TasksMixin, SpaMixin, SettingsApiMixin, SecurityApiMixin,
-                     DashboardApiMixin, ModulesApiMixin, BaseHTTPRequestHandler):
+                     DashboardApiMixin, ModulesApiMixin,
+                     TrafficApiMixin, SpeedtestApiMixin, IperfApiMixin, BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
     Every route that does anything lives here. ProbeHandler, further down,
@@ -1385,6 +1407,10 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if method in ("PUT", "DELETE"):
             return self.send_html(405, "Method not allowed", {"Cache-Control": "no-store"})
         if method == "GET" and is_spa_page(path) and not (path == "/login" and not AUTH_ENABLED):
+            # A closed feature's page goes to /closed once signed in, as before.
+            module = closed_page_module(path) if self.is_authenticated() else None
+            if module:
+                return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
             # The page itself asks /api/session and goes to /login when needed.
             return self.serve_spa_page()
 
@@ -1402,17 +1428,9 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                            "/login?redirect=" + quote(path + (f"?{parsed.query}" if parsed.query else ""), safe="/"))
             return self.redirect(destination)
 
-        page_modules = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
-                        "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
-                        "/changelog": "changelog"}
-        if method == "GET" and path in page_modules:
-            module = page_modules[path]
-            installed = installed_modules(BASE_DIR)
-            managed_present = (module == "iperf3" and "iperf3" in installed or
-                               module == "proxy_nodes" and "proxy" in installed or
-                               module == "frp" and (bool({"frps", "frpc"} & installed) or bool(frpc_names())))
-            if (module in MANAGED_FEATURES or managed_present) and not module_states(installed)[module]:
-                return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
+        module = closed_page_module(path) if method == "GET" else None
+        if module:
+            return self.redirect(f"/closed?module={module}", {"Cache-Control": "no-store"})
         if method == "GET" and path == "/closed":
             return self.page_module_closed(lang, query_lang, parsed)
         for feature, prefix in (("speedtest", "/speedtest"), ("visitors", "/visitors"),

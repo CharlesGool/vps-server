@@ -163,12 +163,65 @@ class SpaApiTest(unittest.TestCase):
         self.assertEqual(history.read_text(), "")
         self.assertEqual(Exchange(self.app, "POST", "/api/logs/clear", body={"source": "x"}, cookie=token).status, 400)
 
+    def test_speedtest_traffic_card_and_limits(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        speed = Exchange(self.app, "GET", "/api/speedtest", cookie=token)
+        self.assertEqual(speed.json["config"]["url_dl"], "/speedtest/garbage")
+        traffic = Exchange(self.app, "GET", "/api/traffic?key=speedtest", cookie=token).json
+        self.assertEqual((traffic["entry"]["capBytes"], traffic["help"]), (None, "once"))
+        self.assertEqual(Exchange(self.app, "GET", "/api/traffic?key=../x", cookie=token).status, 404)
+        limits = {"key": "speedtest", "capGib": "1.5", "uploadMbps": "", "downloadMbps": "20",
+                  "capAction": "block", "resetMode": "repeat", "resetCount": 1, "resetUnit": "months",
+                  "nextResetAt": "", "expiryMode": "none", "expiryCount": 1, "expiryUnit": "months"}
+        saved = Exchange(self.app, "PUT", "/api/traffic/limits", body=limits, cookie=token).json["entry"]
+        self.assertEqual((saved["capBytes"], saved["downloadLimitBps"], saved["capAction"], saved["resetMode"]),
+                         (int(1.5 * 1073741824), 20000000, "block", "repeat"))
+        bad = Exchange(self.app, "PUT", "/api/traffic/limits", body={**limits, "capGib": "-1"}, cookie=token)
+        self.assertEqual((bad.status, bad.json["error"]), (400, "invalid_limits"))
+        Exchange(self.app, "PUT", "/api/traffic/limits",
+                 body={**limits, "capGib": "", "downloadMbps": "", "resetMode": "none"}, cookie=token)
+
+    def test_iperf_window_and_private_values(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        state = Exchange(self.app, "GET", "/api/iperf", cookie=token).json
+        self.assertEqual((state["open"], state["enabled"]), (False, False))
+        opened = Exchange(self.app, "POST", "/api/iperf/open", body={"minutes": 5}, cookie=token).json
+        self.assertEqual(opened["message"], "iperf_disabled")
+        bad = Exchange(self.app, "PUT", "/api/iperf/port", body={"port": 80}, cookie=token)
+        self.assertEqual((bad.status, bad.json["error"]), (400, "iperf_port_invalid"))
+        self.assertEqual(Exchange(self.app, "PUT", "/api/iperf/port", body={"port": "5201"}, cookie=token).status, 400)
+        client = Exchange(self.app, "POST", "/api/iperf/client", cookie=token,
+                          body={"host": "192.0.2.1", "port": 5201, "seconds": 1, "mbps": 1,
+                                "protocol": "tcp", "direction": "upload"}).json
+        self.assertEqual(client["status"], "disabled")
+        port = Exchange(self.app, "GET", "/api/private-value?id=iperf&field=port", cookie=token).json["value"]
+        self.assertTrue(port.isdigit())
+        command = Exchange(self.app, "GET", "/api/private-value?id=iperf&field=cmd-multi", cookie=token).json
+        self.assertTrue(command["value"].endswith(f"-p {port} -P 4"))
+        self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=iperf&field=secret", cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=iperf&field=port").status, 401)
+
+    def test_closed_feature_page_and_api(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        original = self.app.closed_page_module
+        self.app.closed_page_module = lambda path: "speedtest" if path == "/speedtest" else None
+        try:
+            page = Exchange(self.app, "GET", "/speedtest", cookie=token)
+            self.assertEqual((page.status, page.headers["location"][0]), (302, "/closed?module=speedtest"))
+            api = Exchange(self.app, "GET", "/api/speedtest", cookie=token)
+            self.assertEqual((api.status, api.json["error"], api.json["url"]),
+                             (403, "feature_closed", "/closed?module=speedtest"))
+        finally:
+            self.app.closed_page_module = original
+
     def test_spa_pages_and_assets_paths(self):
         from features.spa import is_spa_page
         self.assertTrue(is_spa_page("/settings/security"))
         self.assertTrue(is_spa_page("/settings/logs"))
         self.assertTrue(is_spa_page("/showcase/buttons"))
-        self.assertFalse(is_spa_page("/speedtest"))
+        self.assertTrue(is_spa_page("/speedtest"))
+        self.assertTrue(is_spa_page("/iperf"))
+        self.assertFalse(is_spa_page("/portfwd"))
         self.assertFalse(is_spa_page("/showcasex"))
         missing = Exchange(self.app, "GET", "/assets/..%2Fapp.py")
         self.assertEqual(missing.status, 404)

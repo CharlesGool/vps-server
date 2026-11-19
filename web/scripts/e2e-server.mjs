@@ -32,6 +32,13 @@ const child = spawn('python3', ['app.py'], {
     VPSSRV_HOST: '127.0.0.1',
     VPSSRV_PUBLIC_ENABLE: '0',
     VPSSRV_IPERF_ENABLE: '0',
+    // 浏览器测速的端到端测试跑一次完整测速: 缩短时长
+    VPSSRV_TEST_SECONDS: '2',
+    VPSSRV_WARMUP_SECONDS: '0.5',
+    VPSSRV_PING_SAMPLES: '3',
+    // 每个方向一个连接: LibreSpeed 延迟启动的后续连接可能在很短的测速结束后才启动, 在 Worker 里报错
+    VPSSRV_DOWNLOAD_STREAMS: '1',
+    VPSSRV_UPLOAD_STREAMS: '1',
     VPSSRV_TRACK_CONNECTIONS: '0',
     VPSSRV_DEFAULT_LANG: 'zh_cn',
     // 测试从同一地址发出, 不让失败次数限制挡住后面的测试
