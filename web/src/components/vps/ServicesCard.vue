@@ -19,7 +19,7 @@ import { api } from '@/lib/api'
 import type { Guard } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// vps-server 项目组件: 系统页的服务卡片(整行, 列表样式). 搜索和状态筛选在上, 表格在中间; 每行的操作菜单启动, 停止, 重启, 设置开机自启, 查看日志(侧边抽屉).
+// vps-server 项目组件: 服务卡片(整行, 列表样式). 搜索和状态筛选在上, 表格在中间; 每行的操作菜单启动, 停止, 重启, 设置开机自启, 查看日志(侧边抽屉).
 // 控制台自己的服务不能停止或取消自启(服务器也拒绝), 否则就再也打不开控制台.
 interface Service { unit: string; load: string; active: string; sub: string; description: string; enabled: string }
 type Action = 'start' | 'stop' | 'restart' | 'enable' | 'disable'
@@ -113,7 +113,7 @@ function confirmPending() {
 </script>
 
 <template>
-  <PageSection :cols="4" :title="t('vps.services.title')" :description="t('vps.services.heading', { n: rows.length })">
+  <PageSection :cols="4" :title="t('vps.services.heading', { n: rows.length })">
     <FormField v-slot="field" :label="t('vps.common.search')" :span="8">
       <Input :id="field.id" v-model="search" type="search" :placeholder="t('vps.services.searchHint')" />
     </FormField>

@@ -15,6 +15,10 @@ export interface Feature {
 export const FEATURE_LIST: Feature[] = [
   { path: '/monitor', name: 'monitor', view: 'monitor', titleKey: 'vps.monitor.title', descriptionKey: 'vps.monitor.description', icon: 'monitor' },
   { path: '/system', name: 'system', view: 'system', titleKey: 'vps.system.title', descriptionKey: 'vps.system.description', icon: 'system' },
+  { path: '/updates', name: 'updates', view: 'updates', titleKey: 'vps.system.updates', descriptionKey: 'vps.system.updatesDescription', icon: 'updates' },
+  { path: '/processes', name: 'processes', view: 'processes', titleKey: 'vps.processes.title', descriptionKey: 'vps.processes.description', icon: 'processes' },
+  { path: '/services', name: 'services', view: 'services', titleKey: 'vps.services.title', descriptionKey: 'vps.services.description', icon: 'services' },
+  { path: '/ports', name: 'ports', view: 'ports', titleKey: 'vps.ports.title', descriptionKey: 'vps.ports.description', icon: 'ports' },
   { path: '/filemanager', name: 'filemanager', view: 'filemanager', titleKey: 'vps.fm.title', descriptionKey: 'vps.fm.description', icon: 'filemanager' },
   { path: '/fleet', name: 'fleet', view: 'fleet', titleKey: 'vps.fleet.title', descriptionKey: 'vps.fleet.description', icon: 'fleet' },
   { path: '/speedtest', name: 'speedtest', view: 'speedtest', titleKey: 'console.speedtest', descriptionKey: 'vps.speedtest.description', icon: 'speedtest' },

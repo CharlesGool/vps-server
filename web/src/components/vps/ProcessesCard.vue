@@ -17,7 +17,7 @@ import { formatBytes } from '@/lib/format'
 import type { Guard } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// vps-server 项目组件: 系统页的进程卡片(整行, 列表样式). 上面搜索和排序, 中间表格(每页 10 行), 每行的操作菜单可以结束或强制结束进程(都要确认).
+// vps-server 项目组件: 进程卡片(整行, 列表样式). 上面搜索和排序, 中间表格(每页 10 行), 每行的操作菜单可以结束或强制结束进程(都要确认).
 interface Process { pid: number; ppid: number; name: string; state: string; user: string; cpu: number; memory: number; command: string }
 
 const { t } = useI18n()
@@ -87,7 +87,7 @@ async function confirmKill() {
 </script>
 
 <template>
-  <PageSection :cols="4" :title="t('vps.processes.title')" :description="t('vps.processes.heading', { n: rows.length })">
+  <PageSection :cols="4" :title="t('vps.processes.heading', { n: rows.length })">
     <FormField v-slot="field" :label="t('vps.common.search')" :span="8">
       <Input :id="field.id" v-model="search" type="search" :placeholder="t('vps.processes.searchHint')" />
     </FormField>

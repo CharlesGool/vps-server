@@ -13,11 +13,12 @@ import PageSection from '@/components/app/PageSection.vue'
 import PaginationBar from '@/components/app/PaginationBar.vue'
 import SegmentedControl from '@/components/app/SegmentedControl.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
+import SshLoginsCard from '@/components/vps/SshLoginsCard.vue'
 import { Button } from '@/components/ui/button'
 import { api, isSignedOut } from '@/lib/api'
 import { showToast } from '@/lib/toast'
 
-// 最近访问者: 一张整行卡片, 上方筛选(全部/仅入站/仅外部)和清除历史, 下面是分页的表格(每页 10 行).
+// 最近访问: 访客一张整行卡片, 上方筛选(全部/仅入站/仅外部)和清除历史, 下面是分页的表格(每页 10 行).
 type Visitor = {
   ip: string
   scope: 'loopback' | 'private' | 'public'
@@ -117,5 +118,7 @@ async function clear() {
         </ConfirmDialog>
       </FormActions>
     </PageSection>
+
+    <SshLoginsCard v-if="data" />
   </CardGrid>
 </template>

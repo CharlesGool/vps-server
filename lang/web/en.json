@@ -39,7 +39,7 @@
   "home": "Home",
   "dashboard": "Home",
   "speedtest": "Speed test",
-  "visitors": "Recent visitors",
+  "visitors": "Recent visits",
   "back": "Back",
   "back_to": "Back to {destination}",
   "your_ip": "Your IP as seen by this server",
@@ -55,7 +55,7 @@
   "measuring": "measuring…",
   "done": "done",
   "test_info": "Latency is measured first over {pings} round trips, then each direction runs for about {sec}s over several parallel connections; the first {warm}s of each are a warmup and not counted.",
-  "visitors_heading": "Recent visitors ({n} of last {max} unique IPs)",
+  "visitors_heading": "Visitors ({n} of last {max} unique IPs)",
   "col_ip": "IP",
   "col_first": "First seen (UTC)",
   "col_last": "Last seen (UTC)",
@@ -1232,5 +1232,13 @@
   "audit_fleet_host_added": "Fleet host added",
   "audit_fleet_host_removed": "Fleet host removed",
   "audit_fleet_upgrade": "Fleet upgrade",
-  "audit_fleet_backup": "Fleet backup"
+  "audit_fleet_backup": "Fleet backup",
+  "feature_monitor": "Resources",
+  "feature_system": "System",
+  "feature_updates": "System updates",
+  "feature_processes": "Processes",
+  "feature_services": "Services",
+  "feature_ports": "Listening ports",
+  "feature_filemanager": "File manager",
+  "feature_fleet": "Fleet"
 }

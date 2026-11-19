@@ -1,10 +1,14 @@
-import { Cpu, Server, FolderOpen, ServerCog, Network, Cable, Radio, Earth, Waypoints, CircleOff, Timer, ArchiveRestore, Archive, HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
+import { Cpu, Server, FolderOpen, ServerCog, PackageCheck, ListTree, Cog, Plug, Network, Cable, Radio, Earth, Waypoints, CircleOff, Timer, ArchiveRestore, Archive, HardDriveDownload, SquareTerminal, UsersRound, Route, Activity, ArrowUpDown, Blocks, Gauge, ChevronsLeftRight, House, type IconNode, LayoutGrid, LogIn, Package, ScrollText, Settings, ShieldCheck } from 'lucide'
 import type { RouteMeta } from 'vue-router'
 
 const ICONS: Record<RouteMeta['icon'], IconNode> = {
   home: House,
   monitor: Cpu,
   system: Server,
+  updates: PackageCheck,
+  processes: ListTree,
+  services: Cog,
+  ports: Plug,
   filemanager: FolderOpen,
   fleet: ServerCog,
   dashboard: LayoutGrid,

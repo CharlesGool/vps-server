@@ -10,7 +10,7 @@ import re
 # Page paths the single-page console handles. Grows as pages are migrated.
 SPA_PAGES = {"/", "/login", "/changelog", "/settings", "/settings/security", "/settings/modules", "/settings/logs",
              "/speedtest", "/iperf", "/portfwd", "/visitors", "/terminal", "/files", "/backup", "/backup/restore", "/tasks", "/closed", "/tailscale", "/domains", "/domains/log", "/ipcert", "/frps", "/frpc", "/frpc/edit", "/proxy",
-             "/monitor", "/system",
+             "/monitor", "/system", "/updates", "/processes", "/services", "/ports",
              "/filemanager", "/fleet"}
 # Component and scene samples; only development and test builds have these
 # routes, a production build sends them back to the home page.
@@ -25,6 +25,15 @@ _ASSET_NAME = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _TYPES = {".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml",
           ".woff2": "font/woff2", ".woff": "font/woff", ".png": "image/png", ".json": "application/json"}
 API_BODY_LIMIT = 16 * 1024
+# API names of the switchable system features: (prefix, feature). The first match wins.
+FEATURE_APIS = (("monitor/alerts", "monitor"), ("monitor", "monitor"), ("system/updates", "updates"),
+                ("system/processes", "processes"), ("system/services", "services"), ("system/ports", "ports"),
+                ("system", "system"), ("fm/", "filemanager"), ("fleet", "fleet"))
+
+
+def feature_of(name):
+    return next((feature for prefix, feature in FEATURE_APIS if name == prefix or name.startswith(prefix + "/")
+                 or (prefix.endswith("/") and name.startswith(prefix))), None)
 
 
 def spa_dir(context):
@@ -185,6 +194,10 @@ class SpaMixin:
             self.api_error(401, "unauthenticated")
             return True
         handler = self.private_api_routes().get((method, name))
+        feature = feature_of(name) if handler else None
+        if feature and not self.context.module_feature_enabled(self.context.BASE_DIR, feature):
+            self.api_error(403, "feature_closed", url="/closed?module=" + feature)
+            return True
         if handler:
             getattr(self, handler)()
         else:

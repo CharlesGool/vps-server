@@ -594,7 +594,7 @@
       "deleteDescription": "The public port stops forwarding immediately, and this rule's traffic record is removed too."
     },
     "visitors": {
-      "description": "Addresses that recently connected to this server: console requests plus other inbound and outbound connections.",
+      "description": "Devices and addresses that reached the console, and SSH logins.",
       "filter": "Show"
     },
     "terminal": {
@@ -730,7 +730,7 @@
     },
     "system": {
       "title": "System",
-      "description": "Host name, system updates, SSH logins, and processes, services and ports.",
+      "description": "System information and host name.",
       "hostname": "Host name",
       "hostnameLabel": "New host name",
       "hostnameHelp": "Also updates /etc/hosts. Issued certificates and the CA keep their names.",
@@ -772,7 +772,10 @@
         "busy": "An upgrade is already running",
         "apt_failed": "Could not refresh the package lists",
         "service_protected": "The console's own service cannot be stopped"
-      }
+      },
+      "updatesDescription": "Upgradable packages and a one-click apt upgrade.",
+      "rename": "Change host name",
+      "packages": "Upgradable packages"
     },
     "processes": {
       "title": "Processes",
@@ -2006,12 +2009,12 @@
     "traffic_help_twice": "Proxied and forwarded traffic enters and leaves this host, so each byte counts twice. At the traffic cap it is slowed to 1 Mbps or cut off, as set.",
     "traffic_limit_manage": "Traffic limits",
     "upload": "Upload",
-    "visitors": "Recent visitors",
+    "visitors": "Recent visits",
     "visitors_clear": "Clear history",
     "visitors_clear_confirm": "Clear all recent visitor history? This cannot be undone. New visits and active connections will be recorded again.",
     "visitors_clear_done": "History cleared. New visits and active connections will be recorded again.",
     "visitors_clear_failed": "Could not clear history. Try again.",
-    "visitors_heading": "Recent visitors ({n} of last {max} unique IPs)",
+    "visitors_heading": "Visitors ({n} of last {max} unique IPs)",
     "waiting": "waiting",
     "your_ip": "Your IP as seen by this server",
     "audit_monitor_alerts_saved": "Resource alerts changed",

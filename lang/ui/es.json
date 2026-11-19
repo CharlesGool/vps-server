@@ -594,7 +594,7 @@
       "deleteDescription": "El puerto público deja de reenviar de inmediato y también se elimina el registro de tráfico de esta regla."
     },
     "visitors": {
-      "description": "Direcciones que se conectaron hace poco a este servidor: solicitudes a la consola y otras conexiones entrantes y salientes.",
+      "description": "Dispositivos y direcciones que llegaron a la consola, y accesos SSH.",
       "filter": "Mostrar"
     },
     "terminal": {
@@ -730,7 +730,7 @@
     },
     "system": {
       "title": "Sistema",
-      "description": "Nombre de host, actualizaciones, accesos SSH, y procesos, servicios y puertos.",
+      "description": "Información del sistema y nombre de host.",
       "hostname": "Nombre de host",
       "hostnameLabel": "Nuevo nombre de host",
       "hostnameHelp": "También actualiza /etc/hosts. Los certificados emitidos y la CA conservan sus nombres.",
@@ -772,7 +772,10 @@
         "busy": "Ya hay una actualización en curso",
         "apt_failed": "No se pudieron actualizar las listas de paquetes",
         "service_protected": "No se puede detener el servicio de la propia consola"
-      }
+      },
+      "updatesDescription": "Paquetes actualizables y actualización de apt con un clic.",
+      "rename": "Cambiar nombre de host",
+      "packages": "Paquetes actualizables"
     },
     "processes": {
       "title": "Procesos",
@@ -2006,12 +2009,12 @@
     "traffic_help_twice": "El tráfico de proxy y reenviado entra y sale de este servidor, así que cada byte cuenta dos veces. Al llegar al límite de tráfico se reduce a 1 Mbps o se corta, según lo configurado.",
     "traffic_limit_manage": "Límites de tráfico",
     "upload": "Subida",
-    "visitors": "Visitantes recientes",
+    "visitors": "Visitas recientes",
     "visitors_clear": "Borrar historial",
     "visitors_clear_confirm": "¿Borrar todo el historial de visitantes recientes? No se puede deshacer. Se volverán a registrar las nuevas visitas y las conexiones activas.",
     "visitors_clear_done": "Historial borrado. Se volverán a registrar las nuevas visitas y las conexiones activas.",
     "visitors_clear_failed": "No se pudo borrar el historial. Inténtalo de nuevo.",
-    "visitors_heading": "Visitantes recientes ({n} de las últimas {max} IP únicas)",
+    "visitors_heading": "Visitantes ({n} de las últimas {max} IP únicas)",
     "waiting": "en espera",
     "your_ip": "Tu IP según este servidor",
     "audit_monitor_alerts_saved": "Alertas de recursos cambiadas",

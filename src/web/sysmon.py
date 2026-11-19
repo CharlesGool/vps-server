@@ -206,11 +206,13 @@ def clamp_alerts(value):
 class Monitor:
     """The sampler, its history and the alert checks."""
 
-    def __init__(self, data_dir, notify=None, failed_units=None, texts=None):
+    def __init__(self, data_dir, notify=None, failed_units=None, texts=None, active=None):
         self.data_dir = Path(data_dir)
         self.history_path = self.data_dir / "monitor-history.json"
         self.settings_path = self.data_dir / "monitor.json"
         self.notify = notify
+        # The home switch: closed, the sampler keeps running (cheap) but sends no alerts.
+        self.active = active or (lambda: True)
         self.failed_units = failed_units
         self.texts = texts or (lambda key, **values: key)
         self.lock = threading.Lock()
@@ -393,7 +395,8 @@ class Monitor:
                 if now - last_point >= HISTORY_SECONDS:
                     last_point = now
                     self.record()
-                    self.check_alerts()
+                    if self.active():
+                        self.check_alerts()
                 if now - last_save >= 600:
                     last_save = now
                     self._save_history()

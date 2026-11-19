@@ -594,7 +594,7 @@
       "deleteDescription": "删除后这个公网端口立即停止转发, 这条规则的流量记录也一并删除."
     },
     "visitors": {
-      "description": "最近连接这台服务器的 IP: 访问控制台的请求和其他入站, 出站连接.",
+      "description": "访问控制台的设备和地址, 以及 SSH 登录记录.",
       "filter": "显示"
     },
     "terminal": {
@@ -730,7 +730,7 @@
     },
     "system": {
       "title": "系统",
-      "description": "主机名, 系统更新, SSH 登录记录, 以及进程, 服务和端口.",
+      "description": "系统信息和主机名.",
       "hostname": "主机名",
       "hostnameLabel": "新主机名",
       "hostnameHelp": "同时更新 /etc/hosts. 已签发的证书和 CA 名字不会跟着改.",
@@ -772,7 +772,10 @@
         "busy": "已有升级在进行",
         "apt_failed": "刷新软件源失败",
         "service_protected": "不能停止控制台自己的服务"
-      }
+      },
+      "updatesDescription": "查看可更新的软件包, 一键 apt 升级.",
+      "rename": "修改主机名",
+      "packages": "可更新的软件包"
     },
     "processes": {
       "title": "进程",
@@ -2006,12 +2009,12 @@
     "traffic_help_twice": "代理和转发的流量进出本机各一次, 每个字节计两次。达到流量上限后按设置限速到 1 Mbps 或断开。",
     "traffic_limit_manage": "流量限制",
     "upload": "上传",
-    "visitors": "最近访问者",
+    "visitors": "最近访问",
     "visitors_clear": "清除历史记录",
-    "visitors_clear_confirm": "清除全部最近访问者记录？此操作无法撤销。新访问和仍在连接中的设备会重新记录。",
+    "visitors_clear_confirm": "清除全部访客记录？此操作无法撤销。新访问和仍在连接中的设备会重新记录。",
     "visitors_clear_done": "历史记录已清除。新访问和仍在连接中的设备会重新记录。",
     "visitors_clear_failed": "清除失败，请重试。",
-    "visitors_heading": "最近访问者（共 {n} 个，最多保留最近 {max} 个不同 IP）",
+    "visitors_heading": "访客（共 {n} 个，最多保留最近 {max} 个不同 IP）",
     "waiting": "等待",
     "your_ip": "服务器看到的你的 IP",
     "audit_monitor_alerts_saved": "修改资源告警",

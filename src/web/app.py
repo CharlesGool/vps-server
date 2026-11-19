@@ -856,7 +856,8 @@ def failed_units():
     return [line.split()[0] for line in output.splitlines() if line.split()]
 
 
-MONITOR = sysmon.Monitor(DATA_DIR, notify=ALERTS.notify_task, failed_units=failed_units, texts=_log_text)
+MONITOR = sysmon.Monitor(DATA_DIR, notify=ALERTS.notify_task, failed_units=failed_units, texts=_log_text,
+                         active=lambda: module_feature_enabled(BASE_DIR, "monitor"))
 
 from api_tokens import ApiTokens  # noqa: E402
 from fleet import Fleet  # noqa: E402
@@ -1053,7 +1054,11 @@ SECURITY_HEADERS = (
 )
 
 
-PAGE_MODULES = {"/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
+# The system features (each with a home switch) and their pages.
+SYSTEM_FEATURES = {"monitor": "/monitor", "system": "/system", "updates": "/updates", "processes": "/processes",
+                   "services": "/services", "ports": "/ports", "filemanager": "/filemanager", "fleet": "/fleet"}
+PAGE_MODULES = {**{page: feature for feature, page in SYSTEM_FEATURES.items()},
+                "/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
                 "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
                 "/changelog": "changelog", "/files": "files"}
 

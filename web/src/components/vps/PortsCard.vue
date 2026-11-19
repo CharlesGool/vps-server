@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import type { Guard } from '@/lib/secure-page'
 
-// vps-server 项目组件: 系统页的监听端口卡片(整行, 列表样式). 哪个程序在哪个地址和端口监听, 以及端口登记(PORTS.md)里记下的用途.
+// vps-server 项目组件: 监听端口卡片(整行, 列表样式). 哪个程序在哪个地址和端口监听, 以及端口登记(PORTS.md)里记下的用途.
 interface Port { protocol: string; address: string; port: number; process: string; pid: number | null; owner: string }
 
 const { t } = useI18n()
@@ -65,7 +65,7 @@ const columns = computed(() => [
 </script>
 
 <template>
-  <PageSection :cols="4" :title="t('vps.ports.title')" :description="t('vps.ports.heading', { n: rows.length })">
+  <PageSection :cols="4" :title="t('vps.ports.heading', { n: rows.length })">
     <FormField v-slot="field" :label="t('vps.common.search')" :span="8">
       <Input :id="field.id" v-model="search" type="search" :placeholder="t('vps.ports.searchHint')" />
     </FormField>

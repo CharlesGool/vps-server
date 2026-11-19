@@ -163,7 +163,8 @@ class ModulesMixin:
                         "frps": "/frps", "frpc": "/frpc", "frp": "/frpc", "tailscale": "/tailscale", "portfwd": "/portfwd",
                         "caddy": "/domains", "ipcert": "/ipcert",
                         "files": "/files",
-                        "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog"}
+                        "visitors": "/visitors", "terminal": "/terminal", "changelog": "/changelog",
+                        **self.context.SYSTEM_FEATURES}
         if module not in destinations:
             return None
         t = self.context.STRINGS[lang]
@@ -172,7 +173,8 @@ class ModulesMixin:
                  "proxy_nodes": t["proxy"], "frps": "FRPS", "frpc": "FRPC", "tailscale": "Tailscale",
                  "caddy": t["domains"], "ipcert": t["ipcert"],
                  "frp": t["frp_heading"], "portfwd": t["portfwd"], "files": t["files"],
-                 "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"]}
+                 "visitors": t["visitors"], "terminal": t["terminal_title"], "changelog": t["changelog"],
+                 **{feature: t["feature_" + feature] for feature in self.context.SYSTEM_FEATURES}}
         return destinations[module], names[module], not self.context.module_states()[module]
 
 
@@ -242,6 +244,7 @@ def module_states(context, installed=None):
         "visitors": context.module_feature_enabled(context.BASE_DIR, "visitors"),
         "files": context.module_feature_enabled(context.BASE_DIR, "files"),
         "terminal": context.AUTH_ENABLED and context.module_feature_enabled(context.BASE_DIR, "terminal"),
+        **{feature: context.module_feature_enabled(context.BASE_DIR, feature) for feature in context.SYSTEM_FEATURES},
         "changelog": True,
     }
     states["frp"] = states["frps"] or states["frpc"]

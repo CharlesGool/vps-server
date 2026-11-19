@@ -245,7 +245,7 @@ class SystemApiMixin:
         ("GET", "system/updates"): "api_system_updates",
         ("POST", "system/updates/check"): "api_system_updates_check",
         ("POST", "system/updates/upgrade"): "api_system_updates_upgrade",
-        ("GET", "system/ssh"): "api_system_ssh",
+        ("GET", "visitors/ssh"): "api_system_ssh",
     }
 
     # -- overview --------------------------------------------------------------------------------
@@ -405,7 +405,8 @@ class SystemApiMixin:
     # -- SSH ---------------------------------------------------------------------------------------
 
     def api_system_ssh(self):
-        if not self._security_allowed():
+        """SSH logins, shown on the recent visits page (no admin check, like the visitor list)."""
+        if self._visitors_closed():
             return
         accepted, failed = ssh_logins()
         counts = {}

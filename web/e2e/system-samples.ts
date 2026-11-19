@@ -184,7 +184,7 @@ export const SYSTEM_ROUTES: [RegExp, unknown][] = [
   [/\/api\/monitor\/summary$/, RESOURCES_SAMPLE],
   [/\/api\/system$/, SYSTEM_SAMPLE],
   [/\/api\/system\/updates$/, UPDATES_SAMPLE],
-  [/\/api\/system\/ssh$/, SSH_SAMPLE],
+  [/\/api\/visitors\/ssh$/, SSH_SAMPLE],
   [/\/api\/system\/processes$/, PROCESSES_SAMPLE],
   [/\/api\/system\/services$/, SERVICES_SAMPLE],
   [/\/api\/system\/ports$/, PORTS_SAMPLE],

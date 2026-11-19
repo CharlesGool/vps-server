@@ -39,7 +39,7 @@
   "home": "Inicio",
   "dashboard": "Inicio",
   "speedtest": "Prueba de velocidad",
-  "visitors": "Visitantes recientes",
+  "visitors": "Visitas recientes",
   "back": "Volver",
   "back_to": "Volver a {destination}",
   "your_ip": "Tu IP según este servidor",
@@ -55,7 +55,7 @@
   "measuring": "midiendo…",
   "done": "terminado",
   "test_info": "Primero se mide la latencia durante {pings} viajes de ida y vuelta. Después, cada dirección se prueba durante unos {sec}s mediante varias conexiones paralelas; los primeros {warm}s de cada prueba son de preparación y no se contabilizan.",
-  "visitors_heading": "Visitantes recientes ({n} de las últimas {max} IP únicas)",
+  "visitors_heading": "Visitantes ({n} de las últimas {max} IP únicas)",
   "col_ip": "IP",
   "col_first": "Primera vez (UTC)",
   "col_last": "Última vez (UTC)",
@@ -1232,5 +1232,13 @@
   "audit_fleet_host_added": "Host añadido a la flota",
   "audit_fleet_host_removed": "Host quitado de la flota",
   "audit_fleet_upgrade": "Actualización de la flota",
-  "audit_fleet_backup": "Copia de la flota"
+  "audit_fleet_backup": "Copia de la flota",
+  "feature_monitor": "Recursos",
+  "feature_system": "Sistema",
+  "feature_updates": "Actualizaciones",
+  "feature_processes": "Procesos",
+  "feature_services": "Servicios",
+  "feature_ports": "Puertos en escucha",
+  "feature_filemanager": "Archivos",
+  "feature_fleet": "Flota"
 }

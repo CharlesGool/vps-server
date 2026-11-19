@@ -8,8 +8,10 @@ DASHBOARD_ITEMS = (
     ("proxy_nodes", "/proxy", True), ("frps", "/frps", True), ("frpc", "/frpc", True),
     ("tailscale", "/tailscale", True), ("caddy", "/domains", True), ("ipcert", "/ipcert", True),
     ("portfwd", "/portfwd", True), ("files", "/files", True), ("visitors", "/visitors", True),
-    ("terminal", "/terminal", True), ("filemanager", "/filemanager", False), ("system", "/system", False),
-    ("monitor", "/monitor", False), ("fleet", "/fleet", False), ("changelog", "/changelog", True), ("backup", "/backup", False),
+    ("terminal", "/terminal", True), ("monitor", "/monitor", True), ("system", "/system", True),
+    ("updates", "/updates", True), ("processes", "/processes", True), ("services", "/services", True),
+    ("ports", "/ports", True), ("filemanager", "/filemanager", True), ("fleet", "/fleet", True),
+    ("changelog", "/changelog", True), ("backup", "/backup", False),
     ("tasks", "/tasks", False), ("logs", "/settings/logs", False),
 )
 
@@ -99,8 +101,9 @@ class DashboardApiMixin:
         }
 
     def api_dashboard(self):
-        return self.api_ok({**self.dashboard_modules(), "total": self.dashboard_total(),
-                            "resources": self.dashboard_resources()})
+        resources = (self.dashboard_resources()
+                     if self.context.module_feature_enabled(self.context.BASE_DIR, "monitor") else None)
+        return self.api_ok({**self.dashboard_modules(), "total": self.dashboard_total(), "resources": resources})
 
     def dashboard_resources(self):
         """The four figures the home page shows above the modules, with hourly trend lines."""

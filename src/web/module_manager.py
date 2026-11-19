@@ -48,7 +48,8 @@ except ImportError:
 
 MODULES = ("web", "iperf3", "proxy", "frps", "tailscale", "caddy")
 STANDALONE_MODULES = ("frpc",)
-FEATURES = ("speedtest", "portfwd", "visitors", "terminal", "files")
+FEATURES = ("speedtest", "portfwd", "visitors", "terminal", "files",
+            "monitor", "system", "updates", "processes", "services", "ports", "filemanager", "fleet")
 # Off until switched on, unlike the older features (on unless switched off).
 DEFAULT_OFF_FEATURES = ("files",)
 GROUPS = ("proxy_nodes", "frpc")
