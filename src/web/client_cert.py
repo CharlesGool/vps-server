@@ -339,18 +339,50 @@ class ClientAuth:
         except (OSError, subprocess.SubprocessError) as exc:
             raise ClientCertError("client_cert_error") from exc
 
+    def _make_ca(self, work):
+        """Write a new host-named CA (ca.key, ca.pem) into ``work``; return their paths."""
+        key, cert = Path(work) / "ca.key", Path(work) / "ca.pem"
+        self._openssl(work, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+                      "-nodes", "-keyout", str(key), "-out", str(cert), "-days", str(CA_DAYS),
+                      "-subj", f"/CN={LEGACY_CA_CN} {host_label()}",
+                      "-addext", "basicConstraints=critical,CA:TRUE",
+                      "-addext", "keyUsage=critical,keyCertSign,cRLSign")
+        return key, cert
+
     def _create_ca(self):
         self.cert_dir.mkdir(parents=True, exist_ok=True)
         os.chmod(self.cert_dir, 0o700)
         with tempfile.TemporaryDirectory(dir=self.cert_dir) as work:
-            key, cert = Path(work) / "ca.key", Path(work) / "ca.pem"
-            self._openssl(work, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
-                          "-nodes", "-keyout", str(key), "-out", str(cert), "-days", str(CA_DAYS),
-                          "-subj", f"/CN={LEGACY_CA_CN} {host_label()}",
-                          "-addext", "basicConstraints=critical,CA:TRUE",
-                          "-addext", "keyUsage=critical,keyCertSign,cRLSign")
+            key, cert = self._make_ca(work)
             secure_store.write_bytes(self.ca_key, key.read_bytes())   # encrypted when the host has a data key
             _write_private(self.ca_cert, cert.read_bytes(), 0o644)
+
+    def _replace_legacy_ca(self):
+        """Give a host whose CA has the shared legacy name a CA of its own; True when replaced.
+
+        Every early host named its CA exactly LEGACY_CA_CN, and browsers tell CAs
+        apart by name: with several such hosts a browser cannot tell which of
+        their certificates a console accepts. A new host-named CA now signs, and
+        ``client-ca.pem`` becomes a bundle, new CA first, then the legacy one, so
+        certificates it signed keep working (TLS, Caddy and the CA names sent
+        to browsers all read every certificate in the file; signing and
+        ``issuer_cn`` use the first). The legacy key is not needed any more.
+        If the host's TLS library refuses the new CA, the old files come back.
+        """
+        if self.issuer_cn() != LEGACY_CA_CN:
+            return False
+        old_cert = self.ca_cert.read_bytes()
+        old_key = secure_store.read_bytes(self.ca_key)
+        with tempfile.TemporaryDirectory(dir=self.cert_dir) as work:
+            key, cert = self._make_ca(work)
+            new_cert = cert.read_bytes()
+            secure_store.write_bytes(self.ca_key, key.read_bytes())
+        _write_private(self.ca_cert, new_cert.rstrip(b"\n") + b"\n" + old_cert, 0o644)
+        if self.self_test():
+            return True
+        secure_store.write_bytes(self.ca_key, old_key)
+        _write_private(self.ca_cert, old_cert, 0o644)
+        return False
 
     def _sign_client(self, work, serial, days):
         """Write client.key and client.pem for ``serial`` into ``work``."""
@@ -426,6 +458,8 @@ class ClientAuth:
         """
         if not (self.ca_cert.is_file() and self.ca_key.is_file()):
             self._create_ca()
+        else:
+            self._replace_legacy_ca()
         fingerprint = _fingerprint(self.ca_cert)
         data = self.state()
         if data.get("ca_checked") == fingerprint:

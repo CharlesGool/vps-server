@@ -4,6 +4,7 @@ import os
 import json
 import plistlib
 import shutil
+import subprocess
 import ssl
 import sys
 import tempfile
@@ -57,6 +58,53 @@ class ClientCaTest(unittest.TestCase):
         subject = dict(pair for group in decoded["subject"] for pair in group)
         self.assertEqual(subject["organizationName"], cc.CLIENT_ORG)
         self.assertTrue(entry["cn"].startswith("vps-server client "))
+
+
+    def make_legacy_ca(self):
+        """A CA as early hosts made it: the shared name, no host."""
+        self.auth.cert_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=self.tmp) as work:
+            self.auth._openssl(work, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+                               "-nodes", "-keyout", str(self.auth.ca_key), "-out", str(self.auth.ca_cert),
+                               "-days", "30", "-subj", f"/CN={cc.LEGACY_CA_CN}",
+                               "-addext", "basicConstraints=critical,CA:TRUE",
+                               "-addext", "keyUsage=critical,keyCertSign,cRLSign")
+            old = Path(work) / "old"
+            old.mkdir()
+            self.auth._sign_client(old, "cd" * 16, 1)
+            return (old / "client.pem").read_bytes()
+
+    def verifies(self, pem):
+        with tempfile.NamedTemporaryFile(dir=self.tmp, suffix=".pem") as handle:
+            handle.write(pem)
+            handle.flush()
+            return subprocess.run([cc.openssl_binary(), "verify", "-CAfile", str(self.auth.ca_cert), handle.name],
+                                  capture_output=True).returncode == 0
+
+    def test_legacy_ca_gets_a_host_named_ca_and_stays_trusted(self):
+        old_pem = self.make_legacy_ca()
+        self.assertEqual(self.auth.issuer_cn(), cc.LEGACY_CA_CN)
+        self.auth.issue("mac")
+        self.assertEqual(self.auth.issuer_cn(), f"{cc.LEGACY_CA_CN} {cc.host_label()}")
+        self.assertEqual(self.auth.ca_cert.read_bytes().count(b"BEGIN CERTIFICATE"), 2)
+        self.assertTrue(self.verifies(old_pem))
+        with tempfile.TemporaryDirectory(dir=self.tmp) as work:
+            self.auth._sign_client(work, "ef" * 16, 1)
+            self.assertTrue(self.verifies((Path(work) / "client.pem").read_bytes()))
+        if cc._libssl() is not None:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            self.auth.configure(context)
+            self.assertEqual(client_ca_names(context), 2)
+        bundle = self.auth.ca_cert.read_bytes()
+        self.auth.issue("phone")  # replaced once only
+        self.assertEqual(self.auth.ca_cert.read_bytes(), bundle)
+
+    def test_failed_self_test_keeps_the_legacy_ca(self):
+        self.make_legacy_ca()
+        before = self.auth.ca_cert.read_bytes(), self.auth.ca_key.read_bytes()
+        self.auth.self_test = lambda: False
+        self.assertFalse(self.auth._replace_legacy_ca())
+        self.assertEqual((self.auth.ca_cert.read_bytes(), self.auth.ca_key.read_bytes()), before)
 
 
 class MacosProfileTest(unittest.TestCase):
