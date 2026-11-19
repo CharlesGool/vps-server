@@ -4,6 +4,7 @@ import { expect, type Page, test as base } from '@playwright/test'
 import { E2E_PASSWORD } from './password'
 import { FEATURES } from '../src/app.config'
 import { appRoutes } from '../src/routes'
+import { RESOURCES_SAMPLE, SYSTEM_ROUTES } from './system-samples'
 
 // 测试共用: 路由, 设计标记, 外观设置, 页面加载. 路由和标记都从源码读取, 新增后无需修改测试.
 const web = join(import.meta.dirname, '..')
@@ -384,6 +385,7 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
   // 迷你网盘显示本机磁盘剩余空间: 用固定样例(含文件, 下载链接, 进行中和失败的下载任务).
   // 备份和定时任务显示下次运行的日期和服务器时区: 用固定样例(含几份备份, 两个任务和运行记录).
   // Tailscale, 域名转发(Caddy), FRPS, FRPC 和 Singbox 在测试服务器上没有安装: 用已在使用的样例, 检查真正的管理界面.
+  // 资源监控, 系统, 文件管理和多主机显示本机实时数据(CPU, 进程, 服务, 端口, 文件): 用 system-samples.ts 的固定样例; 主页只替换 resources.
   stableServer: [
     async ({ page }, use, testInfo) => {
       // 截图对比里安全设置的登录设备数和安全记录取决于之前有多少测试登录过: 只在截图测试里用固定样例(其他测试要真实的安全设置)
@@ -410,6 +412,19 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
         await page.route(/\/api\/frps$/, (route) => route.fulfill({ json: FRPS_SAMPLE }))
         await page.route(/\/api\/frpc$/, (route) => route.fulfill({ json: FRPC_SAMPLE }))
         await page.route(/\/api\/proxy$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: PROXY_SAMPLE }) : route.fallback()))
+        for (const [pattern, sample] of SYSTEM_ROUTES) {
+          await page.route(pattern, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: sample }) : route.fallback()))
+        }
+        await page.route(/\/api\/dashboard$/, async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback()
+          // 测试结束时请求可能还在路上: 那时页面已关闭, 忽略即可
+          try {
+            const response = await route.fetch()
+            await route.fulfill({ response, json: { ...(await response.json()), resources: RESOURCES_SAMPLE } })
+          } catch {
+            // 页面已关闭
+          }
+        })
       }
       await use()
     },

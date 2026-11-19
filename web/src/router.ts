@@ -6,6 +6,10 @@ import { appRoutes, type View } from './routes'
 
 const VIEWS: Record<View, RouteComponent | (() => Promise<RouteComponent>)> = {
   dashboard: () => import('./views/DashboardView.vue'),
+  monitor: () => import('./views/MonitorView.vue'),
+  system: () => import('./views/SystemView.vue'),
+  filemanager: () => import('./views/FileManagerView.vue'),
+  fleet: () => import('./views/FleetView.vue'),
   settings: () => import('./views/SettingsView.vue'),
   security: () => import('./views/SecurityView.vue'),
   modules: () => import('./views/ModulesView.vue'),

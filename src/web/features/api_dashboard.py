@@ -8,7 +8,8 @@ DASHBOARD_ITEMS = (
     ("proxy_nodes", "/proxy", True), ("frps", "/frps", True), ("frpc", "/frpc", True),
     ("tailscale", "/tailscale", True), ("caddy", "/domains", True), ("ipcert", "/ipcert", True),
     ("portfwd", "/portfwd", True), ("files", "/files", True), ("visitors", "/visitors", True),
-    ("terminal", "/terminal", True), ("changelog", "/changelog", True), ("backup", "/backup", False),
+    ("terminal", "/terminal", True), ("filemanager", "/filemanager", False), ("system", "/system", False),
+    ("monitor", "/monitor", False), ("fleet", "/fleet", False), ("changelog", "/changelog", True), ("backup", "/backup", False),
     ("tasks", "/tasks", False), ("logs", "/settings/logs", False),
 )
 
@@ -98,7 +99,13 @@ class DashboardApiMixin:
         }
 
     def api_dashboard(self):
-        return self.api_ok({**self.dashboard_modules(), "total": self.dashboard_total()})
+        return self.api_ok({**self.dashboard_modules(), "total": self.dashboard_total(),
+                            "resources": self.dashboard_resources()})
+
+    def dashboard_resources(self):
+        """The four figures the home page shows above the modules, with hourly trend lines."""
+        summary = self.monitor_summary()
+        return {key: summary[key] for key in ("cpu", "memory", "disk", "load", "trend", "hourAgo")}
 
     def start_module_job(self, module, action):
         """Start a module job; returns None once started or when there is nothing

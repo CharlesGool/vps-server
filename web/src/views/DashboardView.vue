@@ -20,6 +20,10 @@ import {
   Timer,
   UsersRound,
   Waypoints,
+  Cpu,
+  FolderOpen,
+  Server,
+  ServerCog,
 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -36,11 +40,13 @@ import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import ProgressBar from '@/components/app/ProgressBar.vue'
 import RadioField from '@/components/app/RadioField.vue'
+import StatCard from '@/components/app/StatCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
 import { formatBytes } from '@/lib/format'
+import type { ResourceSummary } from '@/lib/monitor'
 import { showToast } from '@/lib/toast'
 
 // 主页: 主机总流量, 模块任务进度, 每个功能一张入口卡片(可启停的功能卡片右上角是开关).
@@ -72,6 +78,7 @@ interface Dashboard {
   busy: boolean
   job: { module: string; action: string; state: string; text: string } | null
   total: Total | null
+  resources?: ResourceSummary
 }
 
 const { t } = useI18n()
@@ -93,6 +100,10 @@ const TITLES: Record<string, string> = {
   backup: 'console.backup',
   tasks: 'console.tasks',
   logs: 'console.module_detailed_logs',
+  monitor: 'vps.monitor.title',
+  system: 'vps.system.title',
+  filemanager: 'vps.fm.title',
+  fleet: 'vps.fleet.title',
 }
 const NAMES: Record<string, string> = { frps: 'FRPS', frpc: 'FRPC', tailscale: 'Tailscale' }
 const ICONS: Record<string, typeof Gauge> = {
@@ -113,8 +124,27 @@ const ICONS: Record<string, typeof Gauge> = {
   backup: Archive,
   tasks: Timer,
   logs: Activity,
+  monitor: Cpu,
+  system: Server,
+  filemanager: FolderOpen,
+  fleet: ServerCog,
 }
 const title = (key: string) => NAMES[key] ?? t(TITLES[key] ?? key)
+
+// 资源概览: 主页顶部一行 4 张数据卡, 详情在资源监控页
+const resourceCards = computed(() => {
+  const value = data.value?.resources
+  if (!value) return []
+  const memory = value.memory.total ? Math.round((value.memory.used * 1000) / value.memory.total) / 10 : 0
+  const trend = (column: 1 | 2) => value.trend.map((row) => row[column]).filter((item): item is number => item != null)
+  const ago = value.hourAgo
+  return [
+    { key: 'cpu', label: t('vps.monitor.cpu'), value: `${value.cpu.percent.toFixed(1)}%`, delta: ago ? Math.round((value.cpu.percent - ago.cpu) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(1) },
+    { key: 'memory', label: t('vps.monitor.memory'), value: `${memory.toFixed(1)}%`, delta: ago ? Math.round((memory - ago.memory) * 10) / 10 : 0, deltaLabel: t('vps.monitor.vsHourAgo'), trend: trend(2) },
+    { key: 'disk', label: t('vps.monitor.disk'), value: value.disk ? `${value.disk.percent.toFixed(1)}%` : '-', delta: 0, deltaLabel: value.disk ? t('vps.monitor.diskFree', { free: formatBytes(value.disk.free) }) : '-', trend: [] },
+    { key: 'load', label: t('vps.monitor.load'), value: value.load[0].toFixed(2), delta: value.load[2] ? Math.round(((value.load[0] - value.load[2]) / value.load[2]) * 100) : 0, deltaLabel: t('vps.monitor.vsLoad15'), trend: [] },
+  ]
+})
 
 function detail(item: ModuleItem) {
   if (item.occupiedPort != null) return t('console.module_port_occupied', { port: item.occupiedPort })
@@ -253,6 +283,17 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
 <template>
   <CardGrid>
     <PageHeader :title="t('page.dashboard')" root />
+
+    <StatCard
+      v-for="card in resourceCards"
+      :key="card.key"
+      :label="card.label"
+      :value="card.value"
+      :delta="card.delta"
+      :delta-label="card.deltaLabel"
+      :trend="card.trend.length > 1 ? card.trend : undefined"
+      good="down"
+    />
 
     <PageSection v-if="total" :cols="4" :title="t('console.total_title')" :description="meta">
       <p class="text-2xl font-semibold tabular-nums">{{ figure }}</p>

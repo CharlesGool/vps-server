@@ -9,7 +9,9 @@ import re
 
 # Page paths the single-page console handles. Grows as pages are migrated.
 SPA_PAGES = {"/", "/login", "/changelog", "/settings", "/settings/security", "/settings/modules", "/settings/logs",
-             "/speedtest", "/iperf", "/portfwd", "/visitors", "/terminal", "/files", "/backup", "/backup/restore", "/tasks", "/closed", "/tailscale", "/domains", "/domains/log", "/ipcert", "/frps", "/frpc", "/frpc/edit", "/proxy"}
+             "/speedtest", "/iperf", "/portfwd", "/visitors", "/terminal", "/files", "/backup", "/backup/restore", "/tasks", "/closed", "/tailscale", "/domains", "/domains/log", "/ipcert", "/frps", "/frpc", "/frpc/edit", "/proxy",
+             "/monitor", "/system",
+             "/filemanager", "/fleet"}
 # Component and scene samples; only development and test builds have these
 # routes, a production build sends them back to the home page.
 SPA_PREFIXES = ("/showcase", "/scenes")
@@ -89,6 +91,9 @@ class SpaMixin:
 
     # -- JSON helpers ----------------------------------------------------------
 
+    def query_params(self):
+        return self.context.parse_qs(self.context.urlsplit(self.path).query)
+
     def api_error(self, status, code, **extra):
         return self.send_json(status, {"error": code, **extra}, {"Cache-Control": "no-store"})
 
@@ -111,7 +116,11 @@ class SpaMixin:
         host = self.headers.get("Host", "")
         return origin in (f"https://{host}", f"http://{host}")
 
-    def read_json(self):
+    def read_json_large(self, limit):
+        """read_json for the few requests that carry a whole file (the file manager's editor)."""
+        return self.read_json(limit)
+
+    def read_json(self, limit=API_BODY_LIMIT):
         """The request's JSON object, or None. Requiring application/json keeps
         other sites from posting here without a CORS preflight."""
         if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
@@ -120,7 +129,7 @@ class SpaMixin:
             length = int(self.headers.get("Content-Length", "0") or "0")
         except ValueError:
             return None
-        if not 0 < length <= API_BODY_LIMIT:
+        if not 0 < length <= limit:
             return None
         try:
             value = self.context.json.loads(self.rfile.read(length).decode("utf-8"))

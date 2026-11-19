@@ -13,6 +13,10 @@ export interface Feature {
 }
 
 export const FEATURE_LIST: Feature[] = [
+  { path: '/monitor', name: 'monitor', view: 'monitor', titleKey: 'vps.monitor.title', descriptionKey: 'vps.monitor.description', icon: 'monitor' },
+  { path: '/system', name: 'system', view: 'system', titleKey: 'vps.system.title', descriptionKey: 'vps.system.description', icon: 'system' },
+  { path: '/filemanager', name: 'filemanager', view: 'filemanager', titleKey: 'vps.fm.title', descriptionKey: 'vps.fm.description', icon: 'filemanager' },
+  { path: '/fleet', name: 'fleet', view: 'fleet', titleKey: 'vps.fleet.title', descriptionKey: 'vps.fleet.description', icon: 'fleet' },
   { path: '/speedtest', name: 'speedtest', view: 'speedtest', titleKey: 'console.speedtest', descriptionKey: 'vps.speedtest.description', icon: 'speedtest' },
   { path: '/iperf', name: 'iperf', view: 'iperf', titleKey: 'console.iperf_heading', descriptionKey: 'vps.iperf.description', icon: 'iperf' },
   { path: '/portfwd', name: 'portfwd', view: 'portfwd', titleKey: 'console.portfwd_heading', descriptionKey: 'vps.portfwd.description', icon: 'portfwd' },

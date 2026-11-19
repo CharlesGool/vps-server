@@ -838,6 +838,31 @@ def _scheduled_backup(keep):
 
 
 SCHEDULER = Scheduler(DATA_DIR, backup_action=_scheduled_backup, notify=ALERTS.notify_task)
+
+import sysmon  # noqa: E402
+
+# Units whose failure the resource alerts report: this project's own and the
+# services it manages. Other failed units on the host are none of its business.
+WATCHED_UNITS = ("vps-server*", "frpc*", "tailscaled.service")
+
+
+def failed_units():
+    try:
+        output = subprocess.run(["systemctl", "list-units", "--state=failed", "--plain", "--no-legend",
+                                 "--no-pager", *WATCHED_UNITS], capture_output=True, text=True, timeout=10,
+                                check=False).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [line.split()[0] for line in output.splitlines() if line.split()]
+
+
+MONITOR = sysmon.Monitor(DATA_DIR, notify=ALERTS.notify_task, failed_units=failed_units, texts=_log_text)
+
+from api_tokens import ApiTokens  # noqa: E402
+from fleet import Fleet  # noqa: E402
+
+API_TOKENS = ApiTokens(DATA_DIR / "api-tokens.json")
+FLEET = Fleet(DATA_DIR / "fleet.json")
 # Which source addresses may connect to the console at all. Off by default.
 CONSOLE_ACCESS = ConsoleAccess(DATA_DIR / "console-access.json")
 
@@ -1003,6 +1028,11 @@ from features.api_files import FilesApiMixin
 from features.api_terminal import TerminalApiMixin
 from features.api_visitors import VisitorsApiMixin
 from features.api_portfwd import PortfwdApiMixin
+from features.api_monitor import MonitorApiMixin
+from features.api_system import SystemApiMixin
+from features.api_filemanager import FileManagerApiMixin
+from features.api_v1 import TokenApiMixin
+from features.api_fleet import FleetApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1055,6 +1085,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                      DomainsApiMixin,
                      FrpApiMixin,
                      ProxyApiMixin,
+                     MonitorApiMixin, SystemApiMixin, FileManagerApiMixin, TokenApiMixin, FleetApiMixin,
                      BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 
@@ -1290,8 +1321,12 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
 
         lang, _query_lang = self.resolve_lang(parsed)
 
+        # Scripts and other consoles: token in the Authorization header, no session or certificate.
+        if self.route_token_api(method, path):
+            return
+
         # With client certificates required, a device without an active one
-        # reaches nothing but static files, Clash subscriptions and download links above.
+        # reaches nothing but static files, Clash subscriptions, download links and the token API above.
         if AUTH_ENABLED and CLIENT_AUTH.required() and self.client_certificate() is None:
             return self.page_client_cert_required(lang)
 
@@ -1614,6 +1649,7 @@ def main():
             print(_log_text('log_encryption_failed', error=error), file=sys.stderr)
         APP_METER.start()
         SCHEDULER.start()
+        MONITOR.start()
 
         console.serve_forever()
     except KeyboardInterrupt:
@@ -1631,6 +1667,7 @@ def main():
                 pass
         stop_event.set()
         SCHEDULER.stop()
+        MONITOR.stop()
         terminal_session.hangup_all()
         close_iperf_window()
         if portfwd_enabled():

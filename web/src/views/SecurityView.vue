@@ -18,6 +18,7 @@ import InfoTip from '@/components/app/InfoTip.vue'
 import InputAction from '@/components/app/InputAction.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
+import ApiTokensCard from '@/components/vps/ApiTokensCard.vue'
 import PaginationBar from '@/components/app/PaginationBar.vue'
 import PasswordInput from '@/components/app/PasswordInput.vue'
 import RadioField from '@/components/app/RadioField.vue'
@@ -722,6 +723,9 @@ const auditColumns = computed(() => [
           </SettingRow>
         </PageSection>
       </CardForm>
+
+      <!-- API 令牌: 给脚本和其他控制台(多主机)用, 见 doc/API.md -->
+      <ApiTokensCard @expired="expire(); showToast(t('security.expired'))" />
 
       <!-- 安全记录: 最近 50 条, 每页 10 条 -->
       <PageSection :cols="4" :title="t('console.audit_heading')" :description="t('console.audit_intro')">
