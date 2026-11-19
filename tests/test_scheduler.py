@@ -260,6 +260,15 @@ class SchedulerTest(unittest.TestCase):
         worker.join(5)
         self.assertEqual(sorted(r["status"] for r in self.s.runs(tid)), ["ok", "skipped"])
 
+    def test_home_switch_pauses_tasks(self):
+        tid = self.s.add_task("c", "* * * * *", "x")
+        self.now = ts(2026, 11, 16, 12, 30, 5)
+        switches = {"tasks": False, "backup": True}
+        self.s.active = lambda feature: switches[feature]
+        self.assertEqual(self.s.tick(self.now), [])
+        switches["tasks"] = True
+        self.assertEqual(self.s.tick(self.now + 1), [tid])
+
     def test_cron_task_runs_once_per_minute_even_across_a_restart(self):
         tid = self.s.add_task("c", "* * * * *", "x")
         self.now = ts(2026, 11, 16, 12, 30, 5)

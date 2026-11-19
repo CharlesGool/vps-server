@@ -1240,5 +1240,7 @@
   "feature_services": "Servicios",
   "feature_ports": "Puertos en escucha",
   "feature_filemanager": "Archivos",
-  "feature_fleet": "Flota"
+  "feature_fleet": "Flota",
+  "feature_backup": "Copias de seguridad",
+  "feature_tasks": "Tareas programadas"
 }

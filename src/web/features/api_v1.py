@@ -181,6 +181,8 @@ class TokenApiMixin:
 
     def v1_backup(self):
         import config_backup
+        if not self.context.module_feature_enabled(self.context.BASE_DIR, "backup"):
+            return self.api_error(403, "feature_closed")
         try:
             name = config_backup.create_backup("manual")
         except (OSError, ValueError, RuntimeError):

@@ -1240,5 +1240,7 @@
   "feature_services": "Services",
   "feature_ports": "Listening ports",
   "feature_filemanager": "File manager",
-  "feature_fleet": "Fleet"
+  "feature_fleet": "Fleet",
+  "feature_backup": "Backup",
+  "feature_tasks": "Scheduled tasks"
 }

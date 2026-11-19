@@ -837,7 +837,8 @@ def _scheduled_backup(keep):
     return name
 
 
-SCHEDULER = Scheduler(DATA_DIR, backup_action=_scheduled_backup, notify=ALERTS.notify_task)
+SCHEDULER = Scheduler(DATA_DIR, backup_action=_scheduled_backup, notify=ALERTS.notify_task,
+                      active=lambda feature: module_feature_enabled(BASE_DIR, feature))
 
 import sysmon  # noqa: E402
 
@@ -1056,8 +1057,9 @@ SECURITY_HEADERS = (
 
 # The system features (each with a home switch) and their pages.
 SYSTEM_FEATURES = {"monitor": "/monitor", "system": "/system", "updates": "/updates", "processes": "/processes",
-                   "services": "/services", "ports": "/ports", "filemanager": "/filemanager", "fleet": "/fleet"}
-PAGE_MODULES = {**{page: feature for feature, page in SYSTEM_FEATURES.items()},
+                   "services": "/services", "ports": "/ports", "filemanager": "/filemanager", "fleet": "/fleet",
+                   "backup": "/backup", "tasks": "/tasks"}
+PAGE_MODULES = {**{page: feature for feature, page in SYSTEM_FEATURES.items()}, "/backup/restore": "backup",
                 "/speedtest": "speedtest", "/iperf": "iperf3", "/proxy": "proxy_nodes",
                 "/portfwd": "portfwd", "/visitors": "visitors", "/terminal": "terminal",
                 "/changelog": "changelog", "/files": "files"}
@@ -1378,6 +1380,8 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
         if path == "/terminal/ws":
             terminal_session.serve(self, sys.modules[__name__], parsed)
         elif path == "/backup/download":
+            if not module_feature_enabled(BASE_DIR, "backup"):
+                return self.redirect("/closed?module=backup", {"Cache-Control": "no-store"})
             self.handle_backup_download(parsed)
         elif path in ("/public/http", "/public/https"):
             self.public_page_redirect(path)

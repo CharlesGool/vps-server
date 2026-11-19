@@ -1240,5 +1240,7 @@
   "feature_services": "服务",
   "feature_ports": "监听端口",
   "feature_filemanager": "文件管理",
-  "feature_fleet": "多主机"
+  "feature_fleet": "多主机",
+  "feature_backup": "备份",
+  "feature_tasks": "定时任务"
 }

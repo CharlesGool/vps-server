@@ -308,7 +308,7 @@ def _read_json(path, default):
 class Scheduler:
     """Owns ``scheduled-tasks.json`` (definitions) and ``scheduled-runs.json`` (history)."""
 
-    def __init__(self, data_dir, *, backup_action, notify=None, run_command=None, clock=time.time):
+    def __init__(self, data_dir, *, backup_action, notify=None, run_command=None, clock=time.time, active=None):
         self.tasks_path = Path(data_dir) / "scheduled-tasks.json"
         self.runs_path = Path(data_dir) / "scheduled-runs.json"
         self.backup_path = Path(data_dir) / "backup-settings.json"
@@ -316,6 +316,8 @@ class Scheduler:
         self.notify = notify or (lambda title, body: None)
         self.run_command = run_command or self._systemd_run
         self.clock = clock
+        # The home switches: active("tasks") / active("backup") false pauses those schedules (markers stay put).
+        self.active = active or (lambda feature: True)
         self.lock = threading.RLock()
         self.running = set()
         self._stop = threading.Event()
@@ -534,7 +536,7 @@ class Scheduler:
         """Start whatever is due. Called every second; each schedule decides from its own marker."""
         stamp = now if now is not None else self.clock()
         started = []
-        for task in self.tasks():
+        for task in (self.tasks() if self.active("tasks") else []):
             if not task.get("enabled"):
                 continue
             spec = task_spec(task)
@@ -558,7 +560,7 @@ class Scheduler:
                 self._record(task["id"], {"started": int(stamp), "ended": int(stamp), "status": "skipped", "exit": None,
                                           "trigger": "schedule", "output": "missed"})
         settings = self.backup_settings()
-        if settings["enabled"]:
+        if settings["enabled"] and self.active("backup"):
             if settings["anchor"] is None:
                 self._set_backup_anchor(stamp)
             else:

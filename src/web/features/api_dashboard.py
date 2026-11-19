@@ -11,8 +11,8 @@ DASHBOARD_ITEMS = (
     ("terminal", "/terminal", True), ("monitor", "/monitor", True), ("system", "/system", True),
     ("updates", "/updates", True), ("processes", "/processes", True), ("services", "/services", True),
     ("ports", "/ports", True), ("filemanager", "/filemanager", True), ("fleet", "/fleet", True),
-    ("changelog", "/changelog", True), ("backup", "/backup", False),
-    ("tasks", "/tasks", False), ("logs", "/settings/logs", False),
+    ("changelog", "/changelog", False), ("backup", "/backup", True),
+    ("tasks", "/tasks", True), ("logs", "/settings/logs", False),
 )
 
 
