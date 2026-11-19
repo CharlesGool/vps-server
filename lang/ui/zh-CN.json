@@ -649,7 +649,7 @@
       "share": "Clash 订阅",
       "enabledName": "启用 {name}",
       "invalidDestinations": "访问目标格式不对, 请按说明每行填写一个.",
-      "destinationsExample": "172.22.31.10:443"
+      "destinationsExample": "192.0.2.10:443"
     }
   },
   "legacy": {

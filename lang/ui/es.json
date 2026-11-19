@@ -649,7 +649,7 @@
       "share": "Suscripción de Clash",
       "enabledName": "Activar {name}",
       "invalidDestinations": "Algunos destinos no son válidos. Escribe uno por línea según la descripción.",
-      "destinationsExample": "172.22.31.10:443"
+      "destinationsExample": "192.0.2.10:443"
     }
   },
   "legacy": {
