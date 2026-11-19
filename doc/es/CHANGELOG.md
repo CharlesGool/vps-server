@@ -26,6 +26,22 @@ metadata:
 
 ## Historial de cambios
 
+### v7.1.2 — 2026-11-19
+
+Los hosts instalados al principio pasan a una CA de cliente con el nombre del host, para que la selección automática en un Mac también los distinga. El comando de actualización no cambia, la configuración y los datos se conservan y los certificados emitidos siguen siendo válidos.
+
+#### Corregido
+
+- **Los hosts instalados al principio compartían un nombre de CA, así que los navegadores no distinguían sus certificados.** Sus CA se llaman todas "vps-server console client CA" y los navegadores distinguen los certificados por el nombre de la CA, así que con la regla compartida de v7.1.1 un Mac podía enviar a estos hosts el certificado equivocado. Ahora un host así crea una CA nueva con el nombre del host la próxima vez que emite un certificado y firma con ella; la CA antigua sigue siendo de confianza, así que los certificados que firmó (en Windows, teléfonos y otros dispositivos) siguen funcionando. La CA nueva solo se usa tras pasar una prueba con la biblioteca TLS del host; si no, se mantiene la antigua.
+
+#### Migración
+
+Igual que en v7.1.1: en el Mac, para cada host, emite un certificado nuevo e instala su perfil nuevo, luego quita el perfil antiguo y revoca el certificado antiguo. Los hosts ya migrados con v7.1.1 no se ven afectados.
+
+#### Verificación
+
+Se simularon en Chromium dos hosts antiguos con el mismo nombre de CA, con los certificados antiguos y nuevos de ambos instalados y la regla compartida: cada host recibió su propio certificado nuevo sin selector y los certificados antiguos siguen verificándose. 2 pruebas unitarias nuevas; la comprobación completa pasa.
+
 ### v7.1.1 — 2026-11-19
 
 Chrome y Edge en un Mac eligen solos el certificado de cliente de cada host. El comando de actualización no cambia y la configuración y los datos se conservan. En un Mac hay que volver a emitir los certificados; consulta los pasos de migración.
