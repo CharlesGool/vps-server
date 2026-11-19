@@ -32,7 +32,7 @@ import { formatBytes } from '@/lib/format'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// 文件管理: 列表模式, 一张整行卡片. 上面是当前路径(可直接输入后前往), 中间是目录表格(可多选, 每页 10 行),
+// 文件管理: 列表模式, 一张整行卡片. 上面是当前路径(可直接输入后前往), 中间是目录表格(可多选, 每页 50 行),
 // 下面是按钮行(上一级, 新建, 上传, 对所选项的操作). 每行的操作菜单: 打开, 编辑, 下载, 重命名, 复制, 移动, 权限, 所有者, 压缩, 解压, 删除.
 // 以 root 身份读写整个文件系统, 进入前要验证管理员密码(和终端相同). 文本文件在侧边抽屉里编辑(最大 1 MiB).
 interface Entry {
@@ -50,6 +50,8 @@ interface Entry {
 interface Listing { path: string; rows: Entry[]; truncated: boolean; free: number | null; users: string[]; groups: string[] }
 type Op = 'mkdir' | 'touch' | 'rename' | 'copy' | 'move' | 'chmod' | 'chown' | 'compress' | 'extract'
 
+// 长列表一页 50 行(项目决策 2026-11-20)
+const PAGE = 50
 const { t, te, locale } = useI18n()
 const { state, guard } = useSecurePage()
 const listing = ref<Listing>()
@@ -90,7 +92,7 @@ const rows = computed(() =>
   (listing.value?.rows ?? []).slice().sort((a, b) => Number(b.type === 'dir' || !!b.targetDir) - Number(a.type === 'dir' || !!a.targetDir) || a.name.localeCompare(b.name)),
 )
 const pageRows = computed(() =>
-  rows.value.slice((page.value - 1) * 10, page.value * 10).map((row) => ({
+  rows.value.slice((page.value - 1) * PAGE, page.value * PAGE).map((row) => ({
     ...row,
     sizeText: row.size == null ? '' : formatBytes(row.size),
     modifiedText: new Date(row.modified * 1000).toLocaleString(locale.value, { dateStyle: 'short', timeStyle: 'short' }),
@@ -307,7 +309,7 @@ const description = computed(() => {
           <InputAction :id="fld.id" v-model="typed" :action-label="t('vps.fm.go')" :action-disabled="busy || !typed.startsWith('/')" spellcheck="false" autocomplete="off" />
         </FormField>
         <AlertBanner v-if="listing?.truncated" tone="warning">{{ t('vps.fm.truncated') }}</AlertBanner>
-        <DataTable v-model:selected="selected" selectable :columns="columns" :rows="pageRows" row-key="name" :caption="t('vps.fm.location')" :empty="t('vps.fm.empty')">
+        <DataTable long v-model:selected="selected" selectable :columns="columns" :rows="pageRows" row-key="name" :caption="t('vps.fm.location')" :empty="t('vps.fm.empty')">
           <template #cell-name="{ row }">
             <RouterLink v-if="isDir(row as unknown as Entry)" :to="{ path: '/filemanager', query: { path: join(path, String(row.name)) } }" class="font-medium text-primary underline">{{ row.name }}/</RouterLink>
             <template v-else>{{ row.name }}</template>
@@ -317,7 +319,7 @@ const description = computed(() => {
             <ActionMenu icon-only :label="t('vps.common.actionsFor', { name: String(row.name) })" :items="menu(row as unknown as Entry)" @select="choose(row as unknown as Entry, $event)" />
           </template>
         </DataTable>
-        <PaginationBar v-if="rows.length > 10" v-model="page" :total="rows.length" />
+        <PaginationBar v-if="rows.length > PAGE" v-model="page" :total="rows.length" :page-size="PAGE" />
         <FormActions>
           <Button variant="outline" type="button" :disabled="busy || path === '/'" @click="go(parent(path))"><ArrowUp aria-hidden="true" />{{ t('vps.fm.up') }}</Button>
           <Button variant="outline" type="button" :disabled="busy" @click="reload"><RefreshCw aria-hidden="true" />{{ t('vps.common.refresh') }}</Button>

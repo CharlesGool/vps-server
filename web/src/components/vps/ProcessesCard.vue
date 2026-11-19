@@ -17,9 +17,11 @@ import { formatBytes } from '@/lib/format'
 import type { Guard } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// vps-server 项目组件: 进程卡片(整行, 列表样式). 上面搜索和排序, 中间表格(每页 10 行), 每行的操作菜单可以结束或强制结束进程(都要确认).
+// vps-server 项目组件: 进程卡片(整行, 列表样式). 上面搜索和排序, 中间表格(每页 50 行), 每行的操作菜单可以结束或强制结束进程(都要确认).
 interface Process { pid: number; ppid: number; name: string; state: string; user: string; cpu: number; memory: number; command: string }
 
+// 长列表一页 50 行(项目决策 2026-11-20)
+const PAGE = 50
 const { t } = useI18n()
 const { guard } = defineProps<{ guard: Guard }>()
 const rows = ref<Process[]>([])
@@ -54,7 +56,7 @@ const filtered = computed(() => {
 })
 watch([search, sort], () => (page.value = 1))
 const pageRows = computed(() =>
-  filtered.value.slice((page.value - 1) * 10, page.value * 10).map((row) => ({ ...row, cpuText: `${row.cpu.toFixed(1)}%`, memoryText: formatBytes(row.memory) })),
+  filtered.value.slice((page.value - 1) * PAGE, page.value * PAGE).map((row) => ({ ...row, cpuText: `${row.cpu.toFixed(1)}%`, memoryText: formatBytes(row.memory) })),
 )
 const columns = computed(() => [
   { key: 'pid', label: 'PID', align: 'end' as const, mono: true },
@@ -94,7 +96,7 @@ async function confirmKill() {
     <FormField :label="t('vps.processes.sort')" group :span="4">
       <SegmentedControl v-model="sort" :options="sorts" :label="t('vps.processes.sort')" />
     </FormField>
-    <DataTable :columns="columns" :rows="pageRows" row-key="pid" :caption="t('vps.processes.title')" :empty="t('vps.processes.empty')">
+    <DataTable long :columns="columns" :rows="pageRows" row-key="pid" :caption="t('vps.processes.title')" :empty="t('vps.processes.empty')">
       <template #cell-command="{ row }">{{ String(row.command).slice(0, 120) }}</template>
       <template #cell-actions="{ row }">
         <ActionMenu
@@ -106,7 +108,7 @@ async function confirmKill() {
         />
       </template>
     </DataTable>
-    <PaginationBar v-if="filtered.length > 10" v-model="page" :total="filtered.length" />
+    <PaginationBar v-if="filtered.length > PAGE" v-model="page" :total="filtered.length" :page-size="PAGE" />
     <FormActions>
       <Button variant="outline" :disabled="busy" @click="load"><RefreshCw aria-hidden="true" />{{ t('vps.common.refresh') }}</Button>
     </FormActions>

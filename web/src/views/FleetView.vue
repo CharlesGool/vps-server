@@ -51,6 +51,8 @@ interface Host {
   }
 }
 
+// 长列表一页 50 行(项目决策 2026-11-20)
+const PAGE = 50
 const { t, te } = useI18n()
 const { state, guard } = useSecurePage()
 const hosts = ref<Host[]>([])
@@ -80,7 +82,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const percent = (used: number, total: number) => (total ? Math.round((used * 1000) / total) / 10 : 0)
 const pageRows = computed(() =>
-  hosts.value.slice((page.value - 1) * 10, page.value * 10).map((host) => {
+  hosts.value.slice((page.value - 1) * PAGE, page.value * PAGE).map((host) => {
     const resources = host.status?.resources
     return {
       ...host,
@@ -211,7 +213,7 @@ async function save() {
       <AlertBanner v-if="failedResults.length" tone="destructive">
         {{ t('vps.fleet.batchFailed', { names: failedResults.map((row) => `${row.name} (${errorText(row.error ?? '') ?? row.error})`).join(', ') }) }}
       </AlertBanner>
-      <DataTable v-model:selected="selected" selectable :columns="columns" :rows="pageRows" row-key="id" :caption="t('vps.fleet.title')" :empty="t('vps.fleet.emptyTitle')">
+      <DataTable long v-model:selected="selected" selectable :columns="columns" :rows="pageRows" row-key="id" :caption="t('vps.fleet.title')" :empty="t('vps.fleet.emptyTitle')">
         <template #cell-ok="{ row }">
           <StatusBadge :tone="row.ok ? ((row as unknown as Host).status?.failed.length ? 'warning' : 'success') : 'destructive'">
             {{ row.ok ? ((row as unknown as Host).status?.failed.length ? t('vps.fleet.degraded') : t('vps.fleet.online')) : t('vps.fleet.offline') }}
@@ -233,7 +235,7 @@ async function save() {
           <ActionMenu icon-only :label="t('vps.common.actionsFor', { name: String(row.label) })" :items="menu" @select="choose(row as unknown as Host, $event)" />
         </template>
       </DataTable>
-      <PaginationBar v-if="hosts.length > 10" v-model="page" :total="hosts.length" />
+      <PaginationBar v-if="hosts.length > PAGE" v-model="page" :total="hosts.length" :page-size="PAGE" />
       <FormActions>
         <Button variant="outline" :disabled="busy" @click="load(true)"><RefreshCw aria-hidden="true" />{{ t('vps.common.refresh') }}</Button>
         <Button variant="outline" :disabled="busy || !selected.length" @click="batch = 'backup'">{{ t('vps.fleet.backupSelected', { n: selected.length }) }}</Button>

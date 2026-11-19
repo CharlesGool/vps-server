@@ -24,6 +24,8 @@ import { showToast } from '@/lib/toast'
 interface Service { unit: string; load: string; active: string; sub: string; description: string; enabled: string }
 type Action = 'start' | 'stop' | 'restart' | 'enable' | 'disable'
 
+// 长列表一页 50 行(项目决策 2026-11-20)
+const PAGE = 50
 const { t, te } = useI18n()
 const { guard } = defineProps<{ guard: Guard }>()
 const rows = ref<Service[]>([])
@@ -60,7 +62,7 @@ const filtered = computed(() => {
   )
 })
 watch([search, filter], () => (page.value = 1))
-const pageRows = computed(() => filtered.value.slice((page.value - 1) * 10, page.value * 10))
+const pageRows = computed(() => filtered.value.slice((page.value - 1) * PAGE, page.value * PAGE))
 const columns = computed(() => [
   { key: 'unit', label: t('vps.services.unit'), mono: true },
   { key: 'active', label: t('vps.services.state') },
@@ -120,7 +122,7 @@ function confirmPending() {
     <FormField :label="t('vps.services.show')" group :span="4">
       <SegmentedControl v-model="filter" :options="filters" :label="t('vps.services.show')" />
     </FormField>
-    <DataTable :columns="columns" :rows="pageRows" row-key="unit" :caption="t('vps.services.title')" :empty="t('vps.services.empty')">
+    <DataTable long :columns="columns" :rows="pageRows" row-key="unit" :caption="t('vps.services.title')" :empty="t('vps.services.empty')">
       <template #cell-active="{ row }">
         <StatusBadge :tone="tone(row as unknown as Service)">{{ te(`vps.services.states.${row.active}`) ? t(`vps.services.states.${row.active}`) : String(row.active) }}</StatusBadge>
       </template>
@@ -129,7 +131,7 @@ function confirmPending() {
         <ActionMenu icon-only :label="t('vps.common.actionsFor', { name: String(row.unit) })" :items="menu(row as unknown as Service)" @select="choose(row as unknown as Service, $event)" />
       </template>
     </DataTable>
-    <PaginationBar v-if="filtered.length > 10" v-model="page" :total="filtered.length" />
+    <PaginationBar v-if="filtered.length > PAGE" v-model="page" :total="filtered.length" :page-size="PAGE" />
     <FormActions>
       <Button variant="outline" :disabled="busy" @click="load"><RefreshCw aria-hidden="true" />{{ t('vps.common.refresh') }}</Button>
     </FormActions>

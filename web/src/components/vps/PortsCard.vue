@@ -16,6 +16,8 @@ import type { Guard } from '@/lib/secure-page'
 // vps-server 项目组件: 监听端口卡片(整行, 列表样式). 哪个程序在哪个地址和端口监听, 以及端口登记(PORTS.md)里记下的用途.
 interface Port { protocol: string; address: string; port: number; process: string; pid: number | null; owner: string }
 
+// 长列表一页 50 行(项目决策 2026-11-20)
+const PAGE = 50
 const { t } = useI18n()
 const { guard } = defineProps<{ guard: Guard }>()
 const rows = ref<Port[]>([])
@@ -48,7 +50,7 @@ const filtered = computed(() => {
 })
 watch([search, protocol], () => (page.value = 1))
 const pageRows = computed(() =>
-  filtered.value.slice((page.value - 1) * 10, page.value * 10).map((row) => ({
+  filtered.value.slice((page.value - 1) * PAGE, page.value * PAGE).map((row) => ({
     ...row,
     key: `${row.protocol}-${row.address}-${row.port}`,
     protocolText: row.protocol.toUpperCase(),
@@ -72,8 +74,8 @@ const columns = computed(() => [
     <FormField :label="t('vps.ports.protocol')" group :span="4">
       <SegmentedControl v-model="protocol" :options="protocols" :label="t('vps.ports.protocol')" />
     </FormField>
-    <DataTable :columns="columns" :rows="pageRows" row-key="key" :caption="t('vps.ports.title')" :empty="t('vps.ports.empty')" />
-    <PaginationBar v-if="filtered.length > 10" v-model="page" :total="filtered.length" />
+    <DataTable long :columns="columns" :rows="pageRows" row-key="key" :caption="t('vps.ports.title')" :empty="t('vps.ports.empty')" />
+    <PaginationBar v-if="filtered.length > PAGE" v-model="page" :total="filtered.length" :page-size="PAGE" />
     <FormActions>
       <Button variant="outline" :disabled="busy" @click="load"><RefreshCw aria-hidden="true" />{{ t('vps.common.refresh') }}</Button>
     </FormActions>

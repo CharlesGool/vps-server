@@ -242,9 +242,11 @@ export function cardBodyProblems(page: Page): Promise<string[]> {
       }
 
       // 数据表一次最多显示 10 行, 更多的数据用 PaginationBar 分页
+      // vps-server(项目决策 2026-11-20): 标了 data-table-long 的长列表(进程, 服务, 端口, 文件, 集中管理)一页最多 50 行
       for (const table of body.querySelectorAll('table')) {
         const count = table.querySelectorAll('tbody tr').length
-        if (visible(table) && count > 10) found.push(`数据表一次显示了 ${count} 行, 最多 10 行, 更多的数据用 PaginationBar 分页: ${describe(body)}`)
+        const limit = table.closest('[data-table-long]') ? 50 : 10
+        if (visible(table) && count > limit) found.push(`数据表一次显示了 ${count} 行, 最多 ${limit} 行, 更多的数据用 PaginationBar 分页: ${describe(body)}`)
       }
 
       // 同一张卡片只用一种样式: 表单样式(标签在上的字段, 勾选框)和设置行样式(左边名称右边控件的设置项, 开关)不混用

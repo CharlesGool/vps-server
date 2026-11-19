@@ -94,7 +94,7 @@ metadata:
 
 ## 设计标记
 
-`web/` 的设计标记原样取自最新 Web UI 起始模板(字号, 字重, 8 px 倍数行高, 间距, 圆角, 阴影, 容器, 八主题色, 动效), 本项目没有新增标记. 新增共享组件 `ModuleCard`(带开关的功能入口卡片)和 `LogOutput`(日志框), 样例在组件样例里; 改动的模板组件: `NumberField` 加 `grouping`(端口不加千位分隔符), `DataTable` 的滚动区域可键盘聚焦, `PaginationBar` 页码过多时换行, `LoginPanel` 加证书登录按钮, `CopyButton` 改用共用的 `lib/clipboard.ts`; 顶栏不显示项目标志(决策 2026-10-07). 外观记录沿用 v7 的 `vps-server-mode`/`vps-server-theme`, 语言同步到服务器的 `lang` Cookie. 检查命令: `cd web && npm run check`.
+`web/` 的设计标记原样取自最新 Web UI 起始模板(字号, 字重, 8 px 倍数行高, 间距, 圆角, 阴影, 容器, 八主题色, 动效), 本项目没有新增标记. 新增共享组件 `ModuleCard`(带开关的功能入口卡片)和 `LogOutput`(日志框), 样例在组件样例里; 改动的模板组件: `NumberField` 加 `grouping`(端口不加千位分隔符), `DataTable` 的滚动区域可键盘聚焦, 加 `long`(长列表一页 50 行, 见 LOG 决策 2026-11-20), `PaginationBar` 页码过多时换行, `LoginPanel` 加证书登录按钮, `CopyButton` 改用共用的 `lib/clipboard.ts`; 顶栏不显示项目标志(决策 2026-10-07). 外观记录沿用 v7 的 `vps-server-mode`/`vps-server-theme`, 语言同步到服务器的 `lang` Cookie. 检查命令: `cd web && npm run check`.
 
 ## 数据设计
 
