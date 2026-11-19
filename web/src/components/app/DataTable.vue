@@ -49,7 +49,8 @@ const boxClass =
 </script>
 
 <template>
-  <div data-control class="overflow-x-auto rounded-md border border-border">
+  <!-- 窄屏时表格在这里水平滚动: 可滚动区域要能用键盘聚焦(方向键滚动), 以表格标题为名称 -->
+  <div data-control role="region" :aria-label="caption" tabindex="0" class="overflow-x-auto rounded-md border border-border focus-visible:outline-2 focus-visible:outline-ring">
     <table class="w-full border-collapse text-sm">
       <caption class="sr-only">{{ caption }}</caption>
       <thead class="bg-muted">

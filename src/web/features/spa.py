@@ -8,7 +8,7 @@ rendered by its Python feature until it is migrated.
 import re
 
 # Page paths the single-page console handles. Grows as pages are migrated.
-SPA_PAGES = {"/login", "/changelog"}
+SPA_PAGES = {"/", "/login", "/changelog", "/settings", "/settings/security"}
 # Component and scene samples; only development and test builds have these
 # routes, a production build sends them back to the home page.
 SPA_PREFIXES = ("/showcase", "/scenes")
@@ -153,13 +153,26 @@ class SpaMixin:
         if not self.is_authenticated():
             self.api_error(401, "unauthenticated")
             return True
-        private = {("POST", "security/verify"): self.api_security_verify}
-        handler = private.get((method, name))
+        handler = self.private_api_routes().get((method, name))
         if handler:
-            handler()
+            getattr(self, handler)()
         else:
             self.api_error(404, "not_found")
         return True
+
+    API_ROUTES_SESSION = {("POST", "security/verify"): "api_security_verify"}
+
+    @classmethod
+    def private_api_routes(cls):
+        """Merge every mixin's API_ROUTES_* table: {(method, name): handler name}."""
+        routes = getattr(cls, "_api_routes", None)
+        if routes is None:
+            routes = {}
+            for attribute in dir(cls):
+                if attribute.startswith("API_ROUTES_"):
+                    routes.update(getattr(cls, attribute))
+            cls._api_routes = routes
+        return routes
 
     def api_session(self):
         return self.api_ok(self.session_info())

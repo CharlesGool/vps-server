@@ -17,7 +17,7 @@ const to = computed(() => Math.min(props.total, page.value * props.pageSize))
 <template>
   <PaginationRoot v-model:page="page" data-control data-pagination :total="total" :items-per-page="pageSize" :sibling-count="1" show-edges class="flex flex-wrap items-center justify-between gap-2">
     <p class="text-sm text-muted-foreground tabular-nums">{{ t('component.pageRange', { from, to, total }) }}</p>
-    <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+    <PaginationList v-slot="{ items }" class="flex flex-wrap items-center gap-1">
       <PaginationPrev as-child>
         <Button variant="outline" size="icon-sm" class="w-8" :aria-label="t('component.prevPage')"><ChevronLeft aria-hidden="true" /></Button>
       </PaginationPrev>

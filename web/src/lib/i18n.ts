@@ -12,6 +12,18 @@ export const NATIVE_NAMES: Record<Locale, string> = { 'zh-CN': '简体中文', e
 
 const LOCALE_KEY = 'ui.lang'
 
+// 控制台服务器按 lang Cookie 选语言(服务器生成的页面和提示); 代码与这里的语言名对应.
+const SERVER_CODES: Record<Locale, string> = { 'zh-CN': 'zh_cn', en: 'en', es: 'es' }
+
+function serverLocale(): Locale | undefined {
+  const code = document.cookie.match(/(?:^|;\s*)lang=([^;]+)/)?.[1]
+  return LOCALES.find((locale) => SERVER_CODES[locale] === code)
+}
+
+function syncServerLocale(locale: Locale) {
+  document.cookie = `lang=${SERVER_CODES[locale]}; Path=/; Max-Age=${365 * 24 * 3600}; SameSite=Lax`
+}
+
 function initialLocale(): Locale {
   try {
     const saved = localStorage.getItem(LOCALE_KEY) as Locale | null
@@ -19,6 +31,8 @@ function initialLocale(): Locale {
   } catch {
     // 忽略存储错误
   }
+  const server = serverLocale()
+  if (server) return server
   for (const tag of navigator.languages) {
     const match = LOCALES.find((locale) => tag === locale || tag.split('-')[0] === locale.split('-')[0])
     if (match) return match
@@ -36,8 +50,10 @@ export const i18n = createI18n({
 export function initLocale() {
   const locale = i18n.global.locale
   document.documentElement.lang = locale.value
+  syncServerLocale(locale.value as Locale)
   watch(locale, (value) => {
     document.documentElement.lang = value
+    syncServerLocale(value as Locale)
     try {
       localStorage.setItem(LOCALE_KEY, value)
     } catch {

@@ -10,7 +10,7 @@ export const SHOWCASE =
 // 有两个或以上功能(src/features.ts)时 dashboard 必须为 true.
 export const FEATURES = {
   login: true,
-  dashboard: false,
+  dashboard: true,
 }
 
 // 底栏的外部链接: 作者主页和项目仓库. 复制模板后改为实际地址; 不需要时留空数组.

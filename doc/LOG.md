@@ -83,6 +83,16 @@ metadata:
 
 ## 交接
 
+**进行中: Web UI 迁移到最新模板(分支 `feat/webui-template`, 2026-11-18 起).** 决策见上表 2026-11-18 三条. 已完成: 模板前端导入 `web/`, 旧前端移到 `web-legacy/`; Python 提供单页和 JSON 接口(`features/spa.py`, `api_settings.py`, `api_security.py`, `api_dashboard.py`); 已迁移主页, 登录, 设置, 安全设置, 变更日志; `npm run check` 全部通过(1007 项, 另 39 项为模板按开关跳过), 新增 `tests/test_spa_api.py`. 本机开发环境的做法见私有笔记 `.local/notes.md`.
+
+剩余步骤(每页: 在 `features/api_<页>.py` 写接口, 在 `SPA_PAGES` 和 `features.ts` 登记, 用模板组件写 `views/<页>View.vue`, 需要的旧译文用 `legacy` 命名空间复制到 `lang/ui/`, 跑 `npm run check` 并看图审查, 提交):
+- [ ] `/settings/modules`(模块安装卸载和进度), `/settings/logs`
+- [ ] `/speedtest`, `/iperf`, `/portfwd`, `/visitors`, `/terminal`(xterm), `/files`(迷你网盘)
+- [ ] `/proxy`(+`/anytls`), `/frps`, `/frpc`, `/frp/*` 编辑页, `/tailscale`, `/domains`, `/ipcert`
+- [ ] `/backup`, `/tasks`, `/closed`; 各页的流量限制对话框
+- [ ] 全部迁移后: 删除 `web-legacy/`, Python 的 HTML 渲染和 `src/web/static/*.js`, `lang/web/` 中不再使用的键, `LEGACY_PATHS` 和 `navigation.spec.ts` 的临时跳过; 安装器(`deploy/install.sh` 检查和复制 `web/dist`)和 `build_offline.py` 改为复制整个 `web/dist` 并用 `APP_VERSION` 构建; 三语言 README/DESIGN/CHANGELOG; 测试主机实测; `--no-ff` 合并回 `main`
+- [ ] 已知小问题: 复用的旧译文中文标点全角半角混用, 登录方式说明里有字面的反引号
+
 当前分支: `main`, 与 `origin/main` 同步. 当前正式版本: v7.0.5(标签 `v7.0.5`, GitHub Release 含离线版, 在线版安装包与 `SHA256SUMS`). 服务机 `ubt-sev` 运行 v5.5.1(HTTPS 28211 端口, 模块 web), 本次未部署.
 
 已完成: v5.7.0 发布, 变更见 `doc/CHANGELOG.md`: 登录失败封禁开关(关闭时只标记), 逐次加长的封禁, IPv6 按 /64 计数和全局上限, 反向代理下取最后一个 `X-Forwarded-For` 项, CSP 和禁止嵌入的响应头, 控制台访问限制(`src/web/console_access.py`), 登录设备与闲置超时, 安全记录和 Bark 登录提醒(`src/web/security_events.py`); 管理员密码按用户决定继续明文保存. 发布前的测试预发布为 `v5.7.0-test.1` 和 `v5.7.0-test.2`(后者整理了安全卡片排版). v5.6.3 发布, 变更见 `doc/CHANGELOG.md`: pcre2 安全更新, `Terminated` 修复, 证书四步导入说明, 上游二进制移出 Git. v5.6.2 发布, 随附组件升到 Tailscale 1.104.5(修复 TS-2026-014 至 017), sing-box 1.13.21, frp 0.72.0, 并在升级时替换本项目安装的旧 FRPC 客户端; 在一次性 Debian 13 容器中从 v5.6.1(含 web, proxy, frps, tailscale 与 FRPC 实例)原地升级验证: 各服务运行, 版本正确, FRPC 被替换且标记更新, 五种协议节点监听, shadowsocks/trojan/vless 实际转发 HTTPS 成功, frpc 到 frps 隧道可用, 完全卸载无残留; Tailscale 只验证守护进程运行, 未登录 Tailnet. v5.6.1 发布, 只把前端 vue-i18n 升到 11.4.18 以消除两个 XSS 公告(现有代码不可利用), 发布说明强烈建议升级; v5.6.0 发布, 变更见 `doc/CHANGELOG.md`: 控制台只提供 HTTPS; TLS 客户端证书登录(`src/web/client_cert.py`, 设置 > 安全 > 客户端证书, 要求证书后密码只作敏感操作的二次验证); 主机缺少可用 nftables 时安装器和控制台 Singbox 安装任务自动 apt 安装; 安装器在 web 模块缺少 openssl 时用 apt 安装. 发布前的测试预发布为 `v5.6.0-test.1`.

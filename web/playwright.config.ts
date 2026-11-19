@@ -45,6 +45,9 @@ export default defineConfig({
     reducedMotion: 'reduce',
     deviceScaleFactor: 1,
     ignoreHTTPSErrors: true,
+    // 控制台用自签名证书. 只设 ignoreHTTPSErrors 时 Chromium 先以"证书未知"中断每次 TLS 握手再重连,
+    // 并发时有请求因此重试到放弃(ERR_TOO_MANY_RETRIES); 在网络层直接接受证书.
+    launchOptions: { args: ['--ignore-certificate-errors'] },
   },
   projects: PROJECTS.map((project) => ({ name: project.name, use: { ...project.use, baseURL: url(project.port) } })),
   webServer: servers,

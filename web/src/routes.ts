@@ -8,8 +8,8 @@ export type ShowcasePage = (typeof SHOWCASE_PAGES)[number]
 // 场景样例(/scenes): 常见整页的布局示例(登录, 仪表板, 设置, 列表, 长表单, 搜索结果等), 与组件样例并列
 export const SHOWCASE_SCENES = ['login', 'dashboard', 'settings', 'list', 'form', 'empty', 'loading', 'error', 'forbidden', 'detail', 'edit', 'wizard', 'search'] as const
 export type ShowcaseScene = (typeof SHOWCASE_SCENES)[number]
-export type View = 'dashboard' | 'example' | 'settings' | 'security' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
-export type PageIcon = 'home' | 'dashboard' | 'example' | 'settings' | 'security' | 'changelog' | 'login' | 'showcase'
+export type View = 'dashboard' | 'settings' | 'security' | 'changelog' | 'login' | 'showcase' | `showcase-${ShowcasePage}` | 'showcase-scenes' | `showcase-scenes-${ShowcaseScene}`
+export type PageIcon = 'home' | 'dashboard' | 'settings' | 'security' | 'changelog' | 'login' | 'showcase'
 
 export interface AppRoute {
   path: string
@@ -22,7 +22,7 @@ export interface AppRoute {
 }
 
 // 还由 Python 生成的旧页面(迁移中): 不进入单页路由, 导航到这些路径时整页跳转. 迁移完一页就从这里删掉.
-export const LEGACY_PATHS = ['/', '/settings', '/settings/security']
+export const LEGACY_PATHS: string[] = []
 
 export function appRoutes(features: typeof FEATURES = FEATURES, showcase = SHOWCASE): AppRoute[] {
   const routes: AppRoute[] = []

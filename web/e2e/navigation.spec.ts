@@ -39,6 +39,8 @@ test('仪表板为每个功能提供入口', async ({ page }) => {
   await open(page, '/')
   const cards = page.locator('main [data-layout="link-card"]:not([href$="/showcase"]):not([href$="/scenes"])')
   const features = appRoutes().filter((route) => !['dashboard', 'settings', 'security', 'changelog', 'login'].includes(route.view) && !route.view.startsWith('showcase'))
+  // vps-server 迁移期间(项目决策 2026-11-18): 功能页还由服务器生成, 主页的模块卡片(ModuleCard)不算单页功能入口
+  test.skip(features.length === 0, '功能页还没有迁移到单页')
   await expect(cards).toHaveCount(features.length)
   await cards.first().click()
   await expect(page).toHaveURL(new RegExp(`${features[0]!.path}$`))

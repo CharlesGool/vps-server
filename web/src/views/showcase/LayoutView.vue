@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Gauge, HardDriveDownload, Route, UsersRound } from '@lucide/vue'
 import AccordionList from '@/components/app/AccordionList.vue'
+import ModuleCard from '@/components/app/ModuleCard.vue'
 import CardGrid from '@/components/app/CardGrid.vue'
 import SwitchField from '@/components/app/SwitchField.vue'
 import FormActions from '@/components/app/FormActions.vue'
@@ -21,6 +23,14 @@ const notes = ref('')
 const type = ref('')
 const agree = ref(true)
 const notify = ref(false)
+// 带开关的入口卡片(ModuleCard): 一行 4 张; 第二张关闭, 第三张开关不可用并带说明
+const modules = ref([true, false, true, true])
+const moduleCards = computed(() => [
+  { key: 'speed', icon: Gauge },
+  { key: 'forward', icon: Route },
+  { key: 'drive', icon: HardDriveDownload, disabled: true },
+  { key: 'visitors', icon: UsersRound },
+])
 const faq = computed(() => ['what', 'cols', 'mobile'].map((value) => ({ value, title: t(`showcase.faq.${value}.q`) })))
 </script>
 
@@ -61,6 +71,18 @@ const faq = computed(() => ['what', 'cols', 'mobile'].map((value) => ({ value, t
       <SwitchField v-model="agree" :label="t('showcase.digest')" :description="t('showcase.digestDescription')" />
       <SwitchField v-model="notify" :label="t('showcase.notify')" :description="t('showcase.notifyDescription')" />
     </PageSection>
+    <ModuleCard
+      v-for="(card, index) in moduleCards"
+      :key="card.key"
+      v-model="modules[index]"
+      to="/showcase/layout"
+      :title="t(`showcase.layout.module.${card.key}`)"
+      :icon="card.icon"
+      :detail="card.disabled ? t('showcase.layout.module.notInstalled') : undefined"
+      switchable
+      :switch-disabled="card.disabled"
+      :switch-label="t('showcase.layout.module.switch', { name: t(`showcase.layout.module.${card.key}`) })"
+    />
     <!-- 折叠面板: 常见问题, 一次展开一项 -->
     <PageSection :cols="4" :title="t('showcase.faq.title')">
       <AccordionList :items="faq" default-value="what">

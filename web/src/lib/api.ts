@@ -32,3 +32,8 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   }
   return data as T
 }
+
+// 会话失效(401 unauthenticated)时 session.ts 已经转到登录页, 页面的加载请求不必再报错
+export function isSignedOut(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401 && error.code === 'unauthenticated'
+}

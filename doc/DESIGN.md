@@ -52,9 +52,9 @@ metadata:
 | `tools/` | 样式构建, 依赖校验与离线包构建工具. |
 | `doc/` | 设计, 状态, 历史, 变更, 第三方声明及译文. |
 
-前端位于 `web/`, 使用 Vue 3, Vite, TypeScript, Tailwind CSS 和 shadcn-vue 模板组件增强服务器页面. Python 继续生成业务表单, 处理认证和权限;Vue 共享顶栏, 底栏, 页头, 卡片集合, 设置分区导航, 主题列表框与模式分段控件. 页面跳转仍使用同源完整导航, 不绕过服务器权限.
+前端正在从"Python 生成页面 + Vue 增强"迁移到最新 Web UI 起始模板的 Vue 单页(`feat/webui-template` 分支, 决策见 [LOG](LOG.md#决策)). 已迁移的页面(主页, 登录, 设置, 安全设置, 变更日志)由 `src/web/features/spa.py` 的 `SPA_PAGES` 列出: 控制台对这些路径返回 `web/dist/index.html`, `/assets/` 和根目录的 `appearance.js`, `favicon.svg` 来自 `web/dist/`; 页面通过同源 `/api/*` 读写, 写请求只接受 `application/json` 且检查 `Origin`. 接口按页面分在 `features/api_settings.py`, `api_security.py`, `api_dashboard.py`, 各自在 `API_ROUTES_*` 表里登记, 业务逻辑仍调用原有函数. 登录沿用原有体系, 按模板的 `/api/session`, `login`, `login/ip`, `logout`, `security/verify` 约定提供, 另加 `login/cert`. 其余页面仍由 Python 生成并使用 `web-legacy/` 的旧前端, 单页里指向它们的链接整页跳转(`routes.ts` 的 `LEGACY_PATHS` 和兜底路由). 单页界面文本在 `lang/ui/`(其中 `legacy` 是从 `lang/web/` 复制的原有译文), Python 页面仍用 `lang/web/`.
 
-`web/src/styles/tokens.css` 是设计数值的唯一来源;功能样式位于 `web/src/styles/legacy/`, 用语义标记对接现有表单. `npm ci && npm run check` 在 `web/` 检查设计, 类型和生产构建, 输出 `web/dist/ui.js` 与 `ui.css`;安装器复制到静态资源目录, 离线包携带已编译文件, VPS 不需要 Node.js. 构建附带 `web/dist/licenses/` 中的依赖原文和版本清单. Git 忽略构建输出及依赖目录.
+`web/src/styles/tokens.css` 是设计数值的唯一来源. 在 `web/` 运行 `npm ci && npm run check`: 设计检查, 类型检查, 生产构建, Playwright 视觉测试(两个临时状态目录的 Python 控制台, HTTPS 自签名证书, Chromium 以 `--ignore-certificate-errors` 启动)和 Python 单元测试.
 
 `.github/` 运行相同检查, `.claude/settings.json` 在编辑后运行模板设计检查. `tools/check-project/check_project.py` 另检查 Python/Bash/JavaScript, 翻译, 文档和固定构件. `tools/build-offline/build_offline.py` 生成两个安装包: 离线版(默认)内置全部第三方程序和 Debian 13 运行库(nft, iptables, `ip`, `ss`); `--variant online` 的在线版不含大型二进制, 安装时由 `src/web/online_assets.py` 按 `config/online-assets.json` 下载并逐个校验 SHA-256. 这些上游二进制不提交到 Git, 构建离线版时用同一模块下载到 `third_party/`(被 Git 忽略)再打包;nftables 运行库和对应源码由 `fetch_assets.py` 下载并核验. 两个包的安装和解压只依赖 python3, 不依赖 curl, tar, gzip 或 Git. 版本来自后端实际构建标识, 作为组件属性传入;正式变更日志继续取自三语言 CHANGELOG.
 
@@ -90,7 +90,7 @@ metadata:
 
 ## 设计标记
 
-采用最新 Web UI 起始模板的字号, 字重, 行高, 间距, 圆角, 阴影, 容器, 八主题色与动效标记. 共享组件直接来自模板;顶栏和页头使用真实同源链接以保留 Python 路由. `tokens.css` 追加 `compat-*` 标记, 仅用于网络模块已有表格/对话框的尺寸和状态变体;字号, 字重, 圆角和主题色已统一到模板标记. `--toast-lifetime-error` 为失败 Toast 的显示时长(8 秒). 保存失败后服务器带 `msg` 参数重定向回页面时, 前端用 Toast 显示页面内的错误提示并移除页面内的副本. 新组件和页面只引用标记. 检查命令: `cd web && npm run check`.
+`web/` 的设计标记原样取自最新 Web UI 起始模板(字号, 字重, 8 px 倍数行高, 间距, 圆角, 阴影, 容器, 八主题色, 动效), 本项目没有新增标记. 新增共享组件 `ModuleCard`(带开关的功能入口卡片, 样例在组件样例的"卡片布局"); 改动的模板组件: `NumberField` 加 `grouping`(端口不加千位分隔符), `DataTable` 的滚动区域可键盘聚焦, `PaginationBar` 页码过多时换行, `LoginPanel` 加证书登录按钮; 顶栏不显示项目标志(决策 2026-10-07). 外观记录沿用 v7 的 `vps-server-mode`/`vps-server-theme`, 语言同步到服务器的 `lang` Cookie. 迁移期间 `web-legacy/` 保留旧前端的 `compat-*` 标记和功能样式, 迁移完删除. 检查命令: `cd web && npm run check`.
 
 ## 数据设计
 

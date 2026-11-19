@@ -3,13 +3,11 @@ import { FEATURES } from './app.config'
 import { FEATURE_LIST } from './features'
 import { hasIpRecord, loadSession, loginByIp, session } from './lib/session'
 import { appRoutes, LEGACY_PATHS, type View } from './routes'
-import ExampleView from './views/ExampleView.vue'
 
 // 旧页面的占位组件: 导航前已整页跳转, 不会渲染
 const LegacyPage: RouteComponent = { render: () => null }
 
 const VIEWS: Record<View, RouteComponent | (() => Promise<RouteComponent>)> = {
-  example: ExampleView,
   dashboard: () => import('./views/DashboardView.vue'),
   settings: () => import('./views/SettingsView.vue'),
   security: () => import('./views/SecurityView.vue'),
