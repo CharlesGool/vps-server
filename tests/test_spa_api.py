@@ -269,6 +269,37 @@ class SpaApiTest(unittest.TestCase):
         self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=tailscale-tailscale_ipv4&field=address",
                                   cookie=token).status, 404)
 
+    def test_frp_without_modules(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        frps = Exchange(self.app, "GET", "/api/frps", cookie=token).json
+        self.assertIsNone(frps["node"])
+        frpc = Exchange(self.app, "GET", "/api/frpc", cookie=token).json
+        self.assertEqual((frpc["clients"], frpc["binaryMissing"]), ([], True))
+        self.assertEqual(Exchange(self.app, "GET", "/api/frpc/client?name=nope", cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "POST", "/api/frpc/change", cookie=token,
+                                  body={"name": "nope", "section": "add"}).status, 404)
+        self.assertEqual(Exchange(self.app, "POST", "/api/frpc/change", cookie=token,
+                                  body={"name": "../x", "section": "create", "server": "a", "port": 1,
+                                        "token": "t"}).status, 400)
+        self.assertEqual(Exchange(self.app, "GET", "/api/frpc/job?job=../x", cookie=token).status, 400)
+        self.assertEqual(Exchange(self.app, "GET", "/api/private-value?id=frpc:nope&field=token",
+                                  cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "POST", "/api/frps/toggle", body={"enable": True},
+                                  cookie=token).status, 400)
+
+    def test_proxy_without_module(self):
+        token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
+        reply = Exchange(self.app, "GET", "/api/proxy", cookie=token)
+        if reply.status == 403:
+            self.assertEqual(reply.json["error"], "feature_closed")
+        else:
+            self.assertEqual(reply.json, {"installed": False})
+        self.assertEqual(Exchange(self.app, "POST", "/api/proxy/toggle", body={"id": "nope", "enabled": True},
+                                  cookie=token).status, 404)
+        self.assertEqual(Exchange(self.app, "POST", "/api/proxy/create", body={"protocol": "socks"},
+                                  cookie=token).status, 400)
+        self.assertEqual(Exchange(self.app, "GET", "/api/traffic?key=node:nope", cookie=token).json, {"entry": None})
+
     def test_closed_feature_page_and_api(self):
         token = Exchange(self.app, "POST", "/api/login", body={"password": PASSWORD}).cookie()
         original = self.app.closed_page_module

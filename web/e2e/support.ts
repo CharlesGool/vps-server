@@ -335,6 +335,33 @@ function securitySample() {
   }
 }
 
+const FRPS_SAMPLE = {
+  installed: true,
+  node: { running: true, bind: '0.0.0.0', addresses: [{ index: 0, label: 'eth0 (IPv4)' }, { index: 1, label: 'eth0 (IPv6)' }] },
+}
+const FRPC_SAMPLE = {
+  installed: true,
+  binaryMissing: false,
+  clients: [
+    { name: 'home', running: true, connected: true, count: 2, proxies: [{}, {}], visitors: [] },
+    { name: 'office', running: false, connected: false, count: 1, proxies: [{}], visitors: [{}] },
+  ],
+}
+
+const PROXY_SAMPLE = {
+  installed: true,
+  available: true,
+  running: true,
+  protocols: ['anytls', 'vmess', 'vless', 'trojan', 'shadowsocks'],
+  share: true,
+  addresses: [{ index: 0, label: 'eth0 (IPv4)' }],
+  nodes: [
+    { id: 'n1', number: 1, name: '家里', protocol: 'anytls', enabled: true, active: true, sni: 'www.bing.com', route: '不限制', access: { mode: 'all', destinations: [] } },
+    { id: 'n2', number: 2, name: '备用', protocol: 'shadowsocks', enabled: false, active: false, sni: null, route: '仅公网(禁止内网)', access: { mode: 'internet', destinations: [] } },
+  ],
+  message: null,
+}
+
 // 每个测试都检查控制台错误和未捕获异常
 export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>({
   consoleErrors: [
@@ -356,7 +383,7 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
   // 最近访问者记录每次请求的时间: 用固定的 12 行样例(含本机, 内网, 外部, 入站, 出站, 第二页).
   // 迷你网盘显示本机磁盘剩余空间: 用固定样例(含文件, 下载链接, 进行中和失败的下载任务).
   // 备份和定时任务显示下次运行的日期和服务器时区: 用固定样例(含几份备份, 两个任务和运行记录).
-  // Tailscale 和域名转发(Caddy)在测试服务器上没有安装: 用已在使用的样例, 检查真正的管理界面.
+  // Tailscale, 域名转发(Caddy), FRPS, FRPC 和 Singbox 在测试服务器上没有安装: 用已在使用的样例, 检查真正的管理界面.
   stableServer: [
     async ({ page }, use, testInfo) => {
       // 截图对比里安全设置的登录设备数和安全记录取决于之前有多少测试登录过: 只在截图测试里用固定样例(其他测试要真实的安全设置)
@@ -380,6 +407,9 @@ export const test = base.extend<{ consoleErrors: string[]; stableServer: void }>
         await page.route(/\/api\/tailscale\/netcheck$/, (route) => route.fulfill({ json: NETCHECK_SAMPLE }))
         await page.route(/\/api\/domains$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: DOMAINS_SAMPLE }) : route.fallback()))
         await page.route(/\/api\/ipcert$/, (route) => route.fulfill({ json: IPCERT_SAMPLE }))
+        await page.route(/\/api\/frps$/, (route) => route.fulfill({ json: FRPS_SAMPLE }))
+        await page.route(/\/api\/frpc$/, (route) => route.fulfill({ json: FRPC_SAMPLE }))
+        await page.route(/\/api\/proxy$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ json: PROXY_SAMPLE }) : route.fallback()))
       }
       await use()
     },

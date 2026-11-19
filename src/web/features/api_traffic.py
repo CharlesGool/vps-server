@@ -7,8 +7,8 @@ one traffic card for all of them.
 import re
 
 # Metered features with a traffic card; FRPC instances and forwarding rules carry their own name.
-TRAFFIC_KEYS = ("files", "speedtest", "iperf3", "caddy", "tailscale")
-INSTANCE_KEY = re.compile(r"(frpc|portfwd):[A-Za-z0-9_.-]{1,64}")
+TRAFFIC_KEYS = ("files", "speedtest", "iperf3", "caddy", "tailscale", "frps")
+INSTANCE_KEY = re.compile(r"(frpc|portfwd|node):[A-Za-z0-9_.-]{1,64}")
 
 
 def usage_json(context, node, meter_nodes):
@@ -70,8 +70,25 @@ class TrafficApiMixin:
             return None
         return key if key in TRAFFIC_KEYS or INSTANCE_KEY.fullmatch(key) else None
 
+    def traffic_found(self, key):
+        """(entry, ledger) like traffic_entry; FRPS has its own meter."""
+        if key == "frps":
+            try:
+                return self.context.frps_traffic_state()
+            except (OSError, ValueError, TypeError):
+                return None
+        if key.startswith("node:"):
+            # A Singbox node: its inventory entry and the node meter's ledger.
+            found = self.proxy_inventory()
+            try:
+                node = next((item for item in found[0]["nodes"] if item["id"] == key[5:]), None)
+            except (TypeError, KeyError):
+                node = None
+            return None if node is None else (node, found[1])
+        return self.traffic_entry(key)
+
     def traffic_json(self, key):
-        found = self.traffic_entry(key)
+        found = self.traffic_found(key)
         if found is None:
             return {"entry": None}
         entry, ledger = found
@@ -101,7 +118,7 @@ class TrafficApiMixin:
                 context.APP_METER.flush()
             except (OSError, ValueError, context.InvalidInventory):
                 return self.api_error(500, "limits_failed")
-        found = self.traffic_entry(key)
+        found = self.traffic_found(key)
         if found is None:
             return self.api_error(404, "not_found")
         entry = found[0]
@@ -110,6 +127,10 @@ class TrafficApiMixin:
             if key in ("files", "speedtest"):
                 context.APP_METER.edit(entry["id"], request)
                 done = True
+            elif key == "frps":
+                done = context.frps_traffic_apply({"action": "edit", **request})
+            elif key.startswith("node:"):
+                done = context.node_control_apply({"action": "edit", "id": entry["id"], **request})
             else:
                 done = self.traffic_meter_apply({"action": "edit", "id": entry["id"], **request})
         except (ValueError, context.InvalidOperation, OverflowError, KeyError,

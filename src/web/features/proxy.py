@@ -181,6 +181,8 @@ class ProxyMixin:
 
     def private_value(self, identifier, field):
         """One value the page shows masked until asked; raises ValueError when there is none."""
+        if identifier.startswith('frpc:'):
+            return self.frpc_masked_value(identifier[5:], field)
         if field not in self.PRIVATE_FIELDS:
             raise ValueError('unsupported field')
         if identifier.startswith('tailscale-'):

@@ -24,4 +24,7 @@ export const FEATURE_LIST: Feature[] = [
   { path: '/tailscale', name: 'tailscale', view: 'tailscale', titleKey: 'Tailscale', descriptionKey: 'vps.tailscale.description', icon: 'tailscale' },
   { path: '/domains', name: 'domains', view: 'domains', titleKey: 'legacy.domains', descriptionKey: 'vps.domains.description', icon: 'domains' },
   { path: '/ipcert', name: 'ipcert', view: 'ipcert', titleKey: 'legacy.ipcert', descriptionKey: 'vps.ipcert.description', icon: 'ipcert' },
+  { path: '/frps', name: 'frps', view: 'frps', titleKey: 'FRPS', descriptionKey: 'vps.frps.description', icon: 'frps' },
+  { path: '/frpc', name: 'frpc', view: 'frpc', titleKey: 'FRPC', descriptionKey: 'vps.frpc.description', icon: 'frpc' },
+  { path: '/proxy', name: 'proxy', view: 'proxy', titleKey: 'legacy.proxy_heading', descriptionKey: 'vps.proxy.description', icon: 'proxy' },
 ]

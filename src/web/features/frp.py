@@ -604,7 +604,8 @@ class FrpMixin:
         elif method == "GET" and path == "/frp/server/edit":
             self.page_frps_edit(lang)
         elif method == "GET" and path == "/frp/client/edit":
-            self.page_frpc_edit(lang, parsed)
+            # The editor moved to the single-page /frpc/edit; keep old links working.
+            self.redirect("/frpc/edit" + (f"?{parsed.query}" if parsed.query else ""), {"Cache-Control": "no-store"})
         elif method == "GET" and path == "/frp/client/address":
             self.frpc_address_value(parsed)
         elif method == "GET" and path == "/frp/client/value":
