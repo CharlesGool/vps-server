@@ -15,9 +15,9 @@ const COLORS = [
   { stroke: 'stroke-chart-3', fill: 'fill-chart-3', bg: 'bg-chart-3' },
   { stroke: 'stroke-chart-4', fill: 'fill-chart-4', bg: 'bg-chart-4' },
 ]
-// 绘图区四周留给坐标轴文字的空间(px); 高度和 h-64 一致
+// 绘图区四周留给坐标轴文字的空间(px); 高度和 h-64 一致. 左边至少 48 px, 纵轴文字更宽时(如 "195.31 KiB/s")按量出的宽度加大
 const HEIGHT = 256
-const LEFT = 48
+const MIN_LEFT = 48
 const RIGHT = 8
 const TOP = 12
 const BOTTOM = 32
@@ -42,23 +42,26 @@ const step = computed(() => {
 })
 const count = computed(() => Math.max(1, Math.ceil(max.value / step.value)))
 const top = computed(() => step.value * count.value)
-const plotWidth = computed(() => Math.max(0, width.value - LEFT - RIGHT))
-const plotHeight = HEIGHT - TOP - BOTTOM
-const y = (value: number) => TOP + plotHeight - (value / top.value) * plotHeight
-const ticks = computed(() => Array.from({ length: count.value + 1 }, (_, index) => index * step.value))
-// 每一项占一段宽度; 折线的点在段中间, 柱子在段中间并排
-const band = computed(() => plotWidth.value / Math.max(1, props.labels.length))
-const center = (index: number) => LEFT + band.value * (index + 0.5)
-const barWidth = computed(() => Math.min(32, (band.value * 0.6) / props.series.length))
-const barX = (index: number, serie: number) => center(index) - (barWidth.value * props.series.length) / 2 + serie * barWidth.value
-// 横轴文字放不下时隔几项显示一个(最后一项总是显示); 文字宽度用画布按当前字体量出
-const labelWidth = computed(() => {
+// 文字宽度用画布按当前字体量出
+function measure(texts: string[]) {
   const context = document.createElement('canvas').getContext('2d')
-  if (!context || !box.value) return 0
+  if (!context || !box.value || !texts.length) return 0
   const style = getComputedStyle(box.value)
   context.font = `${style.fontSize} ${style.fontFamily}`
-  return Math.max(...props.labels.map((name) => context.measureText(name).width))
-})
+  return Math.max(...texts.map((text) => context.measureText(text).width))
+}
+const ticks = computed(() => Array.from({ length: count.value + 1 }, (_, index) => index * step.value))
+const left = computed(() => (width.value ? Math.max(MIN_LEFT, Math.ceil(measure(ticks.value.map((tick) => props.format(tick)))) + 8) : MIN_LEFT))
+const plotWidth = computed(() => Math.max(0, width.value - left.value - RIGHT))
+const plotHeight = HEIGHT - TOP - BOTTOM
+const y = (value: number) => TOP + plotHeight - (value / top.value) * plotHeight
+// 每一项占一段宽度; 折线的点在段中间, 柱子在段中间并排
+const band = computed(() => plotWidth.value / Math.max(1, props.labels.length))
+const center = (index: number) => left.value + band.value * (index + 0.5)
+const barWidth = computed(() => Math.min(32, (band.value * 0.6) / props.series.length))
+const barX = (index: number, serie: number) => center(index) - (barWidth.value * props.series.length) / 2 + serie * barWidth.value
+// 横轴文字放不下时隔几项显示一个(最后一项总是显示)
+const labelWidth = computed(() => (width.value ? measure(props.labels) : 0))
 const every = computed(() => (band.value ? Math.max(1, Math.ceil((labelWidth.value + 8) / band.value)) : 1))
 const showLabel = (index: number) => (props.labels.length - 1 - index) % every.value === 0
 const line = (values: number[]) => values.map((value, index) => `${center(index)},${y(value)}`).join(' ')
@@ -77,8 +80,8 @@ const tipStyle = computed(() => {
     <div ref="box" class="relative h-64 text-sm" @mouseleave="hover = undefined">
       <svg v-if="width" aria-hidden="true" :width="width" :height="HEIGHT" class="block overflow-visible">
         <g v-for="tick in ticks" :key="tick">
-          <line :x1="LEFT" :x2="width - RIGHT" :y1="y(tick)" :y2="y(tick)" class="stroke-border" stroke-width="1" />
-          <text :x="LEFT - 8" :y="y(tick)" text-anchor="end" dominant-baseline="middle" class="fill-muted-foreground text-sm">{{ format(tick) }}</text>
+          <line :x1="left" :x2="width - RIGHT" :y1="y(tick)" :y2="y(tick)" class="stroke-border" stroke-width="1" />
+          <text :x="left - 8" :y="y(tick)" text-anchor="end" dominant-baseline="middle" class="fill-muted-foreground text-sm">{{ format(tick) }}</text>
         </g>
         <text v-for="(name, index) in labels" v-show="showLabel(index)" :key="name" :x="center(index)" :y="HEIGHT - 8" text-anchor="middle" class="fill-muted-foreground text-sm">{{ name }}</text>
         <rect v-if="hover !== undefined" :x="center(hover) - band / 2" :y="TOP" :width="band" :height="plotHeight" class="fill-muted" />
