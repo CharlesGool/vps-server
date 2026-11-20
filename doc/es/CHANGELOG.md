@@ -26,6 +26,44 @@ metadata:
 
 ## Historial de cambios
 
+### v7.5.0 — 2026-11-20
+
+Corrige los problemas hallados en una revisión completa y añade la actualización del propio equipo desde la página Sistema y mensajes de error que indican qué campo falla. El comando de actualización no cambia y la configuración y los datos se conservan; desde esta versión se puede actualizar desde la página Sistema, pero la actualización a esta versión sigue haciéndose por línea de comandos.
+
+#### Añadido
+
+- **Actualizar vps-server desde la página Sistema.** La tarjeta «Versión de vps-server y actualización» muestra la versión actual y el tipo de paquete; «Buscar actualizaciones» consulta la última versión estable (si no se puede consultar, explica el motivo) y, si hay una nueva, la actualiza con un clic: verifica la firma igual que `upgrade.py`, usa el paquete del mismo tipo que el instalado en este equipo y, tras reiniciarse la consola, la página muestra el resultado.
+- **Los mensajes de error indican qué campo y por qué.** Cuando se rechaza un formulario se muestra «campo: motivo» y se marca el campo, en lugar de solo «Operación fallida». La respuesta de error de la API incluye `field` y `reason` además del `error` de siempre (véase [API](API.md)).
+- `secure_store.py show-password` muestra la contraseña de administración, y también la usa el resumen al final de la instalación.
+
+#### Cambiado
+
+- Las páginas de tareas programadas, copias y restauración, como la página Sistema, exigen verificar la contraseña de administración antes de entrar. La documentación ya lo decía así, pero no se aplicaba; las tareas programadas ejecutan comandos como root, y no volver a verificar la contraseña eludía esta regla.
+- Los nodos Singbox nuevos solo pueden acceder a Internet público por defecto; para acceder a la red interna o al propio equipo se cambia en el alcance de acceso; los nodos existentes no cambian.
+- Si el límite total de tráfico se pone en «Detener», Tailscale, FRPC y los dominios reenviados a la consola solo se limitan a 1 Mbps, para no cortar la que puede ser la única vía de acceso. Los elementos eliminados o que no se pueden leer temporalmente se siguen contando en el total de este periodo con su último uso.
+- La desinstalación completa primero enumera lo que se borrará (programa, estado, número de copias, archivos de Mini Drive, clave de datos) y solo continúa si se escribe `yes`; en ejecuciones desatendidas defina `VPSSRV_UNINSTALL_YES=1`; borra `/etc/vps-server/data.key` y cierra el puerto UDP abierto de Shadowsocks. Se rechaza borrar si `PREFIX` no es un directorio de instalación de este proyecto.
+- El reinicio por la API de tokens solo ejecuta `try-restart` sobre los servicios instalados de este proyecto y cualquier otro devuelve 403 `unit_not_allowed`; los tokens no se ven afectados por la pausa global del inicio de sesión con contraseña; la actualización usa por defecto el tipo de paquete con el que se instaló en el equipo, y la actualización en lote de gestión central ya no cambia el paquete sin conexión por el paquete en línea.
+- Archivos: `/etc/vps-server`, donde está la clave de datos, solo se puede ver, y los directorios de programa y datos de la consola no se pueden eliminar ni mover; el cambio recursivo de permisos y propietario no se aplica a los propios directorios del sistema, no entra en otros sistemas de archivos, no modifica los archivos cuyo propietario no cambia (se conserva setuid) y el chmod recursivo añade el permiso de ejecución a los directorios legibles; antes de descomprimir se comprueba el espacio libre; las operaciones que superan el tiempo límite se abortan y no continúan en segundo plano.
+- El reenvío de puertos solo reenvía las conexiones cuyo destino es el propio equipo y ya no secuestra el tráfico reenviado a través del equipo (nodo de salida de Tailscale, Docker).
+- Al crear nodos y al guardar FRPS y FRPC, una entrada claramente no válida señala directamente qué campo es, sin esperar a que falle la tarea en segundo plano.
+
+#### Corregido
+
+- La contraseña inicial que se imprimía al terminar una instalación nueva estaba cifrada (desde v7.0.0).
+- Una primera instalación que fallaba en la fase de descarga no se podía volver a ejecutar; si una actualización fallaba tras detener la consola, la consola no se volvía a iniciar.
+- `upgrade.py`: Ctrl-C borraba el paquete que la instalación en segundo plano todavía usaba; no pasaba un `PREFIX` ni un nombre de servicio personalizados; al fijar la clave pública por primera vez se desempaquetaba antes de verificar la firma.
+- «Vigencia de N meses» se recortaba a las 00:00 (UTC) del día 1 de un mes; por ejemplo, el 20 de noviembre con 1 mes daba solo 10,6 días. La caducidad ya guardada no cambia y, al volver a configurarla, se aplica el algoritmo nuevo.
+- En zonas horarias con horario de verano, un momento de reinicio dentro de la hora omitida bloqueaba la medición; una tarea cron se ejecutaba dos veces el día en que el reloj retrocede.
+- Al eliminar un elemento el total bajaba y se levantaba el límite total; tras detener el servicio por un error del medidor, los nodos y FRPS no se recuperaban solos; tras restaurar una copia, el medidor daba error y detenía el proxy.
+- El número de descargas de Mini Drive se podía eludir con solicitudes Range; «Descargar desde una URL» permitía las direcciones de metadatos de proveedores de nube y también se podía eludir con DNS rebinding.
+- La descompresión podía escribir fuera del directorio de destino en versiones de Python sin filtro de tar; la salida de las tareas programadas se leía entera en memoria.
+- La contraseña de acceso de un reenvío de dominios que contenía saltos de línea se truncaba; los dominios no ASCII se reescribían según IDNA 2003 (`ß` pasaba a `ss`); el SNI de un nodo podía llevar un ID de zona IPv6.
+- Con el módulo Tailscale sin instalar, la consola seguía leyendo las direcciones de otro tailscaled del equipo.
+
+#### Verificación
+
+Todas las pruebas automáticas pasan (diseño, tipos, pruebas de navegador, 1886 casos con capturas y comprobaciones de diseño, y 441 pruebas unitarias de Python). La versión de prueba `v7.5.0-test.1` se actualizó en el sitio en el equipo de pruebas doméstico, todos los servicios siguieron en ejecución y el resumen de instalación indicó el comando para consultar la contraseña; en el navegador se comprobaron la tarjeta de actualización de la página Sistema, la verificación de contraseña de las páginas de tareas programadas, copias y restauración, y los errores de campo de los límites de tráfico. No se verificó en un equipo real, solo en un entorno simulado: instalación nueva, repetir una primera instalación fallida, volver a iniciar la consola tras una actualización fallida, la confirmación de desinstalación, una actualización completa desde la página Sistema, la recuperación automática tras detener el servicio por el medidor, el bloqueo del medidor al restaurar una copia y el reemplazo de las reglas nuevas y antiguas del reenvío de puertos.
+
 ### v7.4.0 — 2026-11-20
 
 El tráfico total de la página de inicio ahora puede limitar o detener el tráfico al alcanzar su límite. El comando de actualización no cambia y la configuración y los datos se conservan; un límite total existente sigue en «Solo avisar», así que nada cambia hasta que elija otra opción.

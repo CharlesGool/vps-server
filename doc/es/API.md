@@ -15,23 +15,23 @@ Este documento describe `/api/v1/*`, pensada para scripts y para otras consolas 
 1. Genere un token en la tarjeta Tokens de API de la página Gestión central. Los tokens tienen la forma `vpss_...`, se muestran una sola vez al generarlos y el servidor solo guarda su SHA-256.
 2. Si el interruptor de Gestión central del inicio está desactivado, todas las interfaces de tokens devuelven 403 `feature_closed`.
 3. Cada solicitud lleva la cabecera `Authorization: Bearer <token>`. No hace falta cookie de sesión y tampoco se aplican «Exigir certificado de cliente» ni la comprobación de mismo origen; el límite de acceso a la consola sigue vigente.
-4. Un token erróneo cuenta como fallo de inicio de sesión; al alcanzar el número configurado, la dirección de origen queda bloqueada (se devuelve 429 y `retryAfter` son los segundos restantes).
+4. Un token erróneo cuenta como fallo de inicio de sesión; al alcanzar el número configurado, la dirección de origen queda bloqueada (se devuelve 429 y `retryAfter` son los segundos restantes). Los endpoints de token solo están sujetos al bloqueo de la propia dirección de origen, no a la pausa global del inicio de sesión con contraseña.
 5. Hay dos permisos: `read` solo puede llamar a las interfaces de lectura de la tabla siguiente; `write` además puede llamar a las de escritura. Un token de solo lectura que llama a una interfaz de escritura recibe 403 `read_only_token`.
 
 Se admiten hasta 20 tokens. El registro de seguridad anota la generación y eliminación de cada token y las operaciones de escritura que dispara; la lista de tokens muestra la hora y la dirección de origen del último uso.
 
 ## Interfaces
 
-Las solicitudes y respuestas son JSON. Un éxito devuelve 200; un fallo devuelve 4xx/5xx y `{"error": "<código>"}`.
+Las solicitudes y respuestas son JSON. Un éxito devuelve 200; un fallo devuelve 4xx/5xx y `{"error": "<código>"}`. Cuando se rechaza una entrada concreta, también puede incluir `field` (la clave del cuerpo de la solicitud; los anidados con punto) y `reason` (uno de `required`, `type`, `format`, `range`, `too_long`, `too_short`, `exists`, `not_found`, `past`, `port_in_use`); los códigos de `error` no cambian.
 
 | Método y ruta | Permiso | Función |
 | --- | --- | --- |
 | `GET /api/v1/status` | read | Nombre del equipo, versión, identificador del servidor, kernel, recursos (como `monitor`, sin gráficas), tráfico total del ciclo actual, estado de los servicios de este proyecto, servicios fallidos |
 | `GET /api/v1/monitor` | read | Todos los datos de la página Recursos, incluidas las gráficas de 24 horas (promedios de 12 y 24 tramos) |
 | `GET /api/v1/services` | read | Todos los servicios de systemd: `unit`, `load`, `active`, `sub`, `description`, `enabled` |
-| `GET /api/v1/upgrade` | read | Si hay una actualización lanzada por la API en curso (`running`), la versión actual y las últimas 40 líneas de la salida de la actualización |
-| `POST /api/v1/services/restart` | write | Reinicia un servicio; cuerpo `{"unit": "<nombre>.service"}`; si se reinicia la propia consola, responde de inmediato |
-| `POST /api/v1/upgrade` | write | Actualiza en segundo plano a la última versión estable, o a la indicada con `{"version": "v7.2.0"}`; `variant` puede ser `online` (por defecto) u `offline`. Si ya hay una actualización en curso, devuelve 409 `busy` |
+| `GET /api/v1/upgrade` | read | Si hay una actualización lanzada por la API o por la página Sistema en curso (`running`), la versión actual, el tipo de paquete instalado (`variant`), el código de salida de la última actualización (`lastExit`, `null` si no hay registro) y las últimas 40 líneas de la salida de la actualización |
+| `POST /api/v1/services/restart` | write | Reinicia un servicio de este proyecto que esté en ejecución (`systemctl try-restart`; los detenidos siguen detenidos); cuerpo `{"unit": "<nombre>.service"}`; solo acepta `vps-server*.service` y `frpc@*.service` instalados en `/etc/systemd/system`, y cualquier otro devuelve 403 `unit_not_allowed`; si se reinicia la propia consola, responde de inmediato |
+| `POST /api/v1/upgrade` | write | Actualiza en segundo plano a la última versión estable, o a la indicada con `{"version": "v7.2.0"}`; `variant` puede ser `online` u `offline`, por defecto el tipo con el que se instaló en este equipo (`offline` si no hay registro). Si ya hay una actualización o instalación en curso, devuelve 409 `busy` |
 | `POST /api/v1/backup` | write | Crea una copia de seguridad manual de la configuración y devuelve `{"name": "<nombre del archivo>"}` |
 
 La actualización es igual que el comando de actualización del panel: primero verifica la firma de la versión, luego ejecuta el instalador del paquete y la consola se reinicia una vez. La actualización se descarga de GitHub; los equipos que no llegan a GitHub siguen necesitando transferir los archivos a mano según [Actualización](README.md#actualización) del README.

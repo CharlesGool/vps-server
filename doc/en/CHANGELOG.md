@@ -26,6 +26,44 @@ metadata:
 
 ## Changelog
 
+### v7.5.0 — 2026-11-20
+
+Fixes the problems found in a full review and adds upgrading this host from the System page and error messages that point to the specific field. The upgrade command is unchanged and configuration and data are kept; from this version on you can upgrade from the System page, while the upgrade to this version itself still uses the command line.
+
+#### Added
+
+- **Upgrade vps-server from the System page.** The "vps-server version and upgrade" card shows the current version and package type; "Check for updates" looks up the latest stable release (with the reason if it cannot be found), and when a newer version exists you can upgrade in one click: like `upgrade.py` it verifies the signature first and uses the same package type as this host, and after the console restarts the page shows the result.
+- **Error messages say which field and why.** When a form is rejected, the page shows "field: reason" and marks that field, instead of only "Operation failed". An API error response carries `field` and `reason` besides the original `error` (see [API](API.md)).
+- `secure_store.py show-password` shows the administrator password, and the installer's closing summary uses it too.
+
+#### Changed
+
+- The Scheduled tasks, Backup and restore pages now require the administrator password before entry, like the System page. The documentation already said so but it was not enforced; scheduled tasks run commands as root, so skipping the recheck bypassed this rule.
+- Newly created Singbox nodes can reach only the public internet by default; change the access scope when one needs to reach the LAN or this host. Existing nodes are unchanged.
+- When the total traffic cap is set to "Stop using", Tailscale, FRPC and domains forwarded to the console are only throttled to 1 Mbps, so the possibly only way to sign in is not cut off. Entries that were deleted or are temporarily unreadable still count towards the total at their last usage for the rest of the period.
+- Complete uninstall first lists what will be deleted (program, state, number of backups, Mini Drive files, data key) and continues only after you type `yes`; for unattended runs set `VPSSRV_UNINSTALL_YES=1`; it deletes `/etc/vps-server/data.key` and closes the UDP allowance for Shadowsocks. It refuses to delete a `PREFIX` that is not this project's installation directory.
+- The token API restart runs `try-restart` only on installed services of this project and returns 403 `unit_not_allowed` for anything else; tokens are not affected by the global pause on password logins; upgrades default to the package type this host was installed with, and bulk upgrades in Central management no longer swap an offline package for an online one.
+- File manager: `/etc/vps-server`, which holds the data key, can only be viewed, and the console's own program and data directories cannot be deleted or moved; recursive permission and owner changes do not target a system directory itself or enter other file systems, leave files whose owner is unchanged alone (keeping setuid), and recursive chmod adds the execute bit to readable directories; free space is checked before extracting; an operation that times out is aborted and does not continue in the background.
+- Port forwarding now forwards only connections destined for this host and no longer hijacks traffic forwarded through this host (Tailscale exit node, Docker).
+- When creating a node or saving FRPS and FRPC, clearly invalid input points directly to the field instead of waiting for a background task to fail.
+
+#### Fixed
+
+- The initial password printed at the end of a fresh install was ciphertext (since v7.0.0).
+- A first install that failed during the download stage could not be rerun; when an upgrade failed after stopping the console, the console was not restarted.
+- `upgrade.py`: Ctrl-C deleted the package that the background installation was still using; a custom `PREFIX` and service name were not passed on; when pinning the public key for the first time it unpacked before verifying the signature.
+- "Validity of N months" was cut to 00:00 (UTC) on the 1st of some month, for example setting 1 month on 20 November gave only 10.6 days. Saved expiry times are unchanged; setting them again uses the new calculation.
+- In time zones with daylight saving time, a reset time falling in the skipped hour stalled metering; cron tasks ran twice on the day the clock was set back.
+- Deleting an entry lowered the total traffic and lifted the total limit; after a meter error stopped the node and FRPS services they did not recover automatically; after restoring a backup the meter reported errors and stopped the proxy.
+- Mini Drive download counts could be bypassed with Range requests; "Download from URL" allowed cloud-provider metadata addresses and could also be bypassed by DNS rebinding.
+- Extraction could write outside the target directory on a Python without a tar filter; the output of a scheduled task was read into memory in one piece.
+- A domain forwarding access password containing a newline was truncated; non-ASCII domains were rewritten with IDNA 2003 (`ß` became `ss`); a node's SNI could carry an IPv6 zone ID.
+- When the Tailscale module was not installed, the console still read the addresses of other tailscaled instances on the host.
+
+#### Verification
+
+All automated tests pass (design, types, 1886 browser tests including screenshots and layout checks, 441 Python unit tests). The test build `v7.5.0-test.1` upgraded in place on the test host at home, all services kept running, and the install summary gave the command to view the password; the browser confirmed the System page's upgrade card, the password check on the Scheduled tasks, Backup and restore pages, and the field errors for traffic limits. Not verified on a host, only tested in a simulated environment: a fresh install, rerunning after a failed first install, restarting the console after a failed upgrade, the uninstall confirmation, running a complete upgrade from the System page, automatic recovery after a meter stop, the meter locks while restoring a backup, and replacing old and new port forwarding rules.
+
 ### v7.4.0 — 2026-11-20
 
 The home page total can now throttle or stop traffic when it reaches its cap. The upgrade command is unchanged and configuration and data are kept; an existing total cap stays "Only notify", so nothing changes until you pick otherwise.
