@@ -10,11 +10,6 @@ import threading
 from pathlib import Path
 
 TRAFFIC_DIR = Path("/etc/vps-server-traffic")
-# Where the limits form returns to, by the page that showed the card.
-BACK = {"files": "/files", "speedtest": "/speedtest", "domains": "/domains", "iperf": "/iperf",
-        "portfwd": "/portfwd", "frpc": "/frpc", "tailscale": "/tailscale"}
-LIMIT_FORM = {"id", "csrf", "cap_gib", "upload_mbps", "download_mbps", "cap_action", "expiry_mode",
-              "expiry_count", "expiry_unit", "reset_mode", "reset_count", "reset_unit", "next_reset_at"}
 APP_KEYS = ("files", "speedtest")
 # total-traffic.json is read, changed and written by request threads and the 30-second check.
 TOTAL_LOCK = threading.RLock()

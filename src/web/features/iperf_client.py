@@ -9,7 +9,6 @@ import json
 import shutil
 import subprocess
 import threading
-import time
 
 
 class IperfClient:

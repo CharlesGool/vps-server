@@ -53,12 +53,6 @@ def netcheck():
     return read_json("netcheck", "--format=json")
 
 
-def set_bool(name, enabled):
-    if name not in BOOL_SETTINGS or type(enabled) is not bool:
-        raise ValueError("invalid Tailscale setting")
-    call("set", f"--{name}={'true' if enabled else 'false'}")
-
-
 def normalize_routes(value):
     routes = []
     for item in value.split(","):
@@ -72,21 +66,6 @@ def normalize_routes(value):
     if len(routes) > 16 or len(set(routes)) != len(routes):
         raise ValueError("invalid subnet routes")
     return ",".join(routes)
-
-
-def set_routes(value):
-    call("set", "--advertise-routes=" + normalize_routes(value))
-
-
-def set_relay_port(value):
-    value = value.strip()
-    if value and (not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 65535):
-        raise ValueError("invalid peer relay port")
-    call("set", "--relay-server-port=" + value)
-
-
-def set_exit_node(value):
-    call("set", "--exit-node=" + normalize_exit_node(value))
 
 
 def normalize_exit_node(value):

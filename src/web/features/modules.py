@@ -96,11 +96,6 @@ def module_job_text(t, job, names):
     return t.get(key, t.get("module_job_" + str(job.get("state", "")), "")).format(name=name)
 
 
-# Feature pages that offer their own install button, and where the job reports.
-INSTALL_PAGES = {"iperf3": "/iperf", "proxy_nodes": "/proxy", "frps": "/frps", "frpc": "/frpc",
-                 "tailscale": "/tailscale", "caddy": "/domains", "ipcert": "/ipcert"}
-
-
 _HOST_FINDINGS = {}
 
 

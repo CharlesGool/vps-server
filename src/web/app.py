@@ -86,8 +86,8 @@ import terminal_session
 from node_state import read_inventory, _read_json
 from node_inventory import (InvalidInventory, advance_reset_interval, next_scheduled_reset, normalize_destinations,
                             reset_interval, reset_schedule, schedule_reset_mode)
-from module_manager import MODULES as MANAGED_MODULES, UNITS as MANAGED_UNITS
-from module_manager import FEATURES as MANAGED_FEATURES, GROUPS as MANAGED_GROUPS
+from module_manager import UNITS as MANAGED_UNITS
+from module_manager import FEATURES as MANAGED_FEATURES
 from module_manager import feature_enabled as module_feature_enabled, log_path as module_log_path
 from module_manager import history_path as module_history_path
 from node_accounting import billable_bytes
@@ -135,7 +135,6 @@ import features.iperf as _feature_iperf
 from features.iperf_client import IperfClient
 import features.portfwd as _feature_portfwd
 import features.proxy_service as _feature_proxy
-import features.tailscale as _feature_tailscale
 import features.frp as _feature_frp
 import features.visitors as _feature_visitors
 from features.identity import read_server_label, save_server_label as write_server_label
@@ -413,7 +412,6 @@ SESSION_TTL_SECONDS = 12 * 3600
 SECURITY_PERMISSION_SECONDS = 10 * 60
 MAX_VISITOR_ROWS = 1000
 DOWNLOAD_CHUNK = 1024 * 1024  # 1 MiB fill buffer, repeated to build the response
-LOGIN_BODY_LIMIT = 4096
 
 
 def _write_secret_file(*args, **kwargs):
@@ -709,35 +707,9 @@ def clash_profile(*args, **kwargs):
     return _feature_proxy.clash_profile(sys.modules[__name__], *args, **kwargs)
 
 
-# Result keys the console may echo back after a redirect. Whitelisted because
-# the key indexes STRINGS: without this, a crafted ?msg= would be a way to
-# render any string from the table on an authenticated page.
-IPERF_MESSAGE_KEYS = frozenset({
-    "iperf_opened", "iperf_extended", "iperf_shut",
-    "iperf_disabled", "iperf_missing", "iperf_port_busy",
-    "iperf_port_saved", "iperf_port_invalid",
-})
-
-NODE_APPLY_MESSAGE_KEYS = frozenset({"node_settings_done", "node_settings_failed",
-                                     "node_reset_done", "node_created", "node_deleted"})
-
-PORTFWD_MESSAGE_KEYS = frozenset({
-    "portfwd_added", "portfwd_removed", "portfwd_enabled", "portfwd_disabled",
-    "portfwd_invalid", "portfwd_apply_failed", "portfwd_port_taken", "portfwd_limit", "portfwd_not_found",
-    "portfwd_module_disabled",
-})
-
 # ---------------------------------------------------------------------------
 # Internationalization (English / Simplified Chinese / Spanish)
 # ---------------------------------------------------------------------------
-
-
-# Rendered in the navigation in display order.
-LANG_NAMES = {"en": "English", "zh_cn": "简体中文", "es": "Español"}
-
-# The runtime code zh_cn is a legacy identifier; HTML uses BCP-47.
-HTML_LANG_TAGS = {"zh_cn": "zh-CN"}
-RTL_ATTR = {}
 
 
 def pick_lang(*args, **kwargs):
@@ -981,10 +953,6 @@ init_db()
 # ---------------------------------------------------------------------------
 
 
-_UI_ICON_NAMES = frozenset({"activity", "gauge", "timer", "network", "waypoints", "route", "users-round", "scroll-text", "log-out", "server", "settings-2", "radio", "lock-keyhole", "globe", "arrow-up-down", "cable", "terminal", "earth", "hard-drive-download", "shield-check", "archive"})
-_UI_ICON_CACHE = {}
-
-
 def server_label():
     return read_server_label(DATA_DIR)
 
@@ -992,12 +960,6 @@ def server_label():
 def save_server_label(value):
     write_server_label(DATA_DIR, value)
 
-
-CHANGELOG_PATHS = {
-    code: BASE_DIR / "doc" / (tag or "") / "CHANGELOG.md"
-    for code, tag in (("en", "en"), ("zh_cn", None), ("es", "es"))
-}
-CHANGELOG_PATHS["zh_cn"] = BASE_DIR / "doc" / "CHANGELOG.md"
 
 STATIC_FILES = {
     # The single-page UI loads these vendored engines itself; everything else it needs is in web/dist.

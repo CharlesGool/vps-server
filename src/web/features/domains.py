@@ -7,10 +7,7 @@ caddy_sites.py, outside Web's sandbox.
 import json
 import subprocess
 
-from caddy_sites import ACCESS_LOG, read_sites, read_tokens, zone_of
-NOTICES = ("domains_added", "domains_removed", "domains_token_saved", "domains_token_cleared",
-           "domains_site_enabled", "domains_site_disabled",
-           "domains_site_saved")
+from caddy_sites import ACCESS_LOG
 ERRORS = ("host_invalid", "port_invalid", "host_exists", "host_missing", "too_many", "zone_unknown", "no_public_ip", "allow_invalid", "auth_invalid",
           "caddy_rejected", "token_invalid", "token_rejected", "token_exists", "token_missing", "too_many_tokens", "invalid", "failed")
 WARNINGS = ("dns_auth", "dns_zone", "dns_unreachable", "dns_api", "dns_no_token", "dns_no_address")

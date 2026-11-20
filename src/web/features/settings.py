@@ -34,22 +34,3 @@ class SettingsMixin:
             elif site.get("console"):
                 hosts += names(site)
         return list(dict.fromkeys("https://" + host.lower() for host in hosts))
-
-
-    SECURITY_POSTS = {
-        "/settings/ip/add": ("ip-add", ({"csrf", "ip"},)),
-        "/settings/ip/remove": ("ip-remove", ({"csrf", "ip"},)),
-        "/settings/ip/toggle": ("ip-toggle", ({"csrf", "enabled"},)),
-        "/settings/password": ("password", ({"csrf", "new", "confirm"},)),
-        "/settings/login-ban/toggle": ("login-ban-toggle", ({"csrf", "enabled"},)),
-        "/settings/login-ban/clear": ("login-ban-clear", ({"csrf"},)),
-        "/settings/console-access/toggle": ("console-access-toggle", ({"csrf", "enabled"},)),
-        "/settings/console-access/add": ("console-access-add", ({"csrf", "network"},)),
-        "/settings/console-access/remove": ("console-access-remove", ({"csrf", "network"},)),
-        "/settings/sessions/revoke": ("session-revoke", ({"csrf", "id"},)),
-        "/settings/sessions/revoke-others": ("session-revoke-others", ({"csrf"},)),
-        "/settings/alerts": ("alerts-save", tuple({"csrf", "server", "key"} | set(extra)
-                                                   for extra in ((), ("new_ip",), ("ban",), ("new_ip", "ban")))),
-        "/settings/alerts/test": ("alerts-test", ({"csrf"},)),
-        "/settings/alerts/clear-key": ("alerts-clear-key", ({"csrf"},)),
-    }

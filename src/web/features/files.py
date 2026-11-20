@@ -1,7 +1,7 @@
 """Mini Drive: the public download route (/f/<token>/<name>) and share links (the page is the single-page UI).
 
 The store itself is file_share.py. Uploads arrive as the raw request body
-(files.js sends the file with XMLHttpRequest), so no multipart parsing and
+(the Files page sends the file with XMLHttpRequest), so no multipart parsing and
 no copy in memory. Download links need no session or client certificate:
 the route is dispatched before both checks, like Clash subscriptions.
 """
@@ -9,10 +9,6 @@ import re
 import urllib.parse
 
 
-NOTICES = ("files_uploaded", "files_deleted", "files_link_added", "files_link_revoked",
-           "files_fetch_started", "files_quota_saved", "files_rate_saved", "files_job_removed", "files_job_cancelled")
-ERRORS = ("no_room", "too_many", "empty", "incomplete", "url_invalid", "url_blocked", "busy", "not_found",
-          "link_invalid", "too_many_links", "quota_invalid", "rate_invalid", "traffic_blocked", "cancelled", "interrupted", "network")
 RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 
 

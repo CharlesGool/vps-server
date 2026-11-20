@@ -11,10 +11,6 @@ import config_backup
 
 MAX_UPLOAD = 256 * 1024 * 1024
 UPLOAD_IDLE_TIMEOUT = 60
-NOTICES = ("created", "deleted", "settings", "restore_started", "uploaded", "key_set")
-ERRORS = ("failed", "invalid", "not_found", "no_space", "busy", "key_wrong", "key_needed", "ack_needed", "past")
-KIND_KEYS = {"manual": "backup_kind_manual", "scheduled": "backup_kind_scheduled",
-             "pre-upgrade": "backup_kind_pre_upgrade", "pre-restore": "backup_kind_pre_restore"}
 # Restart order after a restore: meters first (they take their dependents along),
 # then the services that read restored files, the console last.
 RESTORE_SCRIPT = (
