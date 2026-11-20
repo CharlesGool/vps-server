@@ -74,6 +74,30 @@ class TrafficMixin:
             total_meter.write_state(path, state)
         return state, info
 
+    def total_enforce(self, now=None):
+        """Apply the total's cap action and send its alerts; the console calls this every 30 seconds.
+
+        Writes total-limit.json for the meters (see total_meter.py) and notifies at 80% and at the
+        cap once per period. Returns the enforced action, or None.
+        """
+        import total_meter
+        context = self.context
+        now = now or context.datetime.now(context.timezone.utc)
+        state, info = self.total_state(now)
+        measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
+        used = total_meter.calibrated_total(state, measured)
+        action = total_meter.enforced(state, used)
+        total_meter.write_limit(context.DATA_DIR, action, state["next_reset_at"] if action else None)
+        due = total_meter.due_alerts(state, used)
+        if due:
+            total_meter.write_state(context.DATA_DIR / "total-traffic.json",
+                                    {**state, "alerted": [*state.get("alerted", []), *due]})
+            top = due[-1]
+            text = context._log_text
+            values = {"used": total_meter.format_bytes(used), "cap": total_meter.format_bytes(state["cap_bytes"]),
+                      "action": text(f"total_action_{total_meter.cap_action(state)}")}
+            context.ALERTS.notify_task(text(f"total_alert_{top}_title"), text(f"total_alert_{top}_body", **values))
+        return action
 
     def traffic_entry(self, key):
         """(entry, meter ledger nodes) for one metered feature, or None until it is metered."""

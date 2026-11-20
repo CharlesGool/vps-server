@@ -32,6 +32,26 @@ test('流量限制保存后卡片显示新上限, 错误的值不保存', async 
   await expect(card.getByText('不限', { exact: true })).toBeVisible()
 })
 
+test('总流量: 达到上限后的行为可选, 保存后再打开仍是所选', async ({ page }) => {
+  await open(page, '/')
+  const card = page.locator('main section', { has: page.getByRole('heading', { name: '总流量', exact: true }) })
+  await card.getByRole('button', { name: '总流量设置' }).click()
+  const dialog = page.getByRole('dialog', { name: '总流量设置' })
+  const actions = dialog.getByRole('radiogroup', { name: '达到流量上限后' })
+  await expect(actions.getByRole('radio', { name: '只提醒' })).toBeChecked()
+  await dialog.getByLabel('总流量上限(GiB)').fill('1000')
+  await actions.getByRole('radio', { name: '停止使用' }).check()
+  await dialog.getByRole('button', { name: '保存总流量设置' }).click()
+  await expect(dialog).toBeHidden()
+  await card.getByRole('button', { name: '总流量设置' }).click()
+  await expect(actions.getByRole('radio', { name: '停止使用' })).toBeChecked()
+  // 恢复不限和只提醒, 不影响其他测试和截图
+  await dialog.getByLabel('总流量上限(GiB)').fill('')
+  await actions.getByRole('radio', { name: '只提醒' }).check()
+  await dialog.getByRole('button', { name: '保存总流量设置' }).click()
+  await expect(dialog).toBeHidden()
+})
+
 test('iperf3: 端口默认遮住, 显示后是数字; 关闭了窗口功能时开启给出提示', async ({ page }) => {
   await open(page, '/iperf')
   const server = page.locator('main section', { has: page.getByRole('heading', { name: '服务端', exact: true }) })

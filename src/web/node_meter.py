@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from node_accounting import BILLABLE_MULTIPLIER, advance_cycles, desired_policy, multiplier, update_accounting
 from node_inventory import InvalidInventory
 from node_state import CONFIG_PATHS, STATE_PATH, _read_json, read_inventory, write_inventory, write_json
+from total_meter import host_limit
 
 
 TABLE = "vps_server_nodes"
@@ -84,7 +85,7 @@ def _policy_key(inventory, policy):
                node.get("matches"), node["cap_bytes"],
                node["cap_action"], policy[node["id"]]["active"],
                policy[node["id"]]["blocked"], policy[node["id"]]["expired"],
-               policy[node["id"]]["capped"],
+               policy[node["id"]]["capped"], policy[node["id"]]["host"],
                policy[node["id"]]["suspect"], policy[node["id"]]["upload_bps"],
                policy[node["id"]]["download_bps"])
               for node in inventory["nodes"]]
@@ -209,11 +210,12 @@ def _ledger(inventory, epoch, *, suspect):
 
 def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
          meter_path=METER_PATH, lock_path=LOCK_PATH, backend=None, lock_held=False,
-         table=TABLE, reader=None, writer=None, validate=None):
+         table=TABLE, reader=None, writer=None, validate=None, limit=host_limit):
     """Sample, advance due cycles, reconcile rules, then persist both ledgers.
 
     The FRPS meter reuses this with its own table, state reader/writer and
-    validator; the defaults are the sing-box node inventory.
+    validator; the defaults are the sing-box node inventory. ``limit(now)`` is the
+    host-wide total's action (total_meter.host_limit), shared by every meter.
     """
     now = now or datetime.now(timezone.utc)
     backend = backend or NftBackend(table)
@@ -269,7 +271,7 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
         inventory, ledger = advance_cycles(inventory, ledger, now=now, **checks)
         cycle_changed = any(node["next_reset_at"] != previous_resets[node["id"]]
                             for node in inventory["nodes"])
-        policy = desired_policy(inventory, ledger, now=now, **checks)
+        policy = desired_policy(inventory, ledger, now=now, host=limit(now), **checks)
         fingerprint = _policy_key(inventory, policy)
         if not exists or cycle_changed or fingerprint != old_fingerprint:
             backend.apply(render_rules(inventory, policy, replace=exists, table=table))

@@ -59,8 +59,9 @@ def _new(key):
 
 
 class AppMeter:
-    def __init__(self, path):
+    def __init__(self, path, limit=lambda now: None):
         self.path = Path(path)
+        self._limit = limit  # the host-wide total's action (total_meter.host_limit)
         self._lock = threading.Lock()
         self._pending = {key: {"upload": 0, "download": 0} for key in KEYS}
         self._policy = {}
@@ -107,7 +108,7 @@ class AppMeter:
                         entry[f"{direction}_bytes"] += amount
                         entry[f"total_{direction}_bytes"] += amount
                 state, ledger = advance_cycles(state, self._ledger(state), now=now, validate=validate)
-                policy = desired_policy(state, ledger, now=now, validate=validate)
+                policy = desired_policy(state, ledger, now=now, validate=validate, host=self._limit(now))
                 self._save(state)
         except (OSError, ValueError, InvalidInventory):
             with self._lock:  # Keep the counts for the next try.

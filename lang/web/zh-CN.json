@@ -173,7 +173,7 @@
   "total_next_reset": "下次重置 {date}(UTC)",
   "total_no_reset": "不自动重置",
   "total_since": "本周期自 {date} 起",
-  "total_over": "已达到总流量上限。目前只做提醒,不会自动限速或断开。",
+  "total_over": "已达到总流量上限。",
   "total_warn": "总流量已用超过 80%。",
   "total_by_source": "各项用量(本周期)",
   "total_settings": "总流量设置",
@@ -323,7 +323,7 @@
   "node_download_speed": "下载限速（Mbps）",
   "node_cap_action": "达到流量上限后",
   "node_cap_slow": "双向限速 1 Mbps",
-  "node_cap_block": "禁止使用",
+  "node_cap_block": "停止使用",
   "node_reset_repeat": "定期重置",
   "node_reset_every": "每隔",
   "node_reset_unit": "单位",
@@ -1246,5 +1246,13 @@
   "monitor_alert_gpu_temp_title": "GPU 温度告警",
   "monitor_alert_gpu_temp_body": "{name} 温度 {celsius} °C",
   "monitor_alert_gpu_memory_title": "显存告警",
-  "monitor_alert_gpu_memory_body": "{name} 显存已用 {percent}%"
+  "monitor_alert_gpu_memory_body": "{name} 显存已用 {percent}%",
+  "total_action_notify": "只提醒",
+  "total_action_throttle": "所有计量项限速 1 Mbps",
+  "total_action_block": "所有计量项停止使用",
+  "total_alert_warn_title": "总流量已用 80%",
+  "total_alert_warn_body": "本周期已用 {used},上限 {cap}。达到上限后:{action}。",
+  "total_alert_over_title": "总流量已达上限",
+  "total_alert_over_body": "本周期已用 {used},上限 {cap}。已执行:{action}。",
+  "log_total_failed": "总流量检查失败: {error}"
 }

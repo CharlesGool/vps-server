@@ -1724,7 +1724,7 @@
     "node_cancel": "Cancelar",
     "node_cap": "Límite de tráfico",
     "node_cap_action": "Al alcanzar el límite de tráfico",
-    "node_cap_block": "Bloquear el acceso",
+    "node_cap_block": "Detener",
     "node_cap_gib": "Límite de tráfico (GiB)",
     "node_cap_mib": "Límite de tráfico (MiB)",
     "node_cap_slow": "Limitar ambas direcciones a 1 Mbps",
@@ -2007,7 +2007,6 @@
     "total_next_reset": "Próximo reinicio {date} (UTC)",
     "total_no_cap": "sin límite total",
     "total_no_reset": "Sin reinicio automático",
-    "total_over": "Se alcanzó el límite total de tráfico. Por ahora solo avisa; no se limita ni se corta nada.",
     "total_reset_day": "Día de reinicio mensual (1-28, 0 = nunca)",
     "total_save": "Guardar ajustes del tráfico total",
     "total_settings": "Ajustes del tráfico total",
@@ -2058,6 +2057,10 @@
     "audit_fleet_host_added": "Host gestionado añadido",
     "audit_fleet_host_removed": "Host gestionado quitado",
     "audit_fleet_upgrade": "Actualización de la flota",
-    "audit_fleet_backup": "Copia de la flota"
+    "audit_fleet_backup": "Copia de la flota",
+    "total_action_notify": "Solo avisar",
+    "total_over_notify": "Se alcanzó el límite total de tráfico. Está configurado para solo avisar; no se limita ni se detiene nada.",
+    "total_over_throttle": "Se alcanzó el límite total de tráfico. Todas las funciones medidas están limitadas a 1 Mbps hasta el próximo periodo.",
+    "total_over_block": "Se alcanzó el límite total de tráfico. Todas las funciones medidas están detenidas hasta el próximo periodo."
   }
 }

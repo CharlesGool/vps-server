@@ -173,7 +173,7 @@
   "total_next_reset": "Next reset {date} (UTC)",
   "total_no_reset": "No automatic reset",
   "total_since": "This period since {date}",
-  "total_over": "The total traffic limit is reached. This only warns for now; nothing is throttled or cut off.",
+  "total_over": "The total traffic limit is reached.",
   "total_warn": "More than 80% of the total traffic limit is used.",
   "total_by_source": "Usage by source (this period)",
   "total_settings": "Total traffic settings",
@@ -323,7 +323,7 @@
   "node_download_speed": "Download speed limit (Mbps)",
   "node_cap_action": "After the traffic cap",
   "node_cap_slow": "Limit both directions to 1 Mbps",
-  "node_cap_block": "Block access",
+  "node_cap_block": "Stop",
   "node_reset_repeat": "Repeat",
   "node_reset_every": "Reset every",
   "node_reset_unit": "Unit",
@@ -1246,5 +1246,13 @@
   "monitor_alert_gpu_temp_title": "GPU temperature alert",
   "monitor_alert_gpu_temp_body": "{name} is at {celsius} °C",
   "monitor_alert_gpu_memory_title": "GPU memory alert",
-  "monitor_alert_gpu_memory_body": "{name} memory is {percent}% used"
+  "monitor_alert_gpu_memory_body": "{name} memory is {percent}% used",
+  "total_action_notify": "only notify",
+  "total_action_throttle": "throttle every metered feature to 1 Mbps",
+  "total_action_block": "stop every metered feature",
+  "total_alert_warn_title": "80% of total traffic used",
+  "total_alert_warn_body": "{used} used this period, limit {cap}. At the limit: {action}.",
+  "total_alert_over_title": "Total traffic limit reached",
+  "total_alert_over_body": "{used} used this period, limit {cap}. Done: {action}.",
+  "log_total_failed": "Total traffic check failed: {error}"
 }

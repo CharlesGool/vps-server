@@ -63,6 +63,8 @@ interface ModuleItem {
   occupiedPort?: number | null
   needsIpcert?: boolean
 }
+// 达到总上限后: 只提醒, 所有计量项限速 1 Mbps, 或全部停止(和单项流量限制同一套规则)
+type CapAction = 'notify' | 'throttle' | 'block'
 interface Total {
   used: number
   measured: number
@@ -71,6 +73,8 @@ interface Total {
   resetSpec: Spec | null
   timezone: string
   level: 'none' | 'ok' | 'warn' | 'over'
+  capAction: CapAction
+  enforced: 'throttle' | 'block' | null
   since: string
   nextReset: string | null
   offset: number
@@ -265,6 +269,12 @@ const sourceColumns = computed(() => [
 // 总流量设置和校准: 对话框里的短表单
 const settingsOpen = ref(false)
 const capGib = ref('')
+const capAction = ref<CapAction>('notify')
+const capActions = computed(() => [
+  { value: 'notify' as const, label: t('console.total_action_notify') },
+  { value: 'throttle' as const, label: t('console.node_cap_slow') },
+  { value: 'block' as const, label: t('console.node_cap_block') },
+])
 // 重置: 不重置, 或和定时任务同一套的每周/每月/每年计划(服务器本地时间). 旧版本的"每月几号(UTC)"打开时换算成每月计划.
 const resetOn = ref<'none' | 'schedule'>('schedule')
 const resetSpec = ref<Spec>({ mode: 'monthly', day: 1, time: '00:00:00' })
@@ -279,6 +289,7 @@ const actualGib = ref('')
 const dialogError = ref('')
 function openSettings() {
   capGib.value = total.value?.cap != null ? String(total.value.cap / 1073741824) : ''
+  capAction.value = total.value?.capAction ?? 'notify'
   const value = total.value
   resetOn.value = value?.resetSpec || value?.resetDay ? 'schedule' : 'none'
   resetSpec.value = value?.resetSpec ?? { mode: 'monthly', day: value?.resetDay || 1, time: '00:00:00' }
@@ -325,7 +336,7 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
       <p class="text-2xl font-semibold tabular-nums">{{ figure }}</p>
       <ProgressBar v-if="total.cap != null" :label="t('vps.dashboard.usedLabel')" :value="Math.round(percent)" />
       <AlertBanner v-if="total.level === 'warn' || total.level === 'over'" :tone="total.level === 'over' ? 'destructive' : 'warning'">
-        {{ t(total.level === 'over' ? 'console.total_over' : 'console.total_warn') }}
+        {{ t(total.level === 'over' ? `console.total_over_${total.enforced ?? 'notify'}` : 'console.total_warn') }}
       </AlertBanner>
       <DataTable
         v-if="sourceRows.length"
@@ -372,13 +383,16 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
       <FormField v-slot="field" :label="t('console.total_cap_gib')" :span="6">
         <Input :id="field.id" v-model="capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
       </FormField>
+      <FormField :label="t('console.node_cap_action')" group>
+        <RadioField v-model="capAction" :options="capActions" :label="t('console.node_cap_action')" />
+      </FormField>
       <FormField :label="t('console.node_reset_schedule')" group :span="6" :error="dialogError">
         <RadioField v-model="resetOn" :options="resetChoices" :label="t('console.node_reset_schedule')" />
       </FormField>
       <ScheduleFields v-if="resetOn === 'schedule'" :key="resetKey" v-model="resetSpec" :timezone="total?.timezone ?? ''" :modes="RESET_MODES" :once="false" />
       <template #footer>
         <Button variant="outline" @click="settingsOpen = false">{{ t('console.node_cancel') }}</Button>
-        <Button :disabled="busy" @click="saveTotal('traffic/total', { capGib: capGib.trim() || null, resetDay: 0, resetSpec: resetOn === 'schedule' ? resetSpec : null }, () => (settingsOpen = false))">
+        <Button :disabled="busy" @click="saveTotal('traffic/total', { capGib: capGib.trim() || null, capAction, resetDay: 0, resetSpec: resetOn === 'schedule' ? resetSpec : null }, () => (settingsOpen = false))">
           {{ t('console.total_save') }}
         </Button>
       </template>

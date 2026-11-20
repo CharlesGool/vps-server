@@ -151,8 +151,15 @@ def update_accounting(inventory, state, snapshots, *, validate=validate_inventor
     return result, ledger
 
 
-def desired_policy(inventory, state, *, now, validate=validate_inventory):
-    """Return per-ID decisions for quota throttling or complete blocking."""
+def desired_policy(inventory, state, *, now, validate=validate_inventory, host=None):
+    """Return per-ID decisions for quota throttling or complete blocking.
+
+    ``host`` is the host-wide total's action once its cap is reached (total_meter.host_limit):
+    "throttle" or "block" applies to every active entry as if its own cap were reached with
+    that action. Whichever of the two is stricter wins.
+    """
+    if host not in (None, "throttle", "block"):
+        raise ValueError("invalid host limit")
     validate(inventory)
     _state(inventory, state)
     _now(now)
@@ -165,8 +172,8 @@ def desired_policy(inventory, state, *, now, validate=validate_inventory):
         used = billable_bytes(node)
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
         active = node["enabled"]
-        blocked = active and (expired or (capped and node["cap_action"] == "block"))
-        throttled = capped and not blocked
+        blocked = active and (expired or (capped and node["cap_action"] == "block") or host == "block")
+        throttled = (capped or host == "throttle") and not blocked
         def rate(direction):
             if not active or blocked:
                 return None
@@ -174,7 +181,7 @@ def desired_policy(inventory, state, *, now, validate=validate_inventory):
             return min(configured, LIMIT_BPS) if configured is not None and throttled else \
                 LIMIT_BPS if throttled else configured
         policy[node["id"]] = {"active": active, "blocked": blocked, "expired": expired,
-                              "capped": capped,
+                              "capped": capped, "host": host if active else None,
                               "upload_bps": rate("upload"),
                               "download_bps": rate("download"),
                               "suspect": suspect}

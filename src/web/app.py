@@ -461,7 +461,8 @@ IP_ALLOWLIST = IpAllowlist(IP_ALLOWLIST_FILE)
 CLIENT_AUTH = ClientAuth(CERT_DIR)
 FILE_STORE = FileStore(DATA_DIR / "files")
 # Mini Drive and the speed test share the console's port; count their traffic here.
-APP_METER = AppMeter(DATA_DIR / "app-traffic.json")
+import total_meter  # noqa: E402
+APP_METER = AppMeter(DATA_DIR / "app-traffic.json", limit=lambda now: total_meter.host_limit(now, DATA_DIR))
 
 
 def _files_received(size):
@@ -855,6 +856,26 @@ def failed_units():
     except (OSError, subprocess.SubprocessError):
         return []
     return [line.split()[0] for line in output.splitlines() if line.split()]
+
+
+TOTAL_CHECK_SECONDS = 30
+
+
+def total_enforce():
+    """The host total's cap action and alerts (features/traffic.py), outside a request."""
+    class Total(TrafficMixin):
+        context = sys.modules[__name__]
+    return Total().total_enforce()
+
+
+def watch_total_traffic(stop_event):
+    """Keep the host total's cap action and alerts current, whether or not anyone opens the home page."""
+    while not stop_event.is_set():
+        try:
+            total_enforce()
+        except Exception as error:  # noqa: BLE001 - a bad tick must not end the loop
+            print(_log_text('log_total_failed', error=error), file=sys.stderr)
+        stop_event.wait(TOTAL_CHECK_SECONDS)
 
 
 MONITOR = sysmon.Monitor(DATA_DIR, notify=ALERTS.notify_task, failed_units=failed_units, texts=_log_text,
@@ -1658,6 +1679,7 @@ def main():
             print(_log_text('log_encryption_failed', error=error), file=sys.stderr)
         APP_METER.start()
         SCHEDULER.start()
+        threading.Thread(target=watch_total_traffic, args=(stop_event,), daemon=True).start()
         MONITOR.start()
 
         console.serve_forever()

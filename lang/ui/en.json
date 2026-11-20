@@ -1724,7 +1724,7 @@
     "node_cancel": "Cancel",
     "node_cap": "Traffic cap",
     "node_cap_action": "After the traffic cap",
-    "node_cap_block": "Block access",
+    "node_cap_block": "Stop",
     "node_cap_gib": "Traffic cap (GiB)",
     "node_cap_mib": "Traffic cap (MiB)",
     "node_cap_slow": "Limit both directions to 1 Mbps",
@@ -2007,7 +2007,6 @@
     "total_next_reset": "Next reset {date} (UTC)",
     "total_no_cap": "no total limit set",
     "total_no_reset": "No automatic reset",
-    "total_over": "The total traffic limit is reached. This only warns for now; nothing is throttled or cut off.",
     "total_reset_day": "Monthly reset day (1-28, 0 = never)",
     "total_save": "Save total traffic settings",
     "total_settings": "Total traffic settings",
@@ -2058,6 +2057,10 @@
     "audit_fleet_host_added": "Managed host added",
     "audit_fleet_host_removed": "Managed host removed",
     "audit_fleet_upgrade": "Fleet upgrade",
-    "audit_fleet_backup": "Fleet backup"
+    "audit_fleet_backup": "Fleet backup",
+    "total_action_notify": "Only notify",
+    "total_over_notify": "The total traffic limit is reached. It is set to only notify; nothing is throttled or stopped.",
+    "total_over_throttle": "The total traffic limit is reached. Every metered feature is throttled to 1 Mbps until the next period.",
+    "total_over_block": "The total traffic limit is reached. Every metered feature is stopped until the next period."
   }
 }

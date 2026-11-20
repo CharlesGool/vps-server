@@ -13,8 +13,12 @@ The count can drift from what the provider bills, so the operator may calibrate 
 the usage the provider shows stores the difference as a separate, signed calibration that is
 shown on its own bar and cleared when the next period begins.
 
-This is a display and a limit marker only: reaching the limit shows a warning and
-does not throttle or stop anything.
+What happens when the period reaches the cap is the operator's choice (``cap_action``):
+"notify" only warns (the default, and what older versions did), "throttle" slows every metered
+entry to 1 Mbps and "block" stops them all, with the same rules an entry's own cap uses
+(node_accounting.desired_policy). The console decides and writes ``total-limit.json`` in its data
+directory; the root meters (node, FRPS, kernel) and the console's own meter read it each tick. The
+file names the end of the period, so a new period lifts the limit even if the console is down.
 """
 
 import calendar
@@ -26,6 +30,9 @@ from pathlib import Path
 import tempfile
 
 MAX_CAP_BYTES = 10 ** 18
+CAP_ACTIONS = ("notify", "throttle", "block")
+LIMIT_FILE = "total-limit.json"
+OPTIONAL_KEYS = {"reset_spec", "cap_action", "alerted"}
 WARN_RATIO = 0.8
 BILLABLE_MULTIPLIER = 2  # nodes and FRPS forward each byte, so it counts twice (node_accounting.multiplier)
 
@@ -143,10 +150,15 @@ def new_state(info, now, cap_bytes=None, reset_day=DEFAULT_RESET_DAY, spec=None)
 def validate(state):
     base = {"version", "cap_bytes", "reset_day", "period_start", "next_reset_at", "baselines"}
     if not isinstance(state, dict) or state.get("version") not in (1, 2, 3) or \
-            set(state) - {"reset_spec"} != (base | {"calibration_bytes", "calibrated_at"} if state.get("version") == 3 else base):
+            set(state) - OPTIONAL_KEYS != (base | {"calibration_bytes", "calibrated_at"} if state.get("version") == 3 else base):
         raise ValueError("invalid total traffic state")
     if "reset_spec" in state and (state["reset_day"] != 0 or not valid_spec(state["reset_spec"])):
         raise ValueError("invalid reset schedule")
+    if state.get("cap_action", "notify") not in CAP_ACTIONS:
+        raise ValueError("invalid cap action")
+    alerted = state.get("alerted", [])
+    if not isinstance(alerted, list) or any(item not in ("warn", "over") for item in alerted):
+        raise ValueError("invalid alert record")
     if state["version"] == 3:
         offset = state["calibration_bytes"]
         if type(offset) is not int or abs(offset) > MAX_CAP_BYTES:
@@ -178,14 +190,15 @@ def advance(state, info, now):
     if state is None:
         return new_state(info, now), True
     if state["version"] == 1:
-        return new_state(info, now, state["cap_bytes"], state["reset_day"], state.get("reset_spec")), True
+        return {**new_state(info, now, state["cap_bytes"], state["reset_day"], state.get("reset_spec")),
+                "cap_action": state.get("cap_action", "notify")}, True
     if state["version"] == 2:
         # A period that was already rebuilt from the cycles; it only lacks the calibration fields.
         return {**state, "version": 3, "calibration_bytes": 0, "calibrated_at": None}, True
     if state["next_reset_at"] is not None and now >= datetime.fromisoformat(state["next_reset_at"]):
         nxt = next_reset(now, state["reset_day"], state.get("reset_spec"))
         return {**state, "period_start": now.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
-                "baselines": lifetimes(info), "calibration_bytes": 0, "calibrated_at": None}, True
+                "baselines": lifetimes(info), "calibration_bytes": 0, "calibrated_at": None, "alerted": []}, True
     return state, False
 
 
@@ -238,6 +251,77 @@ def level(state, used):
     return "over" if used >= cap else "warn" if used >= cap * WARN_RATIO else "ok"
 
 
+def cap_action(state):
+    return state.get("cap_action", "notify")
+
+
+def enforced(state, used):
+    """"throttle" or "block" while the period is over a cap that enforces, else None."""
+    action = cap_action(state)
+    return action if action != "notify" and level(state, used) == "over" else None
+
+
+def due_alerts(state, used):
+    """Levels ("warn", "over") reached this period that have not been notified yet, lowest first."""
+    reached = {"ok": [], "none": [], "warn": ["warn"], "over": ["warn", "over"]}[level(state, used)]
+    return [item for item in reached if item not in state.get("alerted", [])]
+
+
+def write_limit(data_dir, action, until):
+    """Publish the enforced action for the meters; None removes it. Returns True when the file changed."""
+    path = Path(data_dir) / LIMIT_FILE
+    if action is None:
+        try:
+            path.unlink()
+            return True
+        except FileNotFoundError:
+            return False
+    text = json.dumps({"action": action, "until": until}, separators=(",", ":")) + "\n"
+    try:
+        if path.read_text(encoding="utf-8") == text:
+            return False
+    except OSError:
+        pass
+    fd, temp = tempfile.mkstemp(prefix=".total-limit-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.chmod(temp, 0o644)
+        os.replace(temp, path)
+    except BaseException:
+        try:
+            os.unlink(temp)
+        except OSError:
+            pass
+        raise
+    return True
+
+
+def host_limit(now=None, data_dir=None):
+    """The host-wide action the meters apply ("throttle", "block") or None.
+
+    Anything unreadable or odd counts as no limit, and so does a file whose period has ended.
+    """
+    try:
+        if data_dir is None:
+            try:
+                from state_paths import data_dir as find_data_dir
+            except ImportError:  # imported as part of a package (tests)
+                from .state_paths import data_dir as find_data_dir  # type: ignore[no-redef]
+            data_dir = find_data_dir()
+        data = json.loads((Path(data_dir) / LIMIT_FILE).read_text(encoding="utf-8"))
+        action, until = data["action"], data["until"]
+        if action not in ("throttle", "block"):
+            return None
+        if until is not None:
+            now = now or datetime.now(timezone.utc)
+            if now >= datetime.fromisoformat(until):
+                return None
+        return action
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def parse_settings(cap_gib, reset_day):
     """(cap_bytes or None, reset_day) from the form text; ValueError on anything odd. See parse_spec for calendar resets."""
     cap_text = (cap_gib or "").strip()
@@ -272,20 +356,26 @@ def parse_spec(spec):
     return spec
 
 
-def apply_settings(state, cap_bytes, reset_day, now, info=None, spec=None):
-    """New cap and reset (a day of the month in UTC, or a calendar spec, which wins).
+def apply_settings(state, cap_bytes, reset_day, now, info=None, spec=None, action=None):
+    """New cap, reset (a day of the month in UTC, or a calendar spec, which wins) and cap action.
 
-    A changed reset re-bases the period on the new boundary.
+    A changed reset re-bases the period on the new boundary. A changed cap notifies again.
     """
+    action = action or cap_action(state)
+    if action not in CAP_ACTIONS:
+        raise ValueError("invalid cap action")
     if spec:
         reset_day = 0
     changed = state["reset_day"] != reset_day or state.get("reset_spec") != spec
     if changed and info is not None:
-        return new_state(info, now, cap_bytes, reset_day, spec)
+        return {**new_state(info, now, cap_bytes, reset_day, spec), "cap_action": action}
     nxt = next_reset(now, reset_day, spec) if changed else (
         datetime.fromisoformat(state["next_reset_at"]) if state["next_reset_at"] else None)
     updated = {key: value for key, value in state.items() if key != "reset_spec"}
-    updated.update(cap_bytes=cap_bytes, reset_day=reset_day, next_reset_at=nxt.isoformat() if nxt else None)
+    updated.update(cap_bytes=cap_bytes, reset_day=reset_day, next_reset_at=nxt.isoformat() if nxt else None,
+                   cap_action=action)
+    if cap_bytes != state["cap_bytes"]:
+        updated["alerted"] = []
     if spec:
         updated["reset_spec"] = spec
     return updated

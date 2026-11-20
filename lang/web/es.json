@@ -173,7 +173,7 @@
   "total_next_reset": "Próximo reinicio {date} (UTC)",
   "total_no_reset": "Sin reinicio automático",
   "total_since": "Este periodo desde {date}",
-  "total_over": "Se alcanzó el límite total de tráfico. Por ahora solo avisa; no se limita ni se corta nada.",
+  "total_over": "Se alcanzó el límite total de tráfico.",
   "total_warn": "Se ha usado más del 80 % del límite total de tráfico.",
   "total_by_source": "Uso por origen (este periodo)",
   "total_settings": "Ajustes del tráfico total",
@@ -323,7 +323,7 @@
   "node_download_speed": "Límite de bajada (Mbps)",
   "node_cap_action": "Al alcanzar el límite de tráfico",
   "node_cap_slow": "Limitar ambas direcciones a 1 Mbps",
-  "node_cap_block": "Bloquear el acceso",
+  "node_cap_block": "Detener",
   "node_reset_repeat": "Repetir",
   "node_reset_every": "Restablecer cada",
   "node_reset_unit": "Unidad",
@@ -1246,5 +1246,13 @@
   "monitor_alert_gpu_temp_title": "Alerta de temperatura de GPU",
   "monitor_alert_gpu_temp_body": "{name} está a {celsius} °C",
   "monitor_alert_gpu_memory_title": "Alerta de memoria de GPU",
-  "monitor_alert_gpu_memory_body": "Memoria de {name} usada al {percent}%"
+  "monitor_alert_gpu_memory_body": "Memoria de {name} usada al {percent}%",
+  "total_action_notify": "solo avisar",
+  "total_action_throttle": "limitar todas las funciones medidas a 1 Mbps",
+  "total_action_block": "detener todas las funciones medidas",
+  "total_alert_warn_title": "80 % del tráfico total usado",
+  "total_alert_warn_body": "{used} usados en este periodo, límite {cap}. Al llegar al límite: {action}.",
+  "total_alert_over_title": "Límite total de tráfico alcanzado",
+  "total_alert_over_body": "{used} usados en este periodo, límite {cap}. Hecho: {action}.",
+  "log_total_failed": "Falló la comprobación del tráfico total: {error}"
 }

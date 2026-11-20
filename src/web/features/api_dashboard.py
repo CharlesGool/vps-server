@@ -93,7 +93,8 @@ class DashboardApiMixin:
         return {
             "used": used, "measured": measured, "cap": state["cap_bytes"], "resetDay": state["reset_day"],
             "resetSpec": spec, "timezone": self.context.time.tzname[0],
-            "level": total_meter.level(state, used), "since": when(state["period_start"], False),
+            "level": total_meter.level(state, used), "capAction": total_meter.cap_action(state),
+            "enforced": total_meter.enforced(state, used), "since": when(state["period_start"], False),
             "nextReset": when(state["next_reset_at"], True),
             "offset": total_meter.calibration(state), "calibratedAt": (state.get("calibrated_at") or "")[:10] or None,
             "sources": [{"id": identifier, "name": info[identifier]["name"], "value": value,
@@ -172,18 +173,29 @@ class DashboardApiMixin:
         if body is None:
             return self.api_error(400, "invalid_request")
         cap, day, spec = body.get("capGib"), body.get("resetDay", 0), body.get("resetSpec")
+        action = body.get("capAction")
         try:
+            if action is not None and action not in total_meter.CAP_ACTIONS:
+                raise ValueError("invalid cap action")
             spec = total_meter.parse_spec(spec)
             cap, day = total_meter.parse_settings("" if cap is None else str(cap), "0" if spec else str(day))
             now = self.context.datetime.now(self.context.timezone.utc)
             state, info = self.total_state(now)
             total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
-                                    total_meter.apply_settings(state, cap, day, now, info, spec))
+                                    total_meter.apply_settings(state, cap, day, now, info, spec, action))
         except (ValueError, TypeError):
             return self.api_error(400, "invalid_request")
         except OSError:
             return self.api_error(500, "failed")
+        self.total_enforce_now()
         return self.api_dashboard()
+
+    def total_enforce_now(self):
+        """Apply a changed cap, action or calibration at once instead of on the next 30-second check."""
+        try:
+            self.total_enforce()
+        except (OSError, ValueError, TypeError):
+            pass
 
     def api_total_calibrate(self):
         import total_meter
@@ -202,4 +214,5 @@ class DashboardApiMixin:
             return self.api_error(400, "invalid_request")
         except OSError:
             return self.api_error(500, "failed")
+        self.total_enforce_now()
         return self.api_dashboard()

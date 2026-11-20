@@ -1724,7 +1724,7 @@
     "node_cancel": "取消",
     "node_cap": "流量上限",
     "node_cap_action": "达到流量上限后",
-    "node_cap_block": "禁止使用",
+    "node_cap_block": "停止使用",
     "node_cap_gib": "流量上限（GiB）",
     "node_cap_mib": "流量上限（MiB）",
     "node_cap_slow": "双向限速 1 Mbps",
@@ -2007,7 +2007,6 @@
     "total_next_reset": "下次重置 {date}(UTC)",
     "total_no_cap": "未设置总上限",
     "total_no_reset": "不自动重置",
-    "total_over": "已达到总流量上限。目前只做提醒,不会自动限速或断开。",
     "total_reset_day": "每月重置日(1-28,0 为不重置)",
     "total_save": "保存总流量设置",
     "total_settings": "总流量设置",
@@ -2058,6 +2057,10 @@
     "audit_fleet_host_added": "集中管理添加主机",
     "audit_fleet_host_removed": "集中管理移除主机",
     "audit_fleet_upgrade": "批量升级主机",
-    "audit_fleet_backup": "批量备份主机"
+    "audit_fleet_backup": "批量备份主机",
+    "total_action_notify": "只提醒",
+    "total_over_notify": "已达到总流量上限。当前设置为只提醒,不会限速或停止。",
+    "total_over_throttle": "已达到总流量上限,所有计量项已限速到 1 Mbps,下个周期自动恢复。",
+    "total_over_block": "已达到总流量上限,所有计量项已停止使用,下个周期自动恢复。"
   }
 }
