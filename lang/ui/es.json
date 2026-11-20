@@ -921,6 +921,8 @@
       "user": "Usuario",
       "group": "Grupo",
       "recursive": "Incluir subcarpetas y archivos",
+      "recursiveChmodHint": "Las carpetas reciben el permiso de acceso (x) donde tienen lectura: 644 deja las carpetas en 755. Se omiten otros sistemas de archivos, las carpetas del kernel y las propias de la consola.",
+      "recursiveChownHint": "Se omiten otros sistemas de archivos, las carpetas del kernel y las propias de la consola; los elementos que ya tienen este propietario no se tocan.",
       "format": "Formato",
       "deleteTitle": "Eliminar {n} elementos",
       "deleteConfirm": "{names} se eliminarán para siempre y no se podrán recuperar.",
@@ -957,7 +959,10 @@
         "not_found": "Ruta no encontrada",
         "denied": "No se permite leer esto",
         "exists": "El destino ya existe",
-        "path_protected": "Es una carpeta del sistema; no se puede eliminar, mover ni renombrar",
+        "path_protected": "Ruta protegida: las carpetas del sistema y las carpetas de programa y datos de la consola no se pueden eliminar, mover ni renombrar, y la carpeta de la clave de datos es de solo lectura",
+        "recursive_protected": "Las carpetas del sistema no se pueden cambiar de forma recursiva; elige una carpeta interior",
+        "archive_links": "El archivo contiene enlaces que el Python de este servidor no puede extraer de forma segura; rechazado",
+        "timeout": "La operación superó el tiempo límite y se detuvo; pueden quedar resultados parciales en el destino",
         "path_invalid": "Ruta no válida",
         "name_invalid": "Nombre no válido",
         "destination_invalid": "Carpeta de destino no válida",
@@ -1006,7 +1011,7 @@
         "backup": "Copia de {n} hosts"
       },
       "batchConfirm": {
-        "upgrade": "Cada host descarga la última versión de GitHub y se actualiza; su consola se reinicia una vez. Requiere un token de lectura y escritura.",
+        "upgrade": "Cada host descarga la última versión de GitHub, en la variante de paquete (en línea o sin conexión) con la que se instaló, y se actualiza; su consola se reinicia una vez. Requiere un token de lectura y escritura.",
         "backup": "Cada host hace una copia manual de la configuración. Requiere un token de lectura y escritura."
       },
       "batchStarted": {
@@ -1486,7 +1491,7 @@
     "files_error_too_many": "Demasiados archivos. Elimina algunos primero.",
     "files_error_too_many_links": "Este archivo tiene demasiados enlaces. Revoca algunos primero.",
     "files_error_traffic_blocked": "Mini nube alcanzó su límite de tráfico o su periodo de validez; las subidas y descargas quedan en pausa.",
-    "files_error_url_blocked": "Esta dirección apunta a esta máquina o a una dirección de enlace local y no está permitida.",
+    "files_error_url_blocked": "Esta dirección apunta a esta máquina, a una dirección de enlace local o a un servicio de metadatos de la nube y no está permitida.",
     "files_error_url_invalid": "Introduce una URL http o https.",
     "files_fetch": "Descargar a Mini nube",
     "files_fetch_help": "Este servidor lo descarga directamente, para orígenes que otros hosts no alcanzan (por ejemplo, GitHub Releases). Puedes cerrar el navegador; la descarga sigue en segundo plano.",
@@ -2002,7 +2007,7 @@
     "total_calibrate_title": "Calibrar el total",
     "total_calibration_row": "Calibración · {date}",
     "total_cap_gib": "Límite total (GiB)",
-    "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). Las horas de reinicio son la hora local del servidor; las páginas de la consola, el terminal y SSH no cuentan.",
+    "total_hint": "Suma nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, mini disco y prueba de velocidad, contados como en sus propias páginas (el tráfico reenviado ×2). Las horas de reinicio son la hora local del servidor; las páginas de la consola, el terminal y SSH no cuentan. Si al superar el límite la acción es Detener, Tailscale, FRPC y un dominio que reenvía a la consola solo se limitan a 1 Mbps, para que aún pueda iniciar sesión en la consola.",
     "total_multiplier_note": "Cada cifra es el uso facturado: los nodos, FRPS y el reenvío cuentan cada byte dos veces (entrada y salida), así que es el doble de lo que muestra la página de cada función. El periodo cuenta desde el día de reinicio e incluye lo que cada origen ya ha usado en su ciclo actual.",
     "total_next_reset": "Próximo reinicio {date} (UTC)",
     "total_no_cap": "sin límite total",
@@ -2061,6 +2066,6 @@
     "total_action_notify": "Solo avisar",
     "total_over_notify": "Se alcanzó el límite total de tráfico. Está configurado para solo avisar; no se limita ni se detiene nada.",
     "total_over_throttle": "Se alcanzó el límite total de tráfico. Todas las funciones medidas están limitadas a 1 Mbps hasta el próximo periodo.",
-    "total_over_block": "Se alcanzó el límite total de tráfico. Todas las funciones medidas están detenidas hasta el próximo periodo."
+    "total_over_block": "Se alcanzó el límite total de tráfico. Todas las funciones medidas están detenidas hasta el próximo periodo, salvo Tailscale, FRPC y un dominio que reenvía a la consola: se limitan a 1 Mbps para que aún pueda iniciar sesión."
   }
 }

@@ -25,19 +25,27 @@ def _valid_target_host(context, value):
 def _portfwd_comment(context, rule_id):
     return f"{context.PORTFWD_TAG_PREFIX}{rule_id}"
 
-def _portfwd_specs(context, rule):
+def _portfwd_specs(context, rule, legacy=False):
     """[(table, chain, match-args, action-args)] for one rule.
 
     The same list builds both the -A and the -D command for a rule — only the
     verb differs — so closing a rule can never drift from opening it by one
     flag the way two hand-written copies eventually would.
+
+    ``legacy`` gives the DNAT rule as versions up to 7.4.0 wrote it, without
+    the destination-type match, only so that withdrawing a rule also removes
+    that older form after an upgrade.
     """
     comment = context._portfwd_comment(rule["id"])
     protocols = ["tcp", "udp"] if rule["protocol"] == "both" else [rule["protocol"]]
     specs = []
     for proto in protocols:
-        specs.append(("nat", "PREROUTING",
-            ["-p", proto, "--dport", str(rule["public_port"])],
+        prerouting = ["-p", proto, "--dport", str(rule["public_port"])]
+        if not legacy:
+            # Only connections to this host's own addresses. Traffic it merely routes
+            # (Tailscale exit-node clients, Docker containers) keeps its destination.
+            prerouting += ["-m", "addrtype", "--dst-type", "LOCAL"]
+        specs.append(("nat", "PREROUTING", prerouting,
             ["-m", "comment", "--comment", comment, "-j", "DNAT",
              "--to-destination", f'{rule["target_host"]}:{rule["target_port"]}']))
         specs.append(("nat", "POSTROUTING",
@@ -85,6 +93,15 @@ def portfwd_rule_apply(context, rule, opening):
         if not context._run_quiet(cmd):
             if opening or context._run_quiet([iptables, "-t", table, "-C", chain, *match, *action]):
                 ok = False
+    if not opening:
+        # A DNAT rule left by an older version matches every destination. Withdraw that
+        # form too (normally it is simply absent), so the startup replay in load() and
+        # every later withdrawal replace it with the current one.
+        for table, chain, match, action in context._portfwd_specs(rule, legacy=True):
+            if chain == "PREROUTING":
+                for _ in range(4):
+                    if not context._run_quiet([iptables, "-t", table, "-D", chain, *match, *action]):
+                        break
     if opening and not ok:
         # A partially applied rule must not be left in the kernel after the
         # caller reports a failure. Every spec carries this rule's own tag.

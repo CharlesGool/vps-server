@@ -52,13 +52,31 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32}")
 ID_RE = re.compile(r"[0-9a-f]{16}")
 
 
+# Cloud metadata and host-agent services outside the link-local range (refused whole below):
+# Alibaba Cloud, AWS, Google Cloud and Oracle Cloud over IPv6, Oracle Cloud Classic, Azure's
+# WireServer, and Tailscale's 100.100.100.100, which this host's own tailscaled answers.
+METADATA_ADDRESSES = frozenset(ipaddress.ip_address(address) for address in (
+    "100.100.100.200", "fd00:ec2::254", "fd20:ce::254", "fd00:c1::a9fe:a9fe", "192.0.0.192", "168.63.129.16",
+    "100.100.100.100"))
+
+
+def internal_address(text):
+    """True for an address a fetch must not reach: this host, link-local, metadata services."""
+    address = ipaddress.ip_address(text.split("%")[0])
+    if getattr(address, "ipv4_mapped", None):
+        address = address.ipv4_mapped
+    return (address.is_loopback or address.is_link_local or address.is_unspecified or address.is_multicast
+            or address in METADATA_ADDRESSES)
+
+
 def refuse_internal(url, resolve=socket.getaddrinfo):
-    """Raise ``url_blocked`` when ``url`` points at this host or a link-local address.
+    """Raise ``url_blocked`` when ``url`` points at this host, a link-local or a metadata address.
 
     The console fetches a URL on an administrator's behalf; without this check it
     could be aimed at the loopback services of this very machine or a cloud
     provider's metadata address (169.254.169.254). Ordinary private LAN addresses
-    stay allowed: downloading from a NAS is a normal use.
+    stay allowed: downloading from a NAS is a normal use. This is the early answer
+    for the page; the connection itself is checked again by ``connect_checked``.
     """
     host = urllib.parse.urlsplit(url).hostname
     if not host:
@@ -67,12 +85,52 @@ def refuse_internal(url, resolve=socket.getaddrinfo):
         found = resolve(host, None, type=socket.SOCK_STREAM)
     except OSError:
         return  # unresolvable: the fetch itself will fail and say so
+    if any(internal_address(item[4][0]) for item in found):
+        raise FileShareError("url_blocked")
+
+
+def connect_checked(address, *args, resolve=socket.getaddrinfo, **kwargs):
+    """``socket.create_connection`` that resolves the name once, refuses it when any answer is
+    internal, and connects to exactly the addresses it checked. A name that answers the check
+    with a public address and the connection with 127.0.0.1 (DNS rebinding) gets nowhere."""
+    host, port = address[0], address[1]
+    found = resolve(host, port, type=socket.SOCK_STREAM)
+    if any(internal_address(item[4][0]) for item in found):
+        raise FileShareError("url_blocked")
+    error = OSError(f"no address for {host}")
     for item in found:
-        address = ipaddress.ip_address(item[4][0].split("%")[0])
-        if getattr(address, "ipv4_mapped", None):
-            address = address.ipv4_mapped
-        if address.is_loopback or address.is_link_local or address.is_unspecified or address.is_multicast:
-            raise FileShareError("url_blocked")
+        try:
+            return socket.create_connection((item[4][0], port), *args, **kwargs)
+        except OSError as exc:
+            error = exc
+    raise error
+
+
+class _PinnedConnections:
+    """Handler part that makes urllib's HTTP(S) connections use ``connect_checked``.
+
+    Only the TCP connection changes: TLS still sends the URL's host name for SNI and
+    checks the certificate against it.
+    """
+    resolve = staticmethod(socket.getaddrinfo)
+
+    def do_open(self, http_class, req, **kwargs):
+        resolve = self.resolve
+
+        def connection(*args, **options):
+            conn = http_class(*args, **options)
+            conn._create_connection = lambda address, *rest, **more: connect_checked(
+                address, *rest, resolve=resolve, **more)
+            return conn
+        return super().do_open(connection, req, **kwargs)
+
+
+class _PinnedHTTPHandler(_PinnedConnections, urllib.request.HTTPHandler):
+    pass
+
+
+class _PinnedHTTPSHandler(_PinnedConnections, urllib.request.HTTPSHandler):
+    pass
 
 
 class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
@@ -83,6 +141,14 @@ class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
             raise FileShareError("url_invalid")
         refuse_internal(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch_opener(resolve=socket.getaddrinfo, context=None):
+    """The opener for fetches: every connection, each redirect's included, goes only to an address
+    that passed the check, and no proxy from the environment stands in between."""
+    web, secure = _PinnedHTTPHandler(), _PinnedHTTPSHandler(context=context)
+    web.resolve = secure.resolve = resolve
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), web, secure, _CheckedRedirects)
 
 
 class FileShareError(Exception):
@@ -359,8 +425,7 @@ class FileStore:
         try:
             refuse_internal(url)
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-            opener = urllib.request.build_opener(_CheckedRedirects)
-            with opener.open(request, timeout=FETCH_TIMEOUT) as response:
+            with fetch_opener().open(request, timeout=FETCH_TIMEOUT) as response:
                 length = response.headers.get("Content-Length")
                 total = int(length) if length and length.isdigit() else None
                 name = name_from_url(response.geturl(), response.headers.get("Content-Disposition"))
@@ -442,22 +507,36 @@ class FileStore:
             data["links"] = kept
             self._save(data)
 
-    def resolve(self, token, count=False):
-        """The file behind a live link token, or None. ``count`` records a download."""
+    def _live_link(self, token, data, now):
+        """(link, file entry) behind a live link token, or (None, None)."""
         if not TOKEN_RE.fullmatch(str(token)):
-            return None
+            return None, None
+        link = next((item for item in data["links"] if secrets.compare_digest(item["token"], token)), None)
+        if link is None or self._link_dead(link, now):
+            return None, None
+        entry = self.file(link["file"], data)
+        if entry is None or not self.blob(entry["id"]).is_file():
+            return None, None
+        return link, entry
+
+    def resolve(self, token):
+        """The file behind a live link token, or None. Looking up never counts a download."""
+        with self._lock:
+            return self._live_link(token, self._load(), time.time())[1]
+
+    def count_download(self, token):
+        """Record one download through ``token``; False when the link is no longer live.
+
+        Called once the response is known to send the file from its first byte. Checking and
+        counting under one lock keeps two requests from both taking a link's last download.
+        """
         with self._lock:
             data = self._load()
             now = time.time()
-            link = next((item for item in data["links"]
-                         if secrets.compare_digest(item["token"], token)), None)
-            if link is None or self._link_dead(link, now):
-                return None
-            entry = self.file(link["file"], data)
-            if entry is None or not self.blob(entry["id"]).is_file():
-                return None
-            if count:
-                link["downloads"] = link.get("downloads", 0) + 1
-                link["last"] = int(now)
-                self._save(data)
-            return entry
+            link, _entry = self._live_link(token, data, now)
+            if link is None:
+                return False
+            link["downloads"] = link.get("downloads", 0) + 1
+            link["last"] = int(now)
+            self._save(data)
+            return True

@@ -30,9 +30,9 @@ case "$key" in
   line_url) fmt='  url:       %s://%s:%s/\n' ;;
   line_url_unknown) fmt='  url:       %s://%s:<port>/   (no se pudo leer %s; comprueba journalctl -u %s)\n' ;;
   line_pw_none) fmt='  contraseña: ninguna; la protección por contraseña está desactivada (VPSSRV_AUTH=0)\n' ;;
-  line_pw) fmt='  contraseña: %s   (guardada en %s)\n' ;;
-  line_pw_preserved) fmt='  contraseña: se conserva el archivo en %s (no se muestra su contenido)\n' ;;
-  line_pw_seefile) fmt='  contraseña: consulta %s\n' ;;
+  line_pw) fmt='  contraseña: %s   (para verla de nuevo: %s)\n' ;;
+  line_pw_preserved) fmt='  contraseña: sin cambios (no se muestra; para verla: %s)\n' ;;
+  line_pw_seefile) fmt='  contraseña: aún no se ha creado; cuando la consola haya arrancado, consúltala con: %s\n' ;;
   line_lang) fmt='  idioma: %s (predeterminado si no coinciden cookie, consulta ni navegador)\n' ;;
   cert_note) fmt='\nAviso: se usa un certificado autofirmado, por lo que los navegadores mostrarán una advertencia\nque tendrás que aceptar. Para usar un certificado real, configura VPSSRV_TLS_CERT\ny VPSSRV_TLS_KEY y vuelve a ejecutar este instalador.\n' ;;
   to_remove) fmt='\nDesinstalar y conservar los datos:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\nDesinstalar y borrar los datos del proyecto:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
@@ -124,5 +124,8 @@ case "$key" in
   frps_install_failed) fmt='Falló la instalación de frps\n' ;;
   lucky_remove_failed) fmt='Aviso: falló la eliminación del antiguo módulo Lucky; consulta el registro de instalación\n' ;;
   caddy_install_failed) fmt='Falló la instalación del reenvío de dominios\n' ;;
+  first_install_incomplete) fmt='Una primera instalación anterior no terminó (%s no tiene registro de instalación). Elimina lo que dejó con el desinstalador (muestra lo que va a borrar y pide confirmación) y vuelve a ejecutar este instalador:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
+  web_restarted) fmt='La instalación falló después de detener la consola, así que se volvió a iniciar el servicio de la consola (puede que ya use los archivos nuevos con la configuración anterior). Corrige la causa y vuelve a ejecutar el instalador.\n' ;;
+  web_restart_failed) fmt='La instalación falló después de detener la consola y tampoco se pudo volver a iniciar el servicio de la consola. Consulta: journalctl -u %s -e\n' ;;
   *) fmt="$key\n" ;;
 esac

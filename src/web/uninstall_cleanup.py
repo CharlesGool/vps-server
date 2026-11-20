@@ -178,8 +178,60 @@ def cleanup_ports(prefix, service_name, *, registry=None, run=subprocess.run,
         return len(rows) - len(kept)
 
 
+def _inside(path, root):
+    path = Path(path).resolve(strict=False)
+    return path == root or root in path.parents
+
+
+def data_inventory(state):
+    """What a full uninstall deletes with the state directory, for its confirmation prompt.
+
+    Returns ``(backups, drive_files, drive_bytes, outside)``: configuration backups and
+    Mini Drive files inside the state directory, and the persistent paths that lie
+    outside it. The uninstaller keeps those paths, so they still need the data key.
+    """
+    import state_paths
+    root = Path(state).resolve(strict=False)
+    backups = 0
+    folder = root / "backups"
+    if folder.is_dir() and not folder.is_symlink():
+        backups = sum(1 for entry in folder.iterdir()
+                      if entry.name.startswith("config-") and entry.is_file() and not entry.is_symlink())
+    data = state_paths.data_dir()
+    persistent = (data, state_paths.password_file(), state_paths.cert_dir())
+    outside = [str(path) for path in persistent if not _inside(path, root)]
+    drive_files = drive_bytes = 0
+    blobs = data / "files" / "blobs"
+    if _inside(data, root) and blobs.is_dir() and not blobs.is_symlink():
+        for entry in blobs.iterdir():
+            if entry.is_file() and not entry.is_symlink():
+                drive_files += 1
+                drive_bytes += entry.stat().st_size
+    return backups, drive_files, drive_bytes, outside
+
+
+def _size(count):
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if count < 1024 or unit == "GiB":
+            return f"{count:.0f}{unit}" if unit == "B" else f"{count:.1f}{unit}"
+        count /= 1024
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["inventory"]:
+        if len(argv) != 2:
+            return 2
+        try:
+            backups, drive_files, drive_bytes, outside = data_inventory(argv[1])
+        except (OSError, ValueError) as exc:
+            print(f"uninstall cleanup failed: {type(exc).__name__}", file=sys.stderr)
+            return 1
+        print(f"backups {backups}")
+        print(f"drive {drive_files} {_size(drive_bytes)}")
+        for path in outside:
+            print(f"outside {path}")
+        return 0
     if (len(argv) not in (4, 5) or argv[0] not in ("check-ports", "frpc", "ports") or
             argv[2] not in ("0", "1") or (len(argv) == 5 and
             (argv[0] != "ports" or argv[4] not in ("removed", "unowned", "absent")))):

@@ -29,11 +29,7 @@ class FilesMixin:
         parts = path.split("/")
         entry = None
         if len(parts) in (3, 4) and self.files_enabled():
-            # Only a request that starts at byte 0 counts as a download, so
-            # resuming with a Range header does not use up the limit.
-            ranged = self.headers.get("Range", "")
-            first = not ranged or ranged.strip().startswith("bytes=0-")
-            entry = self.context.FILE_STORE.resolve(parts[2], count=method == "GET" and first)
+            entry = self.context.FILE_STORE.resolve(parts[2])
         if entry is not None:
             try:
                 self.context.APP_METER.check("files")
@@ -46,7 +42,7 @@ class FilesMixin:
                 if method == "GET":
                     self.wfile.write(b"Traffic limit reached\n")
                 return True
-        if entry is None:
+        if entry is None or not self.files_send(entry, method, parts[2]):
             self.send_response(404)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", "10")
@@ -54,11 +50,10 @@ class FilesMixin:
             self.end_headers()
             if method == "GET":
                 self.wfile.write(b"Not found\n")
-            return True
-        self.files_send(entry, method)
         return True
 
-    def files_send(self, entry, method):
+    def files_send(self, entry, method, token):
+        """Answer a download; False (nothing sent) when the link ran out meanwhile."""
         path = self.context.FILE_STORE.blob(entry["id"])
         size = path.stat().st_size
         start, end, status = 0, size - 1, 200
@@ -74,8 +69,12 @@ class FilesMixin:
                 self.send_header("Content-Range", f"bytes */{size}")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
-                return
+                return True
             status = 206
+        # Whatever the Range header said, a GET that sends the file from its first byte is a
+        # download and counts against the link's limit; resuming further in does not.
+        if method == "GET" and start == 0 and not self.context.FILE_STORE.count_download(token):
+            return False
         quoted = urllib.parse.quote(entry["name"], safe="")
         ascii_name = entry["name"].encode("ascii", "replace").decode("ascii").replace("?", "_")
         self.send_response(status)
@@ -90,7 +89,7 @@ class FilesMixin:
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         if method == "HEAD":
-            return
+            return True
         store, meter = self.context.FILE_STORE, self.context.APP_METER
         rate = store.state().get("rate_limit", 0)
         # Small pieces under a limit keep the speed even instead of in bursts.
@@ -109,6 +108,7 @@ class FilesMixin:
                     break  # Cut off mid-way: the client sees a short download.
                 self.wfile.write(chunk)
                 left -= len(chunk)
+        return True
 
     # -- console ---------------------------------------------------------
 

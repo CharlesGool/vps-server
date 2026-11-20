@@ -21,15 +21,18 @@ import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
 import SwitchField from '@/components/app/SwitchField.vue'
+import AdminVerify from '@/components/vps/AdminVerify.vue'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
 // 定时任务: 内置的配置备份一张卡片, 每个任务一张整行卡片(计划, 下次和上次运行, 命令, 启停开关, 立即运行, 编辑, 删除, 运行记录).
 // 添加和编辑在页面最后的表单卡片里; 运行记录在对话框里.
+// 任务以 root 运行命令, 所以和终端一样, 进入前要验证管理员密码(useSecurePage); 验证过期时回到验证卡片, 表单内容保留.
 type Run = { status: 'ok' | 'failed' | 'timeout' | 'skipped'; started: string; exit: number | null; trigger: 'schedule' | 'manual'; output: string }
 type Task = {
   id: string
@@ -54,6 +57,7 @@ interface Tasks {
 }
 
 const { t } = useI18n()
+const { state, guard } = useSecurePage()
 const data = ref<Tasks>()
 const busy = ref(false)
 const TONES = { ok: 'success', failed: 'destructive', timeout: 'warning', skipped: 'neutral' } as const
@@ -63,26 +67,33 @@ function apply(value: Tasks) {
   if (value.message) showToast(t(`console.task_msg_${value.message}`), 'success')
 }
 async function load() {
-  try {
-    apply({ ...(await api<Tasks>('tasks')), message: null })
-    if (!form.value.id) form.value.timeout = data.value!.limits.timeoutDefault
-  } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
-  }
+  const value = await guard(() => api<Tasks>('tasks'))
+  if (!value) return
+  const first = !data.value
+  apply({ ...value, message: null })
+  if (first && !form.value.id) form.value.timeout = value.limits.timeoutDefault
+  state.value = 'ready'
 }
 onMounted(load)
+// 验证过期(security_required)或 IP 免密会话: 回到验证卡片, 和 guard 的处理相同
+function expired(err: unknown) {
+  if (!(err instanceof ApiError) || (err.code !== 'security_required' && err.code !== 'password_session_required')) return false
+  state.value = err.code === 'security_required' ? 'verify' : 'ip'
+  return true
+}
 const errorText = (err: unknown) => {
   const code = err instanceof ApiError ? err.code : 'invalid'
   const text = t(`console.task_error_${code}`)
   return text === `console.task_error_${code}` ? t('console.task_error_invalid') : text
 }
+// 返回 '' 表示成功, 错误文字, 或 undefined(已转到登录页或验证卡片)
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
   try {
     apply(await api<Tasks>(path, { method, body }))
     return ''
   } catch (err) {
-    if (isSignedOut(err)) return ''
+    if (isSignedOut(err) || expired(err)) return undefined
     return errorText(err)
   } finally {
     busy.value = false
@@ -129,8 +140,9 @@ function openForm(task: Task) {
   void nextTick(() => document.getElementById('task-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
 async function save() {
-  formError.value = await send('tasks/save', { ...form.value, spec: spec.value }, 'PUT')
-  if (!formError.value) reset()
+  const error = await send('tasks/save', { ...form.value, spec: spec.value }, 'PUT')
+  formError.value = error ?? ''
+  if (error === '') reset()
 }
 </script>
 
@@ -138,7 +150,9 @@ async function save() {
   <CardGrid>
     <PageHeader :title="t('console.tasks')" :description="t('vps.tasks.description')" />
 
-    <PageSection v-if="!data" :cols="4">
+    <AdminVerify v-if="state === 'verify' || state === 'ip'" :ip-only="state === 'ip'" @verified="load" />
+
+    <PageSection v-else-if="!data" :cols="4">
       <LoadingState />
     </PageSection>
 

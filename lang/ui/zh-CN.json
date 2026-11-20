@@ -921,6 +921,8 @@
       "user": "用户",
       "group": "用户组",
       "recursive": "包括子目录和文件",
+      "recursiveChmodHint": "文件夹在有读权限的位置自动加上进入权限(x), 例如 644 对文件夹是 755. 其他文件系统, 内核目录和控制台自己的目录会被跳过.",
+      "recursiveChownHint": "其他文件系统, 内核目录和控制台自己的目录会被跳过, 所有者已经相同的项目不会改动.",
       "format": "格式",
       "deleteTitle": "删除 {n} 项",
       "deleteConfirm": "{names} 会被永久删除, 无法恢复.",
@@ -957,7 +959,10 @@
         "not_found": "找不到这个路径",
         "denied": "没有权限读取",
         "exists": "目标已存在",
-        "path_protected": "这是系统目录, 不能删除, 移动或重命名",
+        "path_protected": "受保护的路径: 系统目录和控制台自己的程序, 数据目录不能删除, 移动或重命名, 数据密钥所在的目录只能查看",
+        "recursive_protected": "系统目录不能递归修改, 请选择里面的具体目录",
+        "archive_links": "压缩包里有链接, 这台主机的 Python 版本不能安全解压, 已拒绝",
+        "timeout": "操作超时, 已中止; 目标位置可能留下部分结果",
         "path_invalid": "路径无效",
         "name_invalid": "名称无效",
         "destination_invalid": "目标目录无效",
@@ -1006,7 +1011,7 @@
         "backup": "备份 {n} 台主机"
       },
       "batchConfirm": {
-        "upgrade": "每台主机从 GitHub 下载最新正式版并升级, 控制台会重启一次. 需要读写令牌.",
+        "upgrade": "每台主机从 GitHub 下载最新正式版并升级, 安装包类型(在线版或离线版)和它自己安装时相同, 控制台会重启一次. 需要读写令牌.",
         "backup": "每台主机各做一份手动配置备份. 需要读写令牌."
       },
       "batchStarted": {
@@ -1486,7 +1491,7 @@
     "files_error_too_many": "文件太多，先删除一些。",
     "files_error_too_many_links": "这个文件的链接太多，先作废一些。",
     "files_error_traffic_blocked": "迷你网盘已达到流量上限或有效期已过, 暂停上传和下载。",
-    "files_error_url_blocked": "这个地址指向本机或链路本地地址, 不允许下载.",
+    "files_error_url_blocked": "这个地址指向本机, 链路本地地址或云服务的元数据地址, 不允许下载.",
     "files_error_url_invalid": "请输入 http 或 https 链接。",
     "files_fetch": "下载到迷你网盘",
     "files_fetch_help": "由这台服务器直接下载, 适合其他服务器访问不了的来源(例如 GitHub Release)。浏览器可以关掉, 下载在后台继续。",
@@ -2002,7 +2007,7 @@
     "total_calibrate_title": "校准总流量",
     "total_calibration_row": "校准 · {date}",
     "total_cap_gib": "总流量上限(GiB)",
-    "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置时间按服务器本地时间;控制台页面、终端和 SSH 不计。",
+    "total_hint": "合计节点、FRPS、域名转发、端口转发、FRPC、Tailscale、iperf3、迷你网盘和测速的用量,计法与各自页面相同(转发类按 ×2)。重置时间按服务器本地时间;控制台页面、终端和 SSH 不计。超过上限后停止使用时,Tailscale、FRPC 和转发到控制台的域名只限速到 1 Mbps,以便仍能登录控制台。",
     "total_multiplier_note": "每一项的数值是计费用量: 节点, FRPS 和转发类每个字节计两次(进出各一次), 所以是各自页面上流量的 2 倍. 本周期从重置日算起, 并包含各项当前周期里已经用掉的流量.",
     "total_next_reset": "下次重置 {date}(UTC)",
     "total_no_cap": "未设置总上限",
@@ -2061,6 +2066,6 @@
     "total_action_notify": "只提醒",
     "total_over_notify": "已达到总流量上限。当前设置为只提醒,不会限速或停止。",
     "total_over_throttle": "已达到总流量上限,所有计量项已限速到 1 Mbps,下个周期自动恢复。",
-    "total_over_block": "已达到总流量上限,所有计量项已停止使用,下个周期自动恢复。"
+    "total_over_block": "已达到总流量上限,所有计量项已停止使用(Tailscale、FRPC 和转发到控制台的域名限速到 1 Mbps,以便登录控制台),下个周期自动恢复。"
   }
 }

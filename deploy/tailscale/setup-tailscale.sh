@@ -2,9 +2,22 @@
 set -euo pipefail
 
 PREFIX="${PREFIX:-/root/apps/vps-server}"
-ARCHIVE="${1:-$PREFIX/installer-source/third_party/tailscale/tailscale_1.104.5_amd64.tgz}"
+# The installer passes the archive. Without one, use the installer payload's,
+# named (with its version) only in config/dependencies.lock.json.
+ARCHIVE="${1:-}"
+if [ -z "$ARCHIVE" ]; then
+  ARCHIVE="$PREFIX/installer-source/$(python3 - "$PREFIX/installer-source/config/dependencies.lock.json" <<'PY' 2>/dev/null || true
+import json, sys
+paths = [entry.get("path") for entry in json.load(open(sys.argv[1], encoding="utf-8"))["artifacts"]
+         if entry.get("component") == "Tailscale"]
+if len(paths) == 1 and isinstance(paths[0], str) and paths[0].startswith("third_party/tailscale/"):
+    print(paths[0])
+PY
+)"
+fi
 SHA256="720cbbccbfc03d8b55df72afc19e5a72e31b0f65934700aa6fa38074d4ad7bf7"
-ROOT="tailscale_1.104.5_amd64"
+# The archive unpacks into a directory named like the file: tailscale_<version>_amd64/.
+ROOT="$(basename "$ARCHIVE" .tgz)"
 UNIT=/etc/systemd/system/vps-server-tailscale.service
 STATE="${VPSSRV_STATE_DIR:-/var/lib/vps-server}/tailscale"
 PORT=41641

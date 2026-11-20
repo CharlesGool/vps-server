@@ -19,6 +19,20 @@ case "$key" in
   lucky_fw_retained) fmt='Warning: Lucky firewall ownership record retained; manual cleanup needed\n' ;;
   lucky_config_retained) fmt='Lucky DDNS/reverse proxy configuration retained in /etc/vps-server-lucky/config.json\n' ;;
   frps_fw_retained) fmt='Warning: owned frps firewall rule could not be removed; ownership record retained\n' ;;
+  prefix_not_project) fmt='Refusing to delete %s: it does not look like a vps-server installation (no app.py or src/web/). Check PREFIX, or delete %s by hand if it really is one. Nothing was changed.\n' ;;
+  purge_head) fmt='A full uninstall permanently deletes:\n' ;;
+  purge_prefix) fmt='  - the program directory %s\n' ;;
+  purge_state) fmt='  - the state directory %s (admin password, certificates, settings and logs)\n' ;;
+  purge_backups) fmt='  - %s configuration backup(s) in %s\n' ;;
+  purge_drive) fmt='  - %s Mini Drive file(s), %s in total\n' ;;
+  purge_modules) fmt='  - the node, FRPS/FRPC, domain forwarding and Tailscale settings of this project\n' ;;
+  purge_data_key) fmt='  - the data key %s\n' ;;
+  purge_outside_kept) fmt='Kept: %s (outside the state directory) and the data key it needs.\n' ;;
+  purge_needs_confirm) fmt='A full uninstall deletes the data listed above and must be confirmed. Run it in a terminal, or set VPSSRV_UNINSTALL_YES=1 to run it unattended; KEEP_DATA=1 removes the services and keeps the data. Nothing was changed.\n' ;;
+  purge_confirm) fmt='Type yes to delete all of this (anything else, or no answer within %s seconds, cancels): ' ;;
+  purge_cancelled) fmt='Cancelled; nothing was changed.\n' ;;
+  data_key_removed) fmt='Deleted the data key %s.\n' ;;
+  data_key_kept) fmt='Kept the data key %s: %s may still hold data encrypted with it.\n' ;;
   error_prefix) fmt='error: %s\n' ;;
   *) fmt="$key\n" ;;
 esac

@@ -13,7 +13,6 @@ and added to the file every few seconds, so a crash loses at most that much.
 
 import fcntl
 import json
-import os
 import threading
 import time
 import uuid
@@ -22,6 +21,7 @@ from pathlib import Path
 
 from node_accounting import advance_cycles, desired_policy
 from node_inventory import InvalidInventory, validate_metering
+from node_state import write_json
 
 KEYS = {"files": "Mini Drive", "speedtest": "Speed test"}
 LIMIT_FIELDS = frozenset(("cap_bytes", "cap_action", "upload_limit_bps", "download_limit_bps",
@@ -82,12 +82,9 @@ class AppMeter:
         return state
 
     def _save(self, state):
+        # Atomic and synced like the other meters' state (mode 0600).
         validate(state)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_suffix(".tmp")
-        temp.write_text(json.dumps(state, indent=1), encoding="utf-8")
-        os.chmod(temp, 0o600)
-        os.replace(temp, self.path)
+        write_json(state, self.path)
 
     @staticmethod
     def _ledger(state):

@@ -4,19 +4,36 @@ Requests carry ``Authorization: Bearer <token>`` instead of a session cookie.
 They skip the session, the same-origin rule and the client-certificate gate
 (a script holds no browser certificate), like Clash subscriptions. Wrong
 tokens count as failed logins, so the login ban applies. ``read`` tokens see
-status; ``write`` tokens may also restart services, start an upgrade or a
-backup. See doc/API.md.
+status; ``write`` tokens may also restart this project's services, start an
+upgrade or a backup. A source's own login ban applies to tokens; the global
+pause after many failed logins does not, so it cannot lock out the central
+management page. See doc/API.md.
 """
 
 import os
 import re
 import subprocess
+from pathlib import Path
 
+import upgrade
 from api_tokens import TokenError
 from features.api_system import UNIT_RE, SELF_UNITS, services
 
 UPGRADE_UNIT = "vps-server-upgrade"
 VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+$")
+# Services a write token may restart: this project's own, installed as unit files
+# (a transient job such as the installer or an upgrade is not restarted).
+PROJECT_UNIT_RE = re.compile(r"^(vps-server(-[A-Za-z0-9_.-]+)?|frpc@[A-Za-z0-9_.:-]+)\.service$")
+UNIT_DIR = Path("/etc/systemd/system")
+
+
+def restartable(unit):
+    if not isinstance(unit, str) or not UNIT_RE.match(unit):
+        return False
+    if unit not in SELF_UNITS and not PROJECT_UNIT_RE.match(unit):
+        return False
+    template = unit.split("@", 1)[0] + "@.service" if "@" in unit else unit
+    return (UNIT_DIR / template).is_file()
 
 
 class TokenApiMixin:
@@ -78,7 +95,7 @@ class TokenApiMixin:
             self.api_error(403, "feature_closed")
             return True
         ip = self.client_ip()
-        allowed, retry_after = context.LOGIN_LIMITER.check(ip)
+        allowed, retry_after = context.LOGIN_LIMITER.check(ip, global_pause=False)
         if not allowed:
             self.api_error(429, "too_many_attempts", retryAfter=retry_after)
             return True
@@ -151,10 +168,16 @@ class TokenApiMixin:
         unit = body.get("unit") if body else None
         if not isinstance(unit, str) or not UNIT_RE.match(unit):
             return self.api_error(400, "invalid_request")
-        command = ["systemctl", "restart", unit]
+        if not restartable(unit):
+            return self.api_error(403, "unit_not_allowed")
+        # try-restart: a stopped service stays stopped; "restart" would start any unit.
+        command = ["systemctl", "try-restart", unit]
         if unit in SELF_UNITS:
             command.insert(1, "--no-block")
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+        except (OSError, subprocess.SubprocessError):
+            return self.api_error(500, "failed")
         if result.returncode:
             return self.api_error(400, "service_failed", detail=result.stderr.strip()[-300:])
         self.audit("service_restart", f'{unit} (API: {self._token_entry.get("name")})')
@@ -163,7 +186,8 @@ class TokenApiMixin:
     def v1_upgrade(self):
         body = self.read_json() or {}
         version = body.get("version")
-        variant = body.get("variant", "online")
+        # Without a variant, the package this host was installed from (an offline host stays offline).
+        variant = body.get("variant") or upgrade.installed_variant(self.context.BASE_DIR) or "offline"
         if version is not None and (not isinstance(version, str) or not VERSION_RE.match(version)):
             return self.api_error(400, "invalid_request")
         if variant not in ("online", "offline"):

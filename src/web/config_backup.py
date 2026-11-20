@@ -15,12 +15,14 @@ import it. Restoring writes system files, so the console runs it through
 import argparse
 import base64
 import errno
+import fcntl
 import fnmatch
 import io
 import json
 import os
 import re
 import socket
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -58,6 +60,75 @@ SYSTEM_GLOBS = (
     ("/etc/systemd/system", "frpc@*"),
     ("/etc/sysctl.d", "99-vps-server-*"),
 )
+# Runtime notes that describe this moment, not configuration: never saved or put back.
+# meter-stopped.json: the services a failed traffic meter stopped and will start again.
+TRANSIENT_NAMES = frozenset(("meter-stopped.json",))
+
+
+def meters():
+    """The traffic meters whose state a restore may replace: (lock file, state directory, nft table).
+
+    Each meter rewrites its state every few seconds under its lock. A restore holds the locks
+    so neither side overwrites the other, then removes the nft table of each meter whose state
+    it replaced: the meter finds the table gone, marks the gap and builds it again from the
+    restored state (counters that match the old state would be misread otherwise).
+    """
+    data = state_paths.data_dir()
+    return ((Path("/etc/vps-server-node.lock"), Path("/etc/vps-server-nodes"), "vps_server_nodes"),
+            (Path("/etc/vps-server-frps/traffic.lock"), Path("/etc/vps-server-frps"), "vps_server_frps"),
+            (Path("/etc/vps-server-traffic/traffic.lock"), Path("/etc/vps-server-traffic"), "vps_server_traffic"),
+            (data / "app-traffic.lock", data, None))  # the console's own meter (app_meter.py)
+
+
+def delete_table(table):
+    """Remove one of the meters' nft tables; a missing table or nft is not an error."""
+    try:
+        from nft_runtime import command
+        binary, env = command()
+        subprocess.run([binary, "delete", "table", "inet", table], capture_output=True,
+                       timeout=20, env=env, check=False)
+    except (OSError, ImportError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"cannot remove nft table {table}: {exc}", file=sys.stderr)
+
+
+class _MetersPaused:
+    """Hold every installed meter's lock; on exit drop the tables of the meters whose files changed."""
+
+    def __init__(self):
+        self.handles, self.touched = [], set()
+        # Only installed meters whose state a restore can write (allowed_prefixes).
+        writable = allowed_prefixes()
+        self.meters = [meter for meter in meters() if meter[1].is_dir() and any(
+            meter[1] == prefix or prefix in meter[1].parents for prefix in writable)]
+
+    def __enter__(self):
+        try:
+            for lock, _directory, _table in self.meters:
+                handle = open(lock, "a+b")
+                self.handles.append(handle)
+                fcntl.flock(handle, fcntl.LOCK_EX)
+        except BaseException:
+            self._release()
+            raise
+        return self
+
+    def wrote(self, target):
+        for _lock, directory, table in self.meters:
+            if table and (directory == target or directory in target.parents):
+                self.touched.add(table)
+
+    def _release(self):
+        for handle in reversed(self.handles):
+            handle.close()
+        self.handles = []
+
+    def __exit__(self, *exc):
+        try:
+            for table in sorted(self.touched):
+                delete_table(table)
+        finally:
+            self._release()
+        return False
 
 
 class BackupError(Exception):
@@ -165,7 +236,7 @@ def config_files(sealed=False):
     withheld = None if sealed else secure_store.key_path()
     for root in roots:
         for path in _walk(root, state, data):
-            if path not in seen and path != withheld:
+            if path not in seen and path != withheld and path.name not in TRANSIENT_NAMES:
                 seen.add(path)
                 result.append(path)
     return result
@@ -422,37 +493,43 @@ def restore(path, directory=None, private_key=None):
 
 def _restore_plain(path, directory):
     manifest = validate_archive(path)
-    before = create_backup("pre-restore", directory)
     count = 0
-    with tarfile.open(path, "r:gz") as archive:
-        for member in archive:
-            if member.name == MANIFEST:
-                continue
-            target = Path("/") / member.name
-            if target == release_trust.pinned_path(state_paths.state_dir()):
-                # The key that signs upgrades is pinned on this host; a backup (which may have
-                # come from anywhere) must not be able to swap it for another.
-                continue
-            if member.isdir():
-                target.mkdir(parents=True, exist_ok=True)
-                os.chmod(target, member.mode & 0o777)
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            descriptor, temporary = tempfile.mkstemp(prefix=".restore-", dir=target.parent)
-            try:
-                with os.fdopen(descriptor, "wb") as handle:
-                    source = archive.extractfile(member)
-                    while True:
-                        chunk = source.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        handle.write(chunk)
-                os.chmod(temporary, member.mode & 0o777)
-                os.replace(temporary, target)
-            except BaseException:
-                _remove(temporary)
-                raise
-            count += 1
+    # The meters wait until the files are back (see meters()), so the pre-restore backup and
+    # the restored state are each one consistent picture.
+    with _MetersPaused() as paused:
+        before = create_backup("pre-restore", directory)
+        with tarfile.open(path, "r:gz") as archive:
+            for member in archive:
+                if member.name == MANIFEST:
+                    continue
+                target = Path("/") / member.name
+                if target == release_trust.pinned_path(state_paths.state_dir()):
+                    # The key that signs upgrades is pinned on this host; a backup (which may have
+                    # come from anywhere) must not be able to swap it for another.
+                    continue
+                if target.name in TRANSIENT_NAMES and not member.isdir():
+                    continue  # (older backups may carry one)
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    os.chmod(target, member.mode & 0o777)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                paused.wrote(target)
+                descriptor, temporary = tempfile.mkstemp(prefix=".restore-", dir=target.parent)
+                try:
+                    with os.fdopen(descriptor, "wb") as handle:
+                        source = archive.extractfile(member)
+                        while True:
+                            chunk = source.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            handle.write(chunk)
+                    os.chmod(temporary, member.mode & 0o777)
+                    os.replace(temporary, target)
+                except BaseException:
+                    _remove(temporary)
+                    raise
+                count += 1
     return {"restored": count, "before": before, "version": manifest.get("version", "")}
 
 

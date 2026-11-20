@@ -15,6 +15,12 @@ This one covers what is left, with the same counters, traffic cap (throttle to
     tailscale       the tailscale0 interface; forwarded packets (exit node,
                     subnet routes) count twice, they cross the network twice
 
+When the host-wide total stops everything (total_meter.py), entries that may
+carry the way into the console are only slowed to 1 Mbps, so the operator can
+still sign in: Tailscale, the FRPC servers (a console published through FRPC)
+and Caddy while a domain site forwards to the console. They are marked with a
+transient "console_path", like "matches" never stored.
+
 Each entry counts its traffic once or twice ("billable_multiplier"): port
 forwarding relays every byte in and out again, so twice, like a node; the
 others carry it once. Mini Drive and the speed test share the console's port
@@ -62,12 +68,14 @@ DATA_DIR = Path(os.environ.get("VPSSRV_DATA_DIR", "/var/lib/vps-server/data"))
 PREFIX = Path(os.environ.get("VPSSRV_PREFIX", Path(__file__).resolve().parents[2]))
 WEB_UNIT = Path("/etc/systemd/system/vps-server-web.service")
 CADDY_WANTED = Path("/etc/systemd/system/multi-user.target.wants/vps-server-caddy.service")
+CADDY_SITES = Path("/etc/vps-server-caddy/sites.json")
 FRPC_DIR = Path("/etc/frp")
 TAILSCALE_INTERFACE = "tailscale0"
 LIMIT_FIELDS = frozenset(("cap_bytes", "cap_action", "upload_limit_bps", "download_limit_bps",
                           "expiry_count", "expiry_unit", "expires_at", "reset_mode", "next_reset_at"))
 FIELDS = frozenset(("id", "key", "name", "enabled", "billable_multiplier", "upload_bytes", "download_bytes",
                     "total_upload_bytes", "total_download_bytes", "counter_epoch")) | LIMIT_FIELDS
+TRANSIENT = frozenset(("matches", "console_path"))  # per tick, never stored
 KEY_RE = re.compile(r"(caddy|iperf3|tailscale|portfwd:[0-9a-f]{1,32}|frpc:.{1,32}|"
                     r"frpcsrv:[A-Za-z0-9.:\[\]-]{1,255}:[0-9]{1,5})")
 SERVER_RE = re.compile(r"[A-Za-z0-9.:\[\]-]{1,255}")
@@ -81,7 +89,7 @@ def validate(inventory):
         raise InvalidInventory("invalid traffic state")
     keys = set()
     for entry in inventory["nodes"]:
-        if not isinstance(entry, dict) or set(entry) - {"matches"} != FIELDS:
+        if not isinstance(entry, dict) or set(entry) - TRANSIENT != FIELDS:
             raise InvalidInventory("invalid traffic entry fields")
         uuid.UUID(entry["id"])
         if not isinstance(entry["key"], str) or not KEY_RE.fullmatch(entry["key"]) or entry["key"] in keys or \
@@ -216,6 +224,23 @@ def _valid_frpc_name(name):
     return valid_client_name(name)
 
 
+def _caddy_serves_console():
+    """Whether a domain site forwards to the console (caddy_sites.py); unreadable counts as yes."""
+    try:
+        sites = json.loads(CADDY_SITES.read_text(encoding="utf-8"))["sites"]
+        return any(isinstance(site, dict) and site.get("console") is True and not site.get("ip")
+                   and site.get("enabled", True) for site in sites)
+    except FileNotFoundError:
+        return False
+    except (OSError, ValueError, KeyError, TypeError):
+        return True
+
+
+def console_path(key):
+    """Whether the feature behind an entry key may carry the way into the console."""
+    return key == "tailscale" or key.startswith("frpcsrv:") or (key == "caddy" and _caddy_serves_console())
+
+
 def _nfproto(address):
     return "ipv6" if ":" in address else "ipv4"
 
@@ -314,14 +339,15 @@ def read_state(*, state_path=None, config_paths=None):
             continue
         name, multiplier, matches = live[key]
         entry = entry or new_entry(key, name, multiplier)
-        nodes.append({**entry, "name": name[:80], "billable_multiplier": multiplier, "matches": matches})
+        nodes.append({**entry, "name": name[:80], "billable_multiplier": multiplier, "matches": matches,
+                      "console_path": console_path(key)})
     inventory = {"version": 1, "nodes": nodes}
     validate(inventory)
     return inventory
 
 
 def write_state(inventory, *, state_path=None):
-    stored = {"version": 1, "nodes": [{k: v for k, v in entry.items() if k != "matches"}
+    stored = {"version": 1, "nodes": [{k: v for k, v in entry.items() if k not in TRANSIENT}
                                       for entry in inventory["nodes"]]}
     validate(stored)
     STATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)

@@ -9,6 +9,10 @@ period began, plus what the entry's own current-cycle counters already show when
 first recorded, so the total agrees with the per-feature pages instead of starting from zero
 at the moment the console first looked.
 
+Each entry's usage this period is also remembered (``seen``, see observe): an entry that is
+deleted, or whose meter cannot be read for a moment, keeps counting what it already used until
+the period ends, so deleting a forwarding rule never lowers the total or lifts its limit.
+
 The count can drift from what the provider bills, so the operator may calibrate it: typing
 the usage the provider shows stores the difference as a separate, signed calibration that is
 shown on its own bar and cleared when the next period begins.
@@ -32,7 +36,7 @@ import tempfile
 MAX_CAP_BYTES = 10 ** 18
 CAP_ACTIONS = ("notify", "throttle", "block")
 LIMIT_FILE = "total-limit.json"
-OPTIONAL_KEYS = {"reset_spec", "cap_action", "alerted"}
+OPTIONAL_KEYS = {"reset_spec", "cap_action", "alerted", "seen"}
 WARN_RATIO = 0.8
 BILLABLE_MULTIPLIER = 2  # nodes and FRPS forward each byte, so it counts twice (node_accounting.multiplier)
 
@@ -178,6 +182,12 @@ def validate(state):
     if not isinstance(baselines, dict) or any(not isinstance(k, str) or type(v) is not int or v < 0
                                               for k, v in baselines.items()):
         raise ValueError("invalid baselines")
+    seen = state.get("seen", {})
+    if not isinstance(seen, dict) or any(
+            not isinstance(k, str) or not isinstance(v, dict) or set(v) != {"bytes", "name", "multiplier"} or
+            type(v["bytes"]) is not int or v["bytes"] < 0 or not isinstance(v["name"], str) or
+            type(v["multiplier"]) is not int or v["multiplier"] < 1 for k, v in seen.items()):
+        raise ValueError("invalid usage record")
     return state
 
 
@@ -198,15 +208,58 @@ def advance(state, info, now):
     if state["next_reset_at"] is not None and now >= datetime.fromisoformat(state["next_reset_at"]):
         nxt = next_reset(now, state["reset_day"], state.get("reset_spec"))
         return {**state, "period_start": now.isoformat(), "next_reset_at": nxt.isoformat() if nxt else None,
-                "baselines": lifetimes(info), "calibration_bytes": 0, "calibrated_at": None, "alerted": []}, True
+                "baselines": {**absent_baselines(state, info), **lifetimes(info)}, "seen": {},
+                "calibration_bytes": 0, "calibrated_at": None, "alerted": []}, True
     return state, False
 
 
+def absent_baselines(state, info):
+    """For a new period: the last known lifetime of each entry seen this period but missing now.
+
+    A source that cannot be read at the turn of the period would otherwise lose its baselines,
+    and its entries would count their whole history once they are read again.
+    """
+    return {identifier: state["baselines"].get(identifier, 0) + record["bytes"]
+            for identifier, record in state.get("seen", {}).items() if identifier not in info}
+
+
+def observe(state, info):
+    """Remember what each entry has used this period; returns (state, changed).
+
+    An entry missing from ``info`` (deleted, or its meter unreadable for a moment) keeps its
+    record, so period_usage still counts it. Usage never drops within a period.
+    """
+    seen = dict(state.get("seen", {}))
+    changed = False
+    for identifier, value in info.items():
+        used = max(0, value["lifetime"] - state["baselines"].get(identifier, 0))
+        old = seen.get(identifier)
+        record = {"bytes": max(used, old["bytes"]) if old else used, "name": value["name"],
+                  "multiplier": value["multiplier"]}
+        if record != old:
+            seen[identifier] = record
+            changed = True
+    return ({**state, "seen": seen} if changed else state), changed
+
+
 def period_usage(state, snap):
-    """Billable bytes used since the period began, in total and per entry id."""
+    """Billable bytes used since the period began, in total and per entry id.
+
+    Entries remembered by observe count at least what they were last seen using, present or not.
+    """
     per_entry = {identifier: max(0, value - state["baselines"].get(identifier, 0))
                  for identifier, value in snap.items()}
+    for identifier, record in state.get("seen", {}).items():
+        per_entry[identifier] = max(per_entry.get(identifier, 0), record["bytes"])
     return sum(per_entry.values()), per_entry
+
+
+def entry_name(state, info, identifier):
+    """Display name of an entry, whether it is present now or only remembered."""
+    if identifier in info:
+        return info[identifier]["name"], info[identifier]["multiplier"]
+    record = state.get("seen", {}).get(identifier, {})
+    return record.get("name", identifier), record.get("multiplier", BILLABLE_MULTIPLIER)
 
 
 def calibration(state):
@@ -368,7 +421,9 @@ def apply_settings(state, cap_bytes, reset_day, now, info=None, spec=None, actio
         reset_day = 0
     changed = state["reset_day"] != reset_day or state.get("reset_spec") != spec
     if changed and info is not None:
-        return {**new_state(info, now, cap_bytes, reset_day, spec), "cap_action": action}
+        rebased = new_state(info, now, cap_bytes, reset_day, spec)
+        rebased["baselines"] = {**absent_baselines(state, info), **rebased["baselines"]}
+        return {**rebased, "cap_action": action}
     nxt = next_reset(now, reset_day, spec) if changed else (
         datetime.fromisoformat(state["next_reset_at"]) if state["next_reset_at"] else None)
     updated = {key: value for key, value in state.items() if key != "reset_spec"}

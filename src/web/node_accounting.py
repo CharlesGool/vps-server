@@ -156,7 +156,10 @@ def desired_policy(inventory, state, *, now, validate=validate_inventory, host=N
 
     ``host`` is the host-wide total's action once its cap is reached (total_meter.host_limit):
     "throttle" or "block" applies to every active entry as if its own cap were reached with
-    that action. Whichever of the two is stricter wins.
+    that action. Whichever of the two is stricter wins. An entry that may carry the way into the
+    console (``console_path``: Tailscale, FRPC, a domain site in front of the console; see
+    traffic_meter.py) is only throttled by a host-wide "block", so the operator can still sign
+    in and lift it. Its own cap set to "block" still stops it.
     """
     if host not in (None, "throttle", "block"):
         raise ValueError("invalid host limit")
@@ -172,8 +175,9 @@ def desired_policy(inventory, state, *, now, validate=validate_inventory, host=N
         used = billable_bytes(node)
         capped = node["cap_bytes"] is not None and used >= node["cap_bytes"]
         active = node["enabled"]
-        blocked = active and (expired or (capped and node["cap_action"] == "block") or host == "block")
-        throttled = (capped or host == "throttle") and not blocked
+        shared = "throttle" if host == "block" and node.get("console_path") is True else host
+        blocked = active and (expired or (capped and node["cap_action"] == "block") or shared == "block")
+        throttled = (capped or shared == "throttle") and not blocked
         def rate(direction):
             if not active or blocked:
                 return None
@@ -181,7 +185,7 @@ def desired_policy(inventory, state, *, now, validate=validate_inventory, host=N
             return min(configured, LIMIT_BPS) if configured is not None and throttled else \
                 LIMIT_BPS if throttled else configured
         policy[node["id"]] = {"active": active, "blocked": blocked, "expired": expired,
-                              "capped": capped, "host": host if active else None,
+                              "capped": capped, "host": shared if active else None,
                               "upload_bps": rate("upload"),
                               "download_bps": rate("download"),
                               "suspect": suspect}
@@ -225,7 +229,11 @@ def advance_cycles(inventory, state, *, now, validate=validate_inventory):
             node["next_reset_at"] = None
         else:
             while due <= now:
-                due = _month_after(due) if mode == "monthly" else advance_reset_interval(due, mode)
+                following = _month_after(due) if mode == "monthly" else advance_reset_interval(due, mode)
+                if following <= due:
+                    # Never spin: a schedule that does not move forward is an error.
+                    raise InvalidInventory("reset schedule does not advance")
+                due = following
             node["next_reset_at"] = due.isoformat()
         node["upload_bytes"] = node["download_bytes"] = 0
         entry = ledger["nodes"].get(node["id"])

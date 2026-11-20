@@ -16,12 +16,14 @@ import LoadingState from '@/components/app/LoadingState.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import PasswordInput from '@/components/app/PasswordInput.vue'
+import AdminVerify from '@/components/vps/AdminVerify.vue'
 import { Button } from '@/components/ui/button'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
 // 恢复备份: 先看再确认. 加密备份先输入私钥查看内容; 能看到内容后显示来源主机, 版本等, 有风险(来自别的主机或更新的版本)时要勾选确认.
-// 私钥只随这次请求发送, 不保存.
+// 私钥只随这次请求发送, 不保存. 和备份页一样, 进入前要验证管理员密码(useSecurePage); 验证后重新查看, 已输入的私钥保留.
 interface Info {
   name: string
   sealed: boolean
@@ -39,6 +41,7 @@ interface Info {
 const KINDS: Record<string, string> = { manual: 'manual', scheduled: 'scheduled', 'pre-upgrade': 'pre_upgrade', 'pre-restore': 'pre_restore' }
 
 const { t } = useI18n()
+const { state } = useSecurePage()
 const route = useRoute()
 const router = useRouter()
 const name = computed(() => (typeof route.query.name === 'string' ? route.query.name : ''))
@@ -53,12 +56,20 @@ const errorText = (err: unknown) => {
   const text = t(`console.backup_error_${code}`)
   return text === `console.backup_error_${code}` ? t('console.backup_error_failed') : text
 }
+// 验证过期(security_required)或 IP 免密会话: 回到验证卡片, 和 useSecurePage 的 guard 相同
+function expired(err: unknown) {
+  if (!(err instanceof ApiError) || (err.code !== 'security_required' && err.code !== 'password_session_required')) return false
+  state.value = err.code === 'security_required' ? 'verify' : 'ip'
+  return true
+}
 async function inspect(withKey = false) {
   busy.value = true
   error.value = ''
   try {
     info.value = await api<Info>('backup/inspect', { method: 'POST', body: { name: name.value, privateKey: withKey ? key.value : '' } })
+    state.value = 'ready'
   } catch (err) {
+    if (expired(err)) return
     if (err instanceof ApiError && err.code === 'not_found') {
       showToast(t('console.backup_error_not_found'), 'destructive')
       return router.replace('/backup')
@@ -92,7 +103,7 @@ async function restore() {
     showToast(t('console.backup_msg_restore_started'), 'success')
     await router.push('/backup')
   } catch (err) {
-    if (!isSignedOut(err)) error.value = errorText(err)
+    if (!isSignedOut(err) && !expired(err)) error.value = errorText(err)
   } finally {
     busy.value = false
   }
@@ -111,6 +122,8 @@ async function restore() {
         </Button>
       </FormActions>
     </PageSection>
+
+    <AdminVerify v-else-if="state === 'verify' || state === 'ip'" :ip-only="state === 'ip'" @verified="inspect(Boolean(key.trim()))" />
 
     <PageSection v-else-if="!info" :cols="4">
       <LoadingState />

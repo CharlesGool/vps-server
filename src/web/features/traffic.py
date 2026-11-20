@@ -6,6 +6,7 @@ saved here; the others go to the root helper traffic_meter.py.
 """
 
 import json
+import threading
 from pathlib import Path
 
 TRAFFIC_DIR = Path("/etc/vps-server-traffic")
@@ -15,6 +16,8 @@ BACK = {"files": "/files", "speedtest": "/speedtest", "domains": "/domains", "ip
 LIMIT_FORM = {"id", "csrf", "cap_gib", "upload_mbps", "download_mbps", "cap_action", "expiry_mode",
               "expiry_count", "expiry_unit", "reset_mode", "reset_count", "reset_unit", "next_reset_at"}
 APP_KEYS = ("files", "speedtest")
+# total-traffic.json is read, changed and written by request threads and the 30-second check.
+TOTAL_LOCK = threading.RLock()
 
 
 def _read(path):
@@ -63,15 +66,22 @@ class TrafficMixin:
             pass
         return entries
 
-    def total_state(self, now=None):
-        """(state, usage per entry id, names) with a due period already started and saved."""
+    def total_state(self, now=None, persist=False):
+        """(state, usage per entry id, names) with a due period already started and saved.
+
+        Each entry's usage is remembered in the state (total_meter.observe); ``persist`` also
+        saves that record, which the 30-second check does, so a deleted or unreadable entry
+        keeps counting. Callers that change the state hold TOTAL_LOCK around this and the write.
+        """
         import total_meter
         now = now or self.context.datetime.now(self.context.timezone.utc)
-        info = total_meter.snapshot_full(self.total_entries())
-        path = self.context.DATA_DIR / "total-traffic.json"
-        state, changed = total_meter.advance(total_meter.read_state(path), info, now)
-        if changed:
-            total_meter.write_state(path, state)
+        with TOTAL_LOCK:
+            info = total_meter.snapshot_full(self.total_entries())
+            path = self.context.DATA_DIR / "total-traffic.json"
+            state, changed = total_meter.advance(total_meter.read_state(path), info, now)
+            state, observed = total_meter.observe(state, info)
+            if changed or (observed and persist):
+                total_meter.write_state(path, state)
         return state, info
 
     def total_enforce(self, now=None):
@@ -83,15 +93,17 @@ class TrafficMixin:
         import total_meter
         context = self.context
         now = now or context.datetime.now(context.timezone.utc)
-        state, info = self.total_state(now)
-        measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
-        used = total_meter.calibrated_total(state, measured)
-        action = total_meter.enforced(state, used)
-        total_meter.write_limit(context.DATA_DIR, action, state["next_reset_at"] if action else None)
-        due = total_meter.due_alerts(state, used)
+        with TOTAL_LOCK:
+            state, info = self.total_state(now, persist=True)
+            measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
+            used = total_meter.calibrated_total(state, measured)
+            action = total_meter.enforced(state, used)
+            total_meter.write_limit(context.DATA_DIR, action, state["next_reset_at"] if action else None)
+            due = total_meter.due_alerts(state, used)
+            if due:
+                total_meter.write_state(context.DATA_DIR / "total-traffic.json",
+                                        {**state, "alerted": [*state.get("alerted", []), *due]})
         if due:
-            total_meter.write_state(context.DATA_DIR / "total-traffic.json",
-                                    {**state, "alerted": [*state.get("alerted", []), *due]})
             top = due[-1]
             text = context._log_text
             values = {"used": total_meter.format_bytes(used), "cap": total_meter.format_bytes(state["cap_bytes"]),

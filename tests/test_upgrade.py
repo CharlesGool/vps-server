@@ -222,6 +222,7 @@ class UpgradeTest(unittest.TestCase):
             self.assertIsNone(self.installed())
         self.assertFalse((self.tmp / "evil").exists())
 
+    @unittest.skipUnless(getattr(tarfile, "tar_filter", None), "links are refused without tarfile filters")
     def test_a_relative_link_inside_the_package_is_fine(self):
         self.pin()
         link = tarfile.TarInfo("vps-server/config/latest")
@@ -231,6 +232,7 @@ class UpgradeTest(unittest.TestCase):
 
     def test_an_older_version_is_refused_while_state_files_are_encrypted(self):
         import secure_store
+        saved = {name: os.environ.get(name) for name in ("VPSSRV_STATE_DIR", "VPSSRV_DATA_KEY_FILE")}
         os.environ["VPSSRV_STATE_DIR"] = str(self.state)
         os.environ["VPSSRV_DATA_KEY_FILE"] = str(self.tmp / "data.key")
         secure_store._cache.clear()
@@ -249,8 +251,12 @@ class UpgradeTest(unittest.TestCase):
             self.publish("v7.0.0")
             self.assertEqual(self.go(dry_run=True), 0)
         finally:
-            os.environ.pop("VPSSRV_STATE_DIR", None)
-            os.environ.pop("VPSSRV_DATA_KEY_FILE", None)
+            # Restore, not remove: without VPSSRV_DATA_KEY_FILE later tests would read the host's real key.
+            for name, value in saved.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
             secure_store._cache.clear()
 
     def test_installer_failure_is_passed_on(self):

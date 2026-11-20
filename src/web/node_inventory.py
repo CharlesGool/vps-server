@@ -106,19 +106,62 @@ def _schedule_time():
 
 
 def next_scheduled_reset(after: datetime, spec: dict[str, Any]) -> datetime:
-    """The first time strictly after ``after`` (aware) that ``spec`` falls on, in host local time; UTC."""
+    """The first time strictly after ``after`` (aware) that ``spec`` falls on, in host local time; UTC.
+
+    Around a daylight saving change the local time is read as schedule_time.to_utc does: a time
+    the clocks skip comes that much later, and one they pass twice falls only the first time.
+    """
+    times = _schedule_time()
     local = after.astimezone().replace(tzinfo=None)
-    following = _schedule_time().next_occurrence(spec, local)
-    if following is None:
-        raise InvalidInventory("reset schedule never falls")
-    return following.astimezone(timezone.utc)
+    before = times.previous_occurrence(spec, local)
+    if before is not None and times.to_utc(before) > after:
+        return times.to_utc(before)  # a skipped time, moved on past ``after`` (03:10 for 02:30 → 03:30)
+    for _ in range(3):
+        following = times.next_occurrence(spec, local)
+        if following is None:
+            raise InvalidInventory("reset schedule never falls")
+        moment = times.to_utc(following)
+        if moment > after:
+            return moment
+        local = following  # already passed: the second pass through a repeated hour
+    raise InvalidInventory("reset schedule does not advance")
 
 
 def previous_scheduled_reset(now: datetime, spec: dict[str, Any]) -> datetime | None:
     """The latest time at or before ``now`` (aware) that ``spec`` fell on, in UTC; None if there is none."""
+    times = _schedule_time()
     local = now.astimezone().replace(tzinfo=None)
-    before = _schedule_time().previous_occurrence(spec, local)
-    return before.astimezone(timezone.utc) if before is not None else None
+    for _ in range(3):
+        before = times.previous_occurrence(spec, local)
+        if before is None:
+            return None
+        moment = times.to_utc(before)
+        if moment <= now:
+            return moment
+        local = before - timedelta(microseconds=1)  # a skipped time that, moved on, is still ahead
+    return None
+
+
+def add_period(start: datetime, count: int, unit: str) -> datetime:
+    """``start`` plus ``count`` days, months or years on the calendar, at the same time of day.
+
+    A validity period: one month from 31 January ends on the last day of February. Unlike a
+    reset interval (advance_reset_interval) it is not moved to the first of a month.
+    """
+    if type(count) is not int or count < 1 or unit not in ("days", "months", "years"):
+        raise InvalidInventory("invalid period")
+    try:
+        if unit == "days":
+            return start + timedelta(days=count)
+        if unit == "months":
+            year, month_index = divmod(start.year * 12 + start.month - 1 + count, 12)
+        else:
+            year, month_index = start.year + count, start.month - 1
+        month = month_index + 1
+        return start.replace(year=year, month=month,
+                             day=min(start.day, calendar.monthrange(year, month)[1]))
+    except (ValueError, OverflowError) as exc:
+        raise InvalidInventory("period exceeds supported dates") from exc
 
 
 def advance_reset_interval(due: datetime, mode: str) -> datetime:
@@ -150,7 +193,10 @@ def advance_reset_interval(due: datetime, mode: str) -> datetime:
 # A node without "access" reaches anything (the historical behaviour). "internet"
 # refuses private, loopback, link-local and CGNAT destinations, so the node can only
 # be used to browse. "custom" refuses everything except the listed destinations.
+# A new node starts with NEW_NODE_ACCESS: unrestricted, it could reach the console on
+# 127.0.0.1, which console_access always lets through. Existing nodes keep theirs.
 ACCESS_MODES = ("internet", "custom")
+NEW_NODE_ACCESS = {"mode": "internet"}
 MAX_DESTINATIONS = 64
 _DOMAIN = re.compile(r"(?:\*\.)?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
 _PORT = re.compile(r"([0-9]{1,5})(?:-([0-9]{1,5}))?\Z")

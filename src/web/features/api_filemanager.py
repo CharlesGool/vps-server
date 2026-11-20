@@ -23,7 +23,37 @@ from features.api_system import run_helper, staging_dir
 LIST_LIMIT = 5000
 EDIT_LIMIT = 1024 * 1024
 UPLOAD_IDLE_TIMEOUT = 60
+STAGING_MAX_AGE = 86400
 OPS = {"mkdir", "touch", "rename", "move", "copy", "delete", "chmod", "chown", "extract", "compress"}
+
+
+def cleanup_staging(context, older=STAGING_MAX_AGE):
+    """Drop staging files left by interrupted uploads and edits; run at start-up and before each upload."""
+    now = time.time()
+    try:
+        items = list(staging_dir(context).glob("up-*"))
+    except OSError:
+        return
+    for item in items:
+        try:
+            if now - item.stat().st_mtime > older:
+                item.unlink()
+        except OSError:
+            pass
+
+
+def upload_fits(context, directory, length):
+    """Whether ``length`` bytes fit twice: once in staging (the state folder's file system) and once in
+    ``directory``; both on one file system need room for both copies. OSError when either is missing."""
+    needed = {}
+    for path in (staging_dir(context), directory):
+        device = os.stat(path).st_dev
+        needed[device] = (path, needed.get(device, (path, 0))[1] + length)
+    for path, size in needed.values():
+        usage = os.statvfs(path)
+        if size > usage.f_bavail * usage.f_frsize:
+            return False
+    return True
 
 
 def _clean(value):
@@ -220,9 +250,9 @@ class FileManagerApiMixin:
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self.api_error(411, "length_required")
+        self.staging_cleanup()
         try:
-            free = os.statvfs(directory)
-            if length > free.f_bavail * free.f_frsize:
+            if not upload_fits(self.context, directory, length):
                 return self.api_error(400, "no_room")
         except OSError:
             return self.api_error(404, "not_found")
@@ -282,12 +312,6 @@ class FileManagerApiMixin:
         answer.pop("ok", None)
         return self.api_ok(answer)
 
-    def staging_cleanup(self, older=86400):
+    def staging_cleanup(self, older=STAGING_MAX_AGE):
         """Drop staging files left by interrupted requests."""
-        now = time.time()
-        for item in staging_dir(self.context).glob("up-*"):
-            try:
-                if now - item.stat().st_mtime > older:
-                    item.unlink()
-            except OSError:
-                pass
+        cleanup_staging(self.context, older)

@@ -22,13 +22,16 @@ import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import PaginationBar from '@/components/app/PaginationBar.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
+import AdminVerify from '@/components/vps/AdminVerify.vue'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
 // 配置备份: 上次恢复的结果, 定时备份设置, 备份列表(下载, 恢复, 删除, 立即备份), 备份加密和上传并排, 数据加密状态.
+// 备份含控制台的全部密钥, 恢复会改写系统文件, 所以和终端一样, 进入前要验证管理员密码(useSecurePage); 验证过期时回到验证卡片.
 type Run = { status: 'ok' | 'failed' | 'timeout' | 'skipped'; started: string } | null
 type Item = { name: string; kind: 'manual' | 'scheduled' | 'pre-upgrade' | 'pre-restore'; sealed: boolean; keyMatch: boolean | null; created: string; size: number }
 interface Backup {
@@ -45,6 +48,7 @@ interface Backup {
 }
 
 const { t } = useI18n()
+const { state, guard } = useSecurePage()
 const data = ref<Backup>()
 const busy = ref(false)
 const enabled = ref(false)
@@ -63,13 +67,19 @@ function apply(value: Backup, fresh = false) {
   }
   if (value.message) showToast(t(`console.backup_msg_${value.message}`), 'success')
 }
-onMounted(async () => {
-  try {
-    apply(await api<Backup>('backup'))
-  } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
-  }
-})
+async function load() {
+  const value = await guard(() => api<Backup>('backup'))
+  if (!value) return
+  apply({ ...value, message: null })
+  state.value = 'ready'
+}
+onMounted(load)
+// 验证过期(security_required)或 IP 免密会话: 回到验证卡片, 和 guard 的处理相同
+function expired(err: unknown) {
+  if (!(err instanceof ApiError) || (err.code !== 'security_required' && err.code !== 'password_session_required')) return false
+  state.value = err.code === 'security_required' ? 'verify' : 'ip'
+  return true
+}
 const errorText = (err: unknown) => {
   const code = err instanceof ApiError ? err.code : 'failed'
   const key = `console.backup_error_${code}`
@@ -81,7 +91,7 @@ async function send(path: string, body: unknown, method = 'POST') {
     apply(await api<Backup>(path, { method, body }))
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
+    if (!isSignedOut(err) && !expired(err)) showToast(errorText(err), 'destructive')
     return false
   } finally {
     busy.value = false
@@ -114,8 +124,17 @@ const rowActions = computed(() => [
 // 确认对话框关闭时先于 confirm 事件改 open, 所以要删除的项单独保存
 const deleting = ref<string>()
 const deleteOpen = ref(false)
+// 下载用带 download 属性的链接: 验证过期时服务器拒绝, 浏览器只显示下载失败, 不离开页面
+function download(name: string) {
+  const link = document.createElement('a')
+  link.href = `/backup/download?name=${encodeURIComponent(name)}`
+  link.download = ''
+  document.body.append(link)
+  link.click()
+  link.remove()
+}
 function rowAction(key: string, row: Item) {
-  if (key === 'download') window.location.assign(`/backup/download?name=${encodeURIComponent(row.name)}`)
+  if (key === 'download') download(row.name)
   else if (key === 'restore') void router.push({ path: '/backup/restore', query: { name: row.name } })
   else {
     deleting.value = row.name
@@ -142,14 +161,14 @@ async function generateKey() {
   try {
     newKey.value = await api('backup/key/new', { method: 'POST', body: {} })
   } catch (err) {
-    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
+    if (!isSignedOut(err) && !expired(err)) showToast(errorText(err), 'destructive')
   } finally {
     busy.value = false
   }
 }
 async function keyDone() {
   newKey.value = undefined
-  apply({ ...(await api<Backup>('backup')), message: null })
+  await load()
 }
 async function savePublic() {
   if (await send('backup/key', { public: publicKey.value.trim() }, 'PUT')) publicKey.value = ''
@@ -173,7 +192,7 @@ async function upload() {
     picked.value = []
     apply(body as Backup)
   } catch (err) {
-    showToast(errorText(err), 'destructive')
+    if (!expired(err)) showToast(errorText(err), 'destructive')
   } finally {
     busy.value = false
   }
@@ -197,7 +216,9 @@ const dataText = computed(() => {
   <CardGrid>
     <PageHeader :title="t('console.backup')" :description="t('vps.backup.description')" />
 
-    <PageSection v-if="!data" :cols="4">
+    <AdminVerify v-if="state === 'verify' || state === 'ip'" :ip-only="state === 'ip'" @verified="load" />
+
+    <PageSection v-else-if="!data" :cols="4">
       <LoadingState />
     </PageSection>
 

@@ -215,7 +215,13 @@ def valid_port(port):
 def normalize_host(raw):
     host = str(raw or "").strip().lower().rstrip(".")
     try:
-        host = host.encode("idna").decode("ascii") if not host.isascii() else host
+        if not host.isascii():
+            encoded = host.encode("idna")
+            # Python's codec is IDNA 2003, which maps "ß" to "ss" and drops ZWNJ: refuse a name
+            # that would not survive the round trip instead of serving a different domain.
+            if encoded.decode("idna") != host:
+                raise SiteError("host_invalid")
+            host = encoded.decode("ascii")
     except UnicodeError as exc:
         raise SiteError("host_invalid") from exc
     if not valid_host(host):
@@ -898,7 +904,8 @@ def _access(request, current=None):
         password = str(request.get("auth_password") or "")
         stored = current.get("auth") or {}
         if password:
-            if not 8 <= len(password) <= 128:
+            # `caddy hash-password` reads stdin up to the first line break: no control characters.
+            if not 8 <= len(password) <= 128 or any(ord(c) < 32 or ord(c) == 127 for c in password):
                 raise SiteError("auth_invalid")
             result["auth"] = {"user": user, "hash": hash_password(password)}
         elif stored.get("user") == user and stored.get("hash"):

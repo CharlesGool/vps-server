@@ -17,7 +17,10 @@ host (the key is there for the service to use). Files that other programs must r
 are (sing-box, frps and Caddy configuration, tailscaled state) are not encrypted here; the
 configuration backups that include them are sealed to the operator's own key instead.
 
-  python3 secure_store.py init|status|migrate|decrypt-all|export-key
+  python3 secure_store.py init|status|migrate|decrypt-all|export-key|show-password
+
+``show-password`` prints only the console's admin password (plain or encrypted), so an
+operator never needs ``decrypt-all`` just to read it.
 """
 
 import argparse
@@ -285,9 +288,27 @@ def status():
     return rows
 
 
+def admin_password():
+    """The console's admin password as the console reads it, without decrypting anything else."""
+    import state_paths
+    path = state_paths.password_file()
+    try:
+        password = read_text(path).strip()
+    except FileNotFoundError:
+        raise SecureStoreError(f"no admin password at {path} yet (the console creates it when it first starts)") from None
+    except OSError as error:
+        raise SecureStoreError(f"cannot read {path}: {error.strerror or error}") from None
+    except UnicodeDecodeError:
+        raise SecureStoreError(f"admin password file {path} is not text") from None
+    if not password:
+        raise SecureStoreError(f"admin password file {path} is empty")
+    return password
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=("init", "status", "migrate", "decrypt-all", "export-key"))
+    parser.add_argument("command", choices=("init", "status", "migrate", "decrypt-all", "export-key",
+                                            "show-password"))
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -304,6 +325,8 @@ def main(argv=None):
         elif args.command == "decrypt-all":
             for path in migrate(decrypt_instead=True):
                 print("decrypted", path)
+        elif args.command == "show-password":
+            print(admin_password())
         else:
             key = load_key()
             if key is None:

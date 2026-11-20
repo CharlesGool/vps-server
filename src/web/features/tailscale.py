@@ -92,6 +92,9 @@ class TailscaleMixin:
             field in ("ipv4", "ipv6") and identifier.startswith("tailscale-peer-"))
         if not (settings_value or address_value):
             raise ValueError("unsupported value")
+        # Only this project's Tailscale module: never another daemon that happens to answer.
+        if "tailscale" not in self.context.installed_modules(self.context.BASE_DIR):
+            raise ValueError("module not installed")
         try:
             snapshot = control.status()
             if settings_value:

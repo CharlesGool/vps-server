@@ -19,6 +19,20 @@ case "$key" in
   lucky_fw_retained) fmt='Advertencia: se conservó el registro de propiedad de la regla de firewall de Lucky; requiere limpieza manual\n' ;;
   lucky_config_retained) fmt='La configuración de DDNS/proxy inverso de Lucky se conserva en /etc/vps-server-lucky/config.json\n' ;;
   frps_fw_retained) fmt='Advertencia: no se pudo eliminar la regla de firewall de frps; se conservó su registro de propiedad\n' ;;
+  prefix_not_project) fmt='No se elimina %s: no parece una instalación de vps-server (no tiene app.py ni src/web/). Revisa PREFIX, o elimina %s a mano si de verdad lo es. No se ha cambiado nada.\n' ;;
+  purge_head) fmt='Una desinstalación completa elimina de forma permanente:\n' ;;
+  purge_prefix) fmt='  - el directorio del programa %s\n' ;;
+  purge_state) fmt='  - el directorio de estado %s (contraseña de administrador, certificados, ajustes y registros)\n' ;;
+  purge_backups) fmt='  - %s copia(s) de configuración en %s\n' ;;
+  purge_drive) fmt='  - %s archivo(s) de Mini Drive, %s en total\n' ;;
+  purge_modules) fmt='  - los ajustes de nodos, FRPS/FRPC, reenvío de dominios y Tailscale de este proyecto\n' ;;
+  purge_data_key) fmt='  - la clave de datos %s\n' ;;
+  purge_outside_kept) fmt='Se conservan: %s (fuera del directorio de estado) y la clave de datos que necesitan.\n' ;;
+  purge_needs_confirm) fmt='Una desinstalación completa elimina los datos indicados arriba y debe confirmarse. Ejecútala en un terminal, o define VPSSRV_UNINSTALL_YES=1 para hacerlo sin intervención; KEEP_DATA=1 quita los servicios y conserva los datos. No se ha cambiado nada.\n' ;;
+  purge_confirm) fmt='Escribe yes para eliminar todo esto (cualquier otra respuesta, o ninguna en %s segundos, cancela): ' ;;
+  purge_cancelled) fmt='Cancelado; no se ha cambiado nada.\n' ;;
+  data_key_removed) fmt='Se eliminó la clave de datos %s.\n' ;;
+  data_key_kept) fmt='Se conserva la clave de datos %s: %s puede contener aún datos cifrados con ella.\n' ;;
   error_prefix) fmt='error: %s\n' ;;
   *) fmt="$key\n" ;;
 esac

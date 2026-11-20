@@ -326,11 +326,16 @@ core() {
 prepare_state_layout() {
   STATE_DIR="${VPSSRV_STATE_DIR:-$STATE_DIR}"
   STATE_FILE="$STATE_DIR/install-state"
-  if [ "$UPGRADE" = 1 ] && { [ ! -f "$STATE_DIR/.layout-version" ] || [ ! -f "$STATE_FILE" ] || [ ! -f "$STATE_DIR/paths.json" ]; }; then
-    die "$(msg legacy_state_unsupported)"
-  fi
   if [ -e "$STATE_DIR/.layout-version" ] && [ "$(cat "$STATE_DIR/.layout-version")" != 1 ]; then
     die "$(msg state_layout_invalid)"
+  fi
+  # A current layout without install-state is a first install that stopped
+  # after it began changing the host (write_state is its last step).
+  if [ -f "$STATE_DIR/.layout-version" ] && [ -f "$STATE_DIR/paths.json" ] && [ ! -f "$STATE_FILE" ]; then
+    die "$(msg first_install_incomplete "$STATE_DIR" "$PREFIX" "$SERVICE_NAME" "$SRC_DIR/deploy/uninstall.sh")"
+  fi
+  if [ "$UPGRADE" = 1 ] && { [ ! -f "$STATE_DIR/.layout-version" ] || [ ! -f "$STATE_FILE" ] || [ ! -f "$STATE_DIR/paths.json" ]; }; then
+    die "$(msg legacy_state_unsupported)"
   fi
   if [ -f "$STATE_DIR/.layout-version" ] && [ ! -f "$STATE_FILE" ] && [ "$UPGRADE" = 0 ]; then
     die "$(msg state_layout_invalid)"
@@ -599,13 +604,37 @@ PYENV
   exec 8>&-
   follow_install_job
 fi
+# The console is how this host is managed, often from a fleet. A run that
+# stopped it and then failed starts it again (with whatever files are in
+# place) instead of leaving it down until someone logs in over SSH. The flag
+# is set where this run stops Web and cleared once the installer itself
+# restarts it.
+WEB_STOPPED_BY_INSTALL=0
+restart_stopped_web() {
+  [ "$1" != 0 ] && [ "$WEB_STOPPED_BY_INSTALL" = 1 ] || return 0
+  systemctl is-active --quiet "$SERVICE_NAME" && return 0
+  if systemctl start "$SERVICE_NAME" >/dev/null 2>&1; then
+    core web_restarted >&2
+  else
+    core web_restart_failed "$SERVICE_NAME" >&2
+  fi
+  return 0
+}
+on_install_exit() {
+  local status="$1"
+  restart_stopped_web "$status" || true
+  # Written last: the progress view stops following once the code appears.
+  if [ -n "${VPSSRV_INSTALL_JOB_DIR:-}" ]; then
+    printf '%s\n' "$status" > "$VPSSRV_INSTALL_JOB_DIR/exit-code"
+  fi
+}
+trap 'on_install_exit "$?"' EXIT
 if [ -n "${VPSSRV_INSTALL_JOB_DIR:-}" ]; then
   python3 - "$VPSSRV_INSTALL_JOB_DIR/environment" <<'PYENV'
 from pathlib import Path
 import sys
 Path(sys.argv[1]).unlink(missing_ok=True)
 PYENV
-  trap 'job_exit=$?; printf "%s\n" "$job_exit" > "$VPSSRV_INSTALL_JOB_DIR/exit-code"' EXIT
   sleep 2
 fi
 MODULES="${VPSSRV_MODULES:-$DEFAULT_MODULES}"
@@ -695,32 +724,40 @@ prepare_state_layout
 load_state_env
 load_state_paths
 set_state_defaults
-commit_state_layout
-if [ "$RELEASE_KEY_ACTION" = pin ]; then
-  pinned_print="$(python3 "$SRC_DIR/src/web/release_trust.py" pin --state-dir "$STATE_DIR" --package "$SRC_DIR")" \
-    || die "$(msg release_key_error)"
-  msg release_key_pinned "$pinned_print"
-fi
-# Before an upgrade changes anything, save the configuration (not the code,
-# which GitHub still has, and not Mini Drive files). A failed backup warns but
-# does not stop the upgrade; the three newest pre-upgrade backups are kept.
-if [ "$UPGRADE" = 1 ] && [ "${VPSSRV_MODULE_ONLY:-0}" != 1 ] && [ -f "$SRC_DIR/src/web/config_backup.py" ]; then
-  if backup_name="$(VPSSRV_STATE_DIR="$STATE_DIR" VPSSRV_BACKUP_VERSION="${PREV_VERSION:-}" \
-      python3 "$SRC_DIR/src/web/config_backup.py" create --kind pre-upgrade --keep 3 2>/dev/null)"; then
-    msg backup_pre_upgrade "$STATE_DIR/backups/$backup_name"
-  else
-    msg backup_pre_upgrade_failed
+
+# The first writes to persistent state: the layout record, the pinned release
+# key, the pre-upgrade backup and the data key. They run only after the online
+# download and the host checks pass, so a first install that stops there has
+# left nothing behind and can simply be run again.
+commit_persistent_state() {
+  commit_state_layout
+  if [ "$RELEASE_KEY_ACTION" = pin ]; then
+    pinned_print="$(python3 "$SRC_DIR/src/web/release_trust.py" pin --state-dir "$STATE_DIR" --package "$SRC_DIR")" \
+      || die "$(msg release_key_error)"
+    msg release_key_pinned "$pinned_print"
   fi
-fi
-# Encryption at rest: give this host a data key (kept outside the state directory). The console
-# encrypts its own state files with it when it starts; an existing key is never replaced.
-if [ -f "$SRC_DIR/src/web/secure_store.py" ]; then
-  if data_key="$(python3 "$SRC_DIR/src/web/secure_store.py" init 2>/dev/null)"; then
-    [ "$data_key" = created ] && msg data_key_created
-  else
-    msg data_key_failed
+  # Before an upgrade changes anything, save the configuration (not the code,
+  # which GitHub still has, and not Mini Drive files). A failed backup warns but
+  # does not stop the upgrade; the three newest pre-upgrade backups are kept.
+  if [ "$UPGRADE" = 1 ] && [ "${VPSSRV_MODULE_ONLY:-0}" != 1 ] && [ -f "$SRC_DIR/src/web/config_backup.py" ]; then
+    if backup_name="$(VPSSRV_STATE_DIR="$STATE_DIR" VPSSRV_BACKUP_VERSION="${PREV_VERSION:-}" \
+        python3 "$SRC_DIR/src/web/config_backup.py" create --kind pre-upgrade --keep 3 2>/dev/null)"; then
+      msg backup_pre_upgrade "$STATE_DIR/backups/$backup_name"
+    else
+      msg backup_pre_upgrade_failed
+    fi
   fi
-fi
+  # Encryption at rest: give this host a data key (kept outside the state directory). The console
+  # encrypts its own state files with it when it starts; an existing key is never replaced.
+  if [ -f "$SRC_DIR/src/web/secure_store.py" ]; then
+    if data_key="$(python3 "$SRC_DIR/src/web/secure_store.py" init 2>/dev/null)"; then
+      [ "$data_key" = created ] && msg data_key_created
+    else
+      msg data_key_failed
+    fi
+  fi
+  return 0
+}
 PASSWORD_WAS_PRESENT=0
 [ -f "$VPSSRV_PASSWORD_FILE" ] && PASSWORD_WAS_PRESENT=1
 if [ "$UPGRADE" = 1 ]; then
@@ -836,9 +873,27 @@ install_system_tools() {
   fi
 }
 
+# The Tailscale archive's file name carries its version. The dependency lock is
+# the one place that names it (online-assets.json downloads to the same path,
+# which tools/verify-dependencies checks).
+TAILSCALE_ASSET=""
+if has_module tailscale; then
+  TAILSCALE_ASSET="$(python3 - "$SRC_DIR/config/dependencies.lock.json" <<'PY'
+import json, sys
+paths = [entry.get("path") for entry in json.load(open(sys.argv[1], encoding="utf-8"))["artifacts"]
+         if entry.get("component") == "Tailscale"]
+name = paths[0].rpartition("/")[2] if len(paths) == 1 and isinstance(paths[0], str) else ""
+if paths[0:1] != ["third_party/tailscale/" + name] or not name.endswith(".tgz") or name.startswith("."):
+    raise SystemExit("the dependency lock names no single Tailscale archive")
+print(paths[0])
+PY
+)" || die "$(msg tailscale_install_failed)"
+fi
+
 fetch_online_assets
 install_system_tools
 check_host_prerequisites
+commit_persistent_state
 
 if [ "$UPGRADE" = "1" ]; then
   report_new_settings
@@ -1131,15 +1186,18 @@ copy_selected_files() {
     local copy_items item source
     copy_items="lang"
     if has_module web; then
-      copy_items="$copy_items systemd README.md LICENSE"
+      copy_items="$copy_items README.md LICENSE"
     fi
+    # Older releases copied deploy/systemd here; nothing reads that copy (Web's
+    # unit is written below, frpc@.service comes from installer-source).
+    rm -rf -- "${PREFIX:?}/systemd"
     has_module proxy && copy_items="$copy_items proxy"
     has_module frps && copy_items="$copy_items frps"
     has_module tailscale && copy_items="$copy_items tailscale"
     has_module caddy && copy_items="$copy_items caddy"
     for item in $copy_items; do
       source="$SRC_DIR/$item"
-      case "$item" in systemd|proxy|frps|tailscale|caddy) source="$SRC_DIR/deploy/$item" ;; esac
+      case "$item" in proxy|frps|tailscale|caddy) source="$SRC_DIR/deploy/$item" ;; esac
       [ -e "$source" ] || continue
       rm -rf "${PREFIX:?}/$item"
       cp -r "$source" "$PREFIX/$item"
@@ -1189,7 +1247,7 @@ copy_selected_files() {
   fi
   if has_module tailscale; then
     mkdir -p "$PREFIX/vendor/tailscale"
-    cp "$SRC_DIR/third_party/tailscale/tailscale_1.104.5_amd64.tgz" "$PREFIX/vendor/tailscale/"
+    cp "$SRC_DIR/$TAILSCALE_ASSET" "$PREFIX/vendor/tailscale/"
   fi
   if has_module frps; then
     mkdir -p "$PREFIX/vendor/frp"
@@ -1304,7 +1362,7 @@ msg to_remove "$PREFIX" "$SERVICE_NAME" "$UNINSTALLER" "$PREFIX" "$SERVICE_NAME"
   if has_module frps; then register_optional_listener frps; fi
   if has_module caddy; then install_caddy; fi
   if has_module tailscale; then
-    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
+    PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/${TAILSCALE_ASSET##*/}" || die "$(msg tailscale_install_failed)"
   fi
   write_state
   if [ -f "$PREFIX/src/web/proxy_migration.py" ]; then
@@ -1333,6 +1391,7 @@ if has_module web; then
     if systemctl is-active --quiet "$SERVICE_NAME"; then
       # Most likely we are the holder, from the last install. Stopping is
       # safe because a successful run restarts it after installing.
+      WEB_STOPPED_BY_INSTALL=1
       systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
       sleep 1
       busy_port="$(first_busy_public_port || true)"
@@ -1349,6 +1408,7 @@ if has_module web; then
       die "$(msg port_busy "$busy_port" "$busy_port")"
     fi
   else
+    if systemctl is-active --quiet "$SERVICE_NAME"; then WEB_STOPPED_BY_INSTALL=1; fi
     systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
   fi
 fi
@@ -1380,7 +1440,7 @@ copy_selected_files
 prepare_module_source
 remove_legacy_lucky
 if has_module tailscale; then
-  PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/tailscale_1.104.5_amd64.tgz" || die "$(msg tailscale_install_failed)"
+  PREFIX="$PREFIX" VPSSRV_STATE_DIR="$STATE_DIR" bash "$PREFIX/tailscale/setup-tailscale.sh" "$PREFIX/vendor/tailscale/${TAILSCALE_ASSET##*/}" || die "$(msg tailscale_install_failed)"
 fi
 if has_module frps; then
   PREFIX="$PREFIX" VPSSRV_CONSOLE_PORT="${VPSSRV_CONSOLE_PORT:-}" bash "$PREFIX/frps/setup-frps.sh" || die "$(msg frps_install_failed)"
@@ -1518,6 +1578,8 @@ EOF
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" >/dev/null
+# From here the installer starts Web itself and reports the outcome.
+WEB_STOPPED_BY_INSTALL=0
 systemctl restart "$SERVICE_NAME" || { release_new_public_ports; die "$(msg web_start_failed)"; }
 
 sleep 2
@@ -1627,13 +1689,17 @@ if [ -x "$PREFIX/vendor/iperf3/iperf3" ] || command -v iperf3 >/dev/null 2>&1; t
 else
   msg line_iperf_off
 fi
+# The console stores the password encrypted once the host has a data key, so
+# read it through secure_store rather than printing the file's bytes.
+PW_COMMAND="python3 $PREFIX/src/web/secure_store.py show-password"
 if [ "$VPSSRV_AUTH" = "0" ]; then
   core line_pw_none
-elif [ -f "$PW_FILE" ]; then
-  if [ "$PASSWORD_WAS_PRESENT" = 1 ]; then core line_pw_preserved "$PW_FILE"
-  else core line_pw "$(cat "$PW_FILE")" "$PW_FILE"; fi
+elif [ "$PASSWORD_WAS_PRESENT" = 1 ]; then
+  core line_pw_preserved "$PW_COMMAND"
+elif [ -f "$PW_FILE" ] && PW_VALUE="$(python3 "$PREFIX/src/web/secure_store.py" show-password 2>/dev/null)"; then
+  core line_pw "$PW_VALUE" "$PW_COMMAND"
 else
-  core line_pw_seefile "$PW_FILE"
+  core line_pw_seefile "$PW_COMMAND"
 fi
 if [ -n "${VPSSRV_DEFAULT_LANG:-}" ]; then
   msg line_lang "$VPSSRV_DEFAULT_LANG"

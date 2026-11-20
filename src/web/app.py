@@ -1054,6 +1054,7 @@ from features.api_portfwd import PortfwdApiMixin
 from features.api_monitor import MonitorApiMixin
 from features.api_system import SystemApiMixin
 from features.api_filemanager import FileManagerApiMixin
+from features.api_filemanager import cleanup_staging
 from features.api_v1 import TokenApiMixin
 from features.api_fleet import FleetApiMixin
 
@@ -1611,6 +1612,8 @@ def close_iperf_window():
 
 
 def main():
+    # Merge the API route tables now: a route two features claim stops the start instead of hiding one.
+    ConsoleHandler.private_api_routes()
     servers = []
     stop_event = threading.Event()
 
@@ -1634,6 +1637,7 @@ def main():
         # A prior Web process might have died while its temporary iperf3
         # listener was registered. A fresh process has no live window.
         close_iperf_window()
+        cleanup_staging(sys.modules[__name__])  # uploads cut off by a restart leave staging files
         console = make_server(CONSOLE_PORT, ConsoleHandler, CONSOLE_TLS, client_auth=True)
         if not TRUST_PROXY:
             # Behind a proxy every connection comes from the proxy; the

@@ -2,6 +2,8 @@
 
 Times are formatted on the server in its own time zone, the one schedules run in.
 Restoring writes system files, so it still runs through ``systemd-run``.
+Tasks run commands as root and backups hold every secret, so like the terminal every
+route needs a recent admin re-verification; ``route_api`` checks it (SECURE_FEATURES).
 """
 
 import os

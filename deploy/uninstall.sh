@@ -4,9 +4,12 @@
 #
 #   sudo bash deploy/uninstall.sh                # stop + disable the service, delete $PREFIX
 #   sudo KEEP_DATA=1 bash deploy/uninstall.sh    # keep code and /var/lib/vps-server
+#   sudo VPSSRV_UNINSTALL_YES=1 bash deploy/uninstall.sh   # full uninstall, no prompt
 #
-# A full uninstall removes the code and this project's marked state directory.
-# KEEP_DATA=1 retains both for a later reinstall.
+# A full uninstall removes the code, this project's marked state directory
+# (backups and Mini Drive files included) and the data key. It lists them and
+# asks for confirmation first; without a terminal it needs VPSSRV_UNINSTALL_YES=1.
+# KEEP_DATA=1 retains all of them for a later reinstall.
 
 set -euo pipefail
 
@@ -70,6 +73,61 @@ fi
 FRPC_CLEANUP="$SCRIPT_DIR/../src/web/uninstall_cleanup.py"
 [ -f "$FRPC_CLEANUP" ] || die "$(msg cleanup_failed)"
 python3 "$FRPC_CLEANUP" check-ports "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME" >/dev/null || die "$(msg cleanup_failed)"
+
+# A full uninstall deletes PREFIX. Refuse a directory that is not this
+# project's install, so a mistyped PREFIX cannot take another directory along.
+prefix_is_project() {
+  [ -d "$PREFIX/src/web" ] && { [ -f "$PREFIX/app.py" ] || [ -f "$PREFIX/src/web/state_paths.py" ]; } && return 0
+  # A first install that stopped before copying files leaves only its job log.
+  [ "$(ls -A "$PREFIX")" = .local ] && [ "$(ls -A "$PREFIX/.local")" = install-job ]
+}
+if [ "${KEEP_DATA:-0}" != 1 ] && [ -d "$PREFIX" ] && ! prefix_is_project; then
+  die "$(msg prefix_not_project "$PREFIX" "$PREFIX")"
+fi
+
+# What a full uninstall deletes, worked out before anything changes. The data
+# key stays while data it encrypted may remain: persistent paths outside the
+# state directory, or a state directory this run does not remove.
+DATA_KEY=/etc/vps-server/data.key
+STATE_PURGE=0
+OUTSIDE_PATHS=""
+REMOVE_DATA_KEY=0
+if [ "${KEEP_DATA:-0}" != 1 ]; then
+  if [ -f "$STATE_DIR/.layout-version" ] && [ "$(cat "$STATE_DIR/.layout-version")" = 1 ]; then STATE_PURGE=1; fi
+  inventory="$(python3 "$FRPC_CLEANUP" inventory "$STATE_DIR")" || die "$(msg cleanup_failed)"
+  backups=0 drive_files=0 drive_size=0B
+  while read -r kind first rest; do
+    case "$kind" in
+      backups) backups="$first" ;;
+      drive) drive_files="$first"; drive_size="$rest" ;;
+      outside) OUTSIDE_PATHS="${OUTSIDE_PATHS:+$OUTSIDE_PATHS }$first" ;;
+    esac
+  done <<< "$inventory"
+  if [ -f "$DATA_KEY" ] && [ -z "$OUTSIDE_PATHS" ] &&
+     { [ "$STATE_PURGE" = 1 ] || { [ ! -e "$STATE_DIR" ] && [ ! -e "$STATE_LOCATOR" ]; }; }; then
+    REMOVE_DATA_KEY=1
+  fi
+  if [ -d "$PREFIX" ] || [ "$STATE_PURGE" = 1 ] || [ "$REMOVE_DATA_KEY" = 1 ]; then
+    msg purge_head
+    if [ -d "$PREFIX" ]; then msg purge_prefix "$PREFIX"; fi
+    if [ "$STATE_PURGE" = 1 ]; then
+      msg purge_state "$STATE_DIR"
+      msg purge_backups "$backups" "$STATE_DIR/backups"
+      if [ "$drive_files" != 0 ]; then msg purge_drive "$drive_files" "$drive_size"; fi
+    fi
+    msg purge_modules
+    if [ "$REMOVE_DATA_KEY" = 1 ]; then msg purge_data_key "$DATA_KEY"; fi
+    if [ -n "$OUTSIDE_PATHS" ]; then msg purge_outside_kept "$OUTSIDE_PATHS"; fi
+    # Destructive and unrecoverable: an explicit "yes", never a default.
+    if [ "${VPSSRV_UNINSTALL_YES:-0}" != 1 ]; then
+      if ! { [ -t 0 ] && [ -t 1 ]; }; then die "$(msg purge_needs_confirm)"; fi
+      msg purge_confirm 60
+      if ! IFS= read -r -t 60 answer; then answer=""; printf '\n'; fi
+      if [ "$answer" != yes ]; then msg purge_cancelled; exit 1; fi
+    fi
+  fi
+fi
+
 frpc_result="$(python3 "$FRPC_CLEANUP" frpc "$PREFIX" "${KEEP_DATA:-0}" "$SERVICE_NAME")" || die "$(msg cleanup_failed)"
 case "$frpc_result" in
   removed) msg frpc_removed ;;
@@ -180,7 +238,8 @@ if [ -f "/etc/systemd/system/$FRPS_SERVICE" ] || [ -f /etc/vps-server-frps/firew
   rm -f "/etc/systemd/system/$FRPS_SERVICE" /usr/local/bin/frps-vps-server
   if [ "${KEEP_DATA:-0}" != 1 ]; then
     rm -f /etc/vps-server-frps/frps.toml /etc/vps-server-frps/traffic.json \
-          /etc/vps-server-frps/traffic-meter.json /etc/vps-server-frps/traffic.lock
+          /etc/vps-server-frps/traffic-meter.json /etc/vps-server-frps/traffic.lock \
+          /etc/vps-server-frps/meter-stopped.json
   fi
   if [ ! -f "$frps_owner" ]; then rmdir /etc/vps-server-frps 2>/dev/null || true; fi
   systemctl daemon-reload
@@ -285,6 +344,7 @@ if [ "${KEEP_DATA:-0}" = "1" ]; then
     msg nothing_left "$PREFIX"
   fi
 elif [ -d "$PREFIX" ]; then
+  # prefix_is_project was checked before anything changed.
   rm -rf "${PREFIX:?}"
   msg purged "$PREFIX"
 else
@@ -302,6 +362,14 @@ if state == Path('/') or state == prefix or prefix in state.parents:
 PY
   rm -rf -- "$STATE_DIR"
   if [ -f "$STATE_LOCATOR" ]; then rm -f -- "$STATE_LOCATOR"; fi
+fi
+if [ "${KEEP_DATA:-0}" != "1" ]; then
+  if [ "$REMOVE_DATA_KEY" = 1 ]; then
+    rm -f -- "$DATA_KEY"
+    msg data_key_removed "$DATA_KEY"
+  elif [ -f "$DATA_KEY" ]; then
+    msg data_key_kept "$DATA_KEY" "${OUTSIDE_PATHS:-$STATE_DIR}"
+  fi
   rmdir "$(dirname "$STATE_LOCATOR")" 2>/dev/null || true
 fi
 

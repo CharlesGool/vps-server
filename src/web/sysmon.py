@@ -418,10 +418,14 @@ class Monitor:
                                t("monitor_alert_service_body", unit=unit), now):
                     fired.append("unit:" + unit)
         if fired:
-            data["sent"] = {key: value for key, value in data.get("sent", {}).items() if now - value < 86400 * 2}
             with self.lock:
                 try:
-                    self._write_settings(data)
+                    # Re-read: thresholds saved meanwhile (save_alerts) must not be written back over.
+                    latest = self.settings()
+                    sent = {**latest.get("sent", {}), **data.get("sent", {})}
+                    latest["sent"] = {key: value for key, value in sent.items()
+                                      if isinstance(value, (int, float)) and now - value < 86400 * 2}
+                    self._write_settings(latest)
                 except (OSError, ValueError):
                     pass
         return fired

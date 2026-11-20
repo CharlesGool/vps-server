@@ -30,9 +30,9 @@ case "$key" in
   line_url) fmt='  地址：    %s://%s:%s/\n' ;;
   line_url_unknown) fmt='  地址：    %s://%s:<端口>/   （读不到 %s —— 请查看 journalctl -u %s）\n' ;;
   line_pw_none) fmt='  密码：    无 —— 密码保护已关闭（VPSSRV_AUTH=0）\n' ;;
-  line_pw) fmt='  密码：    %s   （保存在 %s）\n' ;;
-  line_pw_preserved) fmt='  密码:     已保留 %s 中的现有文件(不打印内容)\n' ;;
-  line_pw_seefile) fmt='  密码：    见 %s\n' ;;
+  line_pw) fmt='  密码：    %s   （再次查看：%s）\n' ;;
+  line_pw_preserved) fmt='  密码：    未改变（不打印；查看：%s）\n' ;;
+  line_pw_seefile) fmt='  密码：    尚未生成；控制台启动后查看：%s\n' ;;
   line_lang) fmt='  语言：    %s （没有 cookie/查询参数/浏览器语言匹配时的默认值）\n' ;;
   cert_note) fmt='\n注意：使用的是自签证书，浏览器会弹出警告，需要手动点继续。\n想用真实证书的话，设置 VPSSRV_TLS_CERT 和 VPSSRV_TLS_KEY 后\n重新运行本安装脚本。\n' ;;
   to_remove) fmt='\n保留数据卸载：\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\n完全卸载项目数据：\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
@@ -124,5 +124,8 @@ case "$key" in
   frps_install_failed) fmt='frps 安装失败\n' ;;
   lucky_remove_failed) fmt='警告:移除旧的 Lucky 模块失败;请查看安装日志\n' ;;
   caddy_install_failed) fmt='域名转发安装失败\n' ;;
+  first_install_incomplete) fmt='上次首次安装没有完成(%s 中没有安装记录). 请先用卸载脚本清理它留下的内容(删除前会列出并要求确认), 再重新运行安装器:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
+  web_restarted) fmt='安装在停止控制台后失败, 已重新启动控制台服务(它可能已在用新文件和旧设置运行). 排除原因后请重新运行安装器.\n' ;;
+  web_restart_failed) fmt='安装在停止控制台后失败, 重新启动控制台服务也失败了. 查看: journalctl -u %s -e\n' ;;
   *) fmt="$key\n" ;;
 esac

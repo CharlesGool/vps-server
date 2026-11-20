@@ -33,6 +33,9 @@ class BackupMixin:
 
 
     def handle_backup_download(self, parsed):
+        # A backup holds every secret of the console: same re-verification as the backup page's API.
+        if not self._security_allowed():
+            return None
         name = self.context.parse_qs(parsed.query).get("name", [""])[0]
         try:
             path = config_backup.backup_path(name)

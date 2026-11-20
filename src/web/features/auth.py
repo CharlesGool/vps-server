@@ -535,8 +535,12 @@ class LoginRateLimiter:
         self._global_failures = []
         self._global_until = self._global_flagged_until = 0
 
-    def check(self, ip):
-        """(allowed, retry_after_seconds). retry_after is 0 when allowed."""
+    def check(self, ip, global_pause=True):
+        """(allowed, retry_after_seconds). retry_after is 0 when allowed.
+
+        ``global_pause=False`` applies only this source's own ban: the token API,
+        whose callers hold a token rather than a password and never "log in".
+        """
         key = self.key(ip)
         with self._lock:
             if not self.enabled:
@@ -545,7 +549,7 @@ class LoginRateLimiter:
             remaining = self._locked_until.get(key, 0) - now
             if remaining <= 0:
                 self._locked_until.pop(key, None)
-            if self._global_until > now and not self._is_known(key):
+            if global_pause and self._global_until > now and not self._is_known(key):
                 remaining = max(remaining, self._global_until - now)
             if remaining <= 0:
                 return True, 0

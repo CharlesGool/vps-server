@@ -14,12 +14,14 @@ Only the actions below exist; there is no way to run an arbitrary command.
 transient unit (it runs for minutes) and reads the log file.
 """
 
+import functools
 import grp
 import json
 import os
 import pwd
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -29,17 +31,63 @@ from pathlib import Path
 
 HOSTNAME_RE = re.compile(r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
                          r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
-# Paths the file manager never deletes, moves or renames (their contents are fine).
+# Paths the file manager never deletes, moves or renames (their contents are fine), nor changes recursively.
 PROTECTED = {"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib32", "/lib64", "/libx32", "/media",
              "/mnt", "/opt", "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/tmp", "/usr", "/var"}
 # Kernel and device trees: nothing is written there.
 NO_WRITE = ("/proc", "/sys", "/dev")
+# Where the data key lives (secure_store.DEFAULT_KEY_FILE); see console_dirs().
+KEY_DIR = "/etc/vps-server"
 NAME_RE = re.compile(r"^[^/\0]{1,255}$")
 USER_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,31}$")
+# Free space an extraction leaves on the destination's file system, at least.
+EXTRACT_RESERVE = 16 << 20
+TAR_FILTER_ERRORS = (tarfile.FilterError,) if hasattr(tarfile, "FilterError") else ()
 
 
 class Refused(Exception):
     """A request the helper will not carry out; the message is the error code."""
+
+
+def _inside(path, roots):
+    return any(path == root or path.startswith(root.rstrip("/") + "/") for root in roots)
+
+
+def _resolved(path):
+    """``path`` with its parent folders' symbolic links resolved (the last part stays as it is)."""
+    if path == "/":
+        return path
+    return os.path.join(os.path.realpath(os.path.dirname(path)), os.path.basename(path))
+
+
+@functools.lru_cache(maxsize=1)
+def key_dirs():
+    """The data key's folder: view-only in the file manager.
+
+    Deleting or overwriting ``/etc/vps-server/data.key`` makes every encrypted
+    state file unreadable, so nothing inside it is written, deleted or moved.
+    """
+    return tuple(sorted({os.path.normpath(KEY_DIR), os.path.normpath(os.path.realpath(KEY_DIR))}))
+
+
+@functools.lru_cache(maxsize=1)
+def console_dirs():
+    """The console's own key, state and program folders.
+
+    None of them, nor a folder that holds one, is deleted, moved or renamed, and a
+    recursive change does not reach into them. Files inside the state and program
+    folders (``.env``, say) may still be edited; the key folder is view-only (key_dirs()).
+    """
+    found = {KEY_DIR}
+    try:
+        import state_paths
+        found.update({str(state_paths.state_dir()), str(state_paths.data_dir())})
+    except (ImportError, OSError, ValueError):
+        found.add("/var/lib/vps-server")
+    code = Path(__file__).resolve().parent  # <prefix>/src/web when installed
+    found.add(str(code.parent.parent if code.parent.name == "src" else code))
+    found |= {os.path.realpath(path) for path in found}
+    return tuple(sorted(os.path.normpath(path) for path in found if os.path.normpath(path) != "/"))
 
 
 def _path(value, *, write=True):
@@ -48,15 +96,17 @@ def _path(value, *, write=True):
     path = os.path.normpath(value)
     if path.startswith("//"):
         path = "/" + path.lstrip("/")
-    if write and any(path == root or path.startswith(root + "/") for root in NO_WRITE):
+    if write and any(_inside(candidate, NO_WRITE) or _inside(candidate, key_dirs())
+                     for candidate in (path, _resolved(path))):
         raise Refused("path_protected")
     return path
 
 
 def _changeable(path):
     """A path that may itself be deleted, moved or renamed."""
-    if path in PROTECTED:
-        raise Refused("path_protected")
+    for candidate in (path, _resolved(path)):
+        if candidate in PROTECTED or any(_inside(own, (candidate,)) for own in console_dirs()):
+            raise Refused("path_protected")
     return path
 
 
@@ -193,14 +243,14 @@ def fs_rename(request):
     return {"path": target}
 
 
-def _into(request):
+def _into(request, *, write=True):
     destination = _path(request.get("destination"))
     if not os.path.isdir(destination):
         raise Refused("destination_invalid")
     paths = request.get("paths")
     if not isinstance(paths, list) or not 1 <= len(paths) <= 200:
         raise Refused("path_invalid")
-    return destination, [_path(path) for path in paths]
+    return destination, [_path(path, write=write) for path in paths]
 
 
 def fs_move(request):
@@ -218,7 +268,11 @@ def fs_move(request):
 
 
 def fs_copy(request):
-    destination, sources = _into(request)
+    # The key folder is view-only, but copying out of it (a backup, say) is fine.
+    destination, sources = _into(request, write=False)
+    for source in sources:
+        if _inside(source, NO_WRITE):
+            raise Refused("path_protected")
     copied = []
     for source in sources:
         target = os.path.join(destination, os.path.basename(source))
@@ -254,15 +308,58 @@ def _walk(path, recursive):
                 yield os.path.join(root, name)
 
 
+def _changeable_below(path, device):
+    """Whether something met while walking a tree may be changed: same file system, not protected."""
+    if _inside(path, NO_WRITE) or _inside(path, console_dirs()):
+        return False
+    try:
+        return os.lstat(path).st_dev == device
+    except OSError:
+        return False
+
+
+def _tree(path, recursive):
+    """``path`` and, when ``recursive``, what lies below it that a recursive change may touch.
+
+    Links are listed but never followed. Other file systems mounted inside (and
+    everything on them), the kernel trees and the console's own folders are skipped.
+    """
+    yield path
+    if not recursive or os.path.islink(path) or not os.path.isdir(path):
+        return
+    device = os.lstat(path).st_dev
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [name for name in dirs if _changeable_below(os.path.join(root, name), device)]
+        for name in dirs + [name for name in files if _changeable_below(os.path.join(root, name), device)]:
+            yield os.path.join(root, name)
+
+
+def _recursive(request, path):
+    """Whether a chmod/chown request is recursive; never for a system folder such as /usr."""
+    recursive = bool(request.get("recursive"))
+    if recursive and (path in PROTECTED or _resolved(path) in PROTECTED):
+        raise Refused("recursive_protected")
+    return recursive
+
+
 def fs_chmod(request):
     path = _path(request.get("path"))
     mode = request.get("mode")
     if not isinstance(mode, str) or not re.fullmatch(r"[0-7]{3,4}", mode):
         raise Refused("mode_invalid")
-    for item in _walk(path, bool(request.get("recursive"))):
-        if not os.path.islink(item):
-            os.chmod(item, int(mode, 8))
-    return {"path": path}
+    mode = int(mode, 8)
+    recursive = _recursive(request, path)
+    # Recursively, folders get the search (x) bit wherever they get the read bit, like chmod's
+    # "X": 644 leaves files at 644 and folders at 755, so the tree can still be entered.
+    folder_mode = mode | ((mode & 0o444) >> 2) if recursive else mode
+    changed = 0
+    for item in _tree(path, recursive):
+        info = os.lstat(item)
+        if stat.S_ISLNK(info.st_mode):
+            continue
+        os.chmod(item, folder_mode if stat.S_ISDIR(info.st_mode) else mode)
+        changed += 1
+    return {"path": path, "changed": changed}
 
 
 def fs_chown(request):
@@ -275,9 +372,15 @@ def fs_chown(request):
         raise Refused("owner_invalid") from None
     if uid is None or gid is None:
         raise Refused("owner_invalid")
-    for item in _walk(path, bool(request.get("recursive"))):
-        os.lchown(item, uid, gid)
-    return {"path": path}
+    changed = 0
+    for item in _tree(path, _recursive(request, path)):
+        info = os.lstat(item)
+        # Linux clears set-user-ID, set-group-ID and file capabilities on every chown, even by
+        # root and even to the same owner: leave what already belongs to uid:gid untouched.
+        if (info.st_uid, info.st_gid) != (uid, gid):
+            os.lchown(item, uid, gid)
+            changed += 1
+    return {"path": path, "changed": changed}
 
 
 def fs_write(request, staging_root):
@@ -292,23 +395,47 @@ def fs_write(request, staging_root):
     if not os.path.isdir(os.path.dirname(path)):
         raise Refused("destination_invalid")
     temporary = os.path.join(os.path.dirname(path), f".{os.path.basename(path)}.vps-server-{os.getpid()}")
-    shutil.copyfile(source, temporary)
-    if existing:
-        info = os.stat(path)
-        os.chmod(temporary, stat.S_IMODE(info.st_mode))
-        os.chown(temporary, info.st_uid, info.st_gid)
-    else:
-        os.chmod(temporary, 0o644)
-    os.replace(temporary, path)
+    try:
+        shutil.copyfile(source, temporary)
+        if existing:
+            info = os.stat(path)
+            os.chmod(temporary, stat.S_IMODE(info.st_mode))
+            os.chown(temporary, info.st_uid, info.st_gid)
+        else:
+            os.chmod(temporary, 0o644)
+        os.replace(temporary, path)
+    except BaseException:  # also a stop on timeout (SIGTERM): no half-written copy is left behind
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
     os.unlink(source)
     return {"path": path}
 
 
 def _safe_member(destination, name):
+    """Where member ``name`` lands; it must stay inside ``destination``, also past existing links."""
     target = os.path.normpath(os.path.join(destination, name))
-    if not (target == destination or target.startswith(destination + "/")):
+    if not _inside(target, (destination,)):
+        raise Refused("archive_unsafe")
+    if target != destination and not _inside(os.path.realpath(os.path.dirname(target)),
+                                             (os.path.realpath(destination),)):
         raise Refused("archive_unsafe")
     return target
+
+
+def _tar_filter():
+    """Whether tarfile has the "data" extraction filter (Python 3.12, 3.11.4, 3.10.12, 3.9.17 and later)."""
+    return hasattr(tarfile, "data_filter")
+
+
+def _room(destination, size, count):
+    """Refuse an extraction whose declared size would (nearly) fill the destination's file system."""
+    usage = os.statvfs(destination)
+    needed = size + count * usage.f_frsize + max(size // 20, EXTRACT_RESERVE)
+    if needed > usage.f_bavail * usage.f_frsize or (usage.f_files and count > usage.f_favail):
+        raise Refused("no_room")
 
 
 def fs_extract(request):
@@ -318,25 +445,48 @@ def fs_extract(request):
         raise Refused("destination_invalid")
     if zipfile.is_zipfile(archive):
         with zipfile.ZipFile(archive) as bundle:
-            for info in bundle.infolist():
+            members = bundle.infolist()
+            for info in members:
+                # zipfile drops "..", "." and empty parts on its own; refuse instead, so the
+                # place checked here is the place it writes to.
+                if info.filename.startswith("/") or ".." in info.filename.split("/"):
+                    raise Refused("archive_unsafe")
                 target = _safe_member(destination, info.filename)
                 if os.path.lexists(target) and not info.is_dir():
                     raise Refused("exists")
+            # The sizes are binding: zipfile stops reading a member at its declared size.
+            _room(destination, sum(info.file_size for info in members), len(members))
             bundle.extractall(destination)
     elif tarfile.is_tarfile(archive):
         with tarfile.open(archive) as bundle:
             members = bundle.getmembers()
+            filtered = _tar_filter()
             for member in members:
                 target = _safe_member(destination, member.name)
                 if member.issym() or member.islnk():
-                    _safe_member(destination, os.path.join(os.path.dirname(member.name), member.linkname))
+                    # Without the data filter nothing checks where a chain of links really points
+                    # (d1 -> ., d1/d2 -> .., d1/d2/x writes outside), so archives with links are refused.
+                    if not filtered:
+                        raise Refused("archive_links")
+                    base = os.path.dirname(member.name) if member.issym() else ""
+                    _safe_member(destination, os.path.join(base, member.linkname))
                 if member.isdev():
                     raise Refused("archive_unsafe")
                 if os.path.lexists(target) and not member.isdir():
                     raise Refused("exists")
-            if hasattr(tarfile, "data_filter"):
-                bundle.extractall(destination, filter="data")
+            _room(destination, sum(member.size for member in members if member.isreg()), len(members))
+            if filtered:
+                try:
+                    bundle.extractall(destination, filter="data")
+                except TAR_FILTER_ERRORS:
+                    raise Refused("archive_unsafe") from None
             else:
+                for member in members:
+                    # Roughly what the data filter does: no set-ID bits, no group/other write,
+                    # owned by root rather than by whatever user the archive names.
+                    member.mode &= 0o755
+                    member.uid = member.gid = 0
+                    member.uname = member.gname = "root"
                 bundle.extractall(destination, members=members)
     else:
         raise Refused("archive_invalid")
@@ -397,6 +547,8 @@ def main(argv=None):
     if len(argv) != 2 or argv[0] != "request":
         print("usage: sysadmin.py request <staging dir> < request.json | apt-upgrade <log>", file=sys.stderr)
         return 2
+    # The console stops this unit when a request outlasts its time; exit through the clean-up paths.
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
     try:
         request = json.loads(sys.stdin.read(1 << 20))
         result = {"ok": True, **handle(request, argv[1])}

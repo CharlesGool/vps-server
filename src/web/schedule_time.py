@@ -8,7 +8,18 @@ Monthly and yearly days past the end of a month fall on its last day.
 """
 
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+
+def to_utc(moment):
+    """A naive local time as an aware UTC time, the way ``datetime.timestamp()`` reads it.
+
+    A time the clocks pass twice (they go back) is its first occurrence; a time they skip
+    (they go forward) moves on by the length of the gap, so 02:30 on a night the clocks jump
+    from 02:00 to 03:00 falls at 03:30. ``astimezone()`` reads a skipped time differently
+    (as the hour before), which is why it is not used here.
+    """
+    return datetime.fromtimestamp(moment.replace(fold=0).timestamp(), timezone.utc)
 
 
 def seconds_of_day(spec):

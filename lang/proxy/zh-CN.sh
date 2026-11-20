@@ -20,6 +20,7 @@ case "$key" in
   iptables_failed) fmt='iptables 放行 %s/tcp 失败；服务已启动，请手动放行该端口。' ;;
   firewall_missing) fmt='未找到可用的防火墙管理工具（ufw/firewalld/iptables），已跳过自动放行 %s/tcp。' ;;
   closing_port) fmt='回收端口 %s/tcp 的防火墙规则 ...' ;;
+  closing_port_udp) fmt='回收端口 %s/udp 的防火墙规则 ...' ;;
   unknown_protocol) fmt='未知协议 %s（可选：%s）' ;;
   no_protocol) fmt='PROXY_PROTOCOLS 未选中任何已知协议（可选：%s），得到：%s' ;;
   generating_cert) fmt='生成自签证书 (SNI=%s) ...' ;;

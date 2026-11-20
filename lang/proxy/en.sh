@@ -20,6 +20,7 @@ case "$key" in
   iptables_failed) fmt='iptables failed to open %s/tcp; service is running, so open this port manually.' ;;
   firewall_missing) fmt='No usable firewall manager (ufw/firewalld/iptables); skipped automatic opening of %s/tcp.' ;;
   closing_port) fmt='Removing firewall rule for %s/tcp ...' ;;
+  closing_port_udp) fmt='Removing firewall rule for %s/udp ...' ;;
   unknown_protocol) fmt='Unknown protocol %s (available: %s)' ;;
   no_protocol) fmt='PROXY_PROTOCOLS selected no known protocol (available: %s); received: %s' ;;
   generating_cert) fmt='Generating self-signed certificate (SNI=%s) ...' ;;

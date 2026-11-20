@@ -154,17 +154,19 @@ open_firewall(){
   fi
 }
 
+# $2 is the transport, tcp unless given: the console also opens udp for a
+# Shadowsocks node (src/web/node_control.py), so its removal closes both.
 close_firewall(){
-  local port="$1" iptables
+  local port="$1" transport="${2:-tcp}" iptables
   [[ -n "$port" ]] || return 0
-  log "$(msg closing_port "$port")"
+  case "$transport" in tcp) log "$(msg closing_port "$port")" ;; udp) log "$(msg closing_port_udp "$port")" ;; *) return 0 ;; esac
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
-    ufw delete allow "${port}/tcp" >/dev/null 2>&1 || true
+    ufw delete allow "${port}/${transport}" >/dev/null 2>&1 || true
   elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
-    firewall-cmd --permanent --remove-port="${port}/tcp" >/dev/null 2>&1 || true
+    firewall-cmd --permanent --remove-port="${port}/${transport}" >/dev/null 2>&1 || true
     firewall-cmd --reload >/dev/null 2>&1 || true
   elif iptables="$(iptables_path)"; then
-    "$iptables" -D INPUT -p tcp --dport "${port}" -j ACCEPT 2>/dev/null || true
+    "$iptables" -D INPUT -p "$transport" --dport "${port}" -j ACCEPT 2>/dev/null || true
     command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
   fi
 }
@@ -547,10 +549,16 @@ show_installed_node(){
 }
 
 uninstall(){
-  local ports=()
+  local ports=() udp_ports=() p proto
+  # Only the ports of this project's own nodes, as config.json lists them.
   if [[ -f "${INSTALL_DIR}/config.json" ]]; then
-    while read -r p; do [[ -n "$p" ]] && ports+=("$p"); done \
-      < <(python3 "$(dirname "${BASH_SOURCE[0]}")/proxy_json.py" list-ports "${INSTALL_DIR}/config.json" 2>/dev/null || true)
+    while read -r p proto; do
+      [[ -n "$p" ]] || continue
+      ports+=("$p")
+      if [[ "$proto" == shadowsocks ]]; then udp_ports+=("$p"); fi
+    done < <(python3 -c 'import json, sys
+for inbound in json.load(open(sys.argv[1], encoding="utf-8")).get("inbounds", []):
+    print(int(inbound["listen_port"]), inbound.get("type", ""))' "${INSTALL_DIR}/config.json" 2>/dev/null || true)
   fi
 
   log "$(msg stopping_service)"
@@ -574,8 +582,8 @@ uninstall(){
     log "$(msg binary_kept "$BIN_PATH")"
   fi
 
-  local p
   for p in "${ports[@]}"; do close_firewall "$p"; done
+  for p in "${udp_ports[@]}"; do close_firewall "$p" udp; done
   ok "$(msg uninstall_complete)"
 }
 

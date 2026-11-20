@@ -28,15 +28,25 @@ SS_USERS = re.compile(r'\("([^"]+)",pid=(\d+)')
 
 
 def run_helper(context, request, timeout=120):
-    """Run one sysadmin.py request outside the sandbox; the helper's JSON answer."""
+    """Run one sysadmin.py request outside the sandbox; the helper's JSON answer.
+
+    A request that outlasts ``timeout`` seconds is stopped (its transient unit,
+    not just the waiting systemd-run), so a long copy or extraction reported as
+    timed out does not go on in the background: ``{"ok": false, "error": "timeout"}``.
+    RuntimeMaxSec is the backstop should the console itself go away meanwhile.
+    """
     staging = staging_dir(context)
     unit = "vps-server-admin-" + secrets.token_hex(6)
     try:
         result = subprocess.run(["systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit=" + unit,
+                                 f"--property=RuntimeMaxSec={int(timeout) + 30}",
                                  "/usr/bin/python3", str(context.WEB_CODE_DIR / "sysadmin.py"), "request",
                                  str(staging)],
                                 input=json.dumps(request), capture_output=True, text=True, timeout=timeout,
                                 check=False)
+    except subprocess.TimeoutExpired:
+        stop_unit(unit + ".service")
+        return {"ok": False, "error": "timeout"}
     except (OSError, subprocess.SubprocessError):
         return {"ok": False, "error": "failed"}
     lines = result.stdout.strip().splitlines()
@@ -45,6 +55,14 @@ def run_helper(context, request, timeout=120):
     except ValueError:
         answer = None
     return answer if isinstance(answer, dict) else {"ok": False, "error": "failed"}
+
+
+def stop_unit(unit):
+    """Stop a transient unit and wait for it to be gone (systemctl talks to systemd over D-Bus)."""
+    try:
+        subprocess.run(["systemctl", "stop", unit], capture_output=True, text=True, timeout=120, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def staging_dir(context):

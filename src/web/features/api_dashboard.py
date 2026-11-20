@@ -1,6 +1,7 @@
 """JSON API for the home page: feature switches, module jobs and the host's total traffic."""
 
 from features.modules import module_job_recent, module_job_text, public_listener_occupied
+from features.traffic import TOTAL_LOCK
 
 # Home page entries in display order: (key, page, switchable).
 DASHBOARD_ITEMS = (
@@ -97,8 +98,9 @@ class DashboardApiMixin:
             "enforced": total_meter.enforced(state, used), "since": when(state["period_start"], False),
             "nextReset": when(state["next_reset_at"], True),
             "offset": total_meter.calibration(state), "calibratedAt": (state.get("calibrated_at") or "")[:10] or None,
-            "sources": [{"id": identifier, "name": info[identifier]["name"], "value": value,
-                         "multiplier": info[identifier]["multiplier"]}
+            # A deleted entry still counts what it used this period, under the name it had.
+            "sources": [{"id": identifier, "name": total_meter.entry_name(state, info, identifier)[0], "value": value,
+                         "multiplier": total_meter.entry_name(state, info, identifier)[1]}
                         for identifier, value in sorted(per_entry.items(), key=lambda item: -item[1]) if value],
         }
 
@@ -131,9 +133,11 @@ class DashboardApiMixin:
                           if module == "frpc" else context.BASE_DIR / "installer-source" / "deploy" / "install.sh")
         if action == "install" and module != "iperf3" and not install_source.is_file():
             return 503, "module_source_missing"
+        # The archive name carries the version, which only config/dependencies.lock.json
+        # records; installer-source holds the one archive its own release shipped.
         if action == "install" and module == "tailscale" and not (
-                (context.BASE_DIR / "installer-source" / "third_party" / "tailscale" /
-                 "tailscale_1.104.5_amd64.tgz").is_file() or
+                any(path.is_file() for path in (context.BASE_DIR / "installer-source" / "third_party" /
+                                                "tailscale").glob("tailscale_*_amd64.tgz")) or
                 (context.BASE_DIR / "installer-source" / "config" / "online-assets.json").is_file()):
             return 503, "module_tailscale_asset_missing"
         helper = context.WEB_CODE_DIR / "module_manager.py"
@@ -180,9 +184,10 @@ class DashboardApiMixin:
             spec = total_meter.parse_spec(spec)
             cap, day = total_meter.parse_settings("" if cap is None else str(cap), "0" if spec else str(day))
             now = self.context.datetime.now(self.context.timezone.utc)
-            state, info = self.total_state(now)
-            total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
-                                    total_meter.apply_settings(state, cap, day, now, info, spec, action))
+            with TOTAL_LOCK:
+                state, info = self.total_state(now)
+                total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
+                                        total_meter.apply_settings(state, cap, day, now, info, spec, action))
         except (ValueError, TypeError):
             return self.api_error(400, "invalid_request")
         except OSError:
@@ -206,10 +211,11 @@ class DashboardApiMixin:
         try:
             actual = total_meter.parse_actual("" if actual is None else str(actual))
             now = self.context.datetime.now(self.context.timezone.utc)
-            state, info = self.total_state(now)
-            measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
-            total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
-                                    total_meter.apply_calibration(state, actual, measured, now))
+            with TOTAL_LOCK:
+                state, info = self.total_state(now)
+                measured, _per = total_meter.period_usage(state, total_meter.lifetimes(info))
+                total_meter.write_state(self.context.DATA_DIR / "total-traffic.json",
+                                        total_meter.apply_calibration(state, actual, measured, now))
         except (ValueError, TypeError):
             return self.api_error(400, "invalid_request")
         except OSError:

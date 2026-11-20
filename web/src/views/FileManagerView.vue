@@ -358,7 +358,12 @@ function clearLater(clear: () => void) {
         <FormField v-if="dialog.op === 'chown'" v-slot="fld" :label="t('vps.fm.group')" :span="6">
           <Input :id="fld.id" v-model.trim="field.group" spellcheck="false" autocomplete="off" />
         </FormField>
-        <CheckboxField v-if="dialog.op === 'chmod' || dialog.op === 'chown'" v-model="field.recursive" :label="t('vps.fm.recursive')" />
+        <CheckboxField
+          v-if="dialog.op === 'chmod' || dialog.op === 'chown'"
+          v-model="field.recursive"
+          :label="t('vps.fm.recursive')"
+          :description="t(dialog.op === 'chmod' ? 'vps.fm.recursiveChmodHint' : 'vps.fm.recursiveChownHint')"
+        />
       </template>
       <template #footer>
         <Button variant="outline" type="button" @click="dialog = null">{{ t('component.cancel') }}</Button>

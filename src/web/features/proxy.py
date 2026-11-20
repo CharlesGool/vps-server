@@ -4,6 +4,8 @@ Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
 """
 
+from node_inventory import add_period
+
 
 class ProxyMixin:
 
@@ -169,9 +171,14 @@ class ProxyMixin:
             return self.context.datetime.fromisoformat(value).replace(tzinfo=self.context.timezone.utc).isoformat()
         expiry_mode = form["expiry_mode"][0]
         if expiry_mode == "set":
-            count, unit, _, due = duration(form["expiry_count"][0], form["expiry_unit"][0])
+            count, unit, _, _ = duration(form["expiry_count"][0], form["expiry_unit"][0])
+            # Saving the dialog again with the same length (say, to change the cap) keeps the
+            # end date: only a different length starts a new period from now.
             if (existing["expiry_count"], existing["expiry_unit"]) != (count, unit):
-                request.update(expiry_count=count, expiry_unit=unit, expires_at=due)
+                # N months from now on the same day and time (the month's last day when it is
+                # shorter), not the first of a month like a monthly reset.
+                request.update(expiry_count=count, expiry_unit=unit,
+                               expires_at=add_period(now, count, unit).isoformat())
         elif expiry_mode == "none":
             if existing["expiry_count"] is not None:
                 request.update(expiry_count=None, expiry_unit=None, expires_at=None)

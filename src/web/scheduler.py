@@ -3,7 +3,9 @@
 Times are the host's local time, like cron. A task is a shell command run
 through ``systemd-run`` (outside the console's read-only sandbox) with a
 timeout; a task that is still running is not started again (the skip is
-recorded); only the newest runs are kept. The configuration backup is a
+recorded), also across a console restart, since each task runs as the fixed
+unit ``vps-server-task-<id>``; only the newest runs and the tail of their
+output are kept. The configuration backup is a
 second kind of job with its own daily time and retention.
 """
 
@@ -12,7 +14,9 @@ import json
 import os
 import re
 import secrets
+import select
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -23,6 +27,8 @@ import secure_store
 
 HISTORY_PER_TASK = 20
 OUTPUT_TAIL = 4096
+OUTPUT_CHUNK = 65536
+TASK_UNIT_PREFIX = "vps-server-task-"
 MAX_TASKS = 50
 NAME_MAX = 60
 COMMAND_MAX = 2000
@@ -38,6 +44,19 @@ BACKUP_KEEP_MAX = 100
 
 class ScheduleError(ValueError):
     pass
+
+
+class TaskBusy(Exception):
+    """The task's unit is still running, for instance one started before the console restarted."""
+
+
+def task_unit(task_id):
+    """A task's transient unit name. It is fixed, so systemd itself refuses a second copy."""
+    return TASK_UNIT_PREFIX + re.sub(r"[^0-9A-Za-z_-]", "_", str(task_id))[:64]
+
+
+def _text(raw):
+    return raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw or "")
 
 
 def _field(text, low, high):
@@ -233,7 +252,12 @@ def check_due(spec, now, marker):
     moment = datetime.fromtimestamp(now)
     if mode == "cron":
         minute = moment.replace(second=0, microsecond=0)
-        fire = (marker or 0) < minute.timestamp() and matches(parse_cron(spec["expr"]), minute)
+        schedule = parse_cron(spec["expr"])
+        fire = (marker or 0) < minute.timestamp() and matches(schedule, minute)
+        # The hour repeated when the clock goes back (fold 1): a job at a fixed hour already ran
+        # in the first pass; one whose hour field is "*" runs in both, as cron does.
+        if fire and minute.fold and len(schedule["hour"]) < 24:
+            fire = False
         return ("run" if fire else None), int(minute.timestamp())
     occurrence = previous_occurrence(spec, moment)
     if occurrence is None:
@@ -320,6 +344,7 @@ class Scheduler:
         self.active = active or (lambda feature: True)
         self.lock = threading.RLock()
         self.running = set()
+        self._last_failure = None
         self._stop = threading.Event()
         self._thread = None
         
@@ -446,14 +471,49 @@ class Scheduler:
     # -- running -----------------------------------------------------------
 
     @staticmethod
-    def _systemd_run(command, timeout):
-        unit = "vps-server-task-" + secrets.token_hex(4)
-        result = subprocess.run(
+    def _systemd_run(command, timeout, unit=None):
+        """Run ``command`` as transient unit ``unit``: (exit status, the last bytes of its output).
+
+        Output is read in chunks and only the tail is kept, so a command that prints
+        for a day cannot grow the console. A unit of that name that still exists
+        (systemd refuses to start it twice) raises TaskBusy.
+        """
+        unit = unit or TASK_UNIT_PREFIX + secrets.token_hex(4)
+        keep = OUTPUT_TAIL * 4  # bytes: a character takes up to four in UTF-8
+        tail = bytearray()
+        deadline = time.monotonic() + timeout + 15
+        process = subprocess.Popen(
             ["systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit=" + unit,
              f"--property=RuntimeMaxSec={timeout}", "/bin/bash", "-c", command],
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            timeout=timeout + 15, check=False)
-        return result.returncode, result.stdout
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        with process:
+            stream = process.stdout.fileno()
+            try:
+                while True:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        raise subprocess.TimeoutExpired(process.args, timeout + 15, output=bytes(tail))
+                    if not select.select([stream], [], [], min(left, 1.0))[0]:
+                        continue
+                    chunk = os.read(stream, OUTPUT_CHUNK)
+                    if not chunk:
+                        break
+                    tail += chunk
+                    del tail[:-keep]
+                code = process.wait(timeout=max(deadline - time.monotonic(), 1))
+            except BaseException:
+                process.kill()
+                raise
+        # systemd-run's own refusal: "Unit <name>.service already exists" (or "was already loaded").
+        if code and len(tail) < 1024 and f"{unit}.service" in _text(bytes(tail)) and b"already" in tail:
+            raise TaskBusy(unit)
+        return code, bytes(tail)
+
+    def _execute(self, task_id, task):
+        """Run a task: the built-in runner gets the task's fixed unit name, a supplied one does not."""
+        if self.run_command == self._systemd_run:
+            return self._systemd_run(task["command"], task["timeout"], unit=task_unit(task_id))
+        return self.run_command(task["command"], task["timeout"])
 
     def run_task(self, task_id, trigger="schedule"):
         """Run one task now (blocking). Returns the recorded entry."""
@@ -470,8 +530,8 @@ class Scheduler:
             self.running.add(task_id)
         try:
             try:
-                code, raw = self.run_command(task["command"], task["timeout"])
-                output = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw or "")
+                code, raw = self._execute(task_id, task)
+                output = _text(raw)
                 elapsed = self.clock() - started
                 if code == 0:
                     status = "ok"
@@ -479,8 +539,11 @@ class Scheduler:
                     status = "timeout"
                 else:
                     status = "failed"
-            except subprocess.TimeoutExpired:
-                code, output, status = None, "", "timeout"
+            except TaskBusy:
+                # Started before the console restarted (the in-memory set above is empty then).
+                code, output, status = None, "still running", "skipped"
+            except subprocess.TimeoutExpired as exc:
+                code, output, status = None, _text(exc.output), "timeout"
             except (OSError, subprocess.SubprocessError) as exc:
                 code, output, status = None, type(exc).__name__, "failed"
             entry = {"started": started, "ended": int(self.clock()), "status": status, "exit": code,
@@ -580,16 +643,25 @@ class Scheduler:
     def _disable_backup_schedule(self):
         self._store_backup(self.backup_settings()["anchor"] or self.clock(), enabled=False)
 
+    def _safe_tick(self):
+        """tick(); a failure is logged (once while it repeats, not every second) and the loop goes on."""
+        try:
+            self.tick()
+        except Exception as exc:  # a bad file must not stop the scheduler
+            text = f"{type(exc).__name__}: {exc}"
+            if text != self._last_failure:
+                print(f"Scheduled tasks: check failed: {text}", file=sys.stderr)
+            self._last_failure = text
+        else:
+            self._last_failure = None
+
     def start(self):
         if self._thread:
             return
 
         def loop():
             while not self._stop.wait(1):
-                try:
-                    self.tick()
-                except Exception:  # a bad file must not stop the scheduler
-                    pass
+                self._safe_tick()
 
         self._thread = threading.Thread(target=loop, name="scheduler", daemon=True)
         self._thread.start()

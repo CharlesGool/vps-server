@@ -10,7 +10,8 @@ doubled like a node's, because the host also carries the visitor side.
 State lives beside frps.toml in /etc/vps-server-frps: traffic.json holds the
 one entry (node fields without the sing-box inbound), traffic-meter.json the
 meter ledger. The nft table is separate from the node table. When accounting
-fails the meter stops FRPS rather than leave its traffic unlimited.
+fails the meter stops FRPS rather than leave its traffic unlimited, notes that in
+meter-stopped.json, and starts FRPS again once systemd has restarted it and it works.
 
     frps_meter.py run          systemd service loop
     frps_meter.py init         create the entry if missing (root)
@@ -41,6 +42,8 @@ CONFIG_PATH = STATE_DIR / "frps.toml"
 STATE_PATH = STATE_DIR / "traffic.json"
 METER_PATH = STATE_DIR / "traffic-meter.json"
 LOCK_PATH = STATE_DIR / "traffic.lock"
+# Which services a failed meter stopped (node_meter.stop_services); never backed up or restored.
+STOPPED_PATH = STATE_DIR / "meter-stopped.json"
 TABLE = "vps_server_frps"
 SERVICE = "vps-server-frps.service"
 LIMIT_FIELDS = frozenset(("cap_bytes", "cap_action", "upload_limit_bps", "download_limit_bps",
@@ -153,21 +156,22 @@ def delete_table():
 
 
 def run():
-    from node_meter import Tolerance, _notify_ready
+    from node_meter import Tolerance, _notify_ready, resume_services, stop_services
     tolerance = Tolerance()
     try:
         init()
         if tolerance.retrying(tick) is None:
             raise RuntimeError("FRPS traffic state not initialized")
         _notify_ready()
+        # FRPS stopped by an earlier failure of this meter comes back with it.
+        resume_services(STOPPED_PATH)
         while True:
             time.sleep(2)
             tolerance.retrying(tick)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FRPS traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Stale or missing rules would leave FRPS unlimited; stop it instead.
-        subprocess.run(["systemctl", "stop", SERVICE], stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, timeout=20, check=False)
+        stop_services((SERVICE,), STOPPED_PATH)
         return 1
 
 

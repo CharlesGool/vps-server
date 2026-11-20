@@ -30,9 +30,9 @@ case "$key" in
   line_url) fmt='  url:      %s://%s:%s/\n' ;;
   line_url_unknown) fmt='  url:      %s://%s:<port>/   (could not read %s — check journalctl -u %s)\n' ;;
   line_pw_none) fmt='  password: none — password protection is disabled (VPSSRV_AUTH=0)\n' ;;
-  line_pw) fmt='  password: %s   (stored in %s)\n' ;;
-  line_pw_preserved) fmt='  password: existing file retained at %s (value not printed)\n' ;;
-  line_pw_seefile) fmt='  password: see %s\n' ;;
+  line_pw) fmt='  password: %s   (show it again: %s)\n' ;;
+  line_pw_preserved) fmt='  password: unchanged (not printed; show it: %s)\n' ;;
+  line_pw_seefile) fmt='  password: not created yet; once the console has started, show it: %s\n' ;;
   line_lang) fmt='  language: %s (default when no cookie/query/browser match)\n' ;;
   cert_note) fmt='\nNote: using a self-signed certificate, so browsers will show a warning\nyou must click through. To use a real certificate, set VPSSRV_TLS_CERT\nand VPSSRV_TLS_KEY and re-run this installer.\n' ;;
   to_remove) fmt='\nTo remove and keep data:\n  sudo PREFIX=%s SERVICE_NAME=%s KEEP_DATA=1 bash %s\nTo remove all project data:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
@@ -124,5 +124,8 @@ case "$key" in
   frps_install_failed) fmt='frps installation failed\n' ;;
   lucky_remove_failed) fmt='Warning: removing the old Lucky module failed; see the install log\n' ;;
   caddy_install_failed) fmt='Domain forwarding installation failed\n' ;;
+  first_install_incomplete) fmt='An earlier first installation did not finish (%s has no install record). Remove what it left behind with the uninstaller (it lists what it deletes and asks first), then run this installer again:\n  sudo PREFIX=%s SERVICE_NAME=%s bash %s\n' ;;
+  web_restarted) fmt='The installation failed after stopping the console, so the console service was started again (it may already run the new files with the old settings). Fix the cause and run the installer again.\n' ;;
+  web_restart_failed) fmt='The installation failed after stopping the console, and starting the console service again also failed. Check: journalctl -u %s -e\n' ;;
   *) fmt="$key\n" ;;
 esac

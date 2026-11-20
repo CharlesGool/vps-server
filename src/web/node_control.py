@@ -23,7 +23,7 @@ import sys
 import tempfile
 import uuid
 
-from node_inventory import InvalidInventory, apply_access, validate_inventory
+from node_inventory import NEW_NODE_ACCESS, InvalidInventory, apply_access, validate_inventory
 from console_port import read_rows, write_rows, serialize_rows
 from node_operations import create_node, delete_node, edit_node, set_enabled_by_id
 from node_state import CONFIG_PATHS, STATE_PATH, initialize_inventory, read_inventory, write_inventory
@@ -58,7 +58,8 @@ class DegradedNodeControl(RuntimeError):
 
 
 def _sni(value):
-    if not isinstance(value, str) or not 1 <= len(value) <= 253 or value != value.strip():
+    # "%" would let an IPv6 scope ID (arbitrary text since Python 3.9) through as an address.
+    if not isinstance(value, str) or not 1 <= len(value) <= 253 or value != value.strip() or "%" in value:
         raise NodeControlError("invalid SNI")
     try:
         ipaddress.ip_address(value)
@@ -385,6 +386,9 @@ def _apply_structure_request(request, *, state_path, config_paths, lock_path,
                                     reserved_ports=reserved, prototype_inbound=template,
                                     credential=request.get("credential"))
             new = candidate["nodes"][-1]
+            # Public Internet only: unrestricted, the node could reach the console on loopback.
+            new["access"] = dict(NEW_NODE_ACCESS)
+            validate_inventory(candidate)
             if protocol != "shadowsocks":
                 sni = _sni(request["sni"])
                 cert, key, certificate_dir = _certificate(Path(state_path).parent, new["id"], sni)

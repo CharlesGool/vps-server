@@ -30,6 +30,10 @@ FEATURE_APIS = (("monitor/alerts", "monitor"), ("monitor", "monitor"), ("system/
                 ("system/processes", "processes"), ("system/services", "services"), ("system/ports", "ports"),
                 ("system", "system"), ("fm/", "filemanager"), ("fleet", "fleet"), ("security/tokens", "fleet"), ("backup", "backup"),
                 ("tasks", "tasks"))
+# Features whose whole API, reads included, needs a password session with a recent admin
+# re-verification, like the terminal: they act on the host as root. Resource monitoring is not one.
+SECURE_FEATURES = frozenset({"system", "updates", "processes", "services", "ports", "filemanager", "fleet",
+                             "backup", "tasks"})
 
 
 def feature_of(name):
@@ -199,6 +203,9 @@ class SpaMixin:
         if feature and not self.context.module_feature_enabled(self.context.BASE_DIR, feature):
             self.api_error(403, "feature_closed", url="/closed?module=" + feature)
             return True
+        # Checked here for every route of these features, so a new route cannot miss it.
+        if feature in SECURE_FEATURES and not self._security_allowed():
+            return True
         if handler:
             getattr(self, handler)()
         else:
@@ -209,13 +216,26 @@ class SpaMixin:
 
     @classmethod
     def private_api_routes(cls):
-        """Merge every mixin's API_ROUTES_* table: {(method, name): handler name}."""
-        routes = getattr(cls, "_api_routes", None)
+        """Merge every mixin's API_ROUTES_* table: {(method, name): handler name}.
+
+        A route claimed twice raises instead of one table silently replacing the other,
+        and so does a table name two mixins share (one would hide the other).
+        """
+        routes = cls.__dict__.get("_api_routes")
         if routes is None:
-            routes = {}
-            for attribute in dir(cls):
-                if attribute.startswith("API_ROUTES_"):
-                    routes.update(getattr(cls, attribute))
+            routes, owners = {}, {}
+            for klass in reversed(cls.__mro__):
+                for attribute, table in vars(klass).items():
+                    if not attribute.startswith("API_ROUTES_"):
+                        continue
+                    if attribute in owners:
+                        raise RuntimeError(f"{attribute} is defined by both {owners[attribute]} and {klass.__name__}")
+                    owners[attribute] = klass.__name__
+                    for key, handler in table.items():
+                        if key in routes:
+                            raise RuntimeError(f"API route {key[0]} {key[1]} is claimed by both "
+                                               f"{routes[key]} and {handler}")
+                        routes[key] = handler
             cls._api_routes = routes
         return routes
 

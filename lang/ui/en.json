@@ -921,6 +921,8 @@
       "user": "User",
       "group": "Group",
       "recursive": "Include subfolders and files",
+      "recursiveChmodHint": "Folders get the search (x) permission wherever they get read, so 644 gives folders 755. Other file systems, kernel folders and the console's own folders are skipped.",
+      "recursiveChownHint": "Other file systems, kernel folders and the console's own folders are skipped; items that already have this owner are left alone.",
       "format": "Format",
       "deleteTitle": "Delete {n} items",
       "deleteConfirm": "{names} will be deleted for good and cannot be recovered.",
@@ -957,7 +959,10 @@
         "not_found": "Path not found",
         "denied": "Not allowed to read this",
         "exists": "The destination already exists",
-        "path_protected": "This is a system folder; it cannot be deleted, moved or renamed",
+        "path_protected": "Protected path: system folders and the console's own program and data folders cannot be deleted, moved or renamed, and the data key's folder is view-only",
+        "recursive_protected": "System folders cannot be changed recursively; pick a folder inside instead",
+        "archive_links": "The archive contains links, which this host's Python cannot extract safely; refused",
+        "timeout": "The operation timed out and was stopped; partial results may remain at the destination",
         "path_invalid": "Invalid path",
         "name_invalid": "Invalid name",
         "destination_invalid": "Invalid destination folder",
@@ -1006,7 +1011,7 @@
         "backup": "Back up {n} hosts"
       },
       "batchConfirm": {
-        "upgrade": "Each host downloads the latest release from GitHub and upgrades; its console restarts once. Needs a read-write token.",
+        "upgrade": "Each host downloads the latest release from GitHub, in the package variant (online or offline) it was installed from, and upgrades; its console restarts once. Needs a read-write token.",
         "backup": "Each host makes a manual configuration backup. Needs a read-write token."
       },
       "batchStarted": {
@@ -1486,7 +1491,7 @@
     "files_error_too_many": "Too many files. Delete some first.",
     "files_error_too_many_links": "This file has too many links. Revoke some first.",
     "files_error_traffic_blocked": "Mini Drive reached its traffic cap or validity period; uploads and downloads are paused.",
-    "files_error_url_blocked": "This address points at this machine or a link-local address and is not allowed.",
+    "files_error_url_blocked": "This address points at this machine, a link-local address or a cloud metadata service and is not allowed.",
     "files_error_url_invalid": "Enter an http or https URL.",
     "files_fetch": "Download to Mini Drive",
     "files_fetch_help": "This server downloads it directly, for sources other hosts cannot reach (GitHub Releases, for example). You can close the browser; the download continues in the background.",
@@ -2002,7 +2007,7 @@
     "total_calibrate_title": "Calibrate the total",
     "total_calibration_row": "Calibration · {date}",
     "total_cap_gib": "Total limit (GiB)",
-    "total_hint": "Adds up nodes, FRPS, domain forwarding, port forwarding, FRPC, Tailscale, iperf3, Mini Drive and speed test, counted as on their own pages (forwarded traffic ×2). Reset times are the server's local time; console pages, the terminal and SSH are not counted.",
+    "total_hint": "Adds up nodes, FRPS, domain forwarding, port forwarding, FRPC, Tailscale, iperf3, Mini Drive and speed test, counted as on their own pages (forwarded traffic ×2). Reset times are the server's local time; console pages, the terminal and SSH are not counted. When the action over the cap is Stop, Tailscale, FRPC and a domain that forwards to the console are only throttled to 1 Mbps, so you can still sign in to the console.",
     "total_multiplier_note": "Each figure is billed usage: nodes, FRPS and forwarding count every byte twice (in and out), so it is double what that feature's own page shows. The period runs from the reset day and includes what each source has already used in its current cycle.",
     "total_next_reset": "Next reset {date} (UTC)",
     "total_no_cap": "no total limit set",
@@ -2061,6 +2066,6 @@
     "total_action_notify": "Only notify",
     "total_over_notify": "The total traffic limit is reached. It is set to only notify; nothing is throttled or stopped.",
     "total_over_throttle": "The total traffic limit is reached. Every metered feature is throttled to 1 Mbps until the next period.",
-    "total_over_block": "The total traffic limit is reached. Every metered feature is stopped until the next period."
+    "total_over_block": "The total traffic limit is reached. Every metered feature is stopped until the next period, except Tailscale, FRPC and a domain that forwards to the console: they are throttled to 1 Mbps so you can still sign in."
   }
 }

@@ -28,6 +28,10 @@ from total_meter import host_limit
 TABLE = "vps_server_nodes"
 METER_PATH = STATE_PATH.parent / "meter.json"
 LOCK_PATH = Path("/etc/vps-server-node.lock")
+# Which services a failed meter stopped (see stop_services); never backed up or restored.
+STOPPED_NAME = "meter-stopped.json"
+STOPPED_PATH = STATE_PATH.parent / STOPPED_NAME
+SERVICES = ("vps-server-proxy.service",)
 # Leave room for the token bucket's startup burst and TCP pacing. On the
 # deployment host, 125000 admitted about 1.03 Mbps over a 4 MiB transfer.
 LIMIT_BYTES_PER_SECOND = 120000
@@ -263,6 +267,10 @@ def tick(*, now=None, state_path=STATE_PATH, config_paths=CONFIG_PATHS,
                 # and the quota rule, while exposing the accounting gap.
                 for entry in ledger["nodes"].values():
                     entry["suspect"] = True
+                # A node the ledger does not know (state restored from a backup taken
+                # between two writes) has no baseline either; its gap is unknown too.
+                for identifier in new_ids:
+                    ledger["nodes"][identifier] = {"samples": None, "suspect": True}
                 old_fingerprint = None
         # A new accounting cycle changes the quota's `used` value even when
         # the resulting policy is identical. Rebuild the nft table once so
@@ -322,6 +330,60 @@ def _notify_ready():
         sock.sendall(b"READY=1")
 
 
+def _systemctl(*args, run=subprocess.run):
+    try:
+        return run(["systemctl", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   timeout=20, check=False).returncode
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _stopped(marker):
+    try:
+        data = json.loads(Path(marker).read_text(encoding="utf-8"))
+        services = data["services"] if isinstance(data, dict) else None
+        return [item for item in services if isinstance(item, str)] if isinstance(services, list) else []
+    except (OSError, ValueError, KeyError, TypeError):
+        return []
+
+
+def stop_services(services, marker, *, run=subprocess.run):
+    """Stop the metered services after accounting failed, noting the ones that were running.
+
+    systemd restarts the meter; its first good tick (resume_services) starts them again. A
+    service the operator had already stopped is not noted, so it stays stopped.
+    """
+    running = [service for service in services if _systemctl("is-active", "--quiet", service, run=run) == 0]
+    noted = sorted(set(_stopped(marker)) | set(running))
+    if noted:
+        try:
+            # Written before stopping, so a crash in between still brings them back.
+            write_json({"services": noted}, marker)
+        except OSError as exc:
+            print(f"Cannot note the stopped services: {exc}", file=sys.stderr, flush=True)
+    for service in services:
+        _systemctl("stop", service, run=run)
+    return noted
+
+
+def resume_services(marker, *, run=subprocess.run):
+    """After a good tick: start what a failed meter stopped, unless the operator has since disabled it."""
+    path = Path(marker)
+    if not path.exists():
+        return []
+    started = []
+    for service in _stopped(path):
+        if _systemctl("is-enabled", "--quiet", service, run=run) == 0:
+            # --no-block: the service is ordered after this meter, which may still be starting.
+            _systemctl("start", "--no-block", service, run=run)
+            started.append(service)
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    return started
+
+
 def main():
     if os.geteuid() != 0:
         return 1
@@ -330,6 +392,7 @@ def main():
         if tolerance.retrying(tick) is None:
             raise RuntimeError("node inventory not initialized")
         _notify_ready()
+        resume_services(STOPPED_PATH)
         while True:
             time.sleep(2)
             tolerance.retrying(tick)
@@ -337,10 +400,7 @@ def main():
         print(f"Node traffic accounting stopped: {exc}", file=sys.stderr, flush=True)
         # Existing rules may have disappeared or become stale. Stop the node
         # units instead of leaving unrestricted traffic running indefinitely.
-        for service in ("vps-server-proxy.service",):
-            subprocess.run(["systemctl", "stop", service],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=20, check=False)
+        stop_services(SERVICES, STOPPED_PATH)
         return 1
 
 
