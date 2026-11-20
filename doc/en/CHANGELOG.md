@@ -26,6 +26,24 @@ metadata:
 
 ## Changelog
 
+### v7.4.0 — 2026-11-20
+
+The home page total can now throttle or stop traffic when it reaches its cap. The upgrade command is unchanged and configuration and data are kept; an existing total cap stays "Only notify", so nothing changes until you pick otherwise.
+
+#### Added
+
+- **What happens at the total cap.** "Total traffic settings" on the home page gains "After the traffic cap": only notify (the default), limit both directions to 1 Mbps, or stop. It uses the same rules as each feature's own traffic limit: over the cap, nodes, FRPS, domain forwarding, port forwarding, FRPC, Tailscale, iperf3, Mini Drive and the speed test are throttled or stopped together, and where a feature also has its own limit the stricter one applies; the next period lifts it. The console checks every 30 seconds, whether or not anyone opens the home page. Console pages, the terminal and SSH are not counted, so you can still sign in after everything is stopped.
+- **Total traffic alerts.** Bark sends one alert at 80% and one at the cap per period; a new cap alerts again.
+
+#### Changed
+
+- "Block access" in traffic limits is now called "Stop".
+- After a downgrade, older versions do not recognise the new total traffic settings and count the total from zero, with the cap and reset back to defaults.
+
+#### Verification
+
+Design, type, browser (screenshots and layout checks included) and Python unit tests all pass. A test build on a home host: over the total cap, the nft rules of the nodes, FRPS and the other metered features got 1 Mbps limits, switching to stop dropped everything, and restoring the settings removed the rules; it was also installed on a production VPS for the user to try.
+
 ### v7.3.0 — 2026-11-20
 
 Adds GPU monitoring for hosts with NVIDIA GPUs. The upgrade command is unchanged and configuration and data are kept.

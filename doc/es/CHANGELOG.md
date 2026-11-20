@@ -26,6 +26,24 @@ metadata:
 
 ## Historial de cambios
 
+### v7.4.0 — 2026-11-20
+
+El tráfico total de la página de inicio ahora puede limitar o detener el tráfico al alcanzar su límite. El comando de actualización no cambia y la configuración y los datos se conservan; un límite total existente sigue en «Solo avisar», así que nada cambia hasta que elija otra opción.
+
+#### Añadido
+
+- **Qué ocurre al alcanzar el límite total.** «Ajustes del tráfico total» en la página de inicio añade «Al alcanzar el límite de tráfico»: solo avisar (predeterminado), limitar ambas direcciones a 1 Mbps o detener. Usa las mismas reglas que el límite de tráfico de cada función: al superarlo, nodos, FRPS, reenvío de dominios, reenvío de puertos, FRPC, Tailscale, iperf3, Mini Drive y la prueba de velocidad se limitan o detienen juntos, y si una función tiene además su propio límite se aplica el más estricto; el siguiente periodo lo levanta. La consola lo comprueba cada 30 segundos, aunque nadie abra la página de inicio. Las páginas de la consola, el terminal y SSH no cuentan, así que puede seguir entrando con todo detenido.
+- **Avisos del tráfico total.** Bark envía un aviso al 80 % y otro al llegar al límite en cada periodo; un límite nuevo vuelve a avisar.
+
+#### Cambiado
+
+- «Bloquear el acceso» en los límites de tráfico pasa a llamarse «Detener».
+- Al volver a una versión anterior, esta no reconoce los nuevos ajustes del tráfico total y cuenta el total desde cero, con el límite y el reinicio en sus valores predeterminados.
+
+#### Verificación
+
+Las pruebas de diseño, tipos, navegador (con capturas y comprobaciones de diseño) y las pruebas unitarias de Python pasan. Una versión de prueba en un equipo doméstico: al superar el límite total, las reglas nft de los nodos, FRPS y las demás funciones medidas recibieron límites de 1 Mbps, al cambiar a detener se descartó todo y al restaurar los ajustes las reglas desaparecieron; también se instaló en un VPS de producción para que el usuario la probara.
+
 ### v7.3.0 — 2026-11-20
 
 Añade la monitorización de GPU en hosts con GPU NVIDIA. El comando de actualización no cambia y la configuración y los datos se conservan.
