@@ -17,10 +17,9 @@ from pathlib import Path
 
 import upgrade
 from api_tokens import TokenError
+from features import api_upgrade
 from features.api_system import UNIT_RE, SELF_UNITS, services
 
-UPGRADE_UNIT = "vps-server-upgrade"
-VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 # Services a write token may restart: this project's own, installed as unit files
 # (a transient job such as the installer or an upgrade is not restarted).
 PROJECT_UNIT_RE = re.compile(r"^(vps-server(-[A-Za-z0-9_.-]+)?|frpc@[A-Za-z0-9_.:-]+)\.service$")
@@ -144,22 +143,10 @@ class TokenApiMixin:
     def v1_services(self):
         return self.api_ok({"rows": services()})
 
-    def _upgrade_log(self):
-        return self.context.DATA_DIR / "upgrade-api.log"
-
     def v1_upgrade_status(self):
-        try:
-            state = subprocess.run(["systemctl", "is-active", UPGRADE_UNIT], capture_output=True, text=True,
-                                   timeout=10, check=False).stdout.strip()
-        except (OSError, subprocess.SubprocessError):
-            state = "unknown"
-        try:
-            log = "\n".join(line for line in self._upgrade_log().read_text(errors="replace").splitlines()[-40:]
-                            if "password" not in line.lower() and "密码" not in line)
-        except OSError:
-            log = ""
-        return self.api_ok({"running": state in ("active", "activating"), "version": self.context.VERSION_LABEL,
-                            "log": log})
+        info = api_upgrade.status(self.context)
+        info["variant"] = upgrade.installed_variant(self.context.BASE_DIR)
+        return self.api_ok(info)
 
     # -- write -----------------------------------------------------------------------------------------
 
@@ -187,23 +174,14 @@ class TokenApiMixin:
         body = self.read_json() or {}
         version = body.get("version")
         # Without a variant, the package this host was installed from (an offline host stays offline).
-        variant = body.get("variant") or upgrade.installed_variant(self.context.BASE_DIR) or "offline"
-        if version is not None and (not isinstance(version, str) or not VERSION_RE.match(version)):
+        variant = body.get("variant")
+        if version is not None and (not isinstance(version, str) or not api_upgrade.VERSION_RE.match(version)):
             return self.api_error(400, "invalid_request")
-        if variant not in ("online", "offline"):
+        if variant not in (None, "online", "offline"):
             return self.api_error(400, "invalid_request")
-        running = subprocess.run(["systemctl", "is-active", UPGRADE_UNIT], capture_output=True, text=True,
-                                 timeout=10, check=False).stdout.strip()
-        if running in ("active", "activating"):
-            return self.api_error(409, "busy")
-        arguments = ["/usr/bin/python3", str(self.context.WEB_CODE_DIR / "upgrade.py"), "--variant", variant]
-        if version:
-            arguments += ["--version", version]
-        script = " ".join(f"'{part}'" for part in arguments) + f" > '{self._upgrade_log()}' 2>&1"
-        result = subprocess.run(["systemd-run", "--quiet", "--collect", "--unit=" + UPGRADE_UNIT,
-                                 "/bin/sh", "-c", script], capture_output=True, text=True, timeout=30, check=False)
-        if result.returncode:
-            return self.api_error(500, "failed")
+        error = api_upgrade.start(self.context, version, variant)
+        if error:
+            return self.api_error(409 if error == "busy" else 500, error)
         self.audit("upgrade_started", f'{version or "latest"} (API: {self._token_entry.get("name")})')
         return self.api_ok({"started": True})
 

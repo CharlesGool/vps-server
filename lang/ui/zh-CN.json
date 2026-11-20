@@ -741,7 +741,7 @@
     },
     "system": {
       "title": "系统",
-      "description": "系统信息和主机名.",
+      "description": "系统信息, 主机名和 vps-server 升级.",
       "hostname": "主机名",
       "hostnameLabel": "新主机名",
       "hostnameHelp": "同时更新 /etc/hosts. 已签发的证书和 CA 名字不会跟着改.",
@@ -787,6 +787,44 @@
       "updatesDescription": "查看可更新的软件包, 一键 apt 升级.",
       "rename": "修改主机名",
       "packages": "可更新的软件包"
+    },
+    "upgrade": {
+      "title": "vps-server 版本与升级",
+      "description": "从 GitHub 下载已签名的正式版, 先验证签名再安装; 安装包类型和本机相同.",
+      "current": "当前版本",
+      "latest": "最新正式版",
+      "variantLabel": "安装包",
+      "variant": {
+        "online": "在线版",
+        "offline": "离线版(完整安装包)",
+        "unknown": "未记录(按离线版升级)"
+      },
+      "checking": "正在查询",
+      "available": "有新版本",
+      "upToDate": "已是最新",
+      "check": "检查更新",
+      "reload": "刷新页面",
+      "upgradeTo": "升级到 {version}",
+      "confirm": "下载 {version}({variant}), 验证签名后在后台安装, 约需几分钟. 安装期间控制台会重启, 页面会短暂断开, 恢复后自动显示结果; 已装模块的服务也可能重启.",
+      "running": "正在升级, 下面是输出. 安装器重启控制台时页面会短暂断开, 之后自动继续.",
+      "restarting": "控制台正在重启, 恢复后继续显示进度.",
+      "lost": "等了 15 分钟控制台仍未恢复. 安装可能还在后台进行: 请稍后刷新页面, 或在服务器上查看安装日志.",
+      "done": "已升级到 {version}. 刷新页面以载入新版界面.",
+      "unchanged": "升级已结束, 版本没有变化, 详情见下面的输出.",
+      "noResult": "升级已结束, 但没有记录结果, 详情见下面的输出.",
+      "failed": "升级失败(退出码 {code}), 详情见下面的输出.",
+      "log": "升级输出",
+      "notPinned": "这台主机还没有固定发布密钥, 不能在这里升级. 请先按 README 升级签名一节, 在服务器上用 upgrade.py --trust-fingerprint 升级一次.",
+      "notRelease": "当前不是正式版(测试版或源码安装), 无法比较版本; 升级会安装最新正式版.",
+      "latestHelp": "稍后再试, 或在服务器上用 upgrade.py --version 指定版本升级.",
+      "error": {
+        "latest_unreachable": "连不上 GitHub, 查不到最新版本",
+        "latest_rate_limited": "GitHub 接口访问次数超限, 请稍后再试",
+        "latest_not_found": "GitHub 上没有找到正式版",
+        "latest_invalid": "GitHub 返回的版本号无法识别",
+        "busy": "已有升级或安装在进行",
+        "failed": "无法启动升级"
+      }
     },
     "processes": {
       "title": "进程",
@@ -2058,6 +2096,7 @@
     "audit_api_token_deleted": "删除 API 令牌",
     "audit_api_token_fail": "API 令牌无效",
     "audit_upgrade_started": "经 API 开始升级",
+    "audit_upgrade_console": "在系统页开始升级 vps-server",
     "audit_backup_created": "经 API 创建备份",
     "audit_fleet_host_added": "集中管理添加主机",
     "audit_fleet_host_removed": "集中管理移除主机",

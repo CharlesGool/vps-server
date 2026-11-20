@@ -1057,6 +1057,7 @@ from features.api_filemanager import FileManagerApiMixin
 from features.api_filemanager import cleanup_staging
 from features.api_v1 import TokenApiMixin
 from features.api_fleet import FleetApiMixin
+from features.api_upgrade import UpgradeApiMixin
 
 # Sent on every console response unless the route set its own. Scripts only
 # from this origin; inline styles stay allowed because xterm.js and the UI
@@ -1115,6 +1116,7 @@ class ConsoleHandler(AuthMixin, SettingsMixin, ModulesMixin, SpeedtestMixin, Ipe
                      FrpApiMixin,
                      ProxyApiMixin,
                      MonitorApiMixin, SystemApiMixin, FileManagerApiMixin, TokenApiMixin, FleetApiMixin,
+                     UpgradeApiMixin,
                      BaseHTTPRequestHandler):
     """The authenticated console, on its own hard-to-guess port.
 

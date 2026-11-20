@@ -29,9 +29,9 @@ metadata:
 | `GET /api/v1/status` | read | 主机名, 版本, 服务器标识, 内核, 资源(同 `monitor`, 不含走势), 本周期总流量, 本项目相关服务的状态, 失败的服务 |
 | `GET /api/v1/monitor` | read | 资源监控页的全部数据, 含 24 小时走势(12 段和 24 段平均值) |
 | `GET /api/v1/services` | read | 全部 systemd 服务: `unit`, `load`, `active`, `sub`, `description`, `enabled` |
-| `GET /api/v1/upgrade` | read | 经接口启动的升级是否在运行(`running`), 当前版本, 升级输出的最后 40 行 |
+| `GET /api/v1/upgrade` | read | 经接口或系统页启动的升级是否在运行(`running`), 当前版本, 本机安装包类型(`variant`), 上次升级的退出码(`lastExit`, 没有记录时为 `null`), 升级输出的最后 40 行 |
 | `POST /api/v1/services/restart` | write | 重启正在运行的本项目服务(`systemctl try-restart`, 已停止的保持停止), 请求体 `{"unit": "<名称>.service"}`; 只接受 `/etc/systemd/system` 中已安装的 `vps-server*.service` 和 `frpc@*.service`, 其他返回 403 `unit_not_allowed`; 重启控制台自己时立即返回 |
-| `POST /api/v1/upgrade` | write | 在后台升级到最新正式版, 或 `{"version": "v7.2.0"}` 指定版本; `variant` 可选 `online` 或 `offline`, 默认用本机安装时的类型(没有记录时为 `offline`). 已有升级在运行时返回 409 `busy` |
+| `POST /api/v1/upgrade` | write | 在后台升级到最新正式版, 或 `{"version": "v7.2.0"}` 指定版本; `variant` 可选 `online` 或 `offline`, 默认用本机安装时的类型(没有记录时为 `offline`). 已有升级或安装在运行时返回 409 `busy` |
 | `POST /api/v1/backup` | write | 做一份手动配置备份, 返回 `{"name": "<文件名>"}` |
 
 升级和面板里的升级命令一样: 先验证发布签名, 再运行包里的安装器, 控制台会重启一次. 升级从 GitHub 下载; 连不上 GitHub 的主机仍要按 README 的 [升级](../README.md#升级) 手动传文件.

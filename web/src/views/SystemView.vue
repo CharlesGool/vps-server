@@ -13,11 +13,13 @@ import PageSection from '@/components/app/PageSection.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
+import UpgradeCard from '@/components/vps/UpgradeCard.vue'
 import { api } from '@/lib/api'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
-// 系统: 进入前要验证管理员密码(和终端相同). 两张半行卡片: 左边系统信息(描述列表), 右边修改主机名(表单).
+// 系统: 进入前要验证管理员密码(和终端相同). 两张半行卡片: 左边系统信息(描述列表), 右边修改主机名(表单);
+// 下面一张整行卡片: vps-server 版本与升级(UpgradeCard, 当前和最新版本, 升级按钮, 升级输出).
 // 系统更新, 进程, 服务和监听端口各有自己的页面; SSH 登录记录在最近访问页.
 interface Info { hostname: string; os: string; kernel: string; arch: string }
 
@@ -80,6 +82,8 @@ const infoItems = computed(() => [
           </FormActions>
         </PageSection>
       </CardForm>
+
+      <UpgradeCard :guard="guard" />
     </template>
   </CardGrid>
 </template>

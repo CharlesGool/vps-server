@@ -741,7 +741,7 @@
     },
     "system": {
       "title": "Sistema",
-      "description": "Información del sistema y nombre de host.",
+      "description": "Información del sistema, nombre de host y actualizaciones de vps-server.",
       "hostname": "Nombre de host",
       "hostnameLabel": "Nuevo nombre de host",
       "hostnameHelp": "También actualiza /etc/hosts. Los certificados emitidos y la CA conservan sus nombres.",
@@ -787,6 +787,44 @@
       "updatesDescription": "Paquetes actualizables y actualización de apt con un clic.",
       "rename": "Cambiar nombre de host",
       "packages": "Paquetes actualizables"
+    },
+    "upgrade": {
+      "title": "Versión y actualización de vps-server",
+      "description": "Descarga de GitHub la versión firmada y comprueba la firma antes de instalar; usa la misma variante de paquete que este host.",
+      "current": "Versión actual",
+      "latest": "Última versión",
+      "variantLabel": "Paquete",
+      "variant": {
+        "online": "En línea",
+        "offline": "Sin conexión (paquete completo)",
+        "unknown": "No registrado (se actualiza con el paquete sin conexión)"
+      },
+      "checking": "Consultando",
+      "available": "Hay una versión nueva",
+      "upToDate": "Al día",
+      "check": "Buscar actualizaciones",
+      "reload": "Recargar la página",
+      "upgradeTo": "Actualizar a {version}",
+      "confirm": "Descarga {version} ({variant}), comprueba la firma y lo instala en segundo plano; tarda unos minutos. La consola se reinicia durante la instalación, así que esta página pierde la conexión un momento y muestra el resultado al volver. Los servicios de los módulos instalados también pueden reiniciarse.",
+      "running": "Actualizando; la salida está abajo. Cuando el instalador reinicie la consola, la página perderá la conexión un momento y seguirá sola.",
+      "restarting": "La consola se está reiniciando; el progreso seguirá cuando vuelva.",
+      "lost": "La consola no ha vuelto en 15 minutos. Puede que la instalación siga en segundo plano: recargue la página más tarde o consulte el registro de instalación en el servidor.",
+      "done": "Actualizado a {version}. Recargue la página para cargar la nueva interfaz.",
+      "unchanged": "La actualización terminó sin cambiar la versión; los detalles están en la salida.",
+      "noResult": "La actualización terminó sin registrar un resultado; los detalles están en la salida.",
+      "failed": "La actualización falló (código de salida {code}); los detalles están en la salida.",
+      "log": "Salida de la actualización",
+      "notPinned": "Este host aún no ha fijado una clave de publicación, así que no se puede actualizar aquí. Actualice una vez en el servidor con upgrade.py --trust-fingerprint, como explica la sección de firmas del README.",
+      "notRelease": "La versión actual no es oficial (de prueba o desde el código fuente), así que no se puede comparar; la actualización instala la última versión oficial.",
+      "latestHelp": "Inténtelo más tarde o actualice en el servidor con upgrade.py --version.",
+      "error": {
+        "latest_unreachable": "No se puede conectar con GitHub para consultar la última versión",
+        "latest_rate_limited": "Se superó el límite de consultas a la API de GitHub; inténtelo más tarde",
+        "latest_not_found": "No se encontró ninguna versión oficial en GitHub",
+        "latest_invalid": "GitHub devolvió un número de versión no reconocido",
+        "busy": "Ya hay una actualización o instalación en curso",
+        "failed": "No se pudo iniciar la actualización"
+      }
     },
     "processes": {
       "title": "Procesos",
@@ -2058,6 +2096,7 @@
     "audit_api_token_deleted": "Token de API eliminado",
     "audit_api_token_fail": "Token de API no válido",
     "audit_upgrade_started": "Actualización iniciada por API",
+    "audit_upgrade_console": "Actualización de vps-server iniciada en la página Sistema",
     "audit_backup_created": "Copia creada por API",
     "audit_fleet_host_added": "Host gestionado añadido",
     "audit_fleet_host_removed": "Host gestionado quitado",

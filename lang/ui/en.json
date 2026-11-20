@@ -741,7 +741,7 @@
     },
     "system": {
       "title": "System",
-      "description": "System information and host name.",
+      "description": "System information, host name and vps-server upgrades.",
       "hostname": "Host name",
       "hostnameLabel": "New host name",
       "hostnameHelp": "Also updates /etc/hosts. Issued certificates and the CA keep their names.",
@@ -787,6 +787,44 @@
       "updatesDescription": "Upgradable packages and a one-click apt upgrade.",
       "rename": "Change host name",
       "packages": "Upgradable packages"
+    },
+    "upgrade": {
+      "title": "vps-server version and upgrade",
+      "description": "Downloads the signed release from GitHub and checks its signature before installing; uses the same package variant as this host.",
+      "current": "Current version",
+      "latest": "Latest release",
+      "variantLabel": "Package",
+      "variant": {
+        "online": "Online",
+        "offline": "Offline (full package)",
+        "unknown": "Not recorded (upgrades with the offline package)"
+      },
+      "checking": "Checking",
+      "available": "Update available",
+      "upToDate": "Up to date",
+      "check": "Check for updates",
+      "reload": "Reload page",
+      "upgradeTo": "Upgrade to {version}",
+      "confirm": "Downloads {version} ({variant}), checks its signature and installs it in the background; this takes a few minutes. The console restarts during the install, so this page loses its connection briefly and shows the result once it is back. Services of installed modules may restart too.",
+      "running": "Upgrading; the output is below. When the installer restarts the console, this page loses its connection briefly and then carries on.",
+      "restarting": "The console is restarting; progress resumes once it is back.",
+      "lost": "The console has not come back within 15 minutes. The install may still be running in the background: reload the page later, or check the install log on the server.",
+      "done": "Upgraded to {version}. Reload the page to load the new interface.",
+      "unchanged": "The upgrade finished without changing the version; see the output below.",
+      "noResult": "The upgrade finished without recording a result; see the output below.",
+      "failed": "The upgrade failed (exit code {code}); see the output below.",
+      "log": "Upgrade output",
+      "notPinned": "This host has not pinned a release key yet, so it cannot upgrade here. Upgrade once on the server with upgrade.py --trust-fingerprint, as the README's release signing section explains.",
+      "notRelease": "The current version is not a release (a test build or a source install), so it cannot be compared; upgrading installs the latest release.",
+      "latestHelp": "Try again later, or upgrade on the server with upgrade.py --version.",
+      "error": {
+        "latest_unreachable": "Cannot reach GitHub to look up the latest release",
+        "latest_rate_limited": "The GitHub API rate limit was hit; try again later",
+        "latest_not_found": "No release was found on GitHub",
+        "latest_invalid": "GitHub returned a version number that is not recognised",
+        "busy": "An upgrade or install is already running",
+        "failed": "Could not start the upgrade"
+      }
     },
     "processes": {
       "title": "Processes",
@@ -2058,6 +2096,7 @@
     "audit_api_token_deleted": "API token deleted",
     "audit_api_token_fail": "Invalid API token",
     "audit_upgrade_started": "Upgrade started via API",
+    "audit_upgrade_console": "vps-server upgrade started on the System page",
     "audit_backup_created": "Backup created via API",
     "audit_fleet_host_added": "Managed host added",
     "audit_fleet_host_removed": "Managed host removed",
