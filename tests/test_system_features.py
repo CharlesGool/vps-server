@@ -174,13 +174,13 @@ class SysadminFilesTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.root, "escape.txt")))
 
     def test_hosts_file_round_trip(self):
-        original = ["127.0.0.1\tlocalhost", "172.22.31.29\tah-db", "# keep ah-db here",
+        original = ["127.0.0.1\tlocalhost", "192.168.1.29\told-host", "# keep old-host here",
                     "::1     localhost ip6-localhost ip6-loopback"]
-        renamed = sysadmin.rename_in_hosts(original, "ah-db", "vps-new")
-        self.assertEqual(renamed[1], "172.22.31.29\tvps-new")
-        self.assertEqual(renamed[2], "# keep ah-db here")
+        renamed = sysadmin.rename_in_hosts(original, "old-host", "vps-new")
+        self.assertEqual(renamed[1], "192.168.1.29\tvps-new")
+        self.assertEqual(renamed[2], "# keep old-host here")
         self.assertEqual(len(renamed), len(original))
-        self.assertEqual(sysadmin.rename_in_hosts(renamed, "vps-new", "ah-db"), original)
+        self.assertEqual(sysadmin.rename_in_hosts(renamed, "vps-new", "old-host"), original)
         debian = ["127.0.0.1 localhost", "127.0.1.1 old.example.net old"]
         self.assertEqual(sysadmin.rename_in_hosts(debian, "old", "new")[1], "127.0.1.1 old.example.net new")
         self.assertEqual(sysadmin.rename_in_hosts(["127.0.0.1 localhost"], "gone", "new"),

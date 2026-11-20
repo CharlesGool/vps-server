@@ -25,8 +25,8 @@ def inventory(*ports):
 
 class AccessTest(unittest.TestCase):
     def test_destination_parsing(self):
-        cases = {"172.22.31.10": ("cidr", "172.22.31.10/32", None),
-                 "172.22.31.10:443": ("cidr", "172.22.31.10/32", "443"),
+        cases = {"192.168.1.10": ("cidr", "192.168.1.10/32", None),
+                 "192.168.1.10:443": ("cidr", "192.168.1.10/32", "443"),
                  "10.0.0.0/24:8000-8100": ("cidr", "10.0.0.0/24", "8000-8100"),
                  "[fd00::/64]:443": ("cidr", "fd00::/64", "443"),
                  "*.Example.com:443": ("suffix", ".example.com", "443"),
@@ -38,8 +38,8 @@ class AccessTest(unittest.TestCase):
                 ni._destination(bad)
 
     def test_normalize_is_idempotent_and_dedupes(self):
-        result = ni.normalize_destinations(["172.22.31.10:443", "172.22.31.10:443", "*.Example.com", "[::1]:80", "10.0.0.0/24"])
-        self.assertEqual(result, ["172.22.31.10:443", "*.example.com", "[::1]:80", "10.0.0.0/24"])
+        result = ni.normalize_destinations(["192.168.1.10:443", "192.168.1.10:443", "*.Example.com", "[::1]:80", "10.0.0.0/24"])
+        self.assertEqual(result, ["192.168.1.10:443", "*.example.com", "[::1]:80", "10.0.0.0/24"])
         self.assertEqual(ni.normalize_destinations(result), result)
         with self.assertRaises(ni.InvalidInventory):
             ni.normalize_destinations([])
@@ -63,11 +63,11 @@ class AccessTest(unittest.TestCase):
 
     def test_custom_rules_allow_then_reject(self):
         inv = inventory(10001)
-        dests = ni.normalize_destinations(["172.22.31.10:443", "*.example.com"])
+        dests = ni.normalize_destinations(["192.168.1.10:443", "*.example.com"])
         inv = ops.edit_node(inv, inv["nodes"][0]["id"], {"access": {"mode": "custom", "destinations": dests}}, reserved_ports=[])
         rules = ni.render_config(inv)["route"]["rules"]
         self.assertEqual(rules[0]["action"], "resolve")
-        self.assertEqual(rules[1], {"inbound": [inv["nodes"][0]["inbound"]["tag"]], "ip_cidr": ["172.22.31.10/32"],
+        self.assertEqual(rules[1], {"inbound": [inv["nodes"][0]["inbound"]["tag"]], "ip_cidr": ["192.168.1.10/32"],
                                     "port": [443], "action": "route", "outbound": "direct"})
         self.assertEqual(rules[2]["domain_suffix"], [".example.com"])
         self.assertEqual(rules[-1]["action"], "reject")
