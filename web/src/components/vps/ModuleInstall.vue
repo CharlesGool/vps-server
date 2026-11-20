@@ -7,7 +7,8 @@ import FormActions from '@/components/app/FormActions.vue'
 import LogOutput from '@/components/app/LogOutput.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import { Button } from '@/components/ui/button'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // vps-server 项目组件: 功能页在模块还没安装时显示的卡片: 主机缺少的条件, 安装按钮, 安装任务的状态和输出.
@@ -64,8 +65,7 @@ async function install() {
     clearTimeout(timer)
     timer = setTimeout(load, 2000)
   } catch (err) {
-    const code = err instanceof ApiError ? err.code : ''
-    showToast(t(ERRORS[code] ?? 'vps.common.failed'), 'destructive')
+    showToast(errorText(err, { codes: (code) => (ERRORS[code] ? t(ERRORS[code]!) : undefined) }), 'destructive')
   } finally {
     sending.value = false
   }

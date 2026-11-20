@@ -9,6 +9,7 @@ import LoadingState from '@/components/app/LoadingState.vue'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 功能已关闭: 在主页关掉的功能, 打开它的页面时显示这里. 功能已经重新打开时直接去功能页.
@@ -33,7 +34,7 @@ onMounted(async () => {
   } catch (err) {
     if (isSignedOut(err)) return
     if (err instanceof ApiError && err.status === 404) unknown.value = true
-    else showToast(t('vps.common.failed'), 'destructive')
+    else showToast(errorText(err), 'destructive')
   }
 })
 </script>

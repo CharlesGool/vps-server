@@ -18,6 +18,7 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // FRPS: 本机的 FRP 服务端. 运行开关, 监听地址, 端口和 token 默认遮住, 本机地址(给客户端填写), 编辑端口和 token 的对话框, 流量.
@@ -33,18 +34,25 @@ async function load() {
   try {
     data.value = await api<Frps>('frps')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
+// 最近一次失败的请求(新的请求或重新打开对话框时清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field)
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
+  failure.value = undefined
   try {
     data.value = await api<Frps>(path, { method, body })
     showToast(t('console.frp_saved'), 'success')
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      showToast(errorText(err, { codes: () => t('console.frp_save_failed'), labels: { port: t('console.proxy_port'), token: t('console.frps_token') } }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -64,11 +72,12 @@ const token = ref('')
 function openEdit() {
   port.value = ''
   token.value = ''
+  failure.value = undefined
   editOpen.value = true
 }
 async function save() {
   const value = port.value.trim()
-  if (value && !/^\d+$/.test(value)) return showToast(t('console.frp_save_failed'), 'destructive')
+  if (value && !/^\d+$/.test(value)) return showToast(t('vps.error.field', { field: t('console.proxy_port'), reason: t('vps.error.reason.format') }), 'destructive')
   if (await send('frps/save', { port: value ? Number(value) : null, token: token.value }, 'PUT')) editOpen.value = false
 }
 </script>
@@ -117,11 +126,11 @@ async function save() {
     </template>
 
     <AppDialog v-model:open="editOpen" :title="t('console.frp_edit_server')" :description="t('console.frp_server_edit_note')">
-      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
-        <Input :id="field.id" v-model="port" inputmode="numeric" maxlength="5" :placeholder="t('console.frp_port_keep')" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6" :error="invalid('port')">
+        <Input :id="field.id" v-model="port" inputmode="numeric" maxlength="5" :placeholder="t('console.frp_port_keep')" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
-        <PasswordInput :id="field.id" v-model="token" maxlength="128" autocomplete="new-password" :placeholder="t('console.frp_token_keep')" />
+      <FormField v-slot="field" :label="t('console.frps_token')" :span="6" :error="invalid('token')">
+        <PasswordInput :id="field.id" v-model="token" maxlength="128" autocomplete="new-password" :placeholder="t('console.frp_token_keep')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="editOpen = false">{{ t('console.node_cancel') }}</Button>

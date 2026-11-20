@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
 import { api } from '@/lib/api'
+import { fieldError } from '@/lib/errors'
 import { formatBytes } from '@/lib/format'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
@@ -53,7 +54,7 @@ type Op = 'mkdir' | 'touch' | 'rename' | 'copy' | 'move' | 'chmod' | 'chown' | '
 // 长列表一页 50 行(项目决策 2026-11-20)
 const PAGE = 50
 const { t, te, locale } = useI18n()
-const { state, guard } = useSecurePage()
+const { state, guard, failure } = useSecurePage()
 const listing = ref<Listing>()
 const path = ref('/')
 const typed = ref('/')
@@ -67,6 +68,18 @@ const errorText = (code: string) => {
   const key = `vps.fm.error.${code}`
   return te(key) ? t(key) : undefined
 }
+// 服务器指出被拒绝的输入项时, 提示和对话框里对应的字段用这些标签(新建和压缩时名称在 path 和 target 里)
+const labels = computed(() => ({
+  name: t('vps.fm.name'),
+  path: t('vps.fm.name'),
+  target: t('vps.fm.name'),
+  destination: t('vps.fm.destination'),
+  mode: t('vps.fm.octal'),
+  user: t('vps.fm.user'),
+  group: t('vps.fm.group'),
+  format: t('vps.fm.format'),
+}))
+const invalid = (...names: string[]) => names.map((name) => fieldError(failure.value, name, { codes: errorText })).find(Boolean)
 
 async function open(target: string) {
   busy.value = true
@@ -143,6 +156,7 @@ function startOp(op: Op, targets: string[], row?: Entry) {
     recursive: false,
     format: 'tar.gz',
   }
+  failure.value = undefined
   dialog.value = { op, targets }
 }
 watch(() => field.value.format, (format) => {
@@ -164,7 +178,7 @@ const selectedPaths = computed(() => selected.value.map((name) => join(path.valu
 
 async function runOp(body: Record<string, unknown>, done: string) {
   busy.value = true
-  const value = await guard(() => api('fm/op', { method: 'POST', body }), errorText)
+  const value = await guard(() => api('fm/op', { method: 'POST', body }), errorText, labels.value)
   busy.value = false
   if (value === undefined) return false
   showToast(done, 'success')
@@ -340,23 +354,23 @@ function clearLater(clear: () => void) {
 
     <AppDialog v-model:open="dialogOpen" :title="dialogTitle" :description="dialog && dialog.targets.length > 1 ? t('vps.fm.selectedCount', { n: dialog.targets.length }) : dialog?.targets[0]">
       <template v-if="dialog">
-        <FormField v-if="['mkdir', 'touch', 'rename', 'compress'].includes(dialog.op)" v-slot="fld" :label="t('vps.fm.name')">
-          <Input :id="fld.id" v-model.trim="field.name" spellcheck="false" autocomplete="off" maxlength="255" />
+        <FormField v-if="['mkdir', 'touch', 'rename', 'compress'].includes(dialog.op)" v-slot="fld" :label="t('vps.fm.name')" :error="invalid('name', 'path', 'target')">
+          <Input :id="fld.id" v-model.trim="field.name" spellcheck="false" autocomplete="off" maxlength="255" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
-        <FormField v-if="dialog.op === 'compress'" :label="t('vps.fm.format')" group>
+        <FormField v-if="dialog.op === 'compress'" :label="t('vps.fm.format')" group :error="invalid('format')">
           <SegmentedControl v-model="field.format" :options="formats" :label="t('vps.fm.format')" />
         </FormField>
-        <FormField v-if="['copy', 'move', 'extract'].includes(dialog.op)" v-slot="fld" :label="t('vps.fm.destination')">
-          <Input :id="fld.id" v-model.trim="field.destination" spellcheck="false" autocomplete="off" />
+        <FormField v-if="['copy', 'move', 'extract'].includes(dialog.op)" v-slot="fld" :label="t('vps.fm.destination')" :error="invalid('destination')">
+          <Input :id="fld.id" v-model.trim="field.destination" spellcheck="false" autocomplete="off" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
-        <FormField v-if="dialog.op === 'chmod'" v-slot="fld" :label="t('vps.fm.octal')">
-          <Input :id="fld.id" v-model.trim="field.mode" inputmode="numeric" maxlength="4" spellcheck="false" />
+        <FormField v-if="dialog.op === 'chmod'" v-slot="fld" :label="t('vps.fm.octal')" :error="invalid('mode')">
+          <Input :id="fld.id" v-model.trim="field.mode" inputmode="numeric" maxlength="4" spellcheck="false" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
-        <FormField v-if="dialog.op === 'chown'" v-slot="fld" :label="t('vps.fm.user')" :span="6">
-          <Input :id="fld.id" v-model.trim="field.user" spellcheck="false" autocomplete="off" />
+        <FormField v-if="dialog.op === 'chown'" v-slot="fld" :label="t('vps.fm.user')" :span="6" :error="invalid('user')">
+          <Input :id="fld.id" v-model.trim="field.user" spellcheck="false" autocomplete="off" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
-        <FormField v-if="dialog.op === 'chown'" v-slot="fld" :label="t('vps.fm.group')" :span="6">
-          <Input :id="fld.id" v-model.trim="field.group" spellcheck="false" autocomplete="off" />
+        <FormField v-if="dialog.op === 'chown'" v-slot="fld" :label="t('vps.fm.group')" :span="6" :error="invalid('group')">
+          <Input :id="fld.id" v-model.trim="field.group" spellcheck="false" autocomplete="off" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
         <CheckboxField
           v-if="dialog.op === 'chmod' || dialog.op === 'chown'"

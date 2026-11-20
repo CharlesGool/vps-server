@@ -4,6 +4,22 @@ import time
 
 import sysmon
 
+
+def alerts_problem(value):
+    """{"field", "reason"} for the alert setting sysmon.clamp_alerts refuses, or {}."""
+    if not isinstance(value, dict):
+        return {"field": "alerts", "reason": "required" if value is None else "type"}
+    for key in ("enabled", "services"):
+        if key in value and not isinstance(value[key], bool):
+            return {"field": "alerts." + key, "reason": "type"}
+    for key, (low, high) in sysmon.LIMITS.items():
+        number = value.get(key, low)
+        if isinstance(number, bool) or not isinstance(number, int):
+            return {"field": "alerts." + key, "reason": "type"}
+        if not low <= number <= high:
+            return {"field": "alerts." + key, "reason": "range"}
+    return {}
+
 # History is shown as the last 15 minutes, one point a minute (the monitor page's charts and card
 # lines); the token API also gives 24 hours as 12 two-hour and 24 hourly averages.
 RECENT_BUCKETS = 15
@@ -97,7 +113,7 @@ class MonitorApiMixin:
         body = self.read_json()
         alerts = sysmon.clamp_alerts(body.get("alerts") if body else None)
         if alerts is None:
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", **(alerts_problem(body.get("alerts")) if body else {}))
         self.context.MONITOR.save_alerts(alerts)
         self.audit("monitor_alerts_saved")
         return self.api_monitor_alerts()

@@ -16,6 +16,7 @@ import StatusBadge from '@/components/app/StatusBadge.vue'
 import SshLoginsCard from '@/components/vps/SshLoginsCard.vue'
 import { Button } from '@/components/ui/button'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 最近访问: 访客一张整行卡片, 上方筛选(全部/仅入站/仅外部)和清除历史, 下面是分页的表格(每页 10 行).
@@ -40,7 +41,7 @@ async function load() {
   try {
     data.value = await api<{ max: number; rows: Visitor[] }>('visitors')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)

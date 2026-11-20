@@ -20,7 +20,8 @@ import PrivateValue from '@/components/vps/PrivateValue.vue'
 import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { api, isSignedOut } from '@/lib/api'
+import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 端口转发: 每条规则一张整行卡片(状态, 协议, 端口默认遮住, 启停和删除, 这条规则的流量), 最后是添加规则的表单.
@@ -37,6 +38,9 @@ interface Portfwd {
   max: number
   rules: Rule[]
   message: string | null
+  // 规则被拒绝时, 是哪一项和原因(见 errors.ts)
+  field?: string
+  reason?: string
 }
 
 const { t } = useI18n()
@@ -44,15 +48,30 @@ const data = ref<Portfwd>()
 const busy = ref(false)
 const GOOD = ['portfwd_added', 'portfwd_removed', 'portfwd_enabled', 'portfwd_disabled']
 
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  label: t('console.portfwd_label'),
+  protocol: t('console.portfwd_protocol'),
+  publicPort: t('console.portfwd_public_port'),
+  targetHost: t('console.portfwd_target_host'),
+  targetPort: t('console.portfwd_target_port'),
+}))
+// 最近一次被拒绝的添加(成功后清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field)
 function apply(value: Portfwd) {
   data.value = value
-  if (value.message) showToast(t(`console.${value.message}`, { max: value.max }), GOOD.includes(value.message) ? 'success' : 'destructive')
+  // 添加被拒绝时服务器仍返回页面状态, 带上消息和被拒绝的输入项
+  failure.value = value.field ? new ApiError(200, value.message ?? '', { field: value.field, reason: value.reason }) : undefined
+  if (!value.message) return
+  const text = value.message === 'portfwd_invalid' && failure.value ? errorText(failure.value, { labels: labels.value }) : t(`console.${value.message}`, { max: value.max })
+  showToast(text, GOOD.includes(value.message) ? 'success' : 'destructive')
 }
 onMounted(async () => {
   try {
     apply(await api<Portfwd>('portfwd'))
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 })
 async function send(path: string, body: unknown) {
@@ -61,7 +80,10 @@ async function send(path: string, body: unknown) {
     apply(await api<Portfwd>(path, { method: 'POST', body }))
     return data.value?.message ? GOOD.includes(data.value.message) : false
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      showToast(errorText(err, { labels: labels.value }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -140,19 +162,19 @@ async function add() {
 
       <CardForm v-if="data.canAdd" @submit.prevent="add">
         <PageSection :cols="4" :title="t('console.portfwd_add')" :description="t('console.portfwd_howto')">
-          <FormField v-slot="field" :label="t('console.portfwd_label')" :span="4">
-            <Input :id="field.id" v-model="form.label" maxlength="80" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.portfwd_label')" :span="4" :error="invalid('label')">
+            <Input :id="field.id" v-model="form.label" maxlength="80" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField :label="t('console.portfwd_protocol')" group :span="8">
+          <FormField :label="t('console.portfwd_protocol')" group :span="8" :error="invalid('protocol')">
             <SegmentedControl v-model="form.protocol" :options="protocolOptions" :label="t('console.portfwd_protocol')" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.portfwd_public_port')" :span="4">
+          <FormField v-slot="field" :label="t('console.portfwd_public_port')" :span="4" :error="invalid('publicPort')">
             <NumberField :id="field.id" v-model="form.publicPort" :min="0" :max="65535" :grouping="false" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.portfwd_target_host')" :span="4">
-            <Input :id="field.id" v-model="form.targetHost" inputmode="decimal" placeholder="100.x.x.x" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.portfwd_target_host')" :span="4" :error="invalid('targetHost')">
+            <Input :id="field.id" v-model="form.targetHost" inputmode="decimal" placeholder="100.x.x.x" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.portfwd_target_port')" :span="4">
+          <FormField v-slot="field" :label="t('console.portfwd_target_port')" :span="4" :error="invalid('targetPort')">
             <NumberField :id="field.id" v-model="form.targetPort" :min="0" :max="65535" :grouping="false" />
           </FormField>
           <FormActions>

@@ -21,6 +21,7 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorField, errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // iperf3: 服务端窗口(状态和倒计时, 端口和命令默认遮住, 开启/延长/关闭, 修改端口的对话框)和向外测试的客户端并排, 下面是流量卡片.
@@ -37,6 +38,9 @@ interface Iperf {
 interface ClientResult {
   status: 'done' | 'invalid' | 'missing' | 'busy' | 'timeout' | 'failed' | 'disabled'
   detail?: string
+  // status 为 invalid 时, 被拒绝的是哪一项和原因(见 errors.ts)
+  field?: string
+  reason?: string
   mbps?: number
   jitter_ms?: number
   loss_percent?: number
@@ -75,20 +79,26 @@ async function load() {
     if (!data.value) minutes.value = value.defaultMinutes
     apply(value)
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
 onBeforeUnmount(() => clearInterval(tick))
 
+// 最近一次失败的请求(成功或重新打开对话框时清空), 用来标出端口字段
+const failure = ref<unknown>()
+const portText = (code: string) => (code === 'iperf_port_invalid' ? t('console.iperf_port_invalid') : undefined)
 async function send(path: string, method: string, body: unknown) {
   busy.value = true
+  failure.value = undefined
   try {
     apply(await api<Iperf>(path, { method, body }))
     return true
   } catch (err) {
-    if (err instanceof ApiError && err.code === 'iperf_port_invalid') showToast(t('console.iperf_port_invalid'), 'destructive')
-    else if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      showToast(errorText(err, { codes: portText, labels: { port: t('console.iperf_port') } }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -112,9 +122,13 @@ const facts = computed(() => [
 // 当前端口遮住, 输入框留空, 占位符同样遮住
 const portOpen = ref(false)
 const newPort = ref('')
+function openPort() {
+  failure.value = undefined
+  portOpen.value = true
+}
 async function savePort() {
   const port = Number(newPort.value)
-  if (!Number.isInteger(port)) return showToast(t('console.iperf_port_invalid'), 'destructive')
+  if (!Number.isInteger(port)) return showToast(t('vps.error.field', { field: t('console.iperf_port'), reason: t('vps.error.reason.format') }), 'destructive')
   if (await send('iperf/port', 'PUT', { port })) {
     newPort.value = ''
     portOpen.value = false
@@ -140,11 +154,26 @@ async function runClient() {
   try {
     result.value = await api<ClientResult>('iperf/client', { method: 'POST', body: client.value })
   } catch (err) {
-    if (!isSignedOut(err)) result.value = { status: 'invalid' }
+    const reason = err instanceof ApiError ? err.data.reason : undefined
+    if (!isSignedOut(err)) result.value = { status: 'invalid', field: errorField(err), reason: typeof reason === 'string' ? reason : undefined }
   } finally {
     testing.value = false
   }
 }
+// 测试设置被拒绝时指出是哪一项
+const clientLabels = computed(() => ({
+  host: t('console.iperf_client_host'),
+  port: t('console.iperf_client_port'),
+  seconds: t('console.iperf_client_seconds'),
+  mbps: t('console.iperf_client_mbps'),
+  protocol: t('console.iperf_client_protocol'),
+  direction: t('console.iperf_client_direction'),
+}))
+const clientProblem = computed(() => (result.value?.field ? new ApiError(200, 'invalid', { field: result.value.field, reason: result.value.reason }) : undefined))
+const clientInvalid = (field: string) => fieldError(clientProblem.value, field)
+const resultText = computed(() =>
+  clientProblem.value ? errorText(clientProblem.value, { labels: clientLabels.value }) : `${t(`console.iperf_client_${result.value?.status}`)} ${result.value?.detail ?? ''}`,
+)
 const metrics = computed(() => {
   const value = result.value
   if (value?.status !== 'done') return ''
@@ -187,7 +216,7 @@ const metrics = computed(() => {
           </FormField>
           <FormActions>
             <!-- 修改端口: 窗口开着时不能改 -->
-            <Button type="button" variant="outline" :disabled="busy || data.open" @click="portOpen = true">
+            <Button type="button" variant="outline" :disabled="busy || data.open" @click="openPort">
               <Pencil aria-hidden="true" />{{ t('console.iperf_change_port') }}
             </Button>
             <Button v-if="data.open" type="button" variant="outline" :disabled="busy" @click="send('iperf/close', 'POST', {})">
@@ -204,17 +233,17 @@ const metrics = computed(() => {
       <CardForm @submit.prevent="runClient">
         <PageSection :cols="2" :title="t('console.iperf_client_heading')">
           <AlertBanner v-if="result?.status === 'done'" tone="success" :title="t('console.iperf_client_done')">{{ metrics }}</AlertBanner>
-          <AlertBanner v-else-if="result" tone="destructive">{{ t(`console.iperf_client_${result.status}`) }} {{ result.detail ?? '' }}</AlertBanner>
-          <FormField v-slot="field" :label="t('console.iperf_client_host')" :span="6">
-            <Input :id="field.id" v-model="client.host" inputmode="decimal" autocomplete="off" required />
+          <AlertBanner v-else-if="result" tone="destructive">{{ resultText }}</AlertBanner>
+          <FormField v-slot="field" :label="t('console.iperf_client_host')" :span="6" :error="clientInvalid('host')">
+            <Input :id="field.id" v-model="client.host" inputmode="decimal" autocomplete="off" required :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.iperf_client_port')" :span="6">
+          <FormField v-slot="field" :label="t('console.iperf_client_port')" :span="6" :error="clientInvalid('port')">
             <NumberField :id="field.id" v-model="client.port" :min="1" :max="65535" :grouping="false" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.iperf_client_seconds')" :span="6">
+          <FormField v-slot="field" :label="t('console.iperf_client_seconds')" :span="6" :error="clientInvalid('seconds')">
             <NumberField :id="field.id" v-model="client.seconds" :min="1" :max="30" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.iperf_client_mbps')" :span="6">
+          <FormField v-slot="field" :label="t('console.iperf_client_mbps')" :span="6" :error="clientInvalid('mbps')">
             <NumberField :id="field.id" v-model="client.mbps" :min="1" :max="1000" />
           </FormField>
           <FormField :label="t('console.iperf_client_protocol')" group :span="6">
@@ -234,8 +263,8 @@ const metrics = computed(() => {
       <TrafficCard feature="iperf3" />
 
       <AppDialog v-model:open="portOpen" :title="t('console.iperf_change_port')" :description="t('vps.iperf.portDescription')">
-        <FormField v-slot="field" :label="t('console.iperf_port')">
-          <Input :id="field.id" v-model="newPort" inputmode="numeric" autocomplete="off" placeholder="••••••" @keydown.enter.prevent="savePort" />
+        <FormField v-slot="field" :label="t('console.iperf_port')" :error="fieldError(failure, 'port', { codes: portText })">
+          <Input :id="field.id" v-model="newPort" inputmode="numeric" autocomplete="off" placeholder="••••••" :aria-invalid="field.invalid" :aria-describedby="field.describedby" @keydown.enter.prevent="savePort" />
         </FormField>
         <template #footer>
           <Button variant="outline" @click="portOpen = false">{{ t('console.node_cancel') }}</Button>

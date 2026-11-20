@@ -14,7 +14,8 @@ import PageSection from '@/components/app/PageSection.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
 import ModuleInstall from '@/components/vps/ModuleInstall.vue'
 import { Button } from '@/components/ui/button'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // IP 证书: 控制台在本机公网 IPv4 上使用 Let's Encrypt 证书. 开关作为模块任务在后台进行, 进行中每 3 秒刷新.
@@ -52,8 +53,7 @@ async function toggle(enable: boolean) {
     await api('modules/action', { method: 'POST', body: { module: 'ipcert', action: enable ? 'enable' : 'disable' } })
     await load()
   } catch (err) {
-    const code = err instanceof ApiError ? err.code : ''
-    if (!isSignedOut(err)) showToast(t(ERRORS[code] ?? 'vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err, { codes: (code) => (ERRORS[code] ? t(ERRORS[code]!) : undefined) }), 'destructive')
   } finally {
     busy.value = false
   }

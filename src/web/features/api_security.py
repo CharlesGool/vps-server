@@ -5,6 +5,8 @@ Every route needs a password session with a recent admin re-verification
 Each change returns the whole page state so the page never shows stale data.
 """
 
+from security_events import DEFAULT_BARK_SERVER, valid_bark_server
+
 
 class SecurityApiMixin:
     API_ROUTES_SECURITY = {
@@ -139,11 +141,12 @@ class SecurityApiMixin:
             return
         password, confirm = body.get("password"), body.get("confirm")
         if not isinstance(password, str) or password != confirm:
-            return self.api_error(400, "password_mismatch")
+            return self.api_error(400, "password_mismatch", field="confirm")
         try:
             self.context.change_admin_password(password)
         except ValueError:
-            return self.api_error(400, "weak_password")
+            return self.api_error(400, "weak_password", field="password", reason=(
+                "too_short" if len(password) < 12 else "too_long" if len(password) > 128 else "format"))
         except OSError:
             return self.api_error(500, "failed")
         self.audit("password_changed")
@@ -169,18 +172,18 @@ class SecurityApiMixin:
             return
         address = body.get("address")
         if not isinstance(address, str):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="address", reason="required" if address is None else "type")
         context = self.context
         try:
             context.ipaddress.ip_address(address.strip())
         except ValueError:
-            return self.api_error(400, "invalid_address")
+            return self.api_error(400, "invalid_address", field="address", reason="format" if address.strip() else "required")
         try:
             canonical = context.normalized_private_ip(address.strip())
         except ValueError:
-            return self.api_error(400, "address_not_allowed")
+            return self.api_error(400, "address_not_allowed", field="address")
         if add and canonical in context.IP_ALLOWLIST.list_addresses():
-            return self.api_error(400, "duplicate_address")
+            return self.api_error(400, "duplicate_address", field="address", reason="exists")
         try:
             context.IP_ALLOWLIST.change(canonical, add=add)
         except ValueError:
@@ -202,7 +205,7 @@ class SecurityApiMixin:
             return
         mode = body.get("mode")
         if mode not in self.context.LOGIN_MODES:
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="mode", reason="format" if mode else "required")
         # Only a browser that already holds an active certificate may demand one.
         if mode in ("cert", "both") and self.client_certificate() is None:
             return self.api_error(400, "client_cert_need_current")
@@ -221,11 +224,12 @@ class SecurityApiMixin:
             return
         name = body.get("name")
         if not isinstance(name, str):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="name", reason="required" if name is None else "type")
         try:
             bundle, password, entry = self.context.CLIENT_AUTH.issue(name)
         except self.context.ClientCertError as exc:
-            return self.api_error(400, exc.code)
+            return self.api_error(400, exc.code, **({"field": "name", "reason": "format"}
+                                                    if exc.code == "client_cert_name_invalid" else {}))
         except OSError:
             return self.api_error(500, "client_cert_error")
         self.audit("cert_issued", name)
@@ -293,14 +297,16 @@ class SecurityApiMixin:
             self.audit("login_ban_cleared")
             self._security_reply()
 
-    def _console_access(self, change):
+    def _console_access(self, change, field=None):
+        """Run one change to the console access list; ``field`` is the request key an invalid value is in."""
         body = self._security_body()
         if body is None:
             return
         try:
             change(self.context.CONSOLE_ACCESS, body)
         except self.context.ConsoleAccessError as exc:
-            return self.api_error(400, str(exc))
+            reason = {"console_access_invalid": "format", "console_access_too_wide": "range"}.get(str(exc))
+            return self.api_error(400, str(exc), **({"field": field, "reason": reason} if field and reason else {}))
         except (TypeError, KeyError, AttributeError):
             return self.api_error(400, "invalid_request")
         except OSError:
@@ -319,7 +325,7 @@ class SecurityApiMixin:
         def change(access, body):
             network = access.add(str(body["network"]).strip())
             self.audit("console_access_added", network)
-        return self._console_access(change)
+        return self._console_access(change, "network")
 
     def api_security_console_access_remove(self):
         def change(access, body):
@@ -353,13 +359,17 @@ class SecurityApiMixin:
         if body is None:
             return
         server, key = body.get("server"), body.get("key", "")
-        if not isinstance(server, str) or not isinstance(key, str) or \
-                not isinstance(body.get("newIp"), bool) or not isinstance(body.get("ban"), bool):
-            return self.api_error(400, "invalid_request")
+        for name, value, kind in (("server", server, str), ("key", key, str), ("newIp", body.get("newIp"), bool),
+                                  ("ban", body.get("ban"), bool)):
+            if not isinstance(value, kind):
+                return self.api_error(400, "invalid_request", field=name, reason="type")
         try:
             self.context.ALERTS.update(server=server, key=key, new_ip=body["newIp"], ban=body["ban"])
-        except ValueError:
-            return self.api_error(400, "alerts_invalid")
+        except ValueError as exc:
+            # Too many keys names no single input; otherwise the server or the key is not valid.
+            field = (None if str(exc) != "invalid alert settings" else
+                     "server" if not valid_bark_server(server.strip().rstrip("/") or DEFAULT_BARK_SERVER) else "key")
+            return self.api_error(400, "alerts_invalid", **({"field": field, "reason": "format"} if field else {}))
         except OSError:
             return self.api_error(500, "alerts_error")
         self.audit("alerts_saved")
@@ -380,8 +390,9 @@ class SecurityApiMixin:
             return
         try:
             self.context.ALERTS.add_key(body.get("key"))
-        except ValueError:
-            return self.api_error(400, "alerts_invalid")
+        except ValueError as exc:
+            return self.api_error(400, "alerts_invalid", **({"field": "key", "reason": "format" if body.get("key") else "required"}
+                                                            if str(exc) == "invalid key" else {}))
         except OSError:
             return self.api_error(500, "alerts_error")
         self.audit("alerts_key_added")

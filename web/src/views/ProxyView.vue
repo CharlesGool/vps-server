@@ -28,7 +28,8 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // Singbox 节点: 每个节点一张整行卡片(启停开关, 端口和凭据默认遮住, SNI, 访问范围, 本机地址, Clash 订阅的复制/导入/二维码, 流量,
@@ -67,17 +68,34 @@ async function load() {
   try {
     apply({ ...(await api<Proxy>('proxy')), message: null })
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  protocol: t('console.node_protocol'),
+  name: t('console.node_name'),
+  port: t('console.proxy_port'),
+  credential: t('console.node_credential'),
+  sni: t('console.proxy_sni'),
+}))
+const nodeText = (code: string) => t(code === 'invalid_destinations' ? 'vps.proxy.invalidDestinations' : 'console.node_settings_failed')
+// 最近一次失败的请求和它的路径(新建或编辑), 用来标出那张表单里对应的字段
+const failure = ref<{ path: string; error: unknown }>()
+const invalid = (path: string, field: string) => (failure.value?.path === path ? fieldError(failure.value.error, field) : undefined)
+const portText = () => t('vps.error.field', { field: t('console.proxy_port'), reason: t('vps.error.reason.format') })
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
+  failure.value = undefined
   try {
     apply(await api<Proxy>(path, { method, body }))
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t(err instanceof ApiError && err.code === 'invalid_destinations' ? 'vps.proxy.invalidDestinations' : 'console.node_settings_failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = { path, error: err }
+      showToast(errorText(err, { codes: nodeText, labels: labels.value }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -130,11 +148,12 @@ const edit = ref({ name: '', port: '', credential: '', sni: '' })
 function openEdit(node: Node) {
   editing.value = node
   edit.value = { name: node.name, port: '', credential: '', sni: node.sni ?? '' }
+  failure.value = undefined
   editOpen.value = true
 }
 async function saveEdit() {
   const port = edit.value.port.trim()
-  if (port && !/^\d+$/.test(port)) return showToast(t('console.node_settings_failed'), 'destructive')
+  if (port && !/^\d+$/.test(port)) return showToast(portText(), 'destructive')
   const body = { id: editing.value!.id, name: edit.value.name.trim(), port: port ? Number(port) : null, credential: edit.value.credential, sni: edit.value.sni }
   if (await send('proxy/edit', body, 'PUT')) editOpen.value = false
 }
@@ -161,7 +180,7 @@ const create = ref({ protocol: 'anytls', name: '', port: '', credential: '', sni
 const protocolOptions = computed(() => (data.value?.protocols ?? []).map((value) => ({ value, label: value })))
 async function submitCreate() {
   const port = create.value.port.trim()
-  if (port && !/^\d+$/.test(port)) return showToast(t('console.node_settings_failed'), 'destructive')
+  if (port && !/^\d+$/.test(port)) return showToast(portText(), 'destructive')
   const ok = await send('proxy/create', { ...create.value, name: create.value.name.trim(), port: port ? Number(port) : null })
   if (ok) create.value = { protocol: create.value.protocol, name: '', port: '', credential: '', sni: 'www.bing.com' }
 }
@@ -242,17 +261,17 @@ async function submitCreate() {
           <FormField :label="t('console.node_protocol')" group>
             <SegmentedControl v-model="create.protocol" :options="protocolOptions" :label="t('console.node_protocol')" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.node_name')" :span="6">
-            <Input :id="field.id" v-model="create.name" maxlength="64" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.node_name')" :span="6" :error="invalid('proxy/create', 'name')">
+            <Input :id="field.id" v-model="create.name" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
-            <Input :id="field.id" v-model="create.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_random_port')" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.proxy_port')" :span="6" :error="invalid('proxy/create', 'port')">
+            <Input :id="field.id" v-model="create.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_random_port')" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.node_credential')" :span="create.protocol === 'shadowsocks' ? 12 : 6">
-            <PasswordInput :id="field.id" v-model="create.credential" autocomplete="new-password" :placeholder="t('console.node_credential_random')" />
+          <FormField v-slot="field" :label="t('console.node_credential')" :span="create.protocol === 'shadowsocks' ? 12 : 6" :error="invalid('proxy/create', 'credential')">
+            <PasswordInput :id="field.id" v-model="create.credential" autocomplete="new-password" :placeholder="t('console.node_credential_random')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-if="create.protocol !== 'shadowsocks'" v-slot="field" :label="t('console.proxy_sni')" :span="6">
-            <Input :id="field.id" v-model="create.sni" maxlength="253" :placeholder="t('console.node_sni_optional')" autocomplete="off" />
+          <FormField v-if="create.protocol !== 'shadowsocks'" v-slot="field" :label="t('console.proxy_sni')" :span="6" :error="invalid('proxy/create', 'sni')">
+            <Input :id="field.id" v-model="create.sni" maxlength="253" :placeholder="t('console.node_sni_optional')" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <Button type="submit" :disabled="busy || !create.name.trim()"><Plus aria-hidden="true" />{{ t('console.node_create') }}</Button>
@@ -262,17 +281,17 @@ async function submitCreate() {
     </template>
 
     <AppDialog v-model:open="editOpen" :title="`${t('console.node_manage')} ${editing?.name ?? ''}`">
-      <FormField v-slot="field" :label="t('console.node_name')" :span="6">
-        <Input :id="field.id" v-model="edit.name" maxlength="64" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.node_name')" :span="6" :error="invalid('proxy/edit', 'name')">
+        <Input :id="field.id" v-model="edit.name" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
-        <Input :id="field.id" v-model="edit.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_keep_port')" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6" :error="invalid('proxy/edit', 'port')">
+        <Input :id="field.id" v-model="edit.port" inputmode="numeric" maxlength="5" :placeholder="t('console.node_keep_port')" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.node_credential')" :span="editing?.sni === null ? 12 : 6">
-        <PasswordInput :id="field.id" v-model="edit.credential" autocomplete="new-password" :placeholder="t('console.node_keep_credential')" />
+      <FormField v-slot="field" :label="t('console.node_credential')" :span="editing?.sni === null ? 12 : 6" :error="invalid('proxy/edit', 'credential')">
+        <PasswordInput :id="field.id" v-model="edit.credential" autocomplete="new-password" :placeholder="t('console.node_keep_credential')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-if="editing?.sni !== null" v-slot="field" :label="t('console.proxy_sni')" :span="6">
-        <Input :id="field.id" v-model="edit.sni" maxlength="253" autocomplete="off" />
+      <FormField v-if="editing?.sni !== null" v-slot="field" :label="t('console.proxy_sni')" :span="6" :error="invalid('proxy/edit', 'sni')">
+        <Input :id="field.id" v-model="edit.sni" maxlength="253" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="editOpen = false">{{ t('console.node_cancel') }}</Button>

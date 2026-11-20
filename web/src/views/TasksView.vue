@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError, scheduleLabels, shownInline } from '@/lib/errors'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
@@ -56,7 +57,7 @@ interface Tasks {
   message: string | null
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { state, guard } = useSecurePage()
 const data = ref<Tasks>()
 const busy = ref(false)
@@ -81,20 +82,28 @@ function expired(err: unknown) {
   state.value = err.code === 'security_required' ? 'verify' : 'ip'
   return true
 }
-const errorText = (err: unknown) => {
-  const code = err instanceof ApiError ? err.code : 'invalid'
-  const text = t(`console.task_error_${code}`)
-  return text === `console.task_error_${code}` ? t('console.task_error_invalid') : text
-}
+const taskText = (code: string) => (te(`console.task_error_${code}`) ? t(`console.task_error_${code}`) : t('console.task_error_invalid'))
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  name: t('console.task_name'),
+  command: t('console.task_command'),
+  timeout: t('console.task_timeout'),
+  ...scheduleLabels('spec'),
+}))
+// 最近一次失败的请求(成功或换一个任务编辑时清空), 用来标出表单里对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field, { codes: taskText })
 // 返回 '' 表示成功, 错误文字, 或 undefined(已转到登录页或验证卡片)
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
+  failure.value = undefined
   try {
     apply(await api<Tasks>(path, { method, body }))
     return ''
   } catch (err) {
     if (isSignedOut(err) || expired(err)) return undefined
-    return errorText(err)
+    failure.value = err
+    return errorText(err, { codes: taskText, labels: labels.value })
   } finally {
     busy.value = false
   }
@@ -130,12 +139,14 @@ function reset() {
   form.value = blank()
   spec.value = { mode: 'daily', time: '03:00:00' }
   formError.value = ''
+  failure.value = undefined
   formKey.value += 1
 }
 function openForm(task: Task) {
   form.value = { id: task.id, name: task.name, command: task.command, timeout: task.timeout, notify: task.notify, enabled: task.enabled }
   spec.value = task.spec ?? { mode: 'daily', time: '03:00:00' }
   formError.value = ''
+  failure.value = undefined
   formKey.value += 1
   void nextTick(() => document.getElementById('task-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
@@ -212,15 +223,15 @@ async function save() {
       <CardForm id="task-form" @submit.prevent="save">
         <PageSection :cols="4" :title="form.id ? t('console.task_edit_heading') : t('console.task_add')" :description="t('console.task_run_as_root')">
           <EmptyState v-if="!data.tasks.length && !form.id" :icon="Play" :title="t('vps.tasks.empty')" />
-          <AlertBanner v-if="formError" tone="destructive">{{ formError }}</AlertBanner>
-          <FormField v-slot="field" :label="t('console.task_name')">
-            <Input :id="field.id" v-model="form.name" :maxlength="data.limits.nameMax" autocomplete="off" />
+          <AlertBanner v-if="formError && !shownInline(failure, labels)" tone="destructive">{{ formError }}</AlertBanner>
+          <FormField v-slot="field" :label="t('console.task_name')" :error="invalid('name')">
+            <Input :id="field.id" v-model="form.name" :maxlength="data.limits.nameMax" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <ScheduleFields :key="formKey" v-model="spec" :timezone="data.timezone" />
-          <FormField v-slot="field" :label="t('console.task_command')">
-            <Textarea :id="field.id" v-model="form.command" :maxlength="data.limits.commandMax" spellcheck="false" class="font-mono" />
+          <ScheduleFields :key="formKey" v-model="spec" :timezone="data.timezone" :error="(key: string) => invalid(`spec.${key}`)" />
+          <FormField v-slot="field" :label="t('console.task_command')" :error="invalid('command')">
+            <Textarea :id="field.id" v-model="form.command" :maxlength="data.limits.commandMax" spellcheck="false" class="font-mono" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.task_timeout')">
+          <FormField v-slot="field" :label="t('console.task_timeout')" :error="invalid('timeout')">
             <NumberField :id="field.id" v-model="form.timeout" :min="data.limits.timeoutMin" :max="data.limits.timeoutMax" />
           </FormField>
           <CheckboxField v-model="form.notify" :label="t('console.task_notify')" :span="6" />

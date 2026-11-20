@@ -27,6 +27,7 @@ import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError, scheduleLabels } from '@/lib/errors'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
@@ -47,7 +48,7 @@ interface Backup {
   message: string | null
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { state, guard } = useSecurePage()
 const data = ref<Backup>()
 const busy = ref(false)
@@ -80,18 +81,24 @@ function expired(err: unknown) {
   state.value = err.code === 'security_required' ? 'verify' : 'ip'
   return true
 }
-const errorText = (err: unknown) => {
-  const code = err instanceof ApiError ? err.code : 'failed'
-  const key = `console.backup_error_${code}`
-  return t(key) === key ? t('console.backup_error_failed') : t(key)
-}
+const backupText = (code: string) => (te(`console.backup_error_${code}`) ? t(`console.backup_error_${code}`) : t('console.backup_error_failed'))
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({ keep: t('console.backup_keep'), public: t('console.backup_enc_own'), ...scheduleLabels('spec') }))
+const failText = (err: unknown) => errorText(err, { codes: backupText, labels: labels.value })
+// 最近一次失败的请求(成功后清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field, { codes: backupText })
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
+  failure.value = undefined
   try {
     apply(await api<Backup>(path, { method, body }))
     return true
   } catch (err) {
-    if (!isSignedOut(err) && !expired(err)) showToast(errorText(err), 'destructive')
+    if (!isSignedOut(err) && !expired(err)) {
+      failure.value = err
+      showToast(failText(err), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -161,7 +168,7 @@ async function generateKey() {
   try {
     newKey.value = await api('backup/key/new', { method: 'POST', body: {} })
   } catch (err) {
-    if (!isSignedOut(err) && !expired(err)) showToast(errorText(err), 'destructive')
+    if (!isSignedOut(err) && !expired(err)) showToast(failText(err), 'destructive')
   } finally {
     busy.value = false
   }
@@ -192,7 +199,7 @@ async function upload() {
     picked.value = []
     apply(body as Backup)
   } catch (err) {
-    if (!expired(err)) showToast(errorText(err), 'destructive')
+    if (!expired(err)) showToast(failText(err), 'destructive')
   } finally {
     busy.value = false
   }
@@ -234,8 +241,8 @@ const dataText = computed(() => {
       <CardForm @submit.prevent="send('backup/settings', { enabled, spec, keep }, 'PUT')">
         <PageSection :cols="4" :title="t('console.backup_schedule')" :description="t('console.backup_schedule_help')">
           <CheckboxField v-model="enabled" :label="t('console.backup_enabled')" />
-          <ScheduleFields v-if="ready" v-model="spec" :timezone="data.timezone" />
-          <FormField v-slot="field" :label="t('console.backup_keep')">
+          <ScheduleFields v-if="ready" v-model="spec" :timezone="data.timezone" :error="(key: string) => invalid(`spec.${key}`)" />
+          <FormField v-slot="field" :label="t('console.backup_keep')" :error="invalid('keep')">
             <NumberField :id="field.id" v-model="keep" :min="1" :max="data.keepMax" />
           </FormField>
           <p class="text-sm text-muted-foreground">
@@ -275,8 +282,8 @@ const dataText = computed(() => {
           <p class="text-sm text-muted-foreground">
             {{ data.encryption.on ? t('console.backup_enc_on_text', { fp: data.encryption.fingerprint }) : t('console.backup_enc_off_text') }}
           </p>
-          <FormField v-slot="field" :label="t('console.backup_enc_own')">
-            <Input :id="field.id" v-model="publicKey" maxlength="64" spellcheck="false" autocomplete="off" class="font-mono" :placeholder="t('console.backup_enc_own_placeholder')" />
+          <FormField v-slot="field" :label="t('console.backup_enc_own')" :error="invalid('public')">
+            <Input :id="field.id" v-model="publicKey" maxlength="64" spellcheck="false" autocomplete="off" class="font-mono" :placeholder="t('console.backup_enc_own_placeholder')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <ConfirmDialog

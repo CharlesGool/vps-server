@@ -1,6 +1,38 @@
 """JSON API for the iperf3 page: the time-boxed server window and the outbound client test,
 plus masked values (ports, commands, credentials) shared by every page."""
 
+import ipaddress
+
+from field_errors import FieldError, details
+
+# How the outbound test checks its settings (iperf_client.IperfClient.run): (low, high) per number.
+CLIENT_RANGES = {"port": (1, 65535), "seconds": (1, 30), "mbps": (1, 1000)}
+CLIENT_CHOICES = {"protocol": ("tcp", "udp"), "direction": ("upload", "download")}
+# iperf_set_port's refusals that are about the port itself.
+PORT_REASONS = {"invalid port": "range", "reserved port": "port_in_use", "busy port": "port_in_use"}
+
+
+def client_problem(values):
+    """The FieldError for test settings the client refuses (status "invalid"), or None."""
+    host = values["host"]
+    try:
+        address = ipaddress.ip_address(host)
+        if address.is_unspecified or address.is_multicast or "%" in host:
+            raise ValueError(host)
+    except ValueError:
+        return FieldError("host", "format" if host else "required")
+    for name, (low, high) in CLIENT_RANGES.items():
+        try:
+            number = int(values[name])
+        except ValueError:
+            return FieldError(name, "format" if values[name] else "required")
+        if not low <= number <= high:
+            return FieldError(name, "range")
+    for name, allowed in CLIENT_CHOICES.items():
+        if values[name] not in allowed:
+            return FieldError(name, "format")
+    return None
+
 
 class IperfApiMixin:
     API_ROUTES_IPERF = {
@@ -55,11 +87,12 @@ class IperfApiMixin:
         body = self.read_json()
         port = (body or {}).get("port")
         if not isinstance(port, int) or isinstance(port, bool):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="port", reason="required" if port is None else "type")
         try:
             self.iperf_set_port(port)
-        except ValueError:
-            return self.api_error(400, "iperf_port_invalid")
+        except ValueError as exc:
+            reason = PORT_REASONS.get(str(exc))
+            return self.api_error(400, "iperf_port_invalid", **({"field": "port", "reason": reason} if reason else {}))
         return self.api_ok(self.iperf_state("iperf_port_saved"))
 
     def api_iperf_client(self):
@@ -68,13 +101,19 @@ class IperfApiMixin:
             return
         body = self.read_json()
         fields = ("host", "port", "seconds", "mbps", "protocol", "direction")
-        if body is None or any(not isinstance(body.get(name), (str, int)) or isinstance(body.get(name), bool)
-                               for name in fields):
+        if body is None:
             return self.api_error(400, "invalid_request")
+        for name in fields:
+            if not isinstance(body.get(name), (str, int)) or isinstance(body.get(name), bool):
+                return self.api_error(400, "invalid_request", field=name,
+                                      reason="required" if body.get(name) is None else "type")
         values = {name: str(body[name]) for name in fields}
         result = ({"status": "disabled"} if not context.IPERF_ENABLED else
                   context.IPERF_CLIENT.run(values["host"], values["port"], values["protocol"],
                                            values["direction"], values["seconds"], values["mbps"]))
+        if isinstance(result, dict) and result.get("status") == "invalid":
+            # The test was refused for its settings: say which one.
+            result = {**result, **details(client_problem(values))}
         return self.api_ok(result)
 
     def api_private_value(self):

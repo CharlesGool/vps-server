@@ -22,7 +22,7 @@ metadata:
 
 ## 接口
 
-请求和响应都是 JSON. 成功返回 200; 失败返回 4xx/5xx 和 `{"error": "<代码>"}`.
+请求和响应都是 JSON. 成功返回 200; 失败返回 4xx/5xx 和 `{"error": "<代码>"}`. 因某一项输入被拒绝时还可能带 `field`(请求体里的键, 嵌套用点号)和 `reason`(`required`, `type`, `format`, `range`, `too_long`, `too_short`, `exists`, `not_found`, `past`, `port_in_use` 之一); `error` 代码不受影响.
 
 | 方法和路径 | 权限 | 作用 |
 | --- | --- | --- |

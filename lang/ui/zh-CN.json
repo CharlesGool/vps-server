@@ -467,6 +467,22 @@
     "settingsDescription": "外观和语言."
   },
   "vps": {
+    "error": {
+      "field": "{field}: {reason}",
+      "detail": "{text} ({detail})",
+      "reason": {
+        "required": "必填",
+        "type": "类型不对",
+        "format": "格式不对",
+        "range": "超出允许范围",
+        "too_long": "太长",
+        "too_short": "太短",
+        "exists": "已存在",
+        "not_found": "不存在",
+        "past": "时间已过",
+        "port_in_use": "端口已被占用"
+      }
+    },
     "common": {
       "failed": "操作失败, 请重试.",
       "done": "完成",

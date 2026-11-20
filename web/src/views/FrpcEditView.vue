@@ -24,6 +24,7 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // FRPC 实例: 没有 name 时是新建表单; 有 name 时是服务器(遮住的地址, 端口, token, 编辑和重命名), 流量, 代理表格, STCP 访问者表格.
@@ -50,7 +51,7 @@ async function load() {
     data.value = await api<Client>(`frpc/client?name=${encodeURIComponent(name.value)}`)
   } catch (err) {
     if (isSignedOut(err)) return
-    showToast(t('vps.common.failed'), 'destructive')
+    showToast(errorText(err), 'destructive')
     await router.replace('/frpc')
   }
 }
@@ -62,15 +63,40 @@ watch(name, () => {
 // ---- 后台任务 ----
 let timer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(timer))
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签(同一时间只有一个表单或对话框在用)
+const labels = computed(() => ({
+  name: t('console.frp_instance_name'),
+  newName: t('console.frp_instance_name'),
+  server: t('console.frp_server_ip'),
+  port: t('console.proxy_port'),
+  token: t('console.frps_token'),
+  'proxy.name': t('console.proxy_name'),
+  'proxy.type': t('console.proxy_type'),
+  'proxy.localIP': t('console.frp_local_ip'),
+  'proxy.localPort': t('console.frp_local_port'),
+  'proxy.remotePort': t('console.frp_server_port'),
+  'proxy.secretKey': t('console.frp_secret_key'),
+  'visitor.name': t('console.proxy_name'),
+  'visitor.serverName': t('console.frp_visitor_target'),
+  'visitor.bindPort': t('console.frp_visitor_bind_port'),
+  'visitor.secretKey': t('console.frp_secret_key'),
+}))
+// 最近一次被拒绝的修改(新的修改开始或打开对话框时清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field)
 async function change(body: Record<string, unknown>) {
   saving.value = true
+  failure.value = undefined
   try {
     const { job, name: next } = await api<{ job: string; name: string }>('frpc/change', { method: 'POST', body })
     await poll(job, next)
     return true
   } catch (err) {
     saving.value = false
-    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      showToast(errorText(err, { codes: () => t('console.frp_save_failed'), labels: labels.value }), 'destructive')
+    }
     return false
   }
 }
@@ -114,6 +140,7 @@ const serverOpen = ref(false)
 const server = ref({ server: '', port: 7000, token: '' })
 async function openServer() {
   server.value = { server: '', port: 7000, token: '' }
+  failure.value = undefined
   serverOpen.value = true
   // 填入当前值(页面上遮住, 这里取一次)
   const read = (field: string) => api<{ value: string }>(`private-value?id=${encodeURIComponent(`frpc:${name.value}`)}&field=${field}`).then((reply) => reply.value)
@@ -155,6 +182,7 @@ function openProxy(index: number | null) {
   proxy.value = item
     ? { name: item.name, type: item.type, localIP: item.localIP, localPort: item.localPort, remotePort: item.remotePort ?? 0, secretKey: '' }
     : { name: '', type: 'tcp', localIP: '127.0.0.1', localPort: 80, remotePort: 0, secretKey: '' }
+  failure.value = undefined
   proxyOpen.value = true
 }
 async function saveProxy() {
@@ -181,6 +209,7 @@ function openVisitor(index: number | null) {
   const item = index === null ? undefined : data.value?.visitors?.[index]
   visitorIndex.value = index
   visitor.value = item ? { name: item.name, serverName: item.serverName, bindPort: item.bindPort, secretKey: '' } : { name: '', serverName: '', bindPort: 6000, secretKey: '' }
+  failure.value = undefined
   visitorOpen.value = true
 }
 async function saveVisitor() {
@@ -209,17 +238,17 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     <!-- 新建实例 -->
     <CardForm v-if="!name" @submit.prevent="submitCreate">
       <PageSection :cols="4" :title="t('console.frp_server_settings')">
-        <FormField v-slot="field" :label="t('console.frp_instance_name')" :span="6">
-          <Input :id="field.id" v-model="create.name" maxlength="32" autocomplete="off" />
+        <FormField v-slot="field" :label="t('console.frp_instance_name')" :span="6" :error="invalid('name')">
+          <Input :id="field.id" v-model="create.name" maxlength="32" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
         </FormField>
-        <FormField v-slot="field" :label="t('console.frp_server_ip')" :span="6">
-          <Input :id="field.id" v-model="create.server" autocomplete="off" />
+        <FormField v-slot="field" :label="t('console.frp_server_ip')" :span="6" :error="invalid('server')">
+          <Input :id="field.id" v-model="create.server" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
         </FormField>
-        <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
+        <FormField v-slot="field" :label="t('console.proxy_port')" :span="6" :error="invalid('port')">
           <NumberField :id="field.id" v-model="create.port" :min="1" :max="65535" :grouping="false" />
         </FormField>
-        <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
-          <PasswordInput :id="field.id" v-model="create.token" maxlength="128" autocomplete="new-password" />
+        <FormField v-slot="field" :label="t('console.frps_token')" :span="6" :error="invalid('token')">
+          <PasswordInput :id="field.id" v-model="create.token" maxlength="128" autocomplete="new-password" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
         </FormField>
         <AlertBanner v-if="saving" tone="info">{{ t('console.frp_saving') }}</AlertBanner>
         <FormActions>
@@ -242,7 +271,7 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
           </template>
         </DescriptionList>
         <FormActions>
-          <Button variant="outline" :disabled="saving" @click="((newName = name), (renameOpen = true))">{{ t('console.frp_rename_client') }}</Button>
+          <Button variant="outline" :disabled="saving" @click="((newName = name), (failure = undefined), (renameOpen = true))">{{ t('console.frp_rename_client') }}</Button>
           <Button v-if="data.supported" variant="outline" :disabled="saving" @click="openServer"><Pencil aria-hidden="true" />{{ t('console.frp_edit_target') }}</Button>
         </FormActions>
       </PageSection>
@@ -285,14 +314,14 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     </template>
 
     <AppDialog v-model:open="serverOpen" :title="t('console.frp_edit_target')">
-      <FormField v-slot="field" :label="t('console.frp_server_ip')">
-        <Input :id="field.id" v-model="server.server" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.frp_server_ip')" :error="invalid('server')">
+        <Input :id="field.id" v-model="server.server" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.proxy_port')" :span="6" :error="invalid('port')">
         <NumberField :id="field.id" v-model="server.port" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frps_token')" :span="6">
-        <PasswordInput :id="field.id" v-model="server.token" maxlength="128" autocomplete="new-password" />
+      <FormField v-slot="field" :label="t('console.frps_token')" :span="6" :error="invalid('token')">
+        <PasswordInput :id="field.id" v-model="server.token" maxlength="128" autocomplete="new-password" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="serverOpen = false">{{ t('console.node_cancel') }}</Button>
@@ -301,8 +330,8 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     </AppDialog>
 
     <AppDialog v-model:open="renameOpen" :title="t('console.frp_rename_client')">
-      <FormField v-slot="field" :label="t('console.frp_instance_name')">
-        <Input :id="field.id" v-model="newName" maxlength="32" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.frp_instance_name')" :error="invalid('newName')">
+        <Input :id="field.id" v-model="newName" maxlength="32" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="renameOpen = false">{{ t('console.node_cancel') }}</Button>
@@ -311,22 +340,22 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     </AppDialog>
 
     <AppDialog v-model:open="proxyOpen" :title="proxyIndex === null ? t('console.frp_add_proxy') : t('console.frp_edit_proxy')">
-      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6">
-        <Input :id="field.id" v-model="proxy.name" maxlength="64" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6" :error="invalid('proxy.name')">
+        <Input :id="field.id" v-model="proxy.name" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField :label="t('console.proxy_type')" group :span="6">
+      <FormField :label="t('console.proxy_type')" group :span="6" :error="invalid('proxy.type')">
         <SegmentedControl v-model="proxy.type" :options="types" :label="t('console.proxy_type')" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frp_local_ip')" :span="6">
-        <Input :id="field.id" v-model="proxy.localIP" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.frp_local_ip')" :span="6" :error="invalid('proxy.localIP')">
+        <Input :id="field.id" v-model="proxy.localIP" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frp_local_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_local_port')" :span="6" :error="invalid('proxy.localPort')">
         <NumberField :id="field.id" v-model="proxy.localPort" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-if="proxy.type === 'stcp'" v-slot="field" :label="t('console.frp_secret_key')" :help="t('console.frp_secret_keep')">
-        <PasswordInput :id="field.id" v-model="proxy.secretKey" maxlength="128" autocomplete="new-password" />
+      <FormField v-if="proxy.type === 'stcp'" v-slot="field" :label="t('console.frp_secret_key')" :help="t('console.frp_secret_keep')" :error="invalid('proxy.secretKey')">
+        <PasswordInput :id="field.id" v-model="proxy.secretKey" maxlength="128" autocomplete="new-password" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-else v-slot="field" :label="t('console.frp_server_port')">
+      <FormField v-else v-slot="field" :label="t('console.frp_server_port')" :error="invalid('proxy.remotePort')">
         <NumberField :id="field.id" v-model="proxy.remotePort" :min="0" :max="65535" :grouping="false" />
       </FormField>
       <template #footer>
@@ -336,17 +365,17 @@ function rowAction(key: string, section: 'proxy' | 'visitor', index: number) {
     </AppDialog>
 
     <AppDialog v-model:open="visitorOpen" :title="visitorIndex === null ? t('console.frp_add_visitor') : t('console.frp_edit_proxy')" :description="t('console.frp_visitor_note')">
-      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6">
-        <Input :id="field.id" v-model="visitor.name" maxlength="64" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.proxy_name')" :span="6" :error="invalid('visitor.name')">
+        <Input :id="field.id" v-model="visitor.name" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frp_visitor_target')" :span="6">
-        <Input :id="field.id" v-model="visitor.serverName" maxlength="64" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.frp_visitor_target')" :span="6" :error="invalid('visitor.serverName')">
+        <Input :id="field.id" v-model="visitor.serverName" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frp_visitor_bind_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.frp_visitor_bind_port')" :span="6" :error="invalid('visitor.bindPort')">
         <NumberField :id="field.id" v-model="visitor.bindPort" :min="1" :max="65535" :grouping="false" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.frp_secret_key')" :span="6" :help="visitorIndex === null ? undefined : t('console.frp_secret_keep')">
-        <PasswordInput :id="field.id" v-model="visitor.secretKey" maxlength="128" autocomplete="new-password" />
+      <FormField v-slot="field" :label="t('console.frp_secret_key')" :span="6" :help="visitorIndex === null ? undefined : t('console.frp_secret_keep')" :error="invalid('visitor.secretKey')">
+        <PasswordInput :id="field.id" v-model="visitor.secretKey" maxlength="128" autocomplete="new-password" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="visitorOpen = false">{{ t('console.node_cancel') }}</Button>

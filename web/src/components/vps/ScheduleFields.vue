@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 // { mode, day, time } / { mode, month, day, time } / { mode, expr } / { mode: 'once', date, time }; 时间是 HH:MM:SS, 这里精确到分钟.
 // timezone 是服务器的时区名称, 计划按服务器本地时间运行.
 // modes 限定可选的频率(默认除每年外全部), once 为 false 时不提供"只执行一次"(如总流量重置).
+// error: 按计划里的键(time, date, days, day, month, n, unit, expr, mode)给出服务器拒绝的原因, 对应的字段显示为错误.
 export type Spec = {
   mode: 'interval' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'cron' | 'once'
   n?: number
@@ -27,7 +28,7 @@ export type Spec = {
   expr?: string
 }
 type Recurring = Exclude<Spec['mode'], 'once'>
-const props = withDefaults(defineProps<{ timezone: string; modes?: Recurring[]; once?: boolean }>(), {
+const props = withDefaults(defineProps<{ timezone: string; modes?: Recurring[]; once?: boolean; error?: (key: string) => string | undefined }>(), {
   modes: () => ['interval', 'daily', 'weekly', 'monthly', 'cron'],
   once: true,
 })
@@ -79,38 +80,38 @@ const timeHelp = computed(() => `${t('console.task_timezone')}: ${props.timezone
   <FormField v-if="once" :label="t('console.task_kind')" group :span="6">
     <SegmentedControl v-model="kind" :options="kinds" :label="t('console.task_kind')" />
   </FormField>
-  <FormField v-if="kind === 'once'" v-slot="field" :label="t('console.task_date')" :span="6">
-    <DateTimePicker :id="field.id" v-model="date" :label="t('console.task_date')" />
+  <FormField v-if="kind === 'once'" v-slot="field" :label="t('console.task_date')" :span="6" :error="error?.('date')">
+    <DateTimePicker :id="field.id" v-model="date" :label="t('console.task_date')" :invalid="field.invalid" />
   </FormField>
-  <FormField v-else :label="t('console.task_mode')" group :span="once ? 6 : 12">
+  <FormField v-else :label="t('console.task_mode')" group :span="once ? 6 : 12" :error="error?.('mode')">
     <RadioField v-model="mode" :options="modeOptions" :label="t('console.task_mode')" />
   </FormField>
   <template v-if="kind === 'recurring' && mode === 'interval'">
-    <FormField v-slot="field" :label="t('console.task_every')" :span="6">
+    <FormField v-slot="field" :label="t('console.task_every')" :span="6" :error="error?.('n')">
       <NumberField :id="field.id" v-model="n" :min="1" :max="9999" />
     </FormField>
-    <FormField :label="t('console.task_unit')" group :span="6">
+    <FormField :label="t('console.task_unit')" group :span="6" :error="error?.('unit')">
       <SegmentedControl v-model="unit" :options="units" :label="t('console.task_unit')" />
     </FormField>
   </template>
-  <FormField v-if="kind === 'recurring' && mode === 'weekly'" v-slot="field" :label="t('console.task_weekdays')" :span="6">
-    <ComboboxField :id="field.id" v-model="days" :options="weekdays" :label="t('console.task_weekdays')" multiple />
+  <FormField v-if="kind === 'recurring' && mode === 'weekly'" v-slot="field" :label="t('console.task_weekdays')" :span="6" :error="error?.('days')">
+    <ComboboxField :id="field.id" v-model="days" :options="weekdays" :label="t('console.task_weekdays')" multiple :invalid="field.invalid" />
   </FormField>
-  <FormField v-if="kind === 'recurring' && mode === 'monthly'" v-slot="field" :label="t('console.task_month_day')" :help="t('console.task_month_day_help')" :span="6">
+  <FormField v-if="kind === 'recurring' && mode === 'monthly'" v-slot="field" :label="t('console.task_month_day')" :help="t('console.task_month_day_help')" :span="6" :error="error?.('day')">
     <NumberField :id="field.id" v-model="day" :min="1" :max="31" />
   </FormField>
   <template v-if="kind === 'recurring' && mode === 'yearly'">
-    <FormField v-slot="field" :label="t('console.task_month')" :span="3">
-      <ComboboxField :id="field.id" v-model="month" :options="months" :label="t('console.task_month')" />
+    <FormField v-slot="field" :label="t('console.task_month')" :span="3" :error="error?.('month')">
+      <ComboboxField :id="field.id" v-model="month" :options="months" :label="t('console.task_month')" :invalid="field.invalid" />
     </FormField>
-    <FormField v-slot="field" :label="t('console.task_day_number')" :span="3">
+    <FormField v-slot="field" :label="t('console.task_day_number')" :span="3" :error="error?.('day')">
       <NumberField :id="field.id" v-model="day" :min="1" :max="31" />
     </FormField>
   </template>
-  <FormField v-if="showTime" v-slot="field" :label="t('console.task_time')" :help="timeHelp" :span="timeSpan">
-    <DateTimePicker :id="field.id" v-model="time" mode="time" :label="t('console.task_time')" />
+  <FormField v-if="showTime" v-slot="field" :label="t('console.task_time')" :help="timeHelp" :span="timeSpan" :error="error?.('time')">
+    <DateTimePicker :id="field.id" v-model="time" mode="time" :label="t('console.task_time')" :invalid="field.invalid" />
   </FormField>
-  <FormField v-if="kind === 'recurring' && mode === 'cron'" v-slot="field" :label="t('console.task_schedule')" :help="t('console.task_schedule_help')">
-    <Input :id="field.id" v-model="expr" maxlength="100" spellcheck="false" autocomplete="off" class="font-mono" />
+  <FormField v-if="kind === 'recurring' && mode === 'cron'" v-slot="field" :label="t('console.task_schedule')" :help="t('console.task_schedule_help')" :error="error?.('expr')">
+    <Input :id="field.id" v-model="expr" maxlength="100" spellcheck="false" autocomplete="off" class="font-mono" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
   </FormField>
 </template>

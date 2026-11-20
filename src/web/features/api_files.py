@@ -7,6 +7,28 @@ unchanged.
 
 from file_share import DEFAULT_LINK_MINUTES, GIB, LINK_MINUTES, UPLOAD_IDLE_TIMEOUT, FileShareError
 
+# The request key (and reason) a store error is about, where it names one input.
+CODE_FIELDS = {"url_invalid": ("url", "format"), "url_blocked": ("url", None),
+               "quota_invalid": ("quotaGib", "range"), "rate_invalid": ("rateMib", "range")}
+
+
+def code_field(code):
+    field, reason = CODE_FIELDS.get(code, (None, None))
+    if field is None:
+        return {}
+    return {"field": field, "reason": reason} if reason else {"field": field}
+
+
+def link_problem(minutes, limit):
+    """Which of a share link's settings FileStore.add_link refuses (``link_invalid``)."""
+    if type(minutes) is not int:
+        return {"field": "minutes", "reason": "required" if minutes is None else "type"}
+    if minutes not in LINK_MINUTES:
+        return {"field": "minutes", "reason": "format"}
+    if limit is not None:
+        return {"field": "max", "reason": "type" if type(limit) is not int else "range"}
+    return {}
+
 
 class FilesApiMixin:
     API_ROUTES_FILES = {
@@ -49,12 +71,13 @@ class FilesApiMixin:
             return True
         return False
 
-    def _files_call(self, action, message):
-        """Run one store change; FileShareError codes go back as the error."""
+    def _files_call(self, action, message, problem=code_field):
+        """Run one store change; FileShareError codes go back as the error, with the input
+        ``problem(code)`` says it is about."""
         try:
             action()
         except FileShareError as exc:
-            return self.api_error(400, exc.code)
+            return self.api_error(400, exc.code, **problem(exc.code))
         return self.api_ok(self.files_state(message))
 
     def api_files(self):
@@ -101,7 +124,7 @@ class FilesApiMixin:
             return
         url = (self.read_json() or {}).get("url")
         if not isinstance(url, str):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="url", reason="required" if url is None else "type")
         try:
             context.APP_METER.check("files")
         except context.TrafficBlocked:
@@ -125,10 +148,12 @@ class FilesApiMixin:
             return
         body = self.read_json() or {}
         file_id, minutes, limit = body.get("file"), body.get("minutes"), body.get("max")
-        if (not isinstance(file_id, str) or type(minutes) is not int or
-                not (limit is None or type(limit) is int)):
+        if not isinstance(file_id, str):
             return self.api_error(400, "link_invalid")
-        return self._files_call(lambda: self.context.FILE_STORE.add_link(file_id, minutes, limit), "files_link_added")
+        if type(minutes) is not int or not (limit is None or type(limit) is int):
+            return self.api_error(400, "link_invalid", **link_problem(minutes, limit))
+        return self._files_call(lambda: self.context.FILE_STORE.add_link(file_id, minutes, limit), "files_link_added",
+                                lambda code: link_problem(minutes, limit) if code == "link_invalid" else {})
 
     def api_files_revoke(self):
         if self._files_closed():
@@ -145,9 +170,9 @@ class FilesApiMixin:
         body = self.read_json() or {}
         quota, rate = body.get("quotaGib"), body.get("rateMib")
         if isinstance(quota, bool) or not isinstance(quota, (int, float)):
-            return self.api_error(400, "quota_invalid")
+            return self.api_error(400, "quota_invalid", field="quotaGib", reason="required" if quota is None else "type")
         if rate is not None and (isinstance(rate, bool) or not isinstance(rate, (int, float))):
-            return self.api_error(400, "rate_invalid")
+            return self.api_error(400, "rate_invalid", field="rateMib", reason="type")
         store = self.context.FILE_STORE
 
         def save():

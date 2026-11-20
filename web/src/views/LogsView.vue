@@ -15,6 +15,7 @@ import RadioField from '@/components/app/RadioField.vue'
 import SelectMenu from '@/components/app/SelectMenu.vue'
 import { Button } from '@/components/ui/button'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 详细日志: 上方一张筛选卡片(来源, 等级, 刷新, 清空), 下面每个来源一张整行卡片. 来源和等级写在地址里, 可以直接分享或刷新.
@@ -74,7 +75,7 @@ async function load() {
     const query = new URLSearchParams({ source: source.value, level: filterable.value ? level.value : 'all' })
     data.value = await api<Logs>(`logs?${query}`)
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   } finally {
     loading.value = false
   }
@@ -90,7 +91,7 @@ async function clear() {
     showToast(t('console.logs_clear_done'), 'success')
     await load()
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   } finally {
     clearing.value = false
   }

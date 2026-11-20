@@ -24,7 +24,8 @@ import StatusBadge from '@/components/app/StatusBadge.vue'
 import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 迷你网盘: 容量(用量, 上限和限速的对话框), 流量, 两种添加方式并排(服务器从链接下载, 从这台设备上传), 下载任务, 文件表格.
@@ -45,7 +46,7 @@ interface Files {
   message: string | null
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const data = ref<Files>()
 const busy = ref(false)
 
@@ -60,7 +61,19 @@ const date = (stamp: number | null) => {
   const d = new Date(stamp * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
-const errorText = (code: string) => (code.startsWith('http_') ? t('console.files_error_http', { code: code.slice(5) }) : t(`console.files_error_${code}`))
+const codeText = (code: string) =>
+  code.startsWith('http_') ? t('console.files_error_http', { code: code.slice(5) }) : te(`console.files_error_${code}`) ? t(`console.files_error_${code}`) : undefined
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  url: t('vps.files.url'),
+  quotaGib: t('console.files_quota_label'),
+  rateMib: t('console.files_rate_label'),
+  minutes: t('console.files_link_expiry'),
+  max: t('console.files_link_limit'),
+}))
+// 最近一次失败的请求(成功或重新打开对话框时清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field, { codes: codeText })
 
 // 有下载任务在进行时每 2 秒刷新
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -74,7 +87,7 @@ async function load() {
   try {
     apply({ ...(await api<Files>('files')), message: null })
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
@@ -84,10 +97,13 @@ async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
   try {
     apply(await api<Files>(path, { method, body }))
+    failure.value = undefined
     return true
   } catch (err) {
-    if (err instanceof ApiError && err.status === 400) showToast(errorText(err.code), 'destructive')
-    else if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      showToast(errorText(err, { codes: codeText, labels: labels.value }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -103,6 +119,7 @@ const rateMib = ref('')
 function openLimits() {
   quotaGib.value = String(data.value!.quota / 1024 ** 3)
   rateMib.value = data.value!.rate ? String(data.value!.rate / 1024 ** 2) : ''
+  failure.value = undefined
   limitsOpen.value = true
 }
 async function saveLimits() {
@@ -141,7 +158,7 @@ function upload() {
     if (request.status === 200 && body.files) {
       picked.value = []
       apply(body as Files)
-    } else showToast(body.error ? errorText(body.error) : t('console.files_upload_failed'), 'destructive')
+    } else showToast((body.error && codeText(body.error)) || t('console.files_upload_failed'), 'destructive')
   }
   request.onerror = () => {
     uploadPercent.value = undefined
@@ -165,7 +182,7 @@ const jobDetail = (job: Job) =>
       : size(job.bytes)
     : job.state === 'done'
       ? size(job.bytes)
-      : errorText(job.error)
+      : (codeText(job.error) ?? job.error)
 const JOB_STATES = {
   running: { tone: 'info', key: 'console.files_job_running' },
   done: { tone: 'success', key: 'console.files_job_done' },
@@ -211,11 +228,12 @@ const minuteOptions = computed(() => (data.value?.linkMinutes ?? []).map((value)
 function openLinks(entry: FileEntry) {
   minutes.value = String(data.value!.defaultLinkMinutes)
   maxDownloads.value = ''
+  failure.value = undefined
   linksFor.value = entry.id
 }
 async function addLink() {
   const limit = maxDownloads.value.trim()
-  if (limit && !/^\d+$/.test(limit)) return showToast(t('console.files_error_link_invalid'), 'destructive')
+  if (limit && !/^\d+$/.test(limit)) return showToast(t('vps.error.field', { field: t('console.files_link_limit'), reason: t('vps.error.reason.format') }), 'destructive')
   if (await send('files/link', { file: linksFor.value, minutes: Number(minutes.value), max: limit ? Number(limit) : null })) maxDownloads.value = ''
 }
 // 每个文件的操作在菜单里: 下载链接(对话框), 删除(先确认)
@@ -269,8 +287,8 @@ const linkMeta = (link: FileLink) =>
       <!-- 两种添加方式并排 -->
       <CardForm @submit.prevent="fetchUrl">
         <PageSection :cols="2" :title="t('console.files_fetch_label')" :description="t('console.files_fetch_help')">
-          <FormField v-slot="field" :label="t('vps.files.url')">
-            <Input :id="field.id" v-model="fetchAddress" type="url" maxlength="2000" :placeholder="URL_EXAMPLE" autocomplete="off" />
+          <FormField v-slot="field" :label="t('vps.files.url')" :error="invalid('url')">
+            <Input :id="field.id" v-model="fetchAddress" type="url" maxlength="2000" :placeholder="URL_EXAMPLE" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <Button type="submit" :disabled="busy || !fetchAddress.trim()"><CloudDownload aria-hidden="true" />{{ t('console.files_fetch') }}</Button>
@@ -325,11 +343,11 @@ const linkMeta = (link: FileLink) =>
     />
 
     <AppDialog v-model:open="limitsOpen" :title="t('vps.files.limits')" :description="t('console.files_quota_help')">
-      <FormField v-slot="field" :label="t('console.files_quota_label')" :span="6">
-        <Input :id="field.id" v-model="quotaGib" inputmode="decimal" />
+      <FormField v-slot="field" :label="t('console.files_quota_label')" :span="6" :error="invalid('quotaGib')">
+        <Input :id="field.id" v-model="quotaGib" inputmode="decimal" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.files_rate_label')" :span="6" :help="t('console.files_rate_help')">
-        <Input :id="field.id" v-model="rateMib" inputmode="decimal" :placeholder="t('console.files_rate_none')" />
+      <FormField v-slot="field" :label="t('console.files_rate_label')" :span="6" :help="t('console.files_rate_help')" :error="invalid('rateMib')">
+        <Input :id="field.id" v-model="rateMib" inputmode="decimal" :placeholder="t('console.files_rate_none')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="limitsOpen = false">{{ t('console.node_cancel') }}</Button>
@@ -346,11 +364,11 @@ const linkMeta = (link: FileLink) =>
           <Button variant="outline" size="sm" :disabled="busy" @click="send('files/revoke', { token: link.token })"><X aria-hidden="true" />{{ t('console.files_link_revoke') }}</Button>
         </FormActions>
       </GroupBlock>
-      <FormField v-slot="field" :label="t('console.files_link_expiry')" :span="6">
-        <SelectMenu :id="field.id" v-model="minutes" :options="minuteOptions" :label="t('console.files_link_expiry')" />
+      <FormField v-slot="field" :label="t('console.files_link_expiry')" :span="6" :error="invalid('minutes')">
+        <SelectMenu :id="field.id" v-model="minutes" :options="minuteOptions" :label="t('console.files_link_expiry')" :invalid="field.invalid" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.files_link_limit')" :span="6">
-        <Input :id="field.id" v-model="maxDownloads" inputmode="numeric" :placeholder="t('console.files_link_limit_placeholder')" />
+      <FormField v-slot="field" :label="t('console.files_link_limit')" :span="6" :error="invalid('max')">
+        <Input :id="field.id" v-model="maxDownloads" inputmode="numeric" :placeholder="t('console.files_link_limit_placeholder')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <template #footer>
         <Button variant="outline" @click="linksOpen = false">{{ t('vps.files.close') }}</Button>

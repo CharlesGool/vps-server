@@ -30,7 +30,8 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError, shownInline } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 域名转发: 概况(本机公网地址, DNS 检查, 变更记录, 添加域名), 流量, 每个主域名一张站点表格(行操作在菜单里), Cloudflare 令牌.
@@ -70,7 +71,7 @@ interface Domains {
   warning?: string | null
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const router = useRouter()
 const data = ref<Domains>()
 const busy = ref(false)
@@ -84,22 +85,37 @@ async function load() {
   try {
     apply(await api<Domains>('domains'))
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
-const errorText = (err: unknown) => {
-  const code = err instanceof ApiError ? err.code : 'failed'
-  const key = `console.domains_error_${code}`
-  return t(key) === key ? t('console.domains_error_failed') : t(key)
-}
+const codeText = (code: string) => (te(`console.domains_error_${code}`) ? t(`console.domains_error_${code}`) : undefined)
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  host: t('console.domains_host'),
+  name: t('console.domains_subdomain'),
+  zone: t('console.domains_zone'),
+  target: t('console.domains_target'),
+  port: t('console.domains_port'),
+  aliases: t('console.domains_aliases'),
+  allowIps: t('console.domains_allow_ips'),
+  authUser: t('console.domains_auth_user'),
+  authPassword: t('console.domains_auth_password'),
+  token: t('console.domains_token'),
+}))
+// 最近一次失败的请求(成功或重新打开表单时清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field, { codes: codeText })
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
   try {
     apply(await api<Domains>(path, { method, body }))
+    failure.value = undefined
     return ''
   } catch (err) {
-    return isSignedOut(err) ? '' : errorText(err)
+    if (isSignedOut(err)) return ''
+    failure.value = err
+    return errorText(err, { codes: (code) => codeText(code) ?? t('console.domains_error_failed'), labels: labels.value })
   } finally {
     busy.value = false
   }
@@ -194,6 +210,7 @@ function openForm(site?: Site) {
     authClear: false,
   }
   formError.value = ''
+  failure.value = undefined
   formOpen.value = true
   // 编辑时填入当前端口(列表里遮住, 这里取一次)
   if (site?.hasPort) {
@@ -343,8 +360,8 @@ const tokenRemoveOpen = ref(false)
           <FormField v-slot="field" :label="t('console.domains_token_name')" :span="6">
             <Input :id="field.id" v-model="tokenName" maxlength="40" autocomplete="off" :placeholder="t('console.domains_token_name_placeholder')" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.domains_token')" :span="6">
-            <PasswordInput :id="field.id" v-model="tokenValue" maxlength="100" autocomplete="off" spellcheck="false" />
+          <FormField v-slot="field" :label="t('console.domains_token')" :span="6" :error="formOpen ? undefined : invalid('token')">
+            <PasswordInput :id="field.id" v-model="tokenValue" maxlength="100" autocomplete="off" spellcheck="false" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <Button type="submit" :disabled="busy || !tokenValue.trim()"><KeyRound aria-hidden="true" />{{ t('console.domains_token_save') }}</Button>
@@ -379,41 +396,41 @@ const tokenRemoveOpen = ref(false)
     />
 
     <AppDialog v-model:open="formOpen" :title="editing ? `${t('console.domains_edit')} ${editing.host}` : t('console.domains_add')" :description="editing ? undefined : t(data?.zones?.length ? 'console.domains_add_help_zones' : 'console.domains_add_help_manual')">
-      <AlertBanner v-if="formError" tone="destructive">{{ formError }}</AlertBanner>
+      <AlertBanner v-if="formError && !shownInline(failure, labels)" tone="destructive">{{ formError }}</AlertBanner>
       <template v-if="!editing">
         <template v-if="data?.zones?.length">
-          <FormField v-slot="field" :label="t('console.domains_subdomain')" :span="6">
-            <Input :id="field.id" v-model="form.name" maxlength="200" placeholder="nas" autocapitalize="none" spellcheck="false" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.domains_subdomain')" :span="6" :error="invalid('name')">
+            <Input :id="field.id" v-model="form.name" maxlength="200" placeholder="nas" autocapitalize="none" spellcheck="false" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.domains_zone')" :span="6">
-            <SelectMenu :id="field.id" v-model="form.zone" :options="zoneOptions" :label="t('console.domains_zone')" />
+          <FormField v-slot="field" :label="t('console.domains_zone')" :span="6" :error="invalid('zone')">
+            <SelectMenu :id="field.id" v-model="form.zone" :options="zoneOptions" :label="t('console.domains_zone')" :invalid="field.invalid" />
           </FormField>
         </template>
-        <FormField v-else v-slot="field" :label="t('console.domains_host')">
-          <Input :id="field.id" v-model="form.host" maxlength="253" placeholder="nas.example.com" autocapitalize="none" spellcheck="false" autocomplete="off" />
+        <FormField v-else v-slot="field" :label="t('console.domains_host')" :error="invalid('host')">
+          <Input :id="field.id" v-model="form.host" maxlength="253" placeholder="nas.example.com" autocapitalize="none" spellcheck="false" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
         </FormField>
       </template>
-      <FormField :label="t('console.domains_target')" group :span="6">
+      <FormField :label="t('console.domains_target')" group :span="6" :error="invalid('target')">
         <SegmentedControl v-model="form.target" :options="targets" :label="t('console.domains_target')" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.domains_port')" :span="6">
+      <FormField v-slot="field" :label="t('console.domains_port')" :span="6" :error="invalid('port')">
         <NumberField :id="field.id" v-model="form.port" :min="0" :max="65535" :grouping="false" :disabled="form.target === 'console'" />
       </FormField>
       <template v-if="form.target === 'port'">
         <CheckboxField v-model="form.backendTls" :label="t('console.domains_backend_tls')" />
         <CheckboxField v-model="form.upstreamHost" :label="t('console.domains_upstream_host')" />
       </template>
-      <FormField v-slot="field" :label="t('console.domains_aliases')" :span="6">
-        <Textarea :id="field.id" v-model="form.aliases" spellcheck="false" autocapitalize="none" placeholder="www.example.com" />
+      <FormField v-slot="field" :label="t('console.domains_aliases')" :span="6" :error="invalid('aliases')">
+        <Textarea :id="field.id" v-model="form.aliases" spellcheck="false" autocapitalize="none" placeholder="www.example.com" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.domains_allow_ips')" :span="6">
-        <Textarea :id="field.id" v-model="form.allowIps" spellcheck="false" placeholder="203.0.113.7" />
+      <FormField v-slot="field" :label="t('console.domains_allow_ips')" :span="6" :error="invalid('allowIps')">
+        <Textarea :id="field.id" v-model="form.allowIps" spellcheck="false" placeholder="203.0.113.7" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.domains_auth_user')" :span="6" :help="t('console.domains_auth_help')">
-        <Input :id="field.id" v-model="form.authUser" maxlength="64" autocomplete="off" />
+      <FormField v-slot="field" :label="t('console.domains_auth_user')" :span="6" :help="t('console.domains_auth_help')" :error="invalid('authUser')">
+        <Input :id="field.id" v-model="form.authUser" maxlength="64" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField v-slot="field" :label="t('console.domains_auth_password')" :span="6">
-        <PasswordInput :id="field.id" v-model="form.authPassword" maxlength="128" autocomplete="new-password" :placeholder="editing?.authUser ? t('console.domains_auth_keep') : ''" />
+      <FormField v-slot="field" :label="t('console.domains_auth_password')" :span="6" :error="invalid('authPassword')">
+        <PasswordInput :id="field.id" v-model="form.authPassword" maxlength="128" autocomplete="new-password" :placeholder="editing?.authUser ? t('console.domains_auth_keep') : ''" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
       <CheckboxField v-if="editing?.authUser" v-model="form.authClear" :label="t('console.domains_auth_clear')" />
       <template #footer>

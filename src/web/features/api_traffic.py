@@ -4,9 +4,9 @@ The same entry shape is used for sing-box nodes and FRPS, so the browser has
 one traffic card for all of them.
 """
 
-import json
 import re
 
+from field_errors import FieldError, details
 from frp_control import valid_client_name
 
 # Metered features with a traffic card; FRPC instances and forwarding rules carry their own name.
@@ -52,28 +52,6 @@ def usage_json(context, node, meter_nodes):
         "expiryCount": node["expiry_count"], "expiryUnit": node["expiry_unit"],
         "remainingSeconds": None if remaining is None else int(remaining),
     }
-
-
-def limits_form(body):
-    """The browser's limits object as the form node_limits_request() reads."""
-    def text(name, default=""):
-        value = body.get(name, default)
-        if value is None:
-            return ""
-        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-            raise ValueError("invalid field " + name)
-        return str(value)
-    fields = {"cap_gib": "capGib", "upload_mbps": "uploadMbps", "download_mbps": "downloadMbps",
-              "cap_action": "capAction", "expiry_mode": "expiryMode", "expiry_count": "expiryCount",
-              "expiry_unit": "expiryUnit", "reset_mode": "resetMode", "reset_count": "resetCount",
-              "reset_unit": "resetUnit", "next_reset_at": "nextResetAt"}
-    form = {name: [text(key)] for name, key in fields.items()}
-    # A calendar reset ("schedule"): the schedule spec as scheduler.normalize_spec takes it.
-    spec = body.get("resetSpec")
-    if spec is not None and not isinstance(spec, dict):
-        raise ValueError("invalid field resetSpec")
-    form["reset_spec"] = [json.dumps(spec) if spec is not None else ""]
-    return form
 
 
 class TrafficApiMixin:
@@ -128,9 +106,11 @@ class TrafficApiMixin:
     def api_traffic_limits(self):
         context = self.context
         body = self.read_json()
-        key = self._traffic_key((body or {}).get("key"))
-        if key is None:
+        if body is None:
             return self.api_error(400, "invalid_request")
+        key = self._traffic_key(body.get("key"))
+        if key is None:
+            return self.api_error(400, "invalid_request", field="key", reason="format")
         if key in ("files", "speedtest"):
             # Before the console's first flush the file does not exist yet and every
             # read makes new entry ids; write it once so the id below is the stored one.
@@ -143,7 +123,12 @@ class TrafficApiMixin:
             return self.api_error(404, "not_found")
         entry = found[0]
         try:
-            request = self.node_limits_request(limits_form(body), entry)
+            request = self.limits_request(body, entry)
+        except FieldError as exc:
+            return self.api_error(400, "invalid_limits", **details(exc))
+        except (ValueError, context.InvalidOperation, OverflowError, KeyError, TypeError):
+            return self.api_error(400, "invalid_limits")
+        try:
             if key in ("files", "speedtest"):
                 context.APP_METER.edit(entry["id"], request)
                 done = True

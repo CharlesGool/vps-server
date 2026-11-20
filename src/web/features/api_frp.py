@@ -5,10 +5,78 @@ instance can restart the tunnel carrying this very request, so those changes
 are queued as a job and the page polls ``frpc/job`` for the outcome.
 """
 
+import ipaddress
 import re
+
+from field_errors import FieldError, details
+from frp_control import MIN_SECRET, valid_client_name
 
 SECRET_FIELD = re.compile(r"(proxy|visitor)-secret:([0-9]{1,2})")
 JOB_ID = re.compile(r"[0-9a-f]{32}")
+
+
+def _port(value, field):
+    if type(value) is not int:
+        raise FieldError(field, "required" if value is None else "type")
+    if not 1 <= value <= 65535:
+        raise FieldError(field, "range")
+
+
+def _name(value, field, limit=64):
+    if not value:
+        raise FieldError(field, "required")
+    if len(value) > limit:
+        raise FieldError(field, "too_long")
+
+
+def _address(value, field):
+    if not value:
+        raise FieldError(field, "required")
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        raise FieldError(field, "format") from None
+
+
+def _secret(value, field):
+    """A supplied secret key as frp_control._normalize_proxy and _normalize_visitor take it."""
+    if len(value) > 128:
+        raise FieldError(field, "too_long")
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise FieldError(field, "format")
+    if len(value) < MIN_SECRET:
+        raise FieldError(field, "too_short")
+
+
+def frpc_problem(section, values):
+    """FieldError for a value the FRPC helper refuses for certain (frp_control.build_client and its
+    normalizers). The job still checks everything, duplicate names and taken ports included."""
+    if section in ("server", "create"):
+        _address(values["server"], "server")
+        _port(values["port"], "port")
+        if section == "create" and not values["token"]:
+            raise FieldError("token", "required")
+        if len(values["token"]) > 128:
+            raise FieldError("token", "too_long")
+    elif section in ("add", "edit"):
+        proxy = values["proxy"]
+        _name(proxy["name"], "proxy.name")
+        _address(proxy["localIP"], "proxy.localIP")
+        _port(proxy["localPort"], "proxy.localPort")
+        if proxy["type"] == "stcp":
+            if proxy["secretKey"]:
+                _secret(proxy["secretKey"], "proxy.secretKey")
+        else:
+            _port(proxy["remotePort"], "proxy.remotePort")
+    elif section in ("visitor-add", "visitor-edit"):
+        visitor = values["proxy"]
+        _name(visitor["name"], "visitor.name")
+        _name(visitor["serverName"], "visitor.serverName")
+        _port(visitor["bindPort"], "visitor.bindPort")
+        if visitor["secretKey"]:
+            _secret(visitor["secretKey"], "visitor.secretKey")
+        elif section == "visitor-add":
+            raise FieldError("visitor.secretKey", "required")
 
 
 class FrpApiMixin:
@@ -133,8 +201,17 @@ class FrpApiMixin:
         body = self.read_json() or {}
         node = self.context.frps_node()
         port, token = body.get("port"), body.get("token") or ""
-        if node is None or not (port is None or type(port) is int) or not isinstance(token, str) or len(token) > 128:
+        if node is None:
             return self.api_error(400, "invalid_request")
+        try:
+            if port is not None and not (type(port) is int and port == 0):  # 0 keeps the port, like null
+                _port(port, "port")
+            if not isinstance(token, str):
+                raise FieldError("token", "type")
+            if len(token) > 128 or "\n" in token or "\r" in token:
+                raise FieldError("token", "too_long" if len(token) > 128 else "format")
+        except FieldError as exc:
+            return self.api_error(400, "invalid_request", **details(exc))
         if not self.frp_run({"action": "server", "port": port or node["port"], "token": token or node["token"]}):
             return self.api_error(500, "frp_failed")
         return self.api_ok(self.frps_state())
@@ -268,53 +345,68 @@ class FrpApiMixin:
         body = self.read_json() or {}
         name, section = body.get("name"), body.get("section")
         sections = ("create", "server", "rename", "add", "edit", "delete", "visitor-add", "visitor-edit", "visitor-delete")
-        if not isinstance(name, str) or section not in sections:
-            return self.api_error(400, "invalid_request")
+        if section not in sections:
+            return self.api_error(400, "invalid_request", field="section", reason="format" if section else "required")
+        if not isinstance(name, str):
+            return self.api_error(400, "invalid_request", field="name", reason="required" if name is None else "type")
         try:
             if section == "create":
+                if not valid_client_name(name):
+                    raise FieldError("name", "required" if not name else "too_long" if len(name) > 32 else "format")
                 self.context.frpc_path(name)  # validates the name
                 if self._frpc_existing(name) is not None:
-                    raise ValueError("exists")
+                    raise FieldError("name", "exists")
             elif self._frpc_existing(name) is None:
                 return self.api_error(404, "not_found")
             if section == "rename":
                 new_name = body.get("newName")
                 if not isinstance(new_name, str):
-                    raise ValueError("name")
+                    raise FieldError("newName", "required" if new_name is None else "type")
+                if not valid_client_name(new_name):
+                    raise FieldError("newName", "required" if not new_name else
+                                     "too_long" if len(new_name) > 32 else "format")
                 self.context.frpc_path(new_name)
                 request = {"action": "rename-client", "name": name, "new_name": new_name}
             else:
                 values = {}
                 if section in ("edit", "delete", "visitor-edit", "visitor-delete"):
                     if type(body.get("index")) is not int:
-                        raise ValueError("index")
+                        raise FieldError("index", "type")
                     values["index"] = body["index"]
                 if section in ("server", "create"):
                     server, port, token = body.get("server"), body.get("port"), body.get("token")
-                    if not isinstance(server, str) or type(port) is not int or not isinstance(token, str):
-                        raise ValueError("server")
+                    for key, value in (("server", server), ("token", token)):
+                        if not isinstance(value, str):
+                            raise FieldError(key, "required" if value is None else "type")
+                    if type(port) is not int:
+                        raise FieldError("port", "required" if port is None else "type")
                     values.update(server=server.strip(), port=port, token=token)
                 elif section in ("visitor-add", "visitor-edit"):
                     item = body.get("visitor") or {}
                     if type(item.get("bindPort")) is not int:
-                        raise ValueError("visitor")
+                        raise FieldError("visitor.bindPort", "required" if item.get("bindPort") is None else "type")
                     values["proxy"] = {"name": str(item.get("name") or ""), "serverName": str(item.get("serverName") or ""),
                                        "bindPort": item["bindPort"], "secretKey": str(item.get("secretKey") or "")}
                 elif section in ("add", "edit"):
                     item = body.get("proxy") or {}
-                    if item.get("type") not in ("tcp", "udp", "stcp") or type(item.get("localPort")) is not int:
-                        raise ValueError("proxy")
+                    if item.get("type") not in ("tcp", "udp", "stcp"):
+                        raise FieldError("proxy.type", "format" if item.get("type") else "required")
+                    if type(item.get("localPort")) is not int:
+                        raise FieldError("proxy.localPort", "required" if item.get("localPort") is None else "type")
                     proxy = {"name": str(item.get("name") or ""), "type": item["type"],
                              "localIP": str(item.get("localIP") or ""), "localPort": item["localPort"]}
                     if proxy["type"] == "stcp":
                         proxy["secretKey"] = str(item.get("secretKey") or "")
                     else:
                         if type(item.get("remotePort")) is not int:
-                            raise ValueError("proxy")
+                            raise FieldError("proxy.remotePort", "required" if item.get("remotePort") is None else "type")
                         proxy["remotePort"] = item["remotePort"]
                     values["proxy"] = proxy
+                frpc_problem(section, values)
                 request = {"action": "create-structured-client" if section == "create" else "structured-client",
                            "name": name, "section": section, "values": values}
+        except FieldError as exc:
+            return self.api_error(400, "invalid_request", **details(exc))
         except (ValueError, OSError, TypeError):
             return self.api_error(400, "invalid_request")
         ident = self.frp_queue(request)

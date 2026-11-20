@@ -2,6 +2,23 @@
 
 from fleet import FleetError, probe
 
+# FleetError codes that name one input of adding a host: code -> (request key, reason).
+ADD_FIELDS = {"name_invalid": ("name", "format"), "url_invalid": ("url", "format"),
+              "token_invalid": ("token", "format"), "token_rejected": ("token", None), "exists": ("url", "exists")}
+
+
+def add_problem(code, body):
+    field, reason = ADD_FIELDS.get(code, (None, None))
+    if field == "name" and not str(body.get("name") or "").strip():
+        reason = "required"
+    elif field == "name" and len(str(body.get("name")).strip()) > 40:
+        reason = "too_long"
+    elif field == "token" and reason and not body.get("token"):
+        reason = "required"
+    if field is None:
+        return {}
+    return {"field": field, "reason": reason} if reason else {"field": field}
+
 
 class FleetApiMixin:
     API_ROUTES_FLEET = {
@@ -25,7 +42,8 @@ class FleetApiMixin:
         try:
             return self.api_ok(probe(body.get("url") if body else None))
         except FleetError as error:
-            return self.api_error(400, str(error))
+            return self.api_error(400, str(error), **({"field": "url", "reason": "format"}
+                                                      if str(error) == "url_invalid" else {}))
 
     def api_fleet_add(self):
         if not self._security_allowed():
@@ -37,7 +55,7 @@ class FleetApiMixin:
             row = self.context.FLEET.add(body.get("name"), body.get("url"), body.get("token"), body.get("mode"),
                                          body.get("fingerprint"))
         except FleetError as error:
-            return self.api_error(400, str(error))
+            return self.api_error(400, str(error), **add_problem(str(error), body))
         self.audit("fleet_host_added", f'{row["name"]} {row["url"]}')
         return self.api_ok({"hosts": self.context.FLEET.statuses()})
 

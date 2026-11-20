@@ -12,7 +12,8 @@ import PageHeader from '@/components/app/PageHeader.vue'
 import PageSection from '@/components/app/PageSection.vue'
 import StatusBadge from '@/components/app/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 模块管理: 每个可选模块一张半行卡片(状态, 主机缺少的条件, 安装或卸载); 有任务时上方显示任务和安装输出.
@@ -66,8 +67,7 @@ async function manage(module: string, action: 'install' | 'uninstall') {
     clearTimeout(timer)
     timer = setTimeout(load, 2000)
   } catch (err) {
-    const code = err instanceof ApiError ? err.code : ''
-    showToast(t(ERRORS[code] ?? 'vps.common.failed'), 'destructive')
+    showToast(errorText(err, { codes: (code) => (ERRORS[code] ? t(ERRORS[code]!) : undefined) }), 'destructive')
   } finally {
     sending.value = false
   }

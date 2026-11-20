@@ -14,6 +14,7 @@ import SegmentedControl from '@/components/app/SegmentedControl.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // vps-server 项目组件: 集中管理页的 API 令牌卡片(整行, 表单样式). 上面是已有令牌的表格(名称, 权限, 前后几位, 最近使用), 每行可删除;
@@ -34,7 +35,10 @@ async function call<T>(path: string, body?: unknown): Promise<T | undefined> {
     return await api<T>(path, body === undefined ? {} : { method: 'POST', body })
   } catch (err) {
     if (err instanceof ApiError && err.code === 'security_required') emit('expired')
-    else if (!isSignedOut(err)) error.value = err instanceof ApiError && err.code === 'too_many' ? t('vps.tokens.tooMany') : err instanceof ApiError && err.code === 'name_invalid' ? t('vps.tokens.nameInvalid') : t('vps.common.failed')
+    else if (!isSignedOut(err)) {
+      const codes = (code: string) => (code === 'too_many' ? t('vps.tokens.tooMany') : code === 'name_invalid' ? t('vps.tokens.nameInvalid') : undefined)
+      error.value = errorText(err, { codes, labels: { name: t('vps.tokens.name'), scope: t('vps.tokens.scope') } })
+    }
     return undefined
   } finally {
     busy.value = false

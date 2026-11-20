@@ -15,8 +15,40 @@ from pathlib import Path
 import config_backup
 import scheduler
 import secure_store
+from field_errors import FieldError, details, schedule_error
 from features import schedule_form
 from features.backup import MAX_UPLOAD, RESTORE_SCRIPT, UPLOAD_IDLE_TIMEOUT, local_time
+
+
+def schedule_problem(error, body):
+    """The input a scheduler.ScheduleError from saving a task or the backup settings is about, as a
+    FieldError; None when it is about none (too many tasks, an unknown task)."""
+    message = str(error)
+    if message in ("too many tasks", "unknown task"):
+        return None
+    if message == "invalid task":
+        name, command = body.get("name"), body.get("command")
+        if not scheduler.valid_name(name):
+            name = name.strip()
+            return FieldError("name", "required" if not name else
+                              "too_long" if len(name) > scheduler.NAME_MAX else "format", message)
+        command = command.strip()
+        return FieldError("command", "required" if not command else
+                          "too_long" if len(command) > scheduler.COMMAND_MAX else "format", message)
+    if message == "invalid timeout":
+        return FieldError("timeout", "range", message)
+    if message == "invalid retention":
+        keep = body.get("keep")
+        return FieldError("keep", "type" if isinstance(keep, bool) or not isinstance(keep, (int, str)) else
+                          "format" if not str(keep).isdigit() else "range", message)
+    return schedule_error(error, body.get("spec"))
+
+
+def schedule_code(error):
+    """The error code for a refused schedule save; unchanged by the field it names."""
+    message = str(error)
+    return ("limit" if "many" in message else "past" if "passed" in message
+            else "not_found" if "unknown" in message else "invalid")
 
 
 class ScheduleApiMixin:
@@ -101,7 +133,8 @@ class ScheduleApiMixin:
                                                        body.get("keep"), self.context.SCHEDULER.clock())
             self.context.SCHEDULER.save_backup_settings(settings)
         except scheduler.ScheduleError as exc:
-            return self.api_error(400, "past" if "passed" in str(exc) else "invalid")
+            return self.api_error(400, "past" if "passed" in str(exc) else "invalid",
+                                  **details(schedule_problem(exc, body)))
         except OSError:
             return self.api_error(500, "failed")
         return self.api_ok(self.backup_state("settings"))
@@ -242,7 +275,11 @@ class ScheduleApiMixin:
     def api_backup_key_set(self):
         public = (self.read_json() or {}).get("public")
         try:
-            config_backup.set_recipient(config_backup.parse_key(public if isinstance(public, str) else ""))
+            key = config_backup.parse_key(public if isinstance(public, str) else "")
+        except config_backup.BackupError:
+            return self.api_error(400, "invalid", field="public", reason="format" if public else "required")
+        try:
+            config_backup.set_recipient(key)
         except (config_backup.BackupError, OSError):
             return self.api_error(400, "invalid")
         return self.api_ok(self.backup_state("key_set"))
@@ -290,8 +327,12 @@ class ScheduleApiMixin:
     def api_tasks_save(self):
         body = self.read_json() or {}
         name, command, timeout = body.get("name"), body.get("command"), body.get("timeout")
-        if (not isinstance(name, str) or not isinstance(command, str) or type(timeout) is not int
-                or body.get("id") is not None and self._task_id(body) is None):
+        for key, value in (("name", name), ("command", command)):
+            if not isinstance(value, str):
+                return self.api_error(400, "invalid", field=key, reason="required" if value is None else "type")
+        if type(timeout) is not int:
+            return self.api_error(400, "invalid", field="timeout", reason="required" if timeout is None else "type")
+        if body.get("id") is not None and self._task_id(body) is None:
             return self.api_error(400, "invalid")
         engine = self.context.SCHEDULER
         notify, enabled = body.get("notify") is True, body.get("enabled") is True
@@ -301,8 +342,7 @@ class ScheduleApiMixin:
             else:
                 engine.add_task(name, body.get("spec"), command, timeout, notify, enabled)
         except scheduler.ScheduleError as exc:
-            return self.api_error(400, "limit" if "many" in str(exc) else "past" if "passed" in str(exc)
-                                  else "not_found" if "unknown" in str(exc) else "invalid")
+            return self.api_error(400, schedule_code(exc), **details(schedule_problem(exc, body)))
         except (ValueError, OSError):
             return self.api_error(400, "invalid")
         return self.api_ok(self.tasks_state("saved"))

@@ -8,6 +8,7 @@ import PageSection from '@/components/app/PageSection.vue'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
 import TerminalScreen from '@/components/vps/TerminalScreen.vue'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // 终端: root 终端, 一张整行卡片. 和安全设置一样, 进入前要在最近几分钟内验证过管理员密码.
@@ -22,7 +23,7 @@ async function load() {
   } catch (err) {
     if (err instanceof ApiError && err.code === 'security_required') state.value = 'verify'
     else if (err instanceof ApiError && err.code === 'password_session_required') state.value = 'ip'
-    else if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    else if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)

@@ -10,6 +10,7 @@ import PageSection from '@/components/app/PageSection.vue'
 import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { loadSpeedtest, type Speedtest } from '@/lib/librespeed'
 import { showToast } from '@/lib/toast'
 
@@ -37,7 +38,7 @@ onMounted(async () => {
     clientIp.value = data.clientIp
     config.value = data.config
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 })
 onBeforeUnmount(() => {

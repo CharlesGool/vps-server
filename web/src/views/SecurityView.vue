@@ -27,6 +27,7 @@ import SwitchField from '@/components/app/SwitchField.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText as requestErrorText } from '@/lib/errors'
 import { session, verifyAdmin } from '@/lib/session'
 import { showToast } from '@/lib/toast'
 
@@ -72,7 +73,7 @@ interface Security {
   issued?: { name: string; serial: string; password: string; bundle: DownloadFile; setup: DownloadFile[] }
 }
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const router = useRouter()
 const state = ref<'loading' | 'verify' | 'ready'>('loading')
 const security = ref<Security>()
@@ -146,12 +147,21 @@ const ERRORS: Record<string, string> = {
   duplicate_address: 'security.duplicate',
   allowlist_full: 'vps.security.allowlistFull',
 }
+// 服务器指出被拒绝的输入项时用这些标签(见 errors.ts)
+const labels = computed(() => ({
+  password: t('security.newPassword'),
+  confirm: t('security.confirmPassword'),
+  address: t('security.address'),
+  mode: t('console.login_mode_title'),
+  name: t('console.client_cert_name'),
+  network: t('vps.security.network'),
+  server: t('console.alerts_server'),
+  key: t('vps.security.barkKeyNew'),
+}))
 function errorText(err: unknown) {
   if (err instanceof ApiError && err.code === 'too_many_attempts') return t('login.tooManyAttempts', { seconds: Number(err.data.retryAfter ?? 0) })
-  const code = err instanceof ApiError ? err.code : ''
-  if (ERRORS[code]) return t(ERRORS[code]!)
-  if (code && t(`console.${code}`) !== `console.${code}`) return t(`console.${code}`)
-  return t('security.failed')
+  const codes = (code: string) => (ERRORS[code] ? t(ERRORS[code]!) : te(`console.${code}`) ? t(`console.${code}`) : t('security.failed'))
+  return err instanceof ApiError ? requestErrorText(err, { codes, labels: labels.value }) : t('security.failed')
 }
 
 async function load() {

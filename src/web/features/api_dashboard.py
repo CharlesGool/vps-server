@@ -2,6 +2,22 @@
 
 from features.modules import module_job_recent, module_job_text, public_listener_occupied
 from features.traffic import TOTAL_LOCK
+from field_errors import FieldError, details, schedule_error
+
+
+def total_problem(error, body, name):
+    """The field a total_meter.parse_* ValueError is about; ``name`` is the number's key in the request."""
+    message = str(error)
+    if message == "invalid reset schedule" and error.__cause__ is not None:
+        return schedule_error(error.__cause__, body.get("resetSpec"), "resetSpec")
+    if message.startswith("reset schedule must be"):
+        return FieldError("resetSpec.mode", "format", message)
+    if message == "invalid reset day":
+        return FieldError("resetDay", "range" if str(body.get("resetDay")).strip().isdigit() else "format", message)
+    if message in ("cap must be positive", "cap out of range", "usage must not be negative", "usage out of range"):
+        return FieldError(name, "range", message)
+    # float() refused the text.
+    return FieldError(name, "format", message)
 
 # Home page entries in display order: (key, page, switchable).
 DASHBOARD_ITEMS = (
@@ -178,11 +194,16 @@ class DashboardApiMixin:
             return self.api_error(400, "invalid_request")
         cap, day, spec = body.get("capGib"), body.get("resetDay", 0), body.get("resetSpec")
         action = body.get("capAction")
+        if action is not None and action not in total_meter.CAP_ACTIONS:
+            return self.api_error(400, "invalid_request", field="capAction", reason="format")
         try:
-            if action is not None and action not in total_meter.CAP_ACTIONS:
-                raise ValueError("invalid cap action")
             spec = total_meter.parse_spec(spec)
             cap, day = total_meter.parse_settings("" if cap is None else str(cap), "0" if spec else str(day))
+        except ValueError as exc:
+            return self.api_error(400, "invalid_request", **details(total_problem(exc, body, "capGib")))
+        except TypeError:
+            return self.api_error(400, "invalid_request")
+        try:
             now = self.context.datetime.now(self.context.timezone.utc)
             with TOTAL_LOCK:
                 state, info = self.total_state(now)
@@ -210,6 +231,9 @@ class DashboardApiMixin:
         actual = body.get("actualGib")
         try:
             actual = total_meter.parse_actual("" if actual is None else str(actual))
+        except ValueError as exc:
+            return self.api_error(400, "invalid_request", **details(total_problem(exc, body, "actualGib")))
+        try:
             now = self.context.datetime.now(self.context.timezone.utc)
             with TOTAL_LOCK:
                 state, info = self.total_state(now)

@@ -1,6 +1,29 @@
 """JSON API for Singbox nodes, identified by stable ID. Every change goes through the
 transactional root helper (``node_control_apply``); ports and credentials stay masked."""
 
+from field_errors import FieldError, details, integer, text
+from node_inventory import _NAME as NODE_NAME, InvalidInventory
+
+
+def credential_valid(protocol, value):
+    """Whether the root helper takes ``value`` as a credential for ``protocol``: the same check it runs."""
+    from node_operations import check_credential
+    try:
+        check_credential(protocol, value)
+    except InvalidInventory:
+        return False
+    return True
+
+
+def sni_valid(value):
+    """Whether the root helper takes ``value`` as an SNI: the same check it runs."""
+    from node_control import NodeControlError, _sni
+    try:
+        _sni(value)
+    except NodeControlError:
+        return False
+    return True
+
 
 class ProxyApiMixin:
     API_ROUTES_PROXY = {
@@ -86,40 +109,73 @@ class ProxyApiMixin:
             raise ValueError(name)
         return value
 
+    def _proxy_ports_taken(self, current=None):
+        """Ports a node cannot listen on, as far as the console can tell: fixed and registered ports,
+        forwarding rules and the other nodes. The root helper checks again, and also tries the port."""
+        context = self.context
+        taken = {80, 443, context.CONSOLE_PORT}
+        for read in (lambda: [context.IPERF_WINDOW.port],
+                     lambda: [rule["public_port"] for rule in context.PORTFWD.list_rules()],
+                     lambda: [row[0] for row in context.console_port_rows(context.BASE_DIR.parent / "PORTS.md")[0]]):
+            try:
+                taken.update(port for port in read() if type(port) is int)
+            except (OSError, ValueError, TypeError, KeyError, AttributeError):
+                pass
+        found = self.proxy_inventory()
+        if found is not None:
+            taken.update(node["port"] for node in found[0]["nodes"] if current is None or node["id"] != current["id"])
+        return taken
+
+    def _proxy_fields(self, body, protocol, current=None):
+        """(name, port, credential, sni) of a create or edit request. FieldError for input the root
+        helper refuses for certain; it still checks everything itself."""
+        name = text(body, "name", 64, required=True)
+        if name != name.strip() or not NODE_NAME.fullmatch(name):
+            raise FieldError("name", "format")
+        if current is not None and body.get("port") == 0:
+            port = None  # 0 keeps the current port, as an empty value does
+        else:
+            port = integer(body, "port", 1, 65535, required=False)
+        if port is not None and (current is None or port != current["port"]) and port in self._proxy_ports_taken(current):
+            raise FieldError("port", "port_in_use")
+        credential = text(body, "credential", 256)
+        if credential and not credential_valid(protocol, credential):
+            raise FieldError("credential", "format")
+        sni = text(body, "sni", 253).strip() if protocol != "shadowsocks" else ""
+        if sni and not sni_valid(sni):
+            raise FieldError("sni", "format")
+        return name, port, credential, sni
+
     def api_proxy_create(self):
         context = self.context
         body = self.read_json() or {}
-        protocol, port = body.get("protocol"), body.get("port")
+        protocol = body.get("protocol")
         try:
-            if protocol not in context.NODE_PROTOCOLS or not (port is None or type(port) is int):
-                raise ValueError("protocol")
-            request = {"action": "create", "protocol": protocol, "name": self._proxy_text(body, "name", 64), "port": port}
-            credential = self._proxy_text(body, "credential", 256)
-            if credential:
-                request["credential"] = credential
-            if protocol != "shadowsocks":
-                request["sni"] = self._proxy_text(body, "sni", 253).strip() or "www.bing.com"
-        except ValueError:
-            return self.api_error(400, "invalid_request")
+            if protocol not in context.NODE_PROTOCOLS:
+                raise FieldError("protocol", "format" if protocol else "required")
+            name, port, credential, sni = self._proxy_fields(body, protocol)
+        except FieldError as exc:
+            return self.api_error(400, "invalid_request", **details(exc))
+        request = {"action": "create", "protocol": protocol, "name": name, "port": port}
+        if credential:
+            request["credential"] = credential
+        if protocol != "shadowsocks":
+            request["sni"] = sni or "www.bing.com"
         return self._proxy_apply(request, "node_created")
 
     def api_proxy_edit(self):
         body, node = self._proxy_body()
         if node is None:
             return
-        port = body.get("port")
         try:
-            if not (port is None or type(port) is int):
-                raise ValueError("port")
-            request = {"action": "edit", "id": node["id"], "name": self._proxy_text(body, "name", 64),
-                       "port": port or node["port"]}
-            credential = self._proxy_text(body, "credential", 256)
+            name, port, credential, sni = self._proxy_fields(body, node["protocol"], node)
+            request = {"action": "edit", "id": node["id"], "name": name, "port": port or node["port"]}
             if credential:
                 request["credential"] = credential
-            if node["protocol"] != "shadowsocks":
-                sni = self._proxy_text(body, "sni", 253).strip()
-                if sni and sni != self.context._cert_common_name(node["inbound"]["tls"]["certificate_path"]):
-                    request["sni"] = sni
+            if sni and sni != self.context._cert_common_name(node["inbound"]["tls"]["certificate_path"]):
+                request["sni"] = sni
+        except FieldError as exc:
+            return self.api_error(400, "invalid_request", **details(exc))
         except (ValueError, KeyError):
             return self.api_error(400, "invalid_request")
         return self._proxy_apply(request)

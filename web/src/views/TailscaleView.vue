@@ -25,6 +25,7 @@ import TrafficCard from '@/components/vps/TrafficCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError } from '@/lib/errors'
 import { formatBytes } from '@/lib/format'
 import { showToast } from '@/lib/toast'
 
@@ -98,20 +99,36 @@ async function load() {
     fill(data.value)
     if (data.value.available) void loadNetcheck()
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
 
+// 服务器指出被拒绝的输入项时, 提示和对应的字段用这些标签
+const labels = computed(() => ({
+  loginServer: t('console.tailscale_login_server'),
+  authKey: t('console.tailscale_auth_key'),
+  routes: t('console.tailscale_routes'),
+  exit: t('console.tailscale_exit_node'),
+  relay: t('console.tailscale_peer_relay'),
+}))
+// 最近一次失败的请求(新的请求开始时清空), 用来标出对应的字段
+const failure = ref<unknown>()
+const invalid = (field: string) => fieldError(failure.value, field)
 async function send(path: string, body: unknown, method = 'POST') {
   busy.value = true
+  failure.value = undefined
   try {
     data.value = await api<Tailscale>(path, { method, body })
     fill(data.value)
     showToast(t('vps.common.done'), 'success')
     return true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('console.tailscale_action_failed'), 'destructive')
+    if (!isSignedOut(err)) {
+      failure.value = err
+      // 没有指出是哪一项时和以前一样: 操作失败, 请查看运行日志
+      showToast(errorText(err, { codes: () => t('console.tailscale_action_failed'), labels: labels.value }), 'destructive')
+    }
     return false
   } finally {
     busy.value = false
@@ -245,11 +262,11 @@ const deviceColumns = computed(() => [
             <a :href="data.authUrl" target="_blank" rel="noopener noreferrer" class="font-medium underline">{{ t('console.tailscale_authorize') }}</a>
           </AlertBanner>
           <template v-if="!running">
-            <FormField v-slot="field" :label="t('console.tailscale_login_server')">
-              <Input :id="field.id" v-model="loginServer" type="url" maxlength="255" :placeholder="SERVER_EXAMPLE" autocomplete="off" />
+            <FormField v-slot="field" :label="t('console.tailscale_login_server')" :error="invalid('loginServer')">
+              <Input :id="field.id" v-model="loginServer" type="url" maxlength="255" :placeholder="SERVER_EXAMPLE" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
             </FormField>
-            <FormField v-slot="field" :label="t('console.tailscale_auth_key')">
-              <PasswordInput :id="field.id" v-model="authKey" autocomplete="off" maxlength="2048" />
+            <FormField v-slot="field" :label="t('console.tailscale_auth_key')" :error="invalid('authKey')">
+              <PasswordInput :id="field.id" v-model="authKey" autocomplete="off" maxlength="2048" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
             </FormField>
           </template>
           <FormActions>
@@ -310,14 +327,14 @@ const deviceColumns = computed(() => [
             :span="4"
           />
           <CheckboxField v-model="memory" :label="t('console.tailscale_memory')" :disabled="data.settings.memory === null" :span="4" />
-          <FormField v-slot="field" :label="t('console.tailscale_routes')" :span="4">
-            <SelectMenu :id="field.id" v-model="routes" :options="routeOptions" :label="t('console.tailscale_routes')" />
+          <FormField v-slot="field" :label="t('console.tailscale_routes')" :span="4" :error="invalid('routes')">
+            <SelectMenu :id="field.id" v-model="routes" :options="routeOptions" :label="t('console.tailscale_routes')" :invalid="field.invalid" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.tailscale_exit_node')" :span="4">
-            <SelectMenu :id="field.id" v-model="exitNode" :options="exitOptions" :label="t('console.tailscale_exit_node')" />
+          <FormField v-slot="field" :label="t('console.tailscale_exit_node')" :span="4" :error="invalid('exit')">
+            <SelectMenu :id="field.id" v-model="exitNode" :options="exitOptions" :label="t('console.tailscale_exit_node')" :invalid="field.invalid" />
           </FormField>
-          <FormField v-slot="field" :label="t('console.tailscale_peer_relay')" :span="4" :help="data.settings.relay ? t('vps.tailscale.relaySet') : undefined">
-            <Input :id="field.id" v-model="relay" inputmode="numeric" maxlength="5" placeholder="••••••" autocomplete="off" />
+          <FormField v-slot="field" :label="t('console.tailscale_peer_relay')" :span="4" :help="data.settings.relay ? t('vps.tailscale.relaySet') : undefined" :error="invalid('relay')">
+            <Input :id="field.id" v-model="relay" inputmode="numeric" maxlength="5" placeholder="••••••" autocomplete="off" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <Button v-if="data.settings.relay" type="button" variant="outline" :disabled="busy" @click="clearRelayPort">{{ t('console.tailscale_clear') }} {{ t('console.tailscale_peer_relay') }}</Button>

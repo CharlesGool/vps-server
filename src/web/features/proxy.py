@@ -4,7 +4,14 @@ Host dependencies are supplied by ``ConsoleHandler.context`` so the feature
 can be reused with another application context.
 """
 
+from field_errors import FieldError, schedule_error
 from node_inventory import add_period
+
+# The limits dialog's keys under the form names older callers use (see node_limits_request).
+LIMIT_KEYS = {"cap_gib": "capGib", "upload_mbps": "uploadMbps", "download_mbps": "downloadMbps",
+              "cap_action": "capAction", "expiry_mode": "expiryMode", "expiry_count": "expiryCount",
+              "expiry_unit": "expiryUnit", "reset_mode": "resetMode", "reset_count": "resetCount",
+              "reset_unit": "resetUnit", "next_reset_at": "nextResetAt"}
 
 
 class ProxyMixin:
@@ -129,89 +136,138 @@ class ProxyMixin:
 
 
     def node_limits_request(self, form, existing):
-        """Turn the limits form into node fields; raises ValueError on bad input.
-        Shared by sing-box nodes and the FRPS entry."""
+        """limits_request() for the form shape older callers use: one-item lists under snake_case names."""
+        body = {key: form[name][0] for name, key in LIMIT_KEYS.items() if name in form}
+        spec = form.get("reset_spec", [""])[0]
+        body["resetSpec"] = self.context.json.loads(spec) if spec else None
+        return self.limits_request(body, existing)
+
+    def limits_request(self, body, existing):
+        """The limits dialog's JSON object as entry fields; raises FieldError (a ValueError) naming the bad key.
+
+        Shared by sing-box nodes, FRPS and every metered feature. Numbers may come as JSON numbers
+        or text; a missing or null value is empty.
+        """
+        context = self.context
         request = {}
-        cap = form["cap_gib"][0].strip()
-        if cap:
-            amount = self.context.Decimal(cap)
-            if not amount.is_finite() or not 0 < amount <= 100000000:
-                raise ValueError("invalid cap")
-            request["cap_bytes"] = int(amount * 1073741824)
-        else:
-            request["cap_bytes"] = None
-        def speed(value):
-            if not value.strip():
-                return None
-            amount = self.context.Decimal(value)
-            if not amount.is_finite() or not self.context.Decimal("0.001") <= amount <= 10000000:
-                raise ValueError("invalid speed")
-            result = int(amount * 1000000)
-            if result < 1000:
-                raise ValueError("invalid speed")
-            return result
-        request["upload_limit_bps"] = speed(form["upload_mbps"][0])
-        request["download_limit_bps"] = speed(form["download_mbps"][0])
-        if form["cap_action"][0] not in ("throttle", "block"):
-            raise ValueError("invalid cap action")
-        request["cap_action"] = form["cap_action"][0]
-        now = self.context.datetime.now(self.context.timezone.utc)
-        def duration(count_value, unit_value):
-            count = int(count_value)
-            if not 1 <= count <= 9999 or unit_value not in ("days", "months", "years"):
-                raise ValueError("invalid duration")
-            anchor = "-" if unit_value == "days" else "1" if unit_value == "months" else now.strftime("%m-%d")
-            mode = f"every:{count}:{unit_value}:{anchor}"
-            return count, unit_value, mode, self.context.advance_reset_interval(now, mode).isoformat()
-        def date_value(value):
+
+        def text(name):
+            value = body.get(name)
+            if value is None:
+                return ""
+            if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+                raise FieldError(name, "type")
+            return str(value)
+
+        def amount(name, low, high, low_inclusive=True):
+            """A positive decimal within range, or None for an empty value."""
+            value = text(name).strip()
             if not value:
                 return None
-            if not self.context.re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
-                raise ValueError("invalid date")
-            return self.context.datetime.fromisoformat(value).replace(tzinfo=self.context.timezone.utc).isoformat()
-        expiry_mode = form["expiry_mode"][0]
+            try:
+                number = context.Decimal(value)
+            except (ArithmeticError, ValueError) as exc:
+                raise FieldError(name, "format") from exc
+            if not number.is_finite():
+                raise FieldError(name, "format")
+            if not (low <= number if low_inclusive else low < number) or number > high:
+                raise FieldError(name, "range")
+            return number
+
+        def choice(name, allowed):
+            value = text(name)
+            if value not in allowed:
+                raise FieldError(name, "format" if value else "required")
+            return value
+
+        # Every value is checked for its type, also one the chosen settings do not use.
+        for name in LIMIT_KEYS.values():
+            text(name)
+        spec = body.get("resetSpec")
+        if spec is not None and not isinstance(spec, dict):
+            raise FieldError("resetSpec", "type")
+        cap = amount("capGib", 0, 100000000, low_inclusive=False)
+        request["cap_bytes"] = None if cap is None else int(cap * 1073741824)
+
+        def speed(name):
+            value = amount(name, context.Decimal("0.001"), 10000000)
+            if value is None:
+                return None
+            result = int(value * 1000000)
+            if result < 1000:
+                raise FieldError(name, "range")
+            return result
+        request["upload_limit_bps"] = speed("uploadMbps")
+        request["download_limit_bps"] = speed("downloadMbps")
+        request["cap_action"] = choice("capAction", ("throttle", "block"))
+        now = context.datetime.now(context.timezone.utc)
+
+        def duration(count_name, unit_name):
+            value = text(count_name).strip()
+            if not value:
+                raise FieldError(count_name, "required")
+            try:
+                count = int(value)
+            except ValueError as exc:
+                raise FieldError(count_name, "format") from exc
+            if not 1 <= count <= 9999:
+                raise FieldError(count_name, "range")
+            unit = choice(unit_name, ("days", "months", "years"))
+            anchor = "-" if unit == "days" else "1" if unit == "months" else now.strftime("%m-%d")
+            mode = f"every:{count}:{unit}:{anchor}"
+            try:
+                due = context.advance_reset_interval(now, mode)
+            except (ValueError, OverflowError) as exc:
+                raise FieldError(count_name, "range") from exc
+            return count, unit, mode, due.isoformat()
+
+        expiry_mode = choice("expiryMode", ("set", "none"))
         if expiry_mode == "set":
-            count, unit, _, _ = duration(form["expiry_count"][0], form["expiry_unit"][0])
+            count, unit, _, _ = duration("expiryCount", "expiryUnit")
             # Saving the dialog again with the same length (say, to change the cap) keeps the
             # end date: only a different length starts a new period from now.
             if (existing["expiry_count"], existing["expiry_unit"]) != (count, unit):
                 # N months from now on the same day and time (the month's last day when it is
                 # shorter), not the first of a month like a monthly reset.
-                request.update(expiry_count=count, expiry_unit=unit,
-                               expires_at=add_period(now, count, unit).isoformat())
-        elif expiry_mode == "none":
-            if existing["expiry_count"] is not None:
-                request.update(expiry_count=None, expiry_unit=None, expires_at=None)
-        else:
-            raise ValueError("invalid expiry mode")
-        mode = form["reset_mode"][0]
-        if mode not in ("none", "repeat", "once", "schedule"):
-            raise ValueError("invalid reset mode")
+                try:
+                    expires = add_period(now, count, unit)
+                except (ValueError, OverflowError) as exc:
+                    raise FieldError("expiryCount", "range") from exc
+                request.update(expiry_count=count, expiry_unit=unit, expires_at=expires.isoformat())
+        elif existing["expiry_count"] is not None:
+            request.update(expiry_count=None, expiry_unit=None, expires_at=None)
+        mode = choice("resetMode", ("none", "repeat", "once", "schedule"))
         if mode == "repeat":
-            _, _, request["reset_mode"], request["next_reset_at"] = duration(
-                form["reset_count"][0], form["reset_unit"][0])
+            _, _, request["reset_mode"], request["next_reset_at"] = duration("resetCount", "resetUnit")
         elif mode == "schedule":
             # On the calendar like scheduled tasks (host local time): weekly, monthly, yearly or once.
             import scheduler
             try:
-                spec = scheduler.normalize_spec(self.context.json.loads(form.get("reset_spec", [""])[0] or "null"))
+                spec = scheduler.normalize_spec(spec)
             except (scheduler.ScheduleError, ValueError) as exc:
-                raise ValueError("invalid reset schedule") from exc
+                raise schedule_error(exc, body.get("resetSpec"), "resetSpec") from exc
             if spec["mode"] == "once":
-                moment = self.context.datetime.strptime(f"{spec['date']} {spec['time']}", "%Y-%m-%d %H:%M:%S")
-                due = moment.astimezone(self.context.timezone.utc)
+                moment = context.datetime.strptime(f"{spec['date']} {spec['time']}", "%Y-%m-%d %H:%M:%S")
+                due = moment.astimezone(context.timezone.utc)
                 if due <= now:
-                    raise ValueError("reset must be future")
+                    raise FieldError("resetSpec.date", "past", "reset must be future")
                 request["reset_mode"], request["next_reset_at"] = "once", due.isoformat()
             else:
-                request["reset_mode"] = self.context.schedule_reset_mode(spec)
-                request["next_reset_at"] = self.context.next_scheduled_reset(now, spec).isoformat()
+                request["reset_mode"] = context.schedule_reset_mode(spec)
+                request["next_reset_at"] = context.next_scheduled_reset(now, spec).isoformat()
         elif mode == "once":
-            request["reset_mode"] = "once"
-            request["next_reset_at"] = date_value(form["next_reset_at"][0])
-            if request["next_reset_at"] is None or \
-                    self.context.datetime.fromisoformat(request["next_reset_at"]) <= now:
-                raise ValueError("reset must be future")
+            value = text("nextResetAt")
+            if not value:
+                raise FieldError("nextResetAt", "required")
+            if not context.re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
+                raise FieldError("nextResetAt", "format")
+            try:
+                due = context.datetime.fromisoformat(value).replace(tzinfo=context.timezone.utc)
+            except ValueError as exc:
+                raise FieldError("nextResetAt", "format") from exc
+            if due <= now:
+                raise FieldError("nextResetAt", "past", "reset must be future")
+            request["reset_mode"], request["next_reset_at"] = "once", due.isoformat()
         else:
             request["reset_mode"] = "none"
             request["next_reset_at"] = None

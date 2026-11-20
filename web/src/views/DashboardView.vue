@@ -48,7 +48,8 @@ import StatCard from '@/components/app/StatCard.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorField, errorText, fieldError, scheduleLabels } from '@/lib/errors'
 import { formatBytes } from '@/lib/format'
 import { cpuLabel, gpuCards, usedOfTotal, type ResourceSummary } from '@/lib/monitor'
 import { showToast } from '@/lib/toast'
@@ -211,8 +212,7 @@ async function toggle(item: ModuleItem, enabled: boolean) {
     data.value = await api<Dashboard>('modules/action', { method: 'POST', body: { module: item.key, action: enabled ? 'enable' : 'disable' } })
     if (data.value.busy) timer = setTimeout(load, 2000)
   } catch (err) {
-    const code = err instanceof ApiError ? err.code : ''
-    showToast(t(ERRORS[code] ?? 'vps.common.failed'), 'destructive')
+    showToast(errorText(err, { codes: (code) => (ERRORS[code] ? t(ERRORS[code]!) : undefined) }), 'destructive')
   } finally {
     busy.value = false
   }
@@ -287,6 +287,20 @@ const resetChoices = computed(() => [
 const calibrateOpen = ref(false)
 const actualGib = ref('')
 const dialogError = ref('')
+// 最近一次保存失败的错误; 服务器指出了对话框里的某一项时, 错误显示在那一项下面, 否则显示在原来的位置
+const failure = ref<unknown>()
+const totalLabels = computed(() => ({
+  capGib: t('console.total_cap_gib'),
+  capAction: t('console.node_cap_action'),
+  resetDay: t('console.node_reset_schedule'),
+  actualGib: t('console.total_actual_gib'),
+  ...scheduleLabels('resetSpec'),
+}))
+const invalid = (field: string) => fieldError(failure.value, field)
+const pinned = computed(() => {
+  const field = errorField(failure.value)
+  return !!field && (['capGib', 'capAction', 'resetDay'].includes(field) || field.startsWith('resetSpec.'))
+})
 function openSettings() {
   capGib.value = total.value?.cap != null ? String(total.value.cap / 1073741824) : ''
   capAction.value = total.value?.capAction ?? 'notify'
@@ -295,22 +309,27 @@ function openSettings() {
   resetSpec.value = value?.resetSpec ?? { mode: 'monthly', day: value?.resetDay || 1, time: '00:00:00' }
   resetKey.value += 1
   dialogError.value = ''
+  failure.value = undefined
   settingsOpen.value = true
 }
 function openCalibrate() {
   actualGib.value = total.value?.offset ? String(total.value.used / 1073741824) : ''
   dialogError.value = ''
+  failure.value = undefined
   calibrateOpen.value = true
 }
 async function saveTotal(path: string, body: unknown, close: () => void) {
   busy.value = true
   dialogError.value = ''
+  failure.value = undefined
   try {
     data.value = await api<Dashboard>(path, { method: path === 'traffic/total' ? 'PUT' : 'POST', body })
     close()
     showToast(t('vps.dashboard.saved'), 'success')
-  } catch {
-    dialogError.value = t('vps.dashboard.invalid')
+  } catch (err) {
+    if (isSignedOut(err)) return
+    failure.value = err
+    dialogError.value = errorText(err, { codes: (code) => (code === 'invalid_request' ? t('vps.dashboard.invalid') : undefined), labels: totalLabels.value })
   } finally {
     busy.value = false
   }
@@ -380,16 +399,24 @@ async function saveTotal(path: string, body: unknown, close: () => void) {
     <LinkCard v-if="SHOWCASE" to="/scenes" :title="t('page.showcaseScenes')" :description="t('showcase.desc.scenes')" :icon="AppWindow" />
 
     <AppDialog v-model:open="settingsOpen" :title="t('console.total_settings')" :description="t('console.total_hint')">
-      <FormField v-slot="field" :label="t('console.total_cap_gib')" :span="6">
-        <Input :id="field.id" v-model="capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
+      <FormField v-slot="field" :label="t('console.total_cap_gib')" :span="6" :error="invalid('capGib')">
+        <Input :id="field.id" v-model="capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
       </FormField>
-      <FormField :label="t('console.node_cap_action')" group>
+      <FormField :label="t('console.node_cap_action')" group :error="invalid('capAction')">
         <RadioField v-model="capAction" :options="capActions" :label="t('console.node_cap_action')" />
       </FormField>
-      <FormField :label="t('console.node_reset_schedule')" group :span="6" :error="dialogError">
+      <FormField :label="t('console.node_reset_schedule')" group :span="6" :error="pinned ? invalid('resetDay') : dialogError">
         <RadioField v-model="resetOn" :options="resetChoices" :label="t('console.node_reset_schedule')" />
       </FormField>
-      <ScheduleFields v-if="resetOn === 'schedule'" :key="resetKey" v-model="resetSpec" :timezone="total?.timezone ?? ''" :modes="RESET_MODES" :once="false" />
+      <ScheduleFields
+        v-if="resetOn === 'schedule'"
+        :key="resetKey"
+        v-model="resetSpec"
+        :timezone="total?.timezone ?? ''"
+        :modes="RESET_MODES"
+        :once="false"
+        :error="(key: string) => invalid(`resetSpec.${key}`)"
+      />
       <template #footer>
         <Button variant="outline" @click="settingsOpen = false">{{ t('console.node_cancel') }}</Button>
         <Button :disabled="busy" @click="saveTotal('traffic/total', { capGib: capGib.trim() || null, capAction, resetDay: 0, resetSpec: resetOn === 'schedule' ? resetSpec : null }, () => (settingsOpen = false))">

@@ -133,8 +133,11 @@ class UpgradeApiMixin:
             return
         body = self.read_json()
         version = body.get("version") if body else None
-        if body is None or version is not None and (not isinstance(version, str) or not VERSION_RE.match(version)):
+        if body is None:
             return self.api_error(400, "invalid_request")
+        if version is not None and (not isinstance(version, str) or not VERSION_RE.match(version)):
+            return self.api_error(400, "invalid_request", field="version",
+                                  reason="type" if not isinstance(version, str) else "format")
         error = start(self.context, version)
         if error:
             return self.api_error(409 if error == "busy" else 500, error)

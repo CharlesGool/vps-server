@@ -17,6 +17,7 @@ import StatusBadge from '@/components/app/StatusBadge.vue'
 import ModuleInstall from '@/components/vps/ModuleInstall.vue'
 import { Button } from '@/components/ui/button'
 import { ApiError, api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // FRPC: 本机的 FRP 客户端实例表格(运行, 连接, 转发数量; 行操作在菜单里: 测试连接, 编辑, 启停, 删除), 新建实例.
@@ -38,7 +39,7 @@ async function load() {
   try {
     data.value = await api<Frpc>('frpc')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 }
 onMounted(load)
@@ -48,7 +49,7 @@ async function send(path: string, body: unknown) {
     data.value = await api<Frpc>(path, { method: 'POST', body })
     showToast(t('console.frp_saved'), 'success')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('console.frp_save_failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err, { codes: () => t('console.frp_save_failed') }), 'destructive')
   } finally {
     busy.value = false
   }

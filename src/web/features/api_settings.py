@@ -24,12 +24,14 @@ class SettingsApiMixin:
 
     def api_server_label(self):
         body = self.read_json()
-        if body is None or not isinstance(body.get("label"), str):
+        if body is None:
             return self.api_error(400, "invalid_request")
+        if not isinstance(body.get("label"), str):
+            return self.api_error(400, "invalid_request", field="label", reason="type")
         try:
             self.context.save_server_label(body["label"])
         except ValueError:
-            return self.api_error(400, "server_label_invalid")
+            return self.api_error(400, "server_label_invalid", field="label", reason="format")
         except OSError:
             return self.api_error(500, "server_label_error")
         return self.api_ok({"serverLabel": self.context.server_label()})
@@ -39,10 +41,13 @@ class SettingsApiMixin:
         body = self.read_json()
         port = body.get("port") if body else None
         if not isinstance(port, int) or isinstance(port, bool):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", **({"field": "port", "reason": "type"} if body else {}))
         host = context.urlsplit("https://" + self.headers.get("Host", "")).hostname
-        if (not 1024 <= port <= 65535 or port == context.CONSOLE_PORT or not host or not host.isascii()
-                or not all(c.isalnum() or c in ".:-" for c in host)):
+        if not 1024 <= port <= 65535 or port == context.CONSOLE_PORT:
+            # The current port is not a change: the console itself holds it.
+            return self.api_error(400, "console_port_invalid", field="port",
+                                  reason="range" if port != context.CONSOLE_PORT else "port_in_use")
+        if not host or not host.isascii() or not all(c.isalnum() or c in ".:-" for c in host):
             return self.api_error(400, "console_port_invalid")
         helper = context.WEB_CODE_DIR / "console_port.py"
         if not helper.is_file() or not context.shutil.which("systemd-run"):

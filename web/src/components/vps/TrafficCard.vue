@@ -16,7 +16,8 @@ import StatusBadge from '@/components/app/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import ScheduleFields, { type Spec } from '@/components/vps/ScheduleFields.vue'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText, fieldError, scheduleLabels, shownInline } from '@/lib/errors'
 import { formatBytes } from '@/lib/format'
 import { showToast } from '@/lib/toast'
 
@@ -62,7 +63,7 @@ onMounted(async () => {
   try {
     data.value = await api<Traffic>(`traffic?key=${encodeURIComponent(props.feature)}`)
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 })
 
@@ -106,6 +107,23 @@ const DEFAULT_SPEC: Spec = { mode: 'monthly', day: 1, time: '00:00:00' }
 const open = ref(false)
 const busy = ref(false)
 const error = ref('')
+// 最近一次保存失败的错误, 用来标出服务器指出的那一项
+const failure = ref<unknown>()
+const limitText = (code: string) => (code === 'invalid_limits' ? t('vps.traffic.invalid') : code === 'limits_failed' ? t('console.node_settings_failed') : undefined)
+const invalid = (field: string) => fieldError(failure.value, field, { codes: limitText })
+const labels = computed(() => ({
+  capGib: t('console.node_cap_gib'),
+  uploadMbps: t('console.node_upload_speed'),
+  downloadMbps: t('console.node_download_speed'),
+  capAction: t('console.node_cap_action'),
+  resetMode: t('console.node_reset_schedule'),
+  resetCount: t('console.node_reset_every'),
+  resetUnit: t('console.node_reset_unit'),
+  expiryMode: t('console.node_validity'),
+  expiryCount: t('console.node_validity_length'),
+  expiryUnit: t('console.node_validity_unit'),
+  ...scheduleLabels('resetSpec'),
+}))
 const form = ref({
   capGib: '',
   uploadMbps: '',
@@ -138,6 +156,7 @@ function edit() {
     expiryUnit: value.expiryUnit ?? 'months',
   }
   error.value = ''
+  failure.value = undefined
   open.value = true
 }
 const capActions = computed(() => [
@@ -160,12 +179,16 @@ const units = computed(() => (['days', 'months', 'years'] as const).map((value) 
 async function save() {
   busy.value = true
   error.value = ''
+  failure.value = undefined
   try {
     data.value = await api<Traffic>('traffic/limits', { method: 'PUT', body: { key: props.feature, ...form.value } })
     open.value = false
     showToast(t('console.node_settings_done'), 'success')
   } catch (err) {
-    error.value = t(err instanceof ApiError && err.code === 'invalid_limits' ? 'vps.traffic.invalid' : 'console.node_settings_failed')
+    if (isSignedOut(err)) return
+    failure.value = err
+    // 服务器没说明原因时, 和以前一样是"保存失败"
+    error.value = errorText(err, { codes: (code) => limitText(code) ?? t('console.node_settings_failed'), labels: labels.value })
   } finally {
     busy.value = false
   }
@@ -190,39 +213,46 @@ async function save() {
   </component>
 
   <AppDialog v-model:open="open" :title="t('console.traffic_limit_manage')">
-    <AlertBanner v-if="error" tone="destructive">{{ error }}</AlertBanner>
-    <FormField v-slot="field" :label="t('console.node_cap_gib')" :span="4">
-      <Input :id="field.id" v-model="form.capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
+    <AlertBanner v-if="error && !shownInline(failure, labels)" tone="destructive">{{ error }}</AlertBanner>
+    <FormField v-slot="field" :label="t('console.node_cap_gib')" :span="4" :error="invalid('capGib')">
+      <Input :id="field.id" v-model="form.capGib" inputmode="decimal" :placeholder="t('console.node_unlimited')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
     </FormField>
-    <FormField v-slot="field" :label="t('console.node_upload_speed')" :span="4">
-      <Input :id="field.id" v-model="form.uploadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
+    <FormField v-slot="field" :label="t('console.node_upload_speed')" :span="4" :error="invalid('uploadMbps')">
+      <Input :id="field.id" v-model="form.uploadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
     </FormField>
-    <FormField v-slot="field" :label="t('console.node_download_speed')" :span="4">
-      <Input :id="field.id" v-model="form.downloadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" />
+    <FormField v-slot="field" :label="t('console.node_download_speed')" :span="4" :error="invalid('downloadMbps')">
+      <Input :id="field.id" v-model="form.downloadMbps" inputmode="decimal" :placeholder="t('console.node_unlimited')" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
     </FormField>
-    <FormField :label="t('console.node_cap_action')" group>
+    <FormField :label="t('console.node_cap_action')" group :error="invalid('capAction')">
       <RadioField v-model="form.capAction" :options="capActions" :label="t('console.node_cap_action')" />
     </FormField>
-    <FormField :label="t('console.node_reset_schedule')" group>
+    <FormField :label="t('console.node_reset_schedule')" group :error="invalid('resetMode')">
       <RadioField v-model="form.resetMode" :options="resetModes" :label="t('console.node_reset_schedule')" />
     </FormField>
-    <ScheduleFields v-if="form.resetMode === 'schedule'" :key="formKey" v-model="form.resetSpec" :timezone="data?.timezone ?? ''" :modes="RESET_MODES" />
+    <ScheduleFields
+      v-if="form.resetMode === 'schedule'"
+      :key="formKey"
+      v-model="form.resetSpec"
+      :timezone="data?.timezone ?? ''"
+      :modes="RESET_MODES"
+      :error="(key: string) => invalid(`resetSpec.${key}`)"
+    />
     <template v-if="form.resetMode === 'repeat'">
-      <FormField v-slot="field" :label="t('console.node_reset_every')" :span="6">
+      <FormField v-slot="field" :label="t('console.node_reset_every')" :span="6" :error="invalid('resetCount')">
         <NumberField :id="field.id" v-model="form.resetCount" :min="1" :max="9999" />
       </FormField>
-      <FormField :label="t('console.node_reset_unit')" group :span="6">
+      <FormField :label="t('console.node_reset_unit')" group :span="6" :error="invalid('resetUnit')">
         <SegmentedControl v-model="form.resetUnit" :options="units" :label="t('console.node_reset_unit')" />
       </FormField>
     </template>
-    <FormField :label="t('console.node_validity')" group>
+    <FormField :label="t('console.node_validity')" group :error="invalid('expiryMode')">
       <RadioField v-model="form.expiryMode" :options="expiryModes" :label="t('console.node_validity')" />
     </FormField>
     <template v-if="form.expiryMode === 'set'">
-      <FormField v-slot="field" :label="t('console.node_validity_length')" :span="6">
+      <FormField v-slot="field" :label="t('console.node_validity_length')" :span="6" :error="invalid('expiryCount')">
         <NumberField :id="field.id" v-model="form.expiryCount" :min="1" :max="9999" />
       </FormField>
-      <FormField :label="t('console.node_validity_unit')" group :span="6">
+      <FormField :label="t('console.node_validity_unit')" group :span="6" :error="invalid('expiryUnit')">
         <SegmentedControl v-model="form.expiryUnit" :options="units" :label="t('console.node_validity_unit')" />
       </FormField>
     </template>

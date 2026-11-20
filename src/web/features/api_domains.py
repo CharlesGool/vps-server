@@ -8,9 +8,69 @@ access) are built here in the visitor's language, as the old page did.
 import time
 from datetime import datetime, timezone
 
-from caddy_sites import CONFIG_DIR, SERVICE, certificate_info, console_port, read_history, read_sites, read_tokens, zone_of
+import ipaddress
+
+from caddy_sites import (AUTH_USER_RE, CONFIG_DIR, SERVICE, SiteError, certificate_info, console_port, names,
+                         normalize_host, read_history, read_sites, read_tokens, reserved_ports, valid_port, zone_of)
+from field_errors import FieldError, details
 from features.domains import ERRORS, WARNINGS, _read_json, access_entries, listening_ports
 from features.modules import module_job_recent
+
+
+def _host_of(body):
+    """(request key, host) the site is added or edited under; host is None when it is not a valid name."""
+    zone, key = body.get("zone"), "host"
+    raw = body.get("host")
+    if zone:
+        key, name = "name", str(body.get("name") or "").strip().lower().strip(".")
+        raw = f"{name}.{zone}" if name and name != "@" else zone
+    try:
+        return key, normalize_host(str(raw or "")[:253])
+    except SiteError:
+        return key, None
+
+
+def site_problem(body, error):
+    """The input caddy_sites.py refused a site or token for, as {"field", "reason"}; {} when not certain.
+
+    The helper reports a code only, so the console checks the same rules again to tell the inputs apart."""
+    key, host = _host_of(body)
+    if error == "host_invalid":
+        return {"field": key, "reason": "required" if not body.get(key) else "format"} if host is None else \
+            {"field": "aliases", "reason": "format"}
+    if error == "host_exists":
+        try:
+            sites = read_sites()
+        except (OSError, ValueError):
+            return {}
+        if host is not None and body.get("action") != "edit" and any(host in names(site) for site in sites):
+            return {"field": key, "reason": "exists"}
+        return {"field": "aliases", "reason": "exists"}
+    if error == "port_invalid":
+        if body.get("target") == "console":
+            return {"field": "target", "reason": "format"}
+        port = body.get("port")
+        return {"field": "port", "reason": "type" if type(port) is not int else
+                "port_in_use" if valid_port(port) and port in reserved_ports() else "range"}
+    if error == "allow_invalid":
+        for entry in body.get("allowIps") or []:
+            try:
+                ipaddress.ip_network(str(entry).strip(), strict=False)
+            except ValueError:
+                if str(entry).strip():
+                    return {"field": "allowIps", "reason": "format"}
+        return {"field": "allowIps", "reason": "range"}
+    if error == "auth_invalid":
+        if not AUTH_USER_RE.fullmatch(str(body.get("authUser") or "").strip()):
+            return {"field": "authUser", "reason": "format"}
+        password = str(body.get("authPassword") or "")
+        return {"field": "authPassword", "reason": "required" if not password else "too_short" if len(password) < 8
+                else "too_long" if len(password) > 128 else "format"}
+    if error == "zone_unknown":
+        return {"field": "zone", "reason": "not_found"}
+    if error in ("token_invalid", "token_exists"):
+        return {"field": "token", "reason": "format" if error == "token_invalid" else "exists"}
+    return {}
 
 
 def _clock(stamp, pattern="%Y-%m-%d %H:%M"):
@@ -156,11 +216,13 @@ class DomainsApiMixin:
             return
         return self.api_ok(self.domains_state() if ready else {"installed": False})
 
-    def _domains_reply(self, reply, success):
+    def _domains_reply(self, reply, success, body=None):
+        """The page state after a change, or its error; with ``body``, the input an error is about."""
         if reply.get("ok"):
             warning = reply.get("warning") if reply.get("warning") in WARNINGS else None
             return self.api_ok(self.domains_state(success, warning))
-        return self.api_error(400, reply.get("error") if reply.get("error") in ERRORS else "failed")
+        error = reply.get("error") if reply.get("error") in ERRORS else "failed"
+        return self.api_error(400, error, **(site_problem(body, error) if body is not None else {}))
 
     def _domains_body(self):
         if self._caddy_ready() is not True:
@@ -174,24 +236,22 @@ class DomainsApiMixin:
 
     @staticmethod
     def _domains_target(body):
-        """The site settings shared by adding and editing, as caddy_sites.py takes them; None when invalid."""
+        """The site settings shared by adding and editing, as caddy_sites.py takes them; FieldError when a
+        value has the wrong type (answered as ``port_invalid``, the code this has always had)."""
         def lines(name, limit):
             value = body.get(name) or []
             if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
-                raise ValueError(name)
+                raise FieldError(name, "type")
             return [item.strip()[:253] for item in value if item.strip()][:limit]
-        try:
-            request = {"target": "console" if body.get("target") == "console" else "port",
-                       "aliases": lines("aliases", 16), "allow_ips": lines("allowIps", 64),
-                       "auth_user": str(body.get("authUser") or "")[:64],
-                       "auth_password": str(body.get("authPassword") or "")[:128],
-                       "auth_clear": body.get("authClear") is True}
-        except ValueError:
-            return None
+        request = {"target": "console" if body.get("target") == "console" else "port",
+                   "aliases": lines("aliases", 16), "allow_ips": lines("allowIps", 64),
+                   "auth_user": str(body.get("authUser") or "")[:64],
+                   "auth_password": str(body.get("authPassword") or "")[:128],
+                   "auth_clear": body.get("authClear") is True}
         if request["target"] == "port":
             port = body.get("port")
             if type(port) is not int:
-                return None
+                raise FieldError("port", "required" if port is None else "type")
             request.update(port=port, backend_tls=body.get("backendTls") is True,
                            upstream_host=body.get("upstreamHost") is True)
         return request
@@ -200,25 +260,27 @@ class DomainsApiMixin:
         body = self._domains_body()
         if body is None:
             return
-        request = self._domains_target(body)
-        if request is None:
-            return self.api_error(400, "port_invalid")
+        try:
+            request = self._domains_target(body)
+        except FieldError as exc:
+            return self.api_error(400, "port_invalid", **details(exc))
         request["action"] = "add"
         if body.get("zone"):
             request.update(zone=str(body["zone"])[:253], name=str(body.get("name") or "")[:200])
         else:
             request["host"] = str(body.get("host") or "")[:253]
-        return self._domains_reply(self.domains_apply(request), "domains_added")
+        return self._domains_reply(self.domains_apply(request), "domains_added", body)
 
     def api_domains_edit(self):
         body = self._domains_body()
         if body is None:
             return
-        request = self._domains_target(body)
-        if request is None:
-            return self.api_error(400, "port_invalid")
+        try:
+            request = self._domains_target(body)
+        except FieldError as exc:
+            return self.api_error(400, "port_invalid", **details(exc))
         request.update(action="edit", host=str(body.get("host") or "")[:253])
-        return self._domains_reply(self.domains_apply(request), "domains_site_saved")
+        return self._domains_reply(self.domains_apply(request), "domains_site_saved", {**body, "action": "edit"})
 
     def api_domains_toggle(self):
         body = self._domains_body()
@@ -242,7 +304,7 @@ class DomainsApiMixin:
             return
         reply = self.domains_apply({"action": "token_add", "token": str(body.get("token") or "")[:200],
                                     "name": str(body.get("name") or "")[:80]})
-        return self._domains_reply(reply, "domains_token_saved")
+        return self._domains_reply(reply, "domains_token_saved", body)
 
     def api_domains_token_remove(self):
         body = self._domains_body()

@@ -51,10 +51,10 @@ def _credential(node):
     return inbound["users"][0]["uuid" if node["protocol"] in _UUID_PROTOCOLS else "password"]
 
 
-def _set_credential(node, value):
+def check_credential(protocol, value):
+    """InvalidInventory unless ``value`` is a valid credential for ``protocol``; the console checks with it too."""
     if not isinstance(value, str) or not value:
         raise InvalidInventory("invalid credential")
-    protocol = node["protocol"]
     if protocol in _UUID_PROTOCOLS:
         try:
             parsed = uuid.UUID(value)
@@ -63,8 +63,6 @@ def _set_credential(node, value):
         if parsed.int == 0 or str(parsed) != value:
             raise InvalidInventory("credential UUID must be canonical and nonzero")
     elif protocol == "shadowsocks":
-        if node["inbound"]["method"] != "2022-blake3-aes-128-gcm":
-            raise InvalidInventory("unsupported shadowsocks method")
         try:
             key = base64.b64decode(value, validate=True)
         except (ValueError, base64.binascii.Error) as exc:
@@ -73,6 +71,13 @@ def _set_credential(node, value):
             raise InvalidInventory("shadowsocks requires a canonical 16-byte key")
     elif not 8 <= len(value) <= 128 or not all(33 <= ord(c) <= 126 for c in value):
         raise InvalidInventory("password must be 8-128 printable non-space ASCII characters")
+
+
+def _set_credential(node, value):
+    protocol = node["protocol"]
+    if protocol == "shadowsocks" and node["inbound"]["method"] != "2022-blake3-aes-128-gcm":
+        raise InvalidInventory("unsupported shadowsocks method")
+    check_credential(protocol, value)
     if protocol == "shadowsocks":
         node["inbound"]["password"] = value
     else:

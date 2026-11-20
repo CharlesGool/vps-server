@@ -9,6 +9,11 @@ from features.tailscale import _CONNECT_LOCK
 
 SETTING_NAMES = ("accept-dns", "accept-routes", "advertise-exit-node", "exit-node-allow-lan-access",
                  "shields-up", "snat-subnet-routes", "ssh", "webclient")
+# tailscale_control's refusals that name one input: message -> (request key, reason).
+VALUE_FIELDS = {"invalid subnet route": ("routes", "format"), "invalid subnet routes": ("routes", "format"),
+                "invalid exit node": ("exit", "format"), "invalid peer relay port": ("relay", "range"),
+                "invalid control server URL": ("loginServer", "format"),
+                "invalid authentication key": ("authKey", "format")}
 
 
 class TailscaleApiMixin:
@@ -103,7 +108,10 @@ class TailscaleApiMixin:
             return self.api_error(404, "not_found")
         try:
             action()
-        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        except ValueError as exc:
+            field, reason = VALUE_FIELDS.get(str(exc), (None, None))
+            return self.api_error(400, "tailscale_action_failed", **({"field": field, "reason": reason} if field else {}))
+        except (OSError, RuntimeError, subprocess.SubprocessError):
             return self.api_error(400, "tailscale_action_failed")
         return self.api_ok(self.tailscale_state())
 
@@ -120,8 +128,10 @@ class TailscaleApiMixin:
     def api_tailscale_connect(self):
         body = self.read_json() or {}
         server, key = body.get("loginServer", ""), body.get("authKey", "")
-        if not isinstance(server, str) or not isinstance(key, str) or len(server) > 255 or len(key) > 2048:
-            return self.api_error(400, "invalid_request")
+        for name, value, limit in (("loginServer", server, 255), ("authKey", key, 2048)):
+            if not isinstance(value, str) or len(value) > limit:
+                return self.api_error(400, "invalid_request", field=name,
+                                      reason="type" if not isinstance(value, str) else "too_long")
 
         def connect():
             # Overlapping `tailscale up` runs reset each other's login, so only one runs at a time.
@@ -173,7 +183,8 @@ class TailscaleApiMixin:
             if value is None:
                 continue
             if not isinstance(value, str) or len(value) > 255:
-                return self.api_error(400, "invalid_request")
+                return self.api_error(400, "invalid_request", field=kind,
+                                      reason="type" if not isinstance(value, str) else "too_long")
             if value.strip():
                 form[kind + "_value"] = [value.strip()]
             elif previous.get(name):

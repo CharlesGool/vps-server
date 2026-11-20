@@ -285,10 +285,12 @@ class SystemApiMixin:
         body = self.read_json()
         name = body.get("name") if body else None
         if not isinstance(name, str):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", **({"field": "name", "reason": "type"} if body else {}))
         answer = run_helper(self.context, {"action": "hostname", "name": name.strip()})
         if not answer.get("ok"):
-            return self.api_error(400, answer.get("error", "failed"))
+            error = answer.get("error", "failed")
+            return self.api_error(400, error, **({"field": "name", "reason": "required" if not name.strip() else "format"}
+                                                 if error == "hostname_invalid" else {}))
         self.audit("hostname_changed", f'{answer.get("old", "")} -> {answer.get("name", "")}')
         return self.api_system()
 

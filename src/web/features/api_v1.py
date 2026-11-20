@@ -67,7 +67,11 @@ class TokenApiMixin:
         try:
             token, row = self.context.API_TOKENS.create(body.get("name"), body.get("scope"))
         except TokenError as error:
-            return self.api_error(400, str(error))
+            name = body.get("name")
+            problem = ({"field": "name", "reason": "too_long" if isinstance(name, str) and name.strip() else
+                        "required" if name is None or isinstance(name, str) else "type"} if str(error) == "name_invalid" else
+                       {"field": "scope", "reason": "format"} if str(error) == "invalid_request" else {})
+            return self.api_error(400, str(error), **problem)
         self.audit("api_token_created", f'{row["name"]} ({row["scope"]})')
         return self.api_ok({"token": token, "tokens": self.context.API_TOKENS.listing()})
 
@@ -154,7 +158,9 @@ class TokenApiMixin:
         body = self.read_json()
         unit = body.get("unit") if body else None
         if not isinstance(unit, str) or not UNIT_RE.match(unit):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", **({"field": "unit", "reason": "required" if unit is None else
+                                                               "type" if not isinstance(unit, str) else "format"}
+                                                              if body is not None else {}))
         if not restartable(unit):
             return self.api_error(403, "unit_not_allowed")
         # try-restart: a stopped service stays stopped; "restart" would start any unit.
@@ -176,9 +182,10 @@ class TokenApiMixin:
         # Without a variant, the package this host was installed from (an offline host stays offline).
         variant = body.get("variant")
         if version is not None and (not isinstance(version, str) or not api_upgrade.VERSION_RE.match(version)):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="version",
+                                  reason="type" if not isinstance(version, str) else "format")
         if variant not in (None, "online", "offline"):
-            return self.api_error(400, "invalid_request")
+            return self.api_error(400, "invalid_request", field="variant", reason="format")
         error = api_upgrade.start(self.context, version, variant)
         if error:
             return self.api_error(409 if error == "busy" else 500, error)

@@ -15,7 +15,8 @@ import SettingRow from '@/components/app/SettingRow.vue'
 import ThemeSelect from '@/components/app/ThemeSelect.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ApiError, api, isSignedOut } from '@/lib/api'
+import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { MODES, mode } from '@/lib/appearance'
 import { type Locale, LOCALES, NATIVE_NAMES } from '@/lib/i18n'
 import { session } from '@/lib/session'
@@ -56,7 +57,7 @@ onMounted(async () => {
     if (data.consolePortJob?.state === 'failed') portJobFailed.value = data.consolePortJob.reason
     loaded.value = true
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 })
 
@@ -66,7 +67,8 @@ const ERRORS: Record<string, string> = {
   console_port_invalid: 'vps.settings.portInvalid',
   console_port_error: 'vps.settings.portError',
 }
-const message = (err: unknown) => t(err instanceof ApiError && ERRORS[err.code] ? ERRORS[err.code]! : 'vps.common.failed')
+const message = (err: unknown) =>
+  errorText(err, { codes: (code) => (ERRORS[code] ? t(ERRORS[code]!) : undefined), labels: { label: t('vps.settings.label'), port: t('vps.settings.port') } })
 
 async function saveLabel() {
   if (labelBusy.value) return

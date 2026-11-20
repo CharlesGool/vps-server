@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
 import UpgradeCard from '@/components/vps/UpgradeCard.vue'
 import { api } from '@/lib/api'
+import { fieldError } from '@/lib/errors'
 import { useSecurePage } from '@/lib/secure-page'
 import { showToast } from '@/lib/toast'
 
@@ -24,7 +25,7 @@ import { showToast } from '@/lib/toast'
 interface Info { hostname: string; os: string; kernel: string; arch: string }
 
 const { t, te } = useI18n()
-const { state, guard } = useSecurePage()
+const { state, guard, failure } = useSecurePage()
 const info = ref<Info>()
 const hostname = ref('')
 const busy = ref(false)
@@ -42,7 +43,7 @@ onMounted(load)
 
 async function saveHostname() {
   busy.value = true
-  const value = await guard(() => api<Info>('system/hostname', { method: 'POST', body: { name: hostname.value } }), errorText)
+  const value = await guard(() => api<Info>('system/hostname', { method: 'POST', body: { name: hostname.value } }), errorText, { name: t('vps.system.hostnameLabel') })
   busy.value = false
   if (value) {
     info.value = value
@@ -74,8 +75,8 @@ const infoItems = computed(() => [
 
       <CardForm @submit.prevent="saveHostname">
         <PageSection :cols="2" :title="t('vps.system.rename')" :description="t('vps.system.hostnameHelp')">
-          <FormField v-slot="field" :label="t('vps.system.hostnameLabel')">
-            <Input :id="field.id" v-model.trim="hostname" autocomplete="off" spellcheck="false" maxlength="253" :aria-describedby="field.describedby" />
+          <FormField v-slot="field" :label="t('vps.system.hostnameLabel')" :error="fieldError(failure, 'name', { codes: errorText })">
+            <Input :id="field.id" v-model.trim="hostname" autocomplete="off" spellcheck="false" maxlength="253" :aria-invalid="field.invalid" :aria-describedby="field.describedby" />
           </FormField>
           <FormActions>
             <Button type="submit" :disabled="busy || !hostname || hostname === info.hostname"><Save aria-hidden="true" />{{ t('vps.common.save') }}</Button>

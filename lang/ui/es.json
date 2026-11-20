@@ -467,6 +467,22 @@
     "settingsDescription": "Apariencia e idioma."
   },
   "vps": {
+    "error": {
+      "field": "{field}: {reason}",
+      "detail": "{text} ({detail})",
+      "reason": {
+        "required": "obligatorio",
+        "type": "tipo incorrecto",
+        "format": "formato no válido",
+        "range": "fuera del rango permitido",
+        "too_long": "demasiado largo",
+        "too_short": "demasiado corto",
+        "exists": "ya existe",
+        "not_found": "no existe",
+        "past": "ya ha pasado",
+        "port_in_use": "puerto ya en uso"
+      }
+    },
     "common": {
       "failed": "Algo salió mal. Inténtalo de nuevo.",
       "done": "Listo",

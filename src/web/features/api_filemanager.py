@@ -25,6 +25,17 @@ EDIT_LIMIT = 1024 * 1024
 UPLOAD_IDLE_TIMEOUT = 60
 STAGING_MAX_AGE = 86400
 OPS = {"mkdir", "touch", "rename", "move", "copy", "delete", "chmod", "chown", "extract", "compress"}
+# The request key (and reason) behind a helper error, by operation; "*" for every operation.
+# An error not listed here names no single input.
+OP_FIELDS = {
+    "name_invalid": {"rename": ("name", "format")},
+    "exists": {"mkdir": ("path", "exists"), "touch": ("path", "exists"), "rename": ("name", "exists"),
+               "compress": ("target", "exists"), "move": ("destination", "exists"),
+               "copy": ("destination", "exists"), "extract": ("destination", "exists")},
+    "destination_invalid": {"*": ("destination", None)},
+    "mode_invalid": {"*": ("mode", "format")},
+    "format_invalid": {"*": ("format", "format")},
+}
 
 
 def cleanup_staging(context, older=STAGING_MAX_AGE):
@@ -62,6 +73,24 @@ def _clean(value):
         return None
     path = os.path.normpath(value)
     return "/" + path.lstrip("/") if path.startswith("//") else path
+
+
+def op_field(body, error):
+    """{"field", "reason"} for the input a file operation was refused for, or {}."""
+    action = body.get("action")
+    if error == "owner_invalid":
+        # The helper does not say which name it could not find; the console can look both up.
+        for key, lookup in (("user", pwd.getpwnam), ("group", grp.getgrnam)):
+            try:
+                lookup(str(body.get(key)))
+            except KeyError:
+                return {"field": key, "reason": "not_found"}
+        return {}
+    found = OP_FIELDS.get(error, {})
+    field, reason = found.get(action) or found.get("*") or (None, None)
+    if field is None:
+        return {}
+    return {"field": field, "reason": reason} if reason else {"field": field}
 
 
 def _owner(uid, gid, cache):
@@ -303,11 +332,15 @@ class FileManagerApiMixin:
         if not self._security_allowed():
             return
         body = self.read_json()
-        if body is None or body.get("action") not in OPS:
+        if body is None:
             return self.api_error(400, "invalid_request")
+        if body.get("action") not in OPS:
+            return self.api_error(400, "invalid_request", field="action", reason="format")
         answer = run_helper(self.context, body, timeout=1800)
         if not answer.get("ok"):
-            return self.api_error(400, answer.get("error", "failed"))
+            error = answer.get("error", "failed")
+            detail = {"detail": answer["detail"]} if isinstance(answer.get("detail"), str) else {}
+            return self.api_error(400, error, **op_field(body, error), **detail)
         self.audit("file_" + body["action"], str(body.get("path") or ",".join(map(str, body.get("paths") or []))))
         answer.pop("ok", None)
         return self.api_ok(answer)

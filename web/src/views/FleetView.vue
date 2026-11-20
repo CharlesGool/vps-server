@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import AdminVerify from '@/components/vps/AdminVerify.vue'
 import ApiTokensCard from '@/components/vps/ApiTokensCard.vue'
 import { api } from '@/lib/api'
+import { errorText as requestErrorText, fieldError } from '@/lib/errors'
 import { formatBytes } from '@/lib/format'
 import type { Monitor } from '@/lib/monitor'
 import { useSecurePage } from '@/lib/secure-page'
@@ -54,7 +55,7 @@ interface Host {
 // 长列表一页 50 行(项目决策 2026-11-20)
 const PAGE = 50
 const { t, te } = useI18n()
-const { state, guard } = useSecurePage()
+const { state, guard, failure } = useSecurePage()
 const hosts = ref<Host[]>([])
 const selected = ref<unknown[]>([])
 const page = ref(1)
@@ -165,26 +166,26 @@ const addError = ref('')
 function openAdd() {
   add.value = { name: '', url: 'https://', token: '', mode: '', fingerprint: '' }
   addError.value = ''
+  failure.value = undefined
   addOpen.value = true
 }
+// 添加主机被拒绝时, 提示里指出是哪一项; 对话框里对应的字段也标为错误
+const addLabels = computed(() => ({ url: t('vps.fleet.url'), name: t('vps.fleet.name'), token: t('vps.fleet.token') }))
+const addInvalid = (field: string) => fieldError(failure.value, field, { codes: errorText })
 async function probe() {
   addError.value = ''
   busy.value = true
-  const value = await guard(() => api<{ mode: 'ca' | 'pin'; fingerprint: string }>('fleet/probe', { method: 'POST', body: { url: add.value.url } }), (code) => {
-    addError.value = errorText(code) ?? t('vps.common.failed')
-    return addError.value
-  })
+  const value = await guard(() => api<{ mode: 'ca' | 'pin'; fingerprint: string }>('fleet/probe', { method: 'POST', body: { url: add.value.url } }), errorText, addLabels.value)
   busy.value = false
   if (value) Object.assign(add.value, value)
+  else if (failure.value) addError.value = requestErrorText(failure.value, { codes: errorText, labels: addLabels.value })
 }
 async function save() {
   addError.value = ''
   busy.value = true
-  const value = await guard(() => api<{ hosts: Host[] }>('fleet/add', { method: 'POST', body: add.value }), (code) => {
-    addError.value = errorText(code) ?? t('vps.common.failed')
-    return addError.value
-  })
+  const value = await guard(() => api<{ hosts: Host[] }>('fleet/add', { method: 'POST', body: add.value }), errorText, addLabels.value)
   busy.value = false
+  if (!value && failure.value) addError.value = requestErrorText(failure.value, { codes: errorText, labels: addLabels.value })
   if (value) {
     hosts.value = value.hosts
     addOpen.value = false
@@ -273,17 +274,17 @@ function clearLater(clear: () => void) {
     </AppDialog>
 
     <AppDialog v-model:open="addOpen" :title="t('vps.fleet.add')" :description="t('vps.fleet.addHelp')">
-      <FormField v-slot="urlField" :label="t('vps.fleet.url')">
-        <Input :id="urlField.id" v-model.trim="add.url" spellcheck="false" autocomplete="off" :disabled="!!add.mode" />
+      <FormField v-slot="urlField" :label="t('vps.fleet.url')" :error="addInvalid('url')">
+        <Input :id="urlField.id" v-model.trim="add.url" spellcheck="false" autocomplete="off" :disabled="!!add.mode" :aria-invalid="urlField.invalid" :aria-describedby="urlField.describedby" />
       </FormField>
       <template v-if="add.mode">
         <AlertBanner :tone="add.mode === 'ca' ? 'success' : 'warning'">{{ t(`vps.fleet.probe.${add.mode}`) }}</AlertBanner>
         <DescriptionList :items="[{ key: 'fp', label: t('vps.fleet.fingerprint'), value: add.fingerprint, mono: true }]" />
-        <FormField v-slot="fld" :label="t('vps.fleet.name')">
-          <Input :id="fld.id" v-model.trim="add.name" maxlength="40" autocomplete="off" />
+        <FormField v-slot="fld" :label="t('vps.fleet.name')" :error="addInvalid('name')">
+          <Input :id="fld.id" v-model.trim="add.name" maxlength="40" autocomplete="off" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
-        <FormField v-slot="fld" :label="t('vps.fleet.token')" :help="t('vps.fleet.tokenHelp')">
-          <PasswordInput :id="fld.id" v-model="add.token" autocomplete="off" />
+        <FormField v-slot="fld" :label="t('vps.fleet.token')" :help="t('vps.fleet.tokenHelp')" :error="addInvalid('token')">
+          <PasswordInput :id="fld.id" v-model="add.token" autocomplete="off" :aria-invalid="fld.invalid" :aria-describedby="fld.describedby" />
         </FormField>
       </template>
       <AlertBanner v-if="addError" tone="destructive">{{ addError }}</AlertBanner>

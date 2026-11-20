@@ -7,6 +7,7 @@ import PageSection from '@/components/app/PageSection.vue'
 import PaginationBar from '@/components/app/PaginationBar.vue'
 import SegmentedControl from '@/components/app/SegmentedControl.vue'
 import { api, isSignedOut } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { showToast } from '@/lib/toast'
 
 // vps-server 项目组件: 最近访问页的 SSH 登录记录(整行, 列表样式). 最近 7 天, 分成功, 失败和失败最多的来源地址三种显示, 每页 10 行.
@@ -23,7 +24,7 @@ onMounted(async () => {
   try {
     ssh.value = await api<Ssh>('visitors/ssh')
   } catch (err) {
-    if (!isSignedOut(err)) showToast(t('vps.common.failed'), 'destructive')
+    if (!isSignedOut(err)) showToast(errorText(err), 'destructive')
   }
 })
 
